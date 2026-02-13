@@ -1,0 +1,23 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="mainGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7c3aed"/>
+      <stop offset="50%" stop-color="#06b6d4"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Outer ring -->
+  <circle cx="16" cy="16" r="14" stroke="url(#mainGradient)" stroke-width="2" fill="none"/>
+  
+  <!-- Center node -->
+  <circle cx="16" cy="16" r="3" fill="url(#mainGradient)"/>
+  
+  <!-- Connections -->
+  <line x1="16" y1="10" x2="12" y2="14" stroke="url(#mainGradient)" stroke-width="1"/>
+  <line x1="16" y1="10" x2="20" y2="14" stroke="url(#mainGradient)" stroke-width="1"/>
+  <line x1="12" y1="14" x2="10" y2="20" stroke="url(#mainGradient)" stroke-width="1"/>
+  <line x1="20" y1="14" x2="22" y2="20" stroke="url(#mainGradient)" stroke-width="1"/>
+  <line x1="10" y1="20" x2="16" y2="22" stroke="url(#mainGradient)" stroke-width="1"/>
+  <line x1="22" y1="20" x2="16" y2="22" stroke="url(#mainGradient)" stroke-width="1"/>
+</svg>

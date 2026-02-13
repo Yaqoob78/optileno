@@ -1,0 +1,4 @@
+Checking backend\concierge.db
+Goal columns: ['id', 'user_id', 'title', 'description', 'category', 'target_date', 'current_progress', 'milestones', 'ai_suggestions', 'created_at', 'updated_at', 'is_tracked', 'probability_status', 'last_analyzed_at']
+SUCCESS: is_tracked found in goals
+SUCCESS: goal_id found in plans

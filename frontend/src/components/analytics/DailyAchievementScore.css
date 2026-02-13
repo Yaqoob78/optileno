@@ -1,0 +1,205 @@
+/* DailyAchievementScore.css - Professional Daily Score Styling */
+
+.daily-achievement {
+    width: 100%;
+    padding: 20px;
+}
+
+.daily-achievement.loading,
+.daily-achievement.error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    color: var(--text-secondary, #94a3b8);
+}
+
+.loading-pulse {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(139, 92, 246, 0.3));
+    animation: pulse 1.5s ease infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.5;
+    }
+
+    50% {
+        transform: scale(1.1);
+        opacity: 1;
+    }
+}
+
+/* Main Score Display */
+.da-main-score {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.da-grade-circle {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    border: 4px solid;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.da-grade-circle::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.1), transparent);
+}
+
+.da-grade {
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 2px;
+}
+
+.da-score-value {
+    font-size: 14px;
+    color: var(--text-secondary, #94a3b8);
+}
+
+.da-main-info {
+    flex: 1;
+}
+
+.da-main-info h3 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary, #f8fafc);
+}
+
+.da-comparison {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    color: var(--text-secondary, #94a3b8);
+}
+
+/* Breakdown Bars */
+.da-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.da-metric {
+    width: 100%;
+}
+
+.da-metric-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.da-metric-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary, #94a3b8);
+}
+
+.da-metric-label {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary, #f8fafc);
+}
+
+.da-metric-count {
+    font-size: 13px;
+    color: var(--text-secondary, #94a3b8);
+}
+
+.da-metric-bar {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.da-metric-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.6s ease-out;
+    position: relative;
+}
+
+.da-metric-fill::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 50%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2));
+}
+
+/* Quick Stats */
+.da-quick-stats {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.da-quick-stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-secondary, #94a3b8);
+}
+
+.da-quick-stat svg {
+    opacity: 0.6;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .da-main-score {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .da-main-info {
+        text-align: center;
+    }
+
+    .da-comparison {
+        justify-content: center;
+    }
+
+    .da-quick-stats {
+        flex-direction: column;
+        gap: 8px;
+        align-items: center;
+    }
+}

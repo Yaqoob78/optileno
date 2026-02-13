@@ -1,0 +1,152 @@
+/* src/styles/chat/chat-header.css - ONLY CLEAR FLOW & KEEP */
+/* ========== TABS SECTION ========== */
+.chat-tabs-container {
+  display: flex;
+  border-bottom: 2px solid rgba(var(--color-border-light), 0.4);
+  background: rgba(var(--color-bg-tertiary), 1);
+}
+
+.chat-tab {
+  flex: 1;
+  padding: var(--space-4);
+  background: transparent;
+  border: none;
+  color: rgb(var(--color-text-secondary));
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  transition: all var(--transition-slow);
+  overflow: hidden;
+}
+
+.chat-tab:hover {
+  color: rgb(var(--color-text-primary));
+  background: rgba(var(--color-primary), 0.1);
+}
+
+/* Active state for Keep tab */
+.chat-tab.active {
+  color: rgb(var(--color-primary));
+  font-weight: var(--font-semibold);
+  background: rgba(var(--color-primary), 0.05);
+}
+
+.chat-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 20%;
+  right: 20%;
+  height: 4px;
+  background: linear-gradient(
+    90deg,
+    rgb(var(--color-primary)) 0%,
+    rgb(var(--color-secondary)) 100%
+  );
+  border-radius: var(--radius-xs) var(--radius-xs) 0 0;
+  z-index: 2;
+}
+
+/* Special styling for Clear Flow when active */
+.chat-tab.clear-flow-active {
+  color: rgb(var(--color-danger));
+  background: rgba(var(--color-danger), 0.05);
+}
+
+.chat-tab.clear-flow-active::after {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--color-danger)) 0%,
+    rgb(var(--color-danger-dark)) 100%
+  );
+  box-shadow: 0 0 15px rgba(var(--color-danger), 0.4);
+}
+
+/* Animation for when clearing is active */
+.chat-tab.clearing-active {
+  animation: clear-flow-pulse 2s infinite;
+  background: linear-gradient(
+    90deg,
+    rgba(var(--color-danger), 0.1) 0%,
+    rgba(var(--color-danger), 0.2) 50%,
+    rgba(var(--color-danger), 0.1) 100%
+  );
+}
+
+@keyframes clear-flow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(var(--color-danger), 0);
+  }
+  50% {
+    box-shadow: 0 0 20px 5px rgba(var(--color-danger), 0.3);
+  }
+}
+
+/* Clearing indicator animation */
+.clearing-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.clearing-pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 10px;
+  height: 10px;
+  background: rgba(var(--color-danger), 0.6);
+  border-radius: 50%;
+  animation: clearing-pulse 1.5s infinite;
+}
+
+@keyframes clearing-pulse {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(4);
+    opacity: 0;
+  }
+}
+
+/* Special styling for Keep tab when active */
+.chat-tab.keep-active {
+  color: rgb(var(--color-success));
+  background: rgba(var(--color-success), 0.05);
+}
+
+.chat-tab.keep-active::after {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--color-success)) 0%,
+    rgb(var(--color-success-dark)) 100%
+  );
+  box-shadow: 0 0 15px rgba(var(--color-success), 0.4);
+}
+
+/* ========== RESPONSIVE DESIGN ========== */
+@media (max-width: 768px) {
+  .chat-tab {
+    padding: var(--space-3);
+    font-size: var(--text-xs);
+  }
+}
+
+@media (max-width: 640px) {
+  .chat-tab {
+    padding: var(--space-2);
+    font-size: 0.75rem;
+    gap: var(--space-1);
+  }
+}

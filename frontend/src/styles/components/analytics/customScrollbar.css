@@ -1,0 +1,47 @@
+/* Custom Scrollbar for Analytics Components */
+.analytics-page,
+.component-content>*,
+.analytics-content-wrapper {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(124, 58, 237, 0.2) transparent;
+}
+
+.analytics-page::-webkit-scrollbar,
+.component-content>*::-webkit-scrollbar,
+.analytics-content-wrapper::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.analytics-page::-webkit-scrollbar-track,
+.component-content>*::-webkit-scrollbar-track,
+.analytics-content-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.analytics-page::-webkit-scrollbar-thumb,
+.component-content>*::-webkit-scrollbar-thumb,
+.analytics-content-wrapper::-webkit-scrollbar-thumb {
+    background: rgba(124, 58, 237, 0.2);
+    border-radius: 3px;
+    transition: background 0.2s ease;
+}
+
+.analytics-page::-webkit-scrollbar-thumb:hover,
+.component-content>*::-webkit-scrollbar-thumb:hover,
+.analytics-content-wrapper::-webkit-scrollbar-thumb:hover {
+    background: rgba(124, 58, 237, 0.4);
+}
+
+/* Dark theme */
+.theme-dark .analytics-page::-webkit-scrollbar-thumb,
+.theme-dark .component-content>*::-webkit-scrollbar-thumb,
+.theme-dark .analytics-content-wrapper::-webkit-scrollbar-thumb {
+    background: rgba(167, 139, 250, 0.25);
+}
+
+.theme-dark .analytics-page::-webkit-scrollbar-thumb:hover,
+.theme-dark .component-content>*::-webkit-scrollbar-thumb:hover,
+.theme-dark .analytics-content-wrapper::-webkit-scrollbar-thumb:hover {
+    background: rgba(167, 139, 250, 0.45);
+}

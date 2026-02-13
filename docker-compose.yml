@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # Frontend Service (Nginx + React)
+  # ==========================================
+  frontend:
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: always
+
+  # ==========================================
+  # Backend Service (FastAPI)
+  # ==========================================
+  backend:
+    build: 
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/concierge_db
+      - ENVIRONMENT=development
+      - FRONTEND_URL=http://localhost:3000
+      - COOKIE_SECURE=false
+      - COOKIE_SAMESITE=lax
+      - STRIPE_API_KEY=${STRIPE_API_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      - db
+    volumes:
+      - ./backend:/app/backend # Hot reload for dev (optional)
+    command: uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # ==========================================
+  # Database (PostgreSQL)
+  # ==========================================
+  db:
+    image: postgres:15-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=concierge_db
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:

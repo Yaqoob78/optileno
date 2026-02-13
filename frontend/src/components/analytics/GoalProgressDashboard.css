@@ -1,0 +1,425 @@
+/* GoalProgressDashboard.css - Professional Goal Analytics Styling */
+
+.goal-progress-dashboard {
+    width: 100%;
+    padding: 16px;
+}
+
+/* Loading & Error States */
+.goal-progress-dashboard.loading,
+.goal-progress-dashboard.error,
+.goal-progress-dashboard.empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    min-height: 200px;
+    color: var(--text-secondary, #94a3b8);
+}
+
+.goal-progress-dashboard.error button {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: none;
+    background: var(--accent, #6366f1);
+    color: white;
+    cursor: pointer;
+    transition: transform 0.2s, opacity 0.2s;
+}
+
+.goal-progress-dashboard.error button:hover {
+    opacity: 0.9;
+    transform: scale(1.02);
+}
+
+.goal-progress-dashboard.empty svg {
+    opacity: 0.3;
+}
+
+.goal-progress-dashboard.empty h3 {
+    margin: 0;
+    color: var(--text-primary, #f8fafc);
+}
+
+.goal-progress-dashboard.empty p {
+    margin: 0;
+    font-size: 14px;
+}
+
+.loading-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid rgba(99, 102, 241, 0.2);
+    border-top-color: var(--accent, #6366f1);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Overview Stats */
+.gp-overview {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.gp-stat {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    transition: transform 0.2s, background 0.2s;
+}
+
+.gp-stat:hover {
+    background: rgba(255, 255, 255, 0.05);
+    transform: translateY(-2px);
+}
+
+.gp-stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary, #f8fafc);
+    margin-bottom: 4px;
+}
+
+.gp-stat.success .gp-stat-value {
+    color: #22c55e;
+}
+
+.gp-stat.warning .gp-stat-value {
+    color: #ef4444;
+}
+
+.gp-stat-label {
+    font-size: 12px;
+    color: var(--text-secondary, #94a3b8);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Goals List */
+.gp-goals-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.gp-goal-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 16px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.gp-goal-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    border-radius: 4px 0 0 4px;
+    transition: background 0.3s;
+}
+
+.gp-goal-card.on_track::before,
+.gp-goal-card.completed::before {
+    background: #22c55e;
+}
+
+.gp-goal-card.at_risk::before,
+.gp-goal-card.overdue::before {
+    background: #ef4444;
+}
+
+.gp-goal-card.slightly_behind::before {
+    background: #f59e0b;
+}
+
+.gp-goal-card.active::before {
+    background: #6366f1;
+}
+
+.gp-goal-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+    transform: translateX(4px);
+}
+
+/* Goal Header */
+.gp-goal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.gp-goal-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary, #f8fafc);
+}
+
+.gp-goal-status {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Progress Bar */
+.gp-progress-container {
+    margin-bottom: 12px;
+}
+
+.gp-progress-bar {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+
+.gp-progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease-out;
+}
+
+.gp-progress-text {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    color: var(--text-secondary, #94a3b8);
+}
+
+.gp-trend {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+}
+
+/* Quick Stats */
+.gp-quick-stats {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.gp-quick-stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-secondary, #94a3b8);
+}
+
+.gp-quick-stat svg {
+    opacity: 0.7;
+}
+
+/* Expanded Details */
+.gp-goal-details {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.gp-detail-section {
+    margin-bottom: 16px;
+}
+
+.gp-detail-section:last-child {
+    margin-bottom: 0;
+}
+
+.gp-detail-section h4 {
+    margin: 0 0 10px 0;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary, #94a3b8);
+}
+
+/* Velocity Meter */
+.gp-velocity-meter {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.gp-velocity-bar {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.gp-velocity-current {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+
+.gp-velocity-marker {
+    position: absolute;
+    top: -2px;
+    width: 2px;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.gp-velocity-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-secondary, #94a3b8);
+}
+
+/* Prediction */
+.gp-prediction {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.gp-prediction-date {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--text-primary, #f8fafc);
+}
+
+.gp-probability {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.gp-probability-ring {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary, #f8fafc);
+}
+
+.gp-probability-ring::after {
+    content: '';
+    position: absolute;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--bg-primary, #0f172a);
+}
+
+.gp-probability-ring span {
+    position: relative;
+    z-index: 1;
+}
+
+.gp-probability>span {
+    font-size: 10px;
+    color: var(--text-secondary, #94a3b8);
+}
+
+/* Habits */
+.gp-habits {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.gp-habit-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    font-size: 13px;
+}
+
+.gp-habit-streak {
+    font-size: 12px;
+    color: #f59e0b;
+}
+
+.gp-habit-score {
+    text-align: center;
+    padding-top: 8px;
+    font-size: 12px;
+    color: var(--text-secondary, #94a3b8);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Expand Indicator */
+.gp-expand-indicator {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary, #94a3b8);
+    opacity: 0.5;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .gp-overview {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .gp-stat-value {
+        font-size: 22px;
+    }
+
+    .gp-quick-stats {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .gp-prediction {
+        flex-direction: column;
+        gap: 16px;
+    }
+}

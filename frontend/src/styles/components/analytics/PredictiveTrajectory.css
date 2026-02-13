@@ -1,0 +1,228 @@
+/* frontend/src/styles/components/analytics/PredictiveTrajectory.css */
+
+/* ===== CONTAINER ===== */
+.predictive-trajectory-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    height: 320px;
+    /* Fixed height per spec */
+    padding: 1rem;
+    background: var(--gradient-glass);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+}
+
+/* ===== HEADER ===== */
+.trajectory-header {
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.trajectory-header h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+/* ===== MAIN VISUALIZATION ===== */
+.trajectory-viz {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    position: relative;
+}
+
+.current-score,
+.projected-score {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    min-width: 60px;
+}
+
+.score-label {
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: var(--text-tertiary);
+}
+
+.score-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.score-change {
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* ===== SVG CHART ===== */
+.trajectory-chart {
+    flex: 1;
+    max-height: 180px;
+}
+
+.trajectory-line {
+    animation: drawLine 1s ease-out;
+}
+
+@keyframes drawLine {
+    from {
+        stroke-dasharray: 1000;
+        stroke-dashoffset: 1000;
+    }
+
+    to {
+        stroke-dasharray: 1000;
+        stroke-dashoffset: 0;
+    }
+}
+
+.trajectory-point {
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.trajectory-point-end {
+    animation: pulse 2s ease-in-out infinite 0.5s;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
+}
+
+.axis-label {
+    font-size: 8px;
+    fill: var(--text-tertiary);
+    font-weight: 500;
+}
+
+/* ===== STATUS MESSAGE ===== */
+.trajectory-status {
+    padding: 0.5rem 0.75rem;
+    background: rgba(124, 58, 237, 0.05);
+    border-left: 3px solid var(--primary);
+    border-radius: 4px;
+    font-size: 0.813rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    text-align: center;
+}
+
+/* ===== LEGEND ===== */
+.trajectory-legend {
+    display: flex;
+    gap: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-color);
+    flex-wrap: wrap;
+}
+
+.legend-box {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.legend-icon {
+    display: flex;
+    align-items: center;
+    color: var(--primary);
+}
+
+.legend-bars {
+    font-family: monospace;
+    font-size: 0.813rem;
+    letter-spacing: 1px;
+}
+
+.legend-code {
+    font-weight: 700;
+    color: var(--primary);
+    font-size: 0.813rem;
+}
+
+.legend-text {
+    font-size: 0.75rem;
+}
+
+/* ===== LOADING STATE ===== */
+.predictive-trajectory-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 280px;
+    gap: 0.75rem;
+}
+
+.trajectory-loader {
+    color: var(--primary);
+    animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.predictive-trajectory-loading p {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* ===== EMPTY STATE ===== */
+.predictive-trajectory-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 280px;
+    gap: 0.75rem;
+    text-align: center;
+    padding: 2rem;
+}
+
+.predictive-trajectory-empty p {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .trajectory-viz {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .trajectory-chart {
+        max-height: 120px;
+    }
+
+    .trajectory-legend {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}

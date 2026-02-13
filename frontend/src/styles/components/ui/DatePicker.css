@@ -1,0 +1,179 @@
+/* src/styles/components/ui/DatePicker.css */
+
+.date-picker-container {
+    position: relative;
+    width: 100%;
+}
+
+.date-picker-trigger {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    padding: 10px 12px;
+    background: rgba(var(--color-bg-secondary), 0.5);
+    border: 1px solid rgba(var(--color-border-light), 0.3);
+    border-radius: var(--radius-lg);
+    color: rgb(var(--color-text-primary));
+    font-size: var(--text-sm);
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+.date-picker-trigger:hover {
+    background: rgba(var(--color-bg-secondary), 0.8);
+    border-color: rgba(var(--color-primary), 0.4);
+}
+
+.date-picker-trigger:focus {
+    outline: none;
+    border-color: rgb(var(--color-primary));
+    box-shadow: 0 0 0 2px rgba(var(--color-primary), 0.2);
+}
+
+.date-picker-trigger .icon {
+    color: rgb(var(--color-text-tertiary));
+}
+
+.date-picker-placeholder {
+    color: rgb(var(--color-text-tertiary));
+}
+
+.date-picker-value {
+    color: rgb(var(--color-text-primary));
+    font-weight: var(--font-medium);
+}
+
+/* Calendar Popover */
+.date-picker-calendar {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    z-index: 1000;
+    width: 280px;
+    background: rgba(var(--color-bg-secondary), 0.95);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(var(--color-border-light), 0.3);
+    border-radius: var(--radius-xl);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    padding: var(--space-4);
+    animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Header */
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-4);
+}
+
+.calendar-title {
+    font-size: var(--text-base);
+    font-weight: var(--font-bold);
+    color: rgb(var(--color-text-primary));
+}
+
+.calendar-nav-btn {
+    background: rgba(var(--color-bg-tertiary), 0.5);
+    border: 1px solid rgba(var(--color-border-light), 0.3);
+    color: rgb(var(--color-text-secondary));
+    border-radius: var(--radius-md);
+    padding: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-base);
+}
+
+.calendar-nav-btn:hover {
+    background: rgba(var(--color-primary), 0.1);
+    color: rgb(var(--color-primary));
+    border-color: rgba(var(--color-primary), 0.3);
+}
+
+/* Grid */
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.calendar-day-header {
+    text-align: center;
+    font-size: var(--text-xs);
+    color: rgb(var(--color-text-tertiary));
+    padding-bottom: var(--space-2);
+    font-weight: var(--font-medium);
+}
+
+.calendar-day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--text-sm);
+    color: rgb(var(--color-text-primary));
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    background: transparent;
+    border: none;
+}
+
+.calendar-day:hover:not(.disabled) {
+    background: rgba(var(--color-bg-tertiary), 0.8);
+}
+
+.calendar-day.disabled {
+    color: rgb(var(--color-text-disabled));
+    opacity: 0.3;
+    cursor: default;
+}
+
+.calendar-day.outside-month {
+    color: rgb(var(--color-text-tertiary));
+    opacity: 0.5;
+}
+
+.calendar-day.today {
+    color: rgb(var(--color-primary));
+    font-weight: var(--font-bold);
+    position: relative;
+}
+
+.calendar-day.today::after {
+    content: '';
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: rgb(var(--color-primary));
+}
+
+.calendar-day.selected {
+    background: rgb(var(--color-primary));
+    color: white;
+    font-weight: var(--font-bold);
+    box-shadow: 0 2px 8px rgba(var(--color-primary), 0.4);
+}
+
+.calendar-day.selected::after {
+    background: white;
+}

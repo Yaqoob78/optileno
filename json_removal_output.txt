@@ -1,0 +1,32 @@
+--- Input ---
+Here is a task.
+    {
+        "intent": "CREATE_TASK",
+        "actions": []
+    }
+    Done.
+--- Output ---
+Here is a task.
+    
+    Done.
+
+--- Input ---
+Mixed text { "key": "value" } end.
+--- Output ---
+Mixed text  end.
+
+--- Input ---
+No JSON here.
+--- Output ---
+No JSON here.
+
+--- Input ---
+Malformed { "key": "val" but missing brace
+--- Output ---
+Malformed { "key": "val" but missing brace
+
+--- Input ---
+Nested { "a": { "b": 1 } } works?
+--- Output ---
+Nested  works?
+

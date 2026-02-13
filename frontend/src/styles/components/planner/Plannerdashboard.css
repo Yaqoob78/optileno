@@ -1,0 +1,446 @@
+/* src/styles/components/planner/plannerDashboard.css */
+/* src/styles/components/planner/plannerDashboard.css */
+
+.planner-dashboard {
+  background: rgb(var(--color-bg-secondary));
+  border-radius: var(--radius-2xl);
+  border: 1px solid rgb(var(--color-border-light));
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  height: 720px;
+  /* CHANGED TO 450px (150px more than original 300px) */
+  width: 450px !important; /* Using !important to override */
+  min-width: 450px !important;
+  max-width: 450px !important;
+  overflow: hidden;
+  box-shadow: 
+    0 8px 30px rgba(0, 0, 0, 0.08);
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* If the parent container is restricting width, add this: */
+.planner-dashboard-container {
+  width: 450px;
+  flex-shrink: 0;
+}
+/* Top accent border - solid color */
+.planner-dashboard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: rgb(var(--color-primary));
+  z-index: 1;
+  border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+}
+
+.planner-dashboard:hover {
+  border-color: rgba(var(--color-primary), 0.5);
+  box-shadow: 
+    0 12px 40px rgba(var(--color-primary), 0.08);
+}
+
+/* Header */
+.dashboard-header {
+  margin-bottom: var(--space-1);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid rgb(var(--color-border-light));
+  position: relative;
+  z-index: 2;
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.header-title h3 {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: rgb(var(--color-text-primary));
+  margin: 0;
+  letter-spacing: -0.3px;
+  text-shadow: none;
+}
+
+.header-title svg {
+  color: rgb(var(--color-primary));
+  background: rgba(var(--color-primary), 0.1);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(var(--color-primary), 0.2);
+}
+
+.header-subtitle {
+  font-size: var(--text-sm);
+  color: rgb(var(--color-text-secondary));
+  margin: 4px 0 0;
+  font-weight: var(--font-medium);
+}
+
+/* Stats Grid - 2x4 layout */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+  position: relative;
+  z-index: 2;
+}
+
+.stat-card {
+  background: rgb(var(--color-bg-tertiary));
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  border: 2px solid;
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+  min-height: 90px;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* Stat colors - Solid borders with reduced opacity */
+.stat-success {
+  border-color: rgba(var(--color-success), 0.4);
+  background: rgba(var(--color-success), 0.05);
+}
+
+.stat-success .stat-icon {
+  color: rgb(var(--color-success));
+  background: rgba(var(--color-success), 0.1);
+  border: 1px solid rgba(var(--color-success), 0.2);
+}
+
+.stat-info {
+  border-color: rgba(var(--color-info), 0.4);
+  background: rgba(var(--color-info), 0.05);
+}
+
+.stat-info .stat-icon {
+  color: rgb(var(--color-info));
+  background: rgba(var(--color-info), 0.1);
+  border: 1px solid rgba(var(--color-info), 0.2);
+}
+
+.stat-warning {
+  border-color: rgba(var(--color-warning), 0.4);
+  background: rgba(var(--color-warning), 0.05);
+}
+
+.stat-warning .stat-icon {
+  color: rgb(var(--color-warning));
+  background: rgba(var(--color-warning), 0.1);
+  border: 1px solid rgba(var(--color-warning), 0.2);
+}
+
+.stat-accent {
+  border-color: rgba(var(--color-accent), 0.4);
+  background: rgba(var(--color-accent), 0.05);
+}
+
+.stat-accent .stat-icon {
+  color: rgb(var(--color-accent));
+  background: rgba(var(--color-accent), 0.1);
+  border: 1px solid rgba(var(--color-accent), 0.2);
+}
+
+.stat-danger {
+  border-color: rgba(var(--color-danger), 0.4);
+  background: rgba(var(--color-danger), 0.05);
+}
+
+.stat-danger .stat-icon {
+  color: rgb(var(--color-danger));
+  background: rgba(var(--color-danger), 0.1);
+  border: 1px solid rgba(var(--color-danger), 0.2);
+}
+
+.stat-primary {
+  border-color: rgba(var(--color-primary), 0.4);
+  background: rgba(var(--color-primary), 0.05);
+}
+
+.stat-primary .stat-icon {
+  color: rgb(var(--color-primary));
+  background: rgba(var(--color-primary), 0.1);
+  border: 1px solid rgba(var(--color-primary), 0.2);
+}
+
+.stat-purple {
+  border-color: rgba(var(--color-purple), 0.4);
+  background: rgba(var(--color-purple), 0.05);
+}
+
+.stat-purple .stat-icon {
+  color: rgb(var(--color-purple));
+  background: rgba(var(--color-purple), 0.1);
+  border: 1px solid rgba(var(--color-purple), 0.2);
+}
+
+.stat-icon {
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+}
+
+.stat-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.stat-value {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: rgb(var(--color-text-primary));
+  margin-bottom: 4px;
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: rgb(var(--color-text-secondary));
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+.stat-description {
+  font-size: 10px;
+  color: rgba(var(--color-text-secondary), 0.7);
+  margin-top: 2px;
+}
+
+.stat-progress {
+  margin-top: 8px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background: rgba(var(--color-bg-tertiary), 0.6);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  border: 1px solid rgba(var(--color-border-light), 0.2);
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.6s ease;
+}
+
+/* Progress bar colors - solid */
+.stat-success .progress-fill {
+  background: rgb(var(--color-success));
+}
+
+.stat-info .progress-fill {
+  background: rgb(var(--color-info));
+}
+
+.stat-warning .progress-fill {
+  background: rgb(var(--color-warning));
+}
+
+.stat-accent .progress-fill {
+  background: rgb(var(--color-accent));
+}
+
+.stat-danger .progress-fill {
+  background: rgb(var(--color-danger));
+}
+
+.stat-primary .progress-fill {
+  background: rgb(var(--color-primary));
+}
+
+.stat-purple .progress-fill {
+  background: rgb(var(--color-purple));
+}
+
+/* Quick Stats - moved to where Goals Progress was */
+.quick-stats {
+  margin-top: var(--space-2);
+  position: relative;
+  z-index: 2;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding: var(--space-3);
+  background: rgb(var(--color-bg-tertiary));
+  border-radius: var(--radius-lg);
+  border: 1px solid rgb(var(--color-border-light));
+}
+
+.section-title h4 {
+  font-size: var(--text-base);
+  font-weight: var(--font-bold);
+  color: rgb(var(--color-text-primary));
+  margin: 0;
+  letter-spacing: -0.2px;
+}
+
+.section-title svg {
+  color: rgb(var(--color-primary));
+}
+
+.stat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: rgb(var(--color-bg-tertiary));
+  border-radius: var(--radius-xl);
+  padding: var(--space-4);
+  border: 2px solid rgb(var(--color-border-light));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  flex: 1;
+}
+
+.stat-number {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: rgb(var(--color-text-primary));
+  margin-bottom: 4px;
+  line-height: 1;
+}
+
+.stat-name {
+  font-size: 11px;
+  color: rgb(var(--color-text-secondary));
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-divider {
+  width: 2px;
+  height: 35px;
+  background: rgb(var(--color-border-light));
+  border-radius: var(--radius-full);
+}
+
+/* Responsive Design */
+@media (max-width: 650px) {
+  .planner-dashboard {
+    width: 100%;
+    height: auto;
+    min-height: 650px;
+    min-width: auto;
+    max-width: 100%;
+    padding: var(--space-4);
+    gap: var(--space-4);
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-3);
+  }
+  
+  .stat-card {
+    padding: var(--space-3);
+    min-height: 85px;
+  }
+  
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .stat-value {
+    font-size: var(--text-lg);
+  }
+}
+
+/* Dark theme specific fixes */
+[data-theme="dark"] .planner-dashboard,
+:root[data-theme="dark"] .planner-dashboard {
+  background: rgba(18, 18, 26, 0.95);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .stat-card,
+:root[data-theme="dark"] .stat-card {
+  background: rgba(30, 30, 40, 0.7);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .stat-row,
+:root[data-theme="dark"] .stat-row {
+  background: rgba(30, 30, 40, 0.7);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .section-title,
+:root[data-theme="dark"] .section-title {
+  background: rgba(30, 30, 40, 0.7);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Light theme specific fixes */
+[data-theme="light"] .planner-dashboard,
+:root[data-theme="light"] .planner-dashboard {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .stat-card,
+:root[data-theme="light"] .stat-card {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .stat-row,
+:root[data-theme="light"] .stat-row {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .section-title,
+:root[data-theme="light"] .section-title {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+/* Theme transition support */
+.planner-dashboard,
+.stat-card,
+.stat-row,
+.section-title {
+  transition: 
+    background-color var(--transition-slow),
+    border-color var(--transition-slow),
+    color var(--transition-slow),
+    box-shadow var(--transition-slow);
+}

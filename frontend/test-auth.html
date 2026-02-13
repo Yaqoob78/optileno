@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Authentication</title>
+</head>
+<body>
+    <h1>Testing Authentication</h1>
+    <p>Open browser console to see results</p>
+    <button onclick="runAuthTest()">Run Authentication Test</button>
+    
+    <script type="module">
+        import { useUserStore } from './src/stores/useUserStore.js';
+        
+        function runAuthTest() {
+            console.log('🔧 Running authentication test...');
+            
+            // Set user as authenticated for testing
+            const store = useUserStore.getState();
+            store.setProfile({
+                ...store.profile,
+                email: 'khan011504@gmail.com',
+                role: 'premium',
+                planType: 'ULTRA',
+                subscription: {
+                    tier: 'elite',
+                    expiresAt: null,
+                    features: []
+                },
+                stats: {
+                    ...store.profile.stats,
+                    joinedAt: new Date().toISOString()
+                }
+            });
+            
+            store.setIsAuthenticated(true);
+            
+            console.log('✅ User set as authenticated');
+            console.log('Profile:', store.getProfile());
+            console.log('Is Authenticated:', store.get().isAuthenticated);
+            
+            alert('Authentication test completed! Check browser console.');
+        }
+    </script>
+</body>
+</html>

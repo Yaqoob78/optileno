@@ -1,0 +1,4 @@
+Analytics Check - 2026-02-13 08:55:50.354942
+========================================
+
+1. Testing Behavior Timeline Service (used by BehaviorTimeline.tsx)

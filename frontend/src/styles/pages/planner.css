@@ -1,0 +1,1328 @@
+/* src/styles/pages/planner.css */
+
+/* Base Styles */
+.planner-page {
+  padding: var(--space-6);
+  background: radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 100% 100%, rgba(16, 185, 129, 0.05) 0%, transparent 50%),
+    rgb(var(--color-bg-primary));
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  position: relative;
+  transition: background var(--transition-slow);
+}
+
+/* Header */
+.planner-header {
+  background: rgba(var(--color-bg-secondary), 0.7);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-radius: var(--radius-2xl);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: var(--space-6);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  transition: all var(--transition-base);
+}
+
+.planner-header:hover {
+  border-color: rgba(var(--color-primary), 0.3);
+  box-shadow: 0 6px 25px rgba(var(--color-primary), 0.08);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.animated-calendar {
+  padding: var(--space-3);
+  background: rgba(var(--color-primary), 0.08);
+  border-radius: var(--radius-xl);
+  color: rgb(var(--color-primary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(var(--color-primary), 0.2);
+  animation: calendarPulse 4s ease-in-out infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+.animated-calendar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg,
+      transparent 30%,
+      rgba(var(--color-primary), 0.1) 50%,
+      transparent 70%);
+  animation: calendarShine 6s ease-in-out infinite;
+}
+
+@keyframes calendarPulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 4px 12px rgba(var(--color-primary), 0.1);
+  }
+
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 6px 18px rgba(var(--color-primary), 0.15);
+  }
+}
+
+@keyframes calendarShine {
+
+  0%,
+  100% {
+    transform: translateX(-100%);
+  }
+
+  50% {
+    transform: translateX(100%);
+  }
+}
+
+.header-text h1 {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: rgb(var(--color-text-primary));
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.header-subtitle {
+  font-size: var(--text-sm);
+  color: rgb(var(--color-text-secondary));
+  margin: var(--space-1) 0 0;
+  font-weight: var(--font-medium);
+  opacity: 0.9;
+}
+
+.header-actions {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.maximize-btn {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(var(--color-bg-tertiary));
+  border: 1px solid rgb(var(--color-border-light));
+  border-radius: var(--radius-lg);
+  color: rgb(var(--color-text-secondary));
+  cursor: pointer;
+  transition: all var(--transition-base);
+  margin-right: var(--space-2);
+}
+
+.maximize-btn:hover {
+  background: rgb(var(--color-bg-secondary));
+  border-color: rgb(var(--color-primary));
+  color: rgb(var(--color-primary));
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(var(--color-primary), 0.1);
+}
+
+.add-task-btn {
+  background: rgb(var(--color-primary));
+  color: white;
+  border: none;
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  box-shadow: 0 4px 12px rgba(var(--color-primary), 0.25);
+}
+
+.add-task-btn:hover {
+  background: rgba(var(--color-primary), 0.9);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(var(--color-primary), 0.3);
+}
+
+/* ================= MODAL STYLES (Standardized) ================= */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(10, 10, 15, 0.95);
+  backdrop-filter: blur(15px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999 !important;
+  padding: var(--space-4);
+  animation: overlayFadeIn 0.3s ease-out;
+}
+
+@keyframes overlayFadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.modal-content {
+  background: #121826;
+  border-radius: var(--radius-2xl);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  width: 100%;
+  max-width: 440px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+  animation: modalSlideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  color: #e2e8f0;
+  z-index: 100000 !important;
+}
+
+@keyframes modalSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Standard Header (Defaults to Task/Indigo) */
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  flex-shrink: 0;
+}
+
+.modal-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.modal-icon {
+  background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+  padding: 8px;
+  border-radius: var(--radius-lg);
+  color: white;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: #f8fafc;
+}
+
+/* ── MODAL THEMES ── */
+
+/* Goal Modal (Gold) */
+.goal-modal .modal-header {
+  background: linear-gradient(135deg, #451a03 0%, #0f172a 100%);
+}
+
+.goal-modal .modal-icon {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.goal-modal .modal-btn.submit {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+}
+
+.goal-modal .modal-btn.submit:hover {
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+}
+
+/* Habit Modal (Emerald) */
+.habit-modal .modal-header {
+  background: linear-gradient(135deg, #064e3b 0%, #0f172a 100%);
+}
+
+.habit-modal .modal-icon {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.habit-modal .modal-btn.submit {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
+.habit-modal .modal-btn.submit:hover {
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+/* Task Modal (Explicit Indigo) */
+.task-modal .modal-header {
+  background: linear-gradient(135deg, #312e81 0%, #0f172a 100%);
+}
+
+.task-modal .modal-icon {
+  background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.task-modal .modal-btn.submit {
+  background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+}
+
+/* Deep Work Modal (Violet/Purple) */
+.deepwork-modal .modal-header {
+  background: linear-gradient(135deg, #2e1065 0%, #0f172a 100%);
+}
+
+.deepwork-modal .modal-icon {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+.deepwork-modal .modal-btn.submit {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+}
+
+.deepwork-modal .modal-btn.submit:hover {
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+}
+
+.modal-close {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-close:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.modal-body {
+  padding: var(--space-5);
+  background: #0f172a;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modal-body::-webkit-scrollbar {
+  width: 5px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.modal-error-notice {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.form-group {
+  margin-bottom: var(--space-4);
+}
+
+.form-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.label-icon {
+  font-size: 14px;
+}
+
+.task-input,
+.task-textarea,
+.task-select {
+  width: 100%;
+  padding: 10px 14px;
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(100, 116, 139, 0.3);
+  border-radius: var(--radius-lg);
+  font-size: 14px;
+  color: #f1f5f9;
+  transition: all 0.2s ease;
+}
+
+.task-input:focus,
+.task-textarea:focus,
+.task-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background: rgba(30, 41, 59, 1);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.modal-footer {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(135deg, transparent 0%, rgba(30, 41, 59, 0.3) 100%);
+  flex-shrink: 0;
+}
+
+.modal-btn {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: var(--radius-lg);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.modal-btn.cancel {
+  background: rgba(30, 41, 59, 0.8);
+  color: #cbd5e1;
+  border-color: rgba(100, 116, 139, 0.3);
+}
+
+.modal-btn.cancel:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.modal-btn.submit {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+}
+
+.modal-btn.submit:hover:not(.disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+
+.modal-btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Main Grid - Updated for better sidebar handling */
+.planner-main-grid {
+  display: grid;
+  gap: var(--space-6);
+  transition: grid-template-columns var(--transition-base);
+}
+
+.planner-main-grid:not(.maximized) {
+  grid-template-columns: minmax(0, 1fr) 350px;
+}
+
+.planner-main-grid.maximized {
+  grid-template-columns: 1fr;
+}
+
+/* Tasks Section */
+.tasks-section {
+  background: rgb(var(--color-bg-secondary));
+  border-radius: var(--radius-2xl);
+  border: 1px solid rgb(var(--color-border-light));
+  padding: var(--space-5);
+  box-shadow: 0 4px 20px rgba(var(--color-shadow), 0.08);
+  transition: all var(--transition-base);
+  width: 100%;
+}
+
+.planner-main-grid.maximized .tasks-section {
+  width: 100%;
+}
+
+.tasks-section:hover {
+  border-color: rgba(var(--color-primary), 0.2);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-6);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid rgb(var(--color-border-light));
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.section-title h2 {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: rgb(var(--color-text-primary));
+  margin: 0;
+}
+
+.section-subtitle {
+  font-size: var(--text-sm);
+  color: rgb(var(--color-text-tertiary));
+  margin: var(--space-1) 0 0;
+  opacity: 0.9;
+}
+
+.section-stats {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+}
+
+.task-count,
+.completed-count {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: rgb(var(--color-bg-tertiary));
+  color: rgb(var(--color-text-secondary));
+  border: 1px solid rgb(var(--color-border-light));
+}
+
+.completed-count {
+  background: rgba(var(--color-success), 0.1);
+  color: rgb(var(--color-success));
+  border-color: rgba(var(--color-success), 0.2);
+}
+
+.tasks-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Empty Tasks */
+.empty-tasks {
+  text-align: center;
+  padding: var(--space-8) var(--space-4);
+  background: rgb(var(--color-bg-tertiary));
+  border-radius: var(--radius-xl);
+  border: 2px dashed rgb(var(--color-border-light));
+}
+
+.empty-tasks h3 {
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  color: rgb(var(--color-text-primary));
+  margin: var(--space-4) 0 var(--space-2);
+}
+
+.empty-tasks p {
+  font-size: var(--text-sm);
+  color: rgb(var(--color-text-tertiary));
+  margin-bottom: var(--space-4);
+  opacity: 0.8;
+}
+
+.add-first-task-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-6);
+  background: rgb(var(--color-primary));
+  color: white;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  box-shadow: 0 4px 12px rgba(var(--color-primary), 0.25);
+}
+
+.add-first-task-btn:hover {
+  background: rgba(var(--color-primary), 0.9);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(var(--color-primary), 0.3);
+}
+
+/* Right Panel */
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.panel-divider {
+  height: 1px;
+  background: rgb(var(--color-border-light));
+  margin: 0;
+}
+
+/* Bottom Grid - Updated for proper PlannerDashboard width */
+.planner-bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+/* Hide right panel when maximized */
+.planner-main-grid.maximized .right-panel {
+  display: none;
+}
+
+/* Light Theme Specific Styles */
+[data-theme="light"] .planner-page {
+  background: #f8fafc;
+}
+
+[data-theme="light"] .planner-header {
+  background: white;
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .animated-calendar {
+  background: rgba(var(--color-primary), 0.05);
+  border-color: rgba(var(--color-primary), 0.15);
+}
+
+[data-theme="light"] .header-text h1 {
+  color: #1a202c;
+}
+
+[data-theme="light"] .header-subtitle {
+  color: #4a5568;
+}
+
+[data-theme="light"] .maximize-btn {
+  background: #f7fafc;
+  border-color: #e2e8f0;
+  color: #4a5568;
+}
+
+[data-theme="light"] .maximize-btn:hover {
+  background: #edf2f7;
+  border-color: rgb(var(--color-primary));
+  color: rgb(var(--color-primary));
+}
+
+[data-theme="light"] .tasks-section {
+  background: white;
+  border-color: rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="light"] .section-title h2 {
+  color: #2d3748;
+}
+
+[data-theme="light"] .section-subtitle {
+  color: #718096;
+}
+
+[data-theme="light"] .task-count,
+[data-theme="light"] .completed-count {
+  background: #f7fafc;
+  border-color: #e2e8f0;
+  color: #4a5568;
+}
+
+[data-theme="light"] .empty-tasks {
+  background: #f7fafc;
+  border-color: #e2e8f0;
+}
+
+[data-theme="light"] .empty-tasks h3 {
+  color: #2d3748;
+}
+
+[data-theme="light"] .empty-tasks p {
+  color: #718096;
+}
+
+[data-theme="light"] .edit-modal {
+  background: white;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .modal-header {
+  background: #f8fafc;
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .modal-title h3 {
+  color: #2d3748;
+}
+
+[data-theme="light"] .close-btn {
+  background: #f7fafc;
+  border-color: #e2e8f0;
+  color: #718096;
+}
+
+[data-theme="light"] .close-btn:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+[data-theme="light"] .form-group input,
+[data-theme="light"] .form-group select,
+[data-theme="light"] .form-group textarea {
+  background: white;
+  border-color: #e2e8f0;
+  color: #2d3748;
+}
+
+[data-theme="light"] .form-group input:focus,
+[data-theme="light"] .form-group select:focus,
+[data-theme="light"] .form-group textarea:focus {
+  background: white;
+  border-color: rgb(var(--color-primary));
+}
+
+[data-theme="light"] .modal-actions {
+  background: #f8fafc;
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .cancel-btn {
+  background: #f7fafc;
+  border-color: #e2e8f0;
+  color: #4a5568;
+}
+
+[data-theme="light"] .cancel-btn:hover {
+  background: #edf2f7;
+  border-color: rgb(var(--color-primary));
+  color: #2d3748;
+}
+
+/* Dark Theme Specific Styles */
+[data-theme="dark"] .planner-page {
+  background: #0f172a;
+}
+
+[data-theme="dark"] .planner-header {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .animated-calendar {
+  background: rgba(var(--color-primary), 0.12);
+  border-color: rgba(var(--color-primary), 0.25);
+}
+
+[data-theme="dark"] .header-text h1 {
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .header-subtitle {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .maximize-btn {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .maximize-btn:hover {
+  background: #334155;
+  border-color: rgb(var(--color-primary));
+  color: rgb(var(--color-primary));
+}
+
+[data-theme="dark"] .tasks-section {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .section-title h2 {
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .section-subtitle {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .task-count,
+[data-theme="dark"] .completed-count {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .empty-tasks {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .empty-tasks h3 {
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .empty-tasks p {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .edit-modal {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .modal-header {
+  background: #0f172a;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .modal-title h3 {
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .close-btn {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .close-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+
+[data-theme="dark"] .form-group input,
+[data-theme="dark"] .form-group select,
+[data-theme="dark"] .form-group textarea {
+  background: #0f172a;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .form-group input:focus,
+[data-theme="dark"] .form-group select:focus,
+[data-theme="dark"] .form-group textarea:focus {
+  background: #0f172a;
+  border-color: rgb(var(--color-primary));
+}
+
+[data-theme="dark"] .modal-actions {
+  background: #0f172a;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .cancel-btn {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .cancel-btn:hover {
+  background: #334155;
+  border-color: rgb(var(--color-primary));
+  color: #e2e8f0;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .planner-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .planner-bottom-grid> :last-child {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .planner-main-grid:not(.maximized) {
+    grid-template-columns: 1fr 300px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .planner-main-grid:not(.maximized) {
+    grid-template-columns: 1fr;
+  }
+
+  .planner-main-grid:not(.maximized) .right-panel {
+    display: flex;
+    flex-direction: row;
+    gap: var(--space-6);
+  }
+
+  .planner-main-grid:not(.maximized) .panel-divider {
+    height: auto;
+    width: 1px;
+    margin: 0 var(--space-3);
+  }
+}
+
+@media (max-width: 768px) {
+  .planner-page {
+    padding: var(--space-4);
+    gap: var(--space-4);
+  }
+
+  .planner-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-4);
+    padding: var(--space-4);
+  }
+
+  .header-left {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .header-text h1 {
+    font-size: var(--text-xl);
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-4);
+  }
+
+  .section-stats {
+    justify-content: space-between;
+  }
+
+  .modal-content {
+    padding: var(--space-4);
+  }
+
+  .modal-actions {
+    padding: var(--space-4);
+    flex-direction: column;
+  }
+
+  .cancel-btn,
+  .save-btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .animated-calendar {
+    padding: var(--space-2);
+  }
+
+  .planner-bottom-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+
+  .planner-main-grid:not(.maximized) .right-panel {
+    flex-direction: column;
+  }
+
+  .planner-main-grid:not(.maximized) .panel-divider {
+    height: 1px;
+    width: 100%;
+    margin: var(--space-3) 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .planner-header {
+    padding: var(--space-3);
+  }
+
+  .header-actions {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .refresh-btn {
+    background: rgba(var(--color-bg-secondary), 0.8);
+    color: rgb(var(--color-text-primary));
+    border: 1px solid rgba(var(--color-primary), 0.2);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-lg);
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .refresh-btn:hover {
+    background: rgba(var(--color-primary), 0.1);
+    border-color: rgb(var(--color-primary));
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(var(--color-primary), 0.15);
+  }
+
+  .refresh-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .add-task-btn,
+  .maximize-btn,
+  .refresh-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .maximize-btn {
+    height: 3rem;
+  }
+}
+
+/* Theme transition support */
+.planner-page,
+.planner-header,
+.tasks-section,
+.edit-modal,
+.form-group input,
+.form-group select,
+.form-group textarea,
+.cancel-btn,
+.save-btn,
+.maximize-btn,
+.add-task-btn {
+  transition:
+    background-color var(--transition-slow),
+    border-color var(--transition-slow),
+    color var(--transition-slow),
+    box-shadow var(--transition-slow);
+}
+
+/* Add to planner.css - Fix Edit Modal Buttons */
+.edit-modal .modal-actions {
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid rgb(var(--color-border-light));
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  background: rgb(var(--color-bg-tertiary));
+  border-radius: 0 0 var(--radius-2xl) var(--radius-2xl);
+}
+
+.edit-modal .cancel-btn,
+.edit-modal .save-btn {
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  border: 1px solid;
+  min-width: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.edit-modal .cancel-btn {
+  background: rgb(var(--color-bg-tertiary));
+  color: rgb(var(--color-text-secondary));
+  border-color: rgb(var(--color-border-light));
+}
+
+.edit-modal .cancel-btn:hover {
+  background: rgb(var(--color-bg-secondary));
+  color: rgb(var(--color-text-primary));
+  border-color: rgb(var(--color-border-light));
+}
+
+.edit-modal .save-btn {
+  background: rgb(var(--color-primary));
+  color: white;
+  border-color: rgb(var(--color-primary));
+  box-shadow: 0 2px 6px rgba(var(--color-primary), 0.2);
+}
+
+.edit-modal .save-btn:hover {
+  background: rgba(var(--color-primary), 0.9);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(var(--color-primary), 0.3);
+}
+
+@media (max-width: 768px) {
+  .edit-modal .modal-actions {
+    flex-direction: column;
+  }
+
+  .edit-modal .cancel-btn,
+  .edit-modal .save-btn {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* src/styles/pages/planner.css - ADD THESE STYLES AT THE BOTTOM */
+
+/* FIXED MODAL STYLES */
+.edit-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: var(--space-4);
+  overflow-y: auto;
+}
+
+.edit-modal {
+  background: rgb(var(--color-bg-secondary));
+  border-radius: var(--radius-2xl);
+  border: 1px solid rgb(var(--color-border-light));
+  width: 100%;
+  max-width: 500px;
+  max-height: 85vh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-header {
+  padding: var(--space-5);
+  border-bottom: 1px solid rgb(var(--color-border-light));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgb(var(--color-bg-tertiary));
+  border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+  flex-shrink: 0;
+}
+
+.modal-content {
+  padding: var(--space-5);
+  overflow-y: auto;
+}
+
+.modal-actions {
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid rgb(var(--color-border-light));
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  background: rgb(var(--color-bg-tertiary));
+  border-radius: 0 0 var(--radius-2xl) var(--radius-2xl);
+  z-index: 20;
+}
+
+/* Error message styling */
+.error-message {
+  color: rgb(var(--color-danger));
+  font-size: var(--text-sm);
+  margin-right: auto;
+  padding: var(--space-2) var(--space-3);
+  background: rgba(var(--color-danger), 0.1);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(var(--color-danger), 0.2);
+  max-width: 200px;
+  word-break: break-word;
+}
+
+/* Disabled button styling */
+.save-btn.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.save-btn.disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* Loading spinner */
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Form inputs disabled state */
+.modal-input:disabled,
+.modal-select:disabled,
+.modal-textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Responsive modal fixes */
+@media (max-width: 768px) {
+  .edit-modal-overlay {
+    padding: var(--space-2);
+    align-items: flex-start;
+    padding-top: var(--space-8);
+  }
+
+  .edit-modal {
+    max-height: 85vh;
+    margin: 0 auto;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .error-message {
+    max-width: 100%;
+    margin-right: 0;
+    margin-bottom: var(--space-2);
+    order: -1;
+  }
+
+  .cancel-btn,
+  .save-btn {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* Fix for iOS Safari modal */
+@supports (-webkit-touch-callout: none) {
+  .edit-modal-overlay {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .edit-modal {
+    max-height: 80vh;
+  }
+}
+
+/* Ensure modal buttons are always clickable */
+.modal-btn {
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  border: 1px solid;
+  min-width: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 44px;
+  /* Standard touch target size */
+}
+
+.cancel-btn {
+  background: rgb(var(--color-bg-tertiary));
+  color: rgb(var(--color-text-secondary));
+  border-color: rgb(var(--color-border-light));
+}
+
+.cancel-btn:hover:not(:disabled) {
+  background: rgb(var(--color-bg-secondary));
+  color: rgb(var(--color-text-primary));
+  border-color: rgb(var(--color-border-light));
+}
+
+.save-btn {
+  background: rgb(var(--color-primary));
+  color: white;
+  border-color: rgb(var(--color-primary));
+  box-shadow: 0 2px 6px rgba(var(--color-primary), 0.2);
+}
+
+.save-btn:hover:not(:disabled) {
+  background: rgba(var(--color-primary), 0.9);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(var(--color-primary), 0.3);
+}

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Optileno AI - Premium Productivity & Analytics</title>
+  <meta name="description"
+    content="AI-powered personal Optileno for deep work, planning, and life analytics. Achieve 10x productivity with dual-AI agents." />
+  <meta name="keywords" content="productivity, ai, planner, analytics, deep work, focus, habit tracker" />
+  <meta name="theme-color" content="#1a1a1a" />
+
+  <!-- Default favicon (will be updated by JavaScript) -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+  <!-- Theme-aware favicon using JavaScript -->
+  <script>
+    // Function to update favicon based on theme
+    function updateFavicon() {
+      // Check HTML data-theme attribute first (app theme)
+      const htmlTheme = document.documentElement.getAttribute('data-theme');
+      let isDarkMode = false;
+
+      if (htmlTheme) {
+        // Use app theme
+        isDarkMode = htmlTheme === 'dark';
+      } else {
+        // Fallback to system theme
+        isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      }
+
+      const favicon = document.querySelector("link[rel='icon']");
+      if (favicon) {
+        favicon.href = isDarkMode ? '/logo-dark.svg' : '/logo-light.svg';
+      }
+    }
+
+    // Update favicon on load
+    document.addEventListener('DOMContentLoaded', () => {
+      updateFavicon();
+
+      // Also update when data-theme changes
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.attributeName === 'data-theme') {
+            updateFavicon();
+          }
+        });
+      });
+
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-theme']
+      });
+    });
+
+    // Update when system theme changes (for auto mode)
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateFavicon);
+  </script>
+</head>
+
+<body>
+  <!-- THIS ID MUST MATCH main.tsx -->
+  <div id="root"></div>
+
+  <!-- THIS PATH MUST BE CORRECT -->
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
+</html>

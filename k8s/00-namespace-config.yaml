@@ -1,0 +1,110 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: concierge-prod
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: concierge-config
+  namespace: concierge-prod
+data:
+  DATABASE_URL: postgresql://postgres:5432/concierge_db
+  REDIS_URL: redis://redis:6379/0
+  VITE_API_URL: https://api.concierge.app
+  VITE_WS_URL: wss://api.concierge.app
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: concierge-secrets
+  namespace: concierge-prod
+type: Opaque
+stringData:
+  DB_USER: postgres
+  DB_PASSWORD: changeme
+  JWT_SECRET: your-secret-key
+  SENDGRID_API_KEY: your-key
+  SENDGRID_FROM_EMAIL: noreply@concierge.app
+  FIREBASE_CREDENTIALS: '{"type":"service_account"}'
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: postgres
+  namespace: concierge-prod
+spec:
+  instances: 3
+  imageName: ghcr.io/cloudnative-pg/postgresql:15
+  
+  postgresql:
+    parameters:
+      max_connections: "200"
+      shared_buffers: "256MB"
+      
+  bootstrap:
+    initdb:
+      database: concierge_db
+      owner: postgres
+      secret:
+        name: concierge-secrets
+        
+  primaryUpdateStrategy: unsupervised
+  
+  monitoring:
+    enabled: true
+    
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: concierge-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports:
+        - containerPort: 6379
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 30
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: concierge-prod
+spec:
+  selector:
+    app: redis
+  ports:
+  - port: 6379
+    targetPort: 6379

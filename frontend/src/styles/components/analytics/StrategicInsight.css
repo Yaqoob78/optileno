@@ -1,0 +1,144 @@
+/* frontend/src/styles/components/analytics/StrategicInsight.css */
+.strategic-insight-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 1rem;
+    box-sizing: border-box;
+    gap: 1.25rem;
+}
+
+.insight-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.confidence-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.25rem 0.625rem;
+    background: var(--primary-light);
+    color: var(--primary);
+    border-radius: 20px;
+    border: 1px solid var(--primary);
+    text-transform: uppercase;
+}
+
+.insight-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    justify-content: center;
+}
+
+.insight-title-text {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 0;
+}
+
+.insight-description {
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.insight-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: auto;
+}
+
+.apply-button {
+    width: 100%;
+    padding: 0.875rem;
+    border-radius: 10px;
+    border: none;
+    background: var(--gradient-primary);
+    color: white;
+    font-weight: 700;
+    font-size: 0.9375rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 0 15px var(--primary-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.apply-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 0 25px var(--primary);
+}
+
+.apply-button:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+.apply-button:disabled {
+    background: var(--bg-tertiary);
+    color: var(--text-muted);
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.applied-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    color: var(--success);
+    font-weight: 600;
+    font-size: 0.875rem;
+    padding: 0.875rem;
+    background: var(--success-light);
+    border-radius: 10px;
+}
+
+.last-applied-meta {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    text-align: center;
+}
+
+/* Animations */
+.insight-pulse {
+    animation: insightPulse 2s infinite;
+}
+
+@keyframes insightPulse {
+    0% {
+        transform: scale(1);
+        filter: brightness(1);
+    }
+
+    50% {
+        transform: scale(1.02);
+        filter: brightness(1.2);
+    }
+
+    100% {
+        transform: scale(1);
+        filter: brightness(1);
+    }
+}
+
+.loading-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 0.5rem;
+    color: var(--text-tertiary);
+}

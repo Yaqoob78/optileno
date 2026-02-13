@@ -1,0 +1,62 @@
+/* HelpCard.css */
+
+.help-card-container {
+  margin-top: var(--spacing-2);
+}
+
+.help-card {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-4);
+  background: var(--background-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-xl);
+  transition: var(--transition-all);
+}
+
+.help-card:hover {
+  border-color: var(--border-primary);
+  background: var(--background-tertiary);
+}
+
+.help-card svg {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.help-content {
+  flex: 1;
+}
+
+.help-title {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-1) 0;
+}
+
+.help-text {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.help-btn {
+  padding: var(--spacing-2);
+  background: var(--background-tertiary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition-all);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.help-btn:hover {
+  background: var(--background-primary);
+  color: var(--text-primary);
+  border-color: var(--border-primary);
+}

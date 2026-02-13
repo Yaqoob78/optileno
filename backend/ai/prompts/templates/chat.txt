@@ -1,0 +1,7 @@
+User message:
+{{message}}
+
+Context:
+{{context}}
+
+Respond naturally as a productivity assistant.

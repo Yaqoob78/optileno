@@ -1,0 +1,2 @@
+Starting test
+Hashing failed with error: password cannot be longer than 72 bytes, truncate manually if necessary (e.g. my_password[:72])

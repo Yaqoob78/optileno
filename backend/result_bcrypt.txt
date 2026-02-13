@@ -1,0 +1,4 @@
+Starting bcrypt direct test
+Password length: 50
+Salt: b'$2b$12$p4tBtiCS84SQmwwlmCLjk.'
+Hash: b'$2b$12$p4tBtiCS84SQmwwlmCLjk.ntPucli8JZ1ZxZiOZGzqDmuBJ/yEys6'

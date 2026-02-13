@@ -1,0 +1,202 @@
+/* src/styles/components/planner/GoalAnalytics.css */
+
+.goal-analytics-container {
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.05);
+    /* Fallback or overlay */
+    border-radius: 12px;
+    margin-top: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.analytics-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.analytics-header h4 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #E2E8F0;
+}
+
+.status-badge {
+    font-size: 11px;
+    background: rgba(139, 92, 246, 0.2);
+    color: #A78BFA;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: 500;
+    border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.error-message {
+    color: #EF4444;
+    font-size: 12px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(239, 68, 68, 0.1);
+    padding: 8px;
+    border-radius: 6px;
+}
+
+.tracking-cta {
+    text-align: center;
+    padding: 12px;
+}
+
+.tracking-cta p {
+    font-size: 13px;
+    color: #9CA3AF;
+    margin-bottom: 12px;
+    line-height: 1.5;
+}
+
+.primary-btn {
+    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+    border: none;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    width: 100%;
+    transition: opacity 0.2s;
+}
+
+.primary-btn:hover {
+    opacity: 0.9;
+}
+
+.primary-btn:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.probability-card {
+    margin-bottom: 16px;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.probability-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.probability-label {
+    font-size: 12px;
+    color: #D1D5DB;
+}
+
+.probability-value {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.probability-bar-track {
+    margin-top: 8px;
+    height: 6px;
+    background: #374151;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.probability-bar-fill {
+    height: 100%;
+    transition: width 0.5s ease-out;
+    border-radius: 3px;
+}
+
+.probability-description {
+    font-size: 11px;
+    color: #6B7280;
+    margin-top: 6px;
+}
+
+.analytics-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.action-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background 0.2s;
+}
+
+.action-btn.generate {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60A5FA;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.action-btn.generate:hover {
+    background: rgba(59, 130, 246, 0.25);
+}
+
+.action-btn.stop {
+    background: transparent;
+    color: #9CA3AF;
+    border: 1px solid #4B5563;
+}
+
+.action-btn.stop:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #D1D5DB;
+}
+
+.ai-suggestions {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.suggestions-header {
+    font-size: 12px;
+    color: #D1D5DB;
+    margin-bottom: 4px;
+    display: block;
+}
+
+.suggestions-badges {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.badge-tasks {
+    font-size: 11px;
+    background: rgba(16, 185, 129, 0.2);
+    color: #34D399;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.badge-habits {
+    font-size: 11px;
+    background: rgba(236, 72, 153, 0.2);
+    color: #F472B6;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
