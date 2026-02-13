@@ -11,13 +11,41 @@ import sys
 repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, repo_root)
 
+def _strip_wrapping_quotes(value: str) -> str:
+    cleaned = (value or "").strip()
+    if len(cleaned) >= 2 and cleaned[0] == cleaned[-1] and cleaned[0] in {"'", '"'}:
+        return cleaned[1:-1].strip()
+    return cleaned
+
+
+def _is_unresolved_template(value: str) -> bool:
+    v = (value or "").strip()
+    return (v.startswith("${") and v.endswith("}")) or (v.startswith("$") and "{" in v and "}" in v)
+
+
+def _normalize_alembic_database_url(url: str) -> str:
+    normalized = _strip_wrapping_quotes(url or "")
+    if not normalized:
+        return normalized
+    if normalized.startswith("postgres://"):
+        normalized = normalized.replace("postgres://", "postgresql://", 1)
+    if normalized.startswith("postgresql+asyncpg://"):
+        # Alembic uses a synchronous engine; strip async dialect for migrations.
+        normalized = normalized.replace("postgresql+asyncpg://", "postgresql://", 1)
+    return normalized
+
+
 # Get database URL from environment or fallback to sqlite
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./optileno.db")
-if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-if DATABASE_URL and DATABASE_URL.startswith("postgresql+asyncpg://"):
-    # Alembic uses a synchronous engine; strip async dialect for migrations.
-    DATABASE_URL = DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://", 1)
+DATABASE_URL = _normalize_alembic_database_url(os.getenv("DATABASE_URL", "sqlite:///./optileno.db"))
+
+if _is_unresolved_template(DATABASE_URL):
+    raise RuntimeError(
+        "DATABASE_URL appears unresolved (e.g. ${VAR} or ${{Service.VAR}}). "
+        "Set DATABASE_URL to a real URL in Railway variables."
+    )
+
+# Keep env normalized so imports that read settings see a clean value.
+os.environ["DATABASE_URL"] = DATABASE_URL
 
 config = context.config
 

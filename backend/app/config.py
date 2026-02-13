@@ -46,18 +46,41 @@ def _env_list(name: str) -> List[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
+def _strip_wrapping_quotes(value: str) -> str:
+    """
+    Remove one layer of wrapping single/double quotes.
+    Railway variables should be stored without quotes, but users often add them.
+    """
+    cleaned = (value or "").strip()
+    if len(cleaned) >= 2 and cleaned[0] == cleaned[-1] and cleaned[0] in {"'", '"'}:
+        return cleaned[1:-1].strip()
+    return cleaned
+
+
+def _is_unresolved_template(value: str) -> bool:
+    """
+    Detect unresolved template-like env values such as ${VAR} or ${{Service.VAR}}.
+    """
+    v = (value or "").strip()
+    return (v.startswith("${") and v.endswith("}")) or (v.startswith("$") and "{" in v and "}" in v)
+
+
 def _normalize_database_url(url: str) -> str:
     """
     Normalize DB URLs for async SQLAlchemy usage.
     Railway/Postgres URLs are often provided as postgres:// or postgresql://.
     """
-    normalized = (url or "").strip()
+    normalized = _strip_wrapping_quotes(url or "")
     if not normalized:
+        return normalized
+    if _is_unresolved_template(normalized):
         return normalized
     if normalized.startswith("postgres://"):
         return "postgresql+asyncpg://" + normalized[len("postgres://"):]
     if normalized.startswith("postgresql://"):
         return "postgresql+asyncpg://" + normalized[len("postgresql://"):]
+    if normalized.startswith("postgresql+psycopg2://"):
+        return "postgresql+asyncpg://" + normalized[len("postgresql+psycopg2://"):]
     return normalized
 
 
@@ -359,6 +382,22 @@ class Settings:
         self._validate()
 
     def _validate(self) -> None:
+        if not self.DATABASE_URL:
+            raise ValueError("DATABASE_URL must be set")
+
+        if _is_unresolved_template(self.DATABASE_URL):
+            raise ValueError(
+                "DATABASE_URL appears unresolved (e.g. ${VAR} or ${{Service.VAR}}). "
+                "Set DATABASE_URL to the actual connection string in Railway."
+            )
+
+        # Fail early with a clear message if SQLAlchemy cannot parse the URL.
+        from sqlalchemy.engine import make_url
+        try:
+            make_url(self.DATABASE_URL)
+        except Exception as e:
+            raise ValueError(f"Invalid DATABASE_URL format: {e}") from e
+
         if self.ENVIRONMENT == "production":
             if not self.NVIDIA_API_KEY and not self.GROQ_API_KEY:
                 raise ValueError("At least one AI API KEY (NVIDIA/GROQ) must be set in production")
