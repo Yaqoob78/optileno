@@ -5,6 +5,7 @@ from sqlalchemy import pool
 from alembic import context
 import os
 import sys
+import urllib.parse
 
 # Add the repository root to Python path (3 levels up from env.py)
 # env.py -> alembic/ -> backend/ -> ROOT
@@ -32,11 +33,30 @@ def _normalize_alembic_database_url(url: str) -> str:
     if normalized.startswith("postgresql+asyncpg://"):
         # Alembic uses a synchronous engine; strip async dialect for migrations.
         normalized = normalized.replace("postgresql+asyncpg://", "postgresql://", 1)
+    if normalized.startswith("postgresql+psycopg2://"):
+        normalized = normalized.replace("postgresql+psycopg2://", "postgresql://", 1)
     return normalized
 
 
-# Get database URL from environment or fallback to sqlite
-DATABASE_URL = _normalize_alembic_database_url(os.getenv("DATABASE_URL", "sqlite:///./optileno.db"))
+def _build_sync_db_url_from_pg_env() -> str:
+    host = (os.getenv("PGHOST") or "").strip()
+    user = (os.getenv("PGUSER") or "").strip()
+    password = os.getenv("PGPASSWORD") or ""
+    database = (os.getenv("PGDATABASE") or "").strip()
+    port = (os.getenv("PGPORT") or "5432").strip()
+    if not (host and user and database):
+        return ""
+    encoded_user = urllib.parse.quote(user, safe="")
+    encoded_password = urllib.parse.quote(password, safe="")
+    return f"postgresql://{encoded_user}:{encoded_password}@{host}:{port}/{database}"
+
+
+# Get database URL from environment, then PG* fallback, then sqlite fallback.
+DATABASE_URL = _normalize_alembic_database_url(
+    os.getenv("DATABASE_URL")
+    or _build_sync_db_url_from_pg_env()
+    or "sqlite:///./optileno.db"
+)
 
 if _is_unresolved_template(DATABASE_URL):
     raise RuntimeError(

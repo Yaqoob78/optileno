@@ -1,4 +1,5 @@
 import os
+import urllib.parse
 from typing import List, Optional
 from pathlib import Path
 from dotenv import load_dotenv
@@ -84,8 +85,29 @@ def _normalize_database_url(url: str) -> str:
         return "postgresql+asyncpg://" + normalized[len("postgres://"):]
     if normalized.startswith("postgresql://"):
         return "postgresql+asyncpg://" + normalized[len("postgresql://"):]
-        
+
+    if normalized.startswith("postgresql+psycopg2://"):
+        return "postgresql+asyncpg://" + normalized[len("postgresql+psycopg2://"):]
+
     return normalized
+
+
+def _build_database_url_from_pg_env() -> str:
+    """
+    Build async DATABASE_URL from Railway-style PG* variables if present.
+    """
+    host = (os.getenv("PGHOST") or "").strip()
+    user = (os.getenv("PGUSER") or "").strip()
+    password = os.getenv("PGPASSWORD") or ""
+    database = (os.getenv("PGDATABASE") or "").strip()
+    port = (os.getenv("PGPORT") or "5432").strip()
+
+    if not (host and user and database):
+        return ""
+
+    encoded_user = urllib.parse.quote(user, safe="")
+    encoded_password = urllib.parse.quote(password, safe="")
+    return f"postgresql+asyncpg://{encoded_user}:{encoded_password}@{host}:{port}/{database}"
 
 
 
@@ -185,10 +207,9 @@ class Settings:
     # Database - Enterprise Scaling
     # =========================
     DATABASE_URL: str = _normalize_database_url(
-        os.getenv(
-            "DATABASE_URL",
-            "postgresql+asyncpg://postgres:postgres@localhost:5432/optileno"
-        )
+        os.getenv("DATABASE_URL")
+        or _build_database_url_from_pg_env()
+        or ""
     )
     
     # Connection Pool Settings (tuned for 8 workers w/ 300 max_conn)

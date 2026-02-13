@@ -21,6 +21,15 @@ if [ -n "${DATABASE_URL:-}" ]; then
   export DATABASE_URL="${DB_URL}"
 fi
 
+# Fallback: construct DATABASE_URL from Railway Postgres PG* variables.
+if [ -z "${DATABASE_URL:-}" ] && [ -n "${PGHOST:-}" ] && [ -n "${PGUSER:-}" ] && [ -n "${PGPASSWORD:-}" ] && [ -n "${PGDATABASE:-}" ]; then
+  ENCODED_USER=$(python -c "import os,urllib.parse; print(urllib.parse.quote(os.environ.get('PGUSER',''), safe=''))")
+  ENCODED_PASS=$(python -c "import os,urllib.parse; print(urllib.parse.quote(os.environ.get('PGPASSWORD',''), safe=''))")
+  PG_PORT_VALUE="${PGPORT:-5432}"
+  export DATABASE_URL="postgresql+asyncpg://${ENCODED_USER}:${ENCODED_PASS}@${PGHOST}:${PG_PORT_VALUE}/${PGDATABASE}"
+  echo "DATABASE_URL was missing; built from PG* environment variables."
+fi
+
 if [ -z "${DATABASE_URL:-}" ]; then
   echo "DATABASE_URL is not set."
   echo "In Railway Variables, set DATABASE_URL=\${{Postgres.DATABASE_URL}} (no quotes)."
