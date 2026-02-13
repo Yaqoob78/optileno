@@ -6,8 +6,8 @@ nixPkgs = ["python311", "python311Packages.pip", "gcc", "glibc"]
 
 [phases.install]
 cmds = [
-    "pip install -r backend/requirements.txt",
-    "pip install gunicorn uvicorn"
+    "python -m pip install -r backend/requirements.txt --break-system-packages",
+    "python -m pip install gunicorn uvicorn --break-system-packages"
 ]
 
 [start]
