@@ -2,10 +2,13 @@
 providers = ["python"]
 
 [phases.setup]
-nixPkgs = ["python311"]
+nixPkgs = ["python311", "python311Packages.pip", "gcc", "glibc"]
 
 [phases.install]
-cmds = ["python -m pip install -r backend/requirements.txt"]
+cmds = [
+    "pip install -r backend/requirements.txt",
+    "pip install gunicorn uvicorn"
+]
 
 [start]
-cmd = "gunicorn backend.app.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT"
+cmd = "python -m gunicorn backend.app.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT"
