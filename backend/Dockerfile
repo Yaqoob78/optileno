@@ -20,7 +20,9 @@ COPY backend/start.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
 # Create non-root user
-RUN useradd -m appuser
+RUN useradd -m appuser \
+    && mkdir -p /app/data/media \
+    && chown -R appuser:appuser /app
 USER appuser
 
 # Expose is optional but fine

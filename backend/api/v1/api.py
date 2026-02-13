@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from backend.auth import auth_router
-from backend.api.v1.endpoints import chat, plans, analytics, system as system_endpoint, advanced_features, goals, subscriptions, agentic
+from backend.api.v1.endpoints import chat, plans, analytics, system as system_endpoint, advanced_features, goals, subscriptions, agentic, health
 from backend.payments.razorpay_routes import router as razorpay_router
 from backend.payments.webhooks import router as webhook_router
 from backend.api.v1.endpoints import legal
@@ -16,6 +16,7 @@ api_router.include_router(chat.router, prefix="/chat", tags=["Chat"])
 api_router.include_router(plans.router, prefix="/plans", tags=["Plans"])
 api_router.include_router(goals.router, prefix="/goals", tags=["Goals"])
 api_router.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
+api_router.include_router(health.router, tags=["Health"])
 api_router.include_router(system_endpoint.router, prefix="/system", tags=["System"])
 api_router.include_router(advanced_features.router, tags=["Advanced Features"])
 api_router.include_router(subscriptions.router, prefix="/subscriptions", tags=["Subscriptions"])

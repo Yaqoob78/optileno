@@ -15,6 +15,9 @@ sys.path.insert(0, repo_root)
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./optileno.db")
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+if DATABASE_URL and DATABASE_URL.startswith("postgresql+asyncpg://"):
+    # Alembic uses a synchronous engine; strip async dialect for migrations.
+    DATABASE_URL = DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://", 1)
 
 config = context.config
 

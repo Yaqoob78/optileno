@@ -46,6 +46,21 @@ def _env_list(name: str) -> List[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
+def _normalize_database_url(url: str) -> str:
+    """
+    Normalize DB URLs for async SQLAlchemy usage.
+    Railway/Postgres URLs are often provided as postgres:// or postgresql://.
+    """
+    normalized = (url or "").strip()
+    if not normalized:
+        return normalized
+    if normalized.startswith("postgres://"):
+        return "postgresql+asyncpg://" + normalized[len("postgres://"):]
+    if normalized.startswith("postgresql://"):
+        return "postgresql+asyncpg://" + normalized[len("postgresql://"):]
+    return normalized
+
+
 class Settings:
     """Clean, deterministic settings (no silent overrides)."""
 
@@ -61,7 +76,7 @@ class Settings:
     # Server
     # =========================
     HOST: str = os.getenv("HOST", "0.0.0.0")
-    PORT: int = int(os.getenv("PORT", "8000"))
+    PORT: int = _env_int("PORT", 8000)
     BASE_URL: str = os.getenv("BASE_URL", "http://localhost:8000")
     
     # =========================
@@ -141,9 +156,11 @@ class Settings:
     # =========================
     # Database - Enterprise Scaling
     # =========================
-    DATABASE_URL: str = os.getenv(
-        "DATABASE_URL",
-        "postgresql://postgres:postgres@localhost:5432/optileno"
+    DATABASE_URL: str = _normalize_database_url(
+        os.getenv(
+            "DATABASE_URL",
+            "postgresql+asyncpg://postgres:postgres@localhost:5432/optileno"
+        )
     )
     
     # Connection Pool Settings (tuned for 8 workers w/ 300 max_conn)
