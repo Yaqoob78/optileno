@@ -110,6 +110,19 @@ def _build_database_url_from_pg_env() -> str:
     return f"postgresql+asyncpg://{encoded_user}:{encoded_password}@{host}:{port}/{database}"
 
 
+def _pick_database_url_candidate() -> str:
+    """
+    Pick the first available DB URL from common environment variable names.
+    """
+    return (
+        (os.getenv("DATABASE_URL") or "").strip()
+        or (os.getenv("DATABASE_PRIVATE_URL") or "").strip()
+        or (os.getenv("DATABASE_PUBLIC_URL") or "").strip()
+        or (os.getenv("POSTGRES_URL") or "").strip()
+        or (os.getenv("POSTGRESQL_URL") or "").strip()
+    )
+
+
 
 class Settings:
     """Clean, deterministic settings (no silent overrides)."""
@@ -207,7 +220,7 @@ class Settings:
     # Database - Enterprise Scaling
     # =========================
     DATABASE_URL: str = _normalize_database_url(
-        os.getenv("DATABASE_URL")
+        _pick_database_url_candidate()
         or _build_database_url_from_pg_env()
         or ""
     )

@@ -51,9 +51,19 @@ def _build_sync_db_url_from_pg_env() -> str:
     return f"postgresql://{encoded_user}:{encoded_password}@{host}:{port}/{database}"
 
 
+def _pick_database_url_candidate() -> str:
+    return (
+        (os.getenv("DATABASE_URL") or "").strip()
+        or (os.getenv("DATABASE_PRIVATE_URL") or "").strip()
+        or (os.getenv("DATABASE_PUBLIC_URL") or "").strip()
+        or (os.getenv("POSTGRES_URL") or "").strip()
+        or (os.getenv("POSTGRESQL_URL") or "").strip()
+    )
+
+
 # Get database URL from environment, then PG* fallback, then sqlite fallback.
 DATABASE_URL = _normalize_alembic_database_url(
-    os.getenv("DATABASE_URL")
+    _pick_database_url_candidate()
     or _build_sync_db_url_from_pg_env()
     or "sqlite:///./optileno.db"
 )

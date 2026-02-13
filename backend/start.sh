@@ -21,6 +21,18 @@ if [ -n "${DATABASE_URL:-}" ]; then
   export DATABASE_URL="${DB_URL}"
 fi
 
+# Accept alternative environment variable names if DATABASE_URL is absent.
+if [ -z "${DATABASE_URL:-}" ]; then
+  for ALT_DB_VAR in DATABASE_PRIVATE_URL DATABASE_PUBLIC_URL POSTGRES_URL POSTGRESQL_URL; do
+    ALT_VALUE="${!ALT_DB_VAR:-}"
+    if [ -n "${ALT_VALUE}" ]; then
+      export DATABASE_URL="${ALT_VALUE}"
+      echo "DATABASE_URL was missing; using ${ALT_DB_VAR}."
+      break
+    fi
+  done
+fi
+
 # Fallback: construct DATABASE_URL from Railway Postgres PG* variables.
 if [ -z "${DATABASE_URL:-}" ] && [ -n "${PGHOST:-}" ] && [ -n "${PGUSER:-}" ] && [ -n "${PGPASSWORD:-}" ] && [ -n "${PGDATABASE:-}" ]; then
   ENCODED_USER=$(python -c "import os,urllib.parse; print(urllib.parse.quote(os.environ.get('PGUSER',''), safe=''))")
@@ -31,9 +43,19 @@ if [ -z "${DATABASE_URL:-}" ] && [ -n "${PGHOST:-}" ] && [ -n "${PGUSER:-}" ] &&
 fi
 
 if [ -z "${DATABASE_URL:-}" ]; then
-  echo "DATABASE_URL is not set."
-  echo "In Railway Variables, set DATABASE_URL=\${{Postgres.DATABASE_URL}} (no quotes)."
-  exit 1
+  # If a persistent volume is mounted, allow SQLite fallback.
+  if [ -d "/app/data" ]; then
+    export DATABASE_URL="sqlite+aiosqlite:////app/data/optileno.db"
+    echo "DATABASE_URL is not set; falling back to SQLite at /app/data/optileno.db"
+  elif [ -d "/data" ]; then
+    export DATABASE_URL="sqlite+aiosqlite:////data/optileno.db"
+    echo "DATABASE_URL is not set; falling back to SQLite at /data/optileno.db"
+  else
+    echo "DATABASE_URL is not set."
+    echo "Option 1 (recommended): set DATABASE_URL=\${{<DatabaseService>.DATABASE_URL}} in Railway Variables."
+    echo "Option 2: mount a persistent volume at /app/data or /data to use SQLite fallback."
+    exit 1
+  fi
 fi
 
 # Run migrations
