@@ -21,6 +21,12 @@ if [ -n "${DATABASE_URL:-}" ]; then
   export DATABASE_URL="${DB_URL}"
 fi
 
+if [ -z "${DATABASE_URL:-}" ]; then
+  echo "DATABASE_URL is not set."
+  echo "In Railway Variables, set DATABASE_URL=\${{Postgres.DATABASE_URL}} (no quotes)."
+  exit 1
+fi
+
 # Run migrations
 # We need to be in the directory containing alembic.ini or point to it
 echo "Running database migrations..."

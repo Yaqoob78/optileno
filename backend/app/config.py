@@ -65,6 +65,8 @@ def _is_unresolved_template(value: str) -> bool:
     return (v.startswith("${") and v.endswith("}")) or (v.startswith("$") and "{" in v and "}" in v)
 
 
+# ... (imports)
+
 def _normalize_database_url(url: str) -> str:
     """
     Normalize DB URLs for async SQLAlchemy usage.
@@ -72,16 +74,19 @@ def _normalize_database_url(url: str) -> str:
     """
     normalized = _strip_wrapping_quotes(url or "")
     if not normalized:
-        return normalized
+        return ""  # let validation catch empty string
+    
     if _is_unresolved_template(normalized):
         return normalized
+
+    # Force asyncpg driver for general app usage
     if normalized.startswith("postgres://"):
         return "postgresql+asyncpg://" + normalized[len("postgres://"):]
     if normalized.startswith("postgresql://"):
         return "postgresql+asyncpg://" + normalized[len("postgresql://"):]
-    if normalized.startswith("postgresql+psycopg2://"):
-        return "postgresql+asyncpg://" + normalized[len("postgresql+psycopg2://"):]
+        
     return normalized
+
 
 
 class Settings:
