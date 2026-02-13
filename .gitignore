@@ -1,3 +1,4 @@
+
 # Python
 __pycache__/
 *.py[cod]
@@ -62,6 +63,7 @@ frontend/coverage/
 .env.development.local
 .env.test.local
 .env.production.local
+*.env
 # Allow .env.example
 !*.example
 
@@ -90,6 +92,7 @@ logs/
 *.db
 *.sqlite3
 *.sqlite
+*.sql
 
 # Docker
 .docker/
@@ -101,3 +104,7 @@ backend_debug.log
 backend.log
 startup_error.log
 pip_out.txt
+render.yaml
+nixpacks.toml
+railway.toml
+backend/render.env

@@ -6,27 +6,28 @@ from alembic import context
 import os
 import sys
 
-# Add the parent directory to Python path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add the repository root to Python path (3 levels up from env.py)
+# env.py -> alembic/ -> backend/ -> ROOT
+repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, repo_root)
 
-# Get database URL - adjust for your database
-# For SQLite (development):
-DATABASE_URL = "sqlite:///./optileno.db"
-# For PostgreSQL (production):
-# DATABASE_URL = "postgresql://user:password@localhost/dbname"
+# Get database URL from environment or fallback to sqlite
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./optileno.db")
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Import your Base from models
+# Import your Base from models using absolute path
 try:
-    # Try to import your models
-    from db.models import Base
+    from backend.db.models import Base
     target_metadata = Base.metadata
-except ImportError:
-    # If that fails, create empty metadata
+except ImportError as e:
+    # If that fails, log it
+    print(f"Could not import backend.db.models: {e}")
     from sqlalchemy.ext.declarative import declarative_base
     target_metadata = declarative_base().metadata
 

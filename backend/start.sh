@@ -1,31 +1,13 @@
 #!/bin/bash
-# backend/start.sh
-
-# Exit on error
 set -e
 
-# Run database migrations
+# Run migrations
+# We need to be in the directory containing alembic.ini or point to it
 echo "Running database migrations..."
+cd /app/backend
 alembic upgrade head
+cd /app
 
-# Calculate workers (if not set by env)
-if [ -z "$WORKERS" ]; then
-  CORES=$(nproc)
-  WORKERS=$((CORES * 2 + 1))
-  # Cap at 8 workers to avoid excessive memory usage
-  if [ "$WORKERS" -gt 8 ]; then
-    WORKERS=8
-  fi
-# Default PORT if not set
-if [ -z "$PORT" ]; then
-  PORT=8000
-fi
-
-echo "Starting server with $WORKERS workers..."
-exec gunicorn backend.app.main:app \
-    --workers $WORKERS \
-    --worker-class uvicorn.workers.UvicornWorker \
-    --bind 0.0.0.0:$PORT \
-    --timeout 120 \
-    --keep-alive 5 \
-    --log-level info
+# Start application
+echo "Starting application with Uvicorn..."
+exec python -m uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT

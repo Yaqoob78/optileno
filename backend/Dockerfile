@@ -4,30 +4,27 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
+RUN apt-get update && apt-get install -y gcc postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for better caching
-COPY requirements.txt .
+# Install Python dependencies
+# Expects build context to be the REPO ROOT
+COPY backend/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY . .
+# Copy backend application code
+COPY backend /app/backend
+
+# Copy start script
+COPY backend/start.sh /app/start.sh
+RUN chmod +x /app/start.sh
 
 # Create non-root user
-RUN useradd --create-home --shell /bin/bash app \
-    && chown -R app:app /app
-USER app
+RUN useradd -m appuser
+USER appuser
 
-# Expose port
-EXPOSE $PORT
+# Expose is optional but fine
+EXPOSE 8000
 
-# Copy startup script
-COPY start.sh .
-# Fix potential Windows CRLF line endings
-RUN sed -i 's/\r$//' start.sh && chmod +x start.sh
-
-# Run the application
+# Start with migration script
 CMD ["/app/start.sh"]
