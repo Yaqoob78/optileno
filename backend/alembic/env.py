@@ -35,6 +35,9 @@ def _normalize_alembic_database_url(url: str) -> str:
         normalized = normalized.replace("postgresql+asyncpg://", "postgresql://", 1)
     if normalized.startswith("postgresql+psycopg2://"):
         normalized = normalized.replace("postgresql+psycopg2://", "postgresql://", 1)
+    if normalized.startswith("sqlite+aiosqlite://"):
+        # Alembic migrations run synchronously; use sqlite sync driver.
+        normalized = normalized.replace("sqlite+aiosqlite://", "sqlite://", 1)
     return normalized
 
 
