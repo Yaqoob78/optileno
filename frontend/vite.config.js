@@ -6,10 +6,37 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom', 'zustand'],
-          charts: ['recharts', 'chart.js', 'react-chartjs-2'],
-          ui: ['framer-motion', 'lucide-react', 'clsx', 'tailwind-merge'],
+        manualChunks(id) {
+          const pkgPath = "/node_modules/";
+          if (!id.includes(pkgPath)) return;
+
+          const inPkg = (name) => id.includes(`${pkgPath}${name}/`);
+
+          if (
+            inPkg("react") ||
+            inPkg("react-dom") ||
+            inPkg("react-router-dom") ||
+            inPkg("zustand")
+          ) {
+            return "vendor";
+          }
+
+          if (
+            inPkg("recharts") ||
+            inPkg("chart.js") ||
+            inPkg("react-chartjs-2")
+          ) {
+            return "charts";
+          }
+
+          if (
+            inPkg("framer-motion") ||
+            inPkg("lucide-react") ||
+            inPkg("clsx") ||
+            inPkg("tailwind-merge")
+          ) {
+            return "ui";
+          }
         },
       },
     },
