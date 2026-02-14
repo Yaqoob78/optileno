@@ -435,9 +435,10 @@ class CSRFMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         
         # Skip for paths starting with skipped prefixes
-        # Also skip /api/v1/ paths — they use X-Requested-With header as CSRF mitigation
+        # Also skip /api/v1/ and legacy /auth/ paths — they use X-Requested-With header
+        # as CSRF mitigation and backend-issued csrf_token cookies.
         # and the backend does not issue csrf_token cookies for cookie-auth sessions.
-        if any(request.url.path.startswith(p) for p in ["/socket.io", "/ws", "/api/v1/"]):
+        if any(request.url.path.startswith(p) for p in ["/socket.io", "/ws", "/api/v1/", "/auth/"]):
             return await call_next(request)
 
         # Skip CSRF check for safe methods

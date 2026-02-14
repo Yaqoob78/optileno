@@ -21,6 +21,7 @@ from pathlib import Path
 
 from backend.app.config import settings, log_startup_settings
 from backend.api.v1.api import api_router
+from backend.auth import auth_router
 from backend.db.database import init_db, close_db
 from backend.realtime import create_socketio_app
 from backend.core.cache import cache_service
@@ -224,6 +225,8 @@ app.add_middleware(
 # API Routes
 # ==================================================
 app.include_router(api_router, prefix="/api/v1")
+# Backward-compatible auth routes for legacy frontend bundles.
+app.include_router(auth_router, prefix="/auth", tags=["Authentication (Legacy)"])
 
 
 # ==================================================
