@@ -361,4 +361,4 @@ export const api = {
   isAuthenticated: apiClient.isAuthenticated,
 };
 
-export default apiClient;
+export default api;

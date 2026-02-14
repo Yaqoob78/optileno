@@ -445,7 +445,7 @@ export const DEFAULTS = {
  * Environment Variables (with fallbacks)
  */
 export const ENV = {
-  API_URL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1',
+  API_URL: import.meta.env.VITE_API_URL || `${(import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '')}/api/v1`,
   WS_URL: import.meta.env.VITE_SOCKET_URL || 'http://localhost:8000',
   NODE_ENV: import.meta.env.NODE_ENV || 'development',
   IS_DEV: import.meta.env.DEV || false,

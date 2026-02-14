@@ -1,5 +1,6 @@
 // Environment configuration with type safety
 interface Env {
+    readonly API_BASE_URL: string;
     readonly API_URL: string;
     readonly APP_VERSION: string;
     readonly IS_DEV: boolean;
@@ -7,6 +8,7 @@ interface Env {
     readonly SOCKET_URL: string;
 }
 
+const rawApiBaseUrl = (((import.meta as any).env.VITE_API_BASE_URL as string) || "").trim();
 const rawApiUrl = (((import.meta as any).env.VITE_API_URL as string) || "").trim();
 const rawSocketUrl = (((import.meta as any).env.VITE_SOCKET_URL as string) || "").trim();
 
@@ -19,9 +21,10 @@ const ensureApiV1Base = (value: string): string => {
 };
 
 export const env: Env = {
-    API_URL: ensureApiV1Base(rawApiUrl),
+    API_BASE_URL: stripTrailingSlash(rawApiBaseUrl || rawApiUrl).replace(/\/api\/v1$/i, "") || "http://localhost:8000",
+    API_URL: ensureApiV1Base(rawApiBaseUrl || rawApiUrl),
     SOCKET_URL: rawSocketUrl ||
-        stripTrailingSlash(rawApiUrl).replace(/\/api\/v1$/i, "") ||
+        stripTrailingSlash(rawApiBaseUrl || rawApiUrl).replace(/\/api\/v1$/i, "") ||
         "http://localhost:8000",
     APP_VERSION: ((import.meta as any).env.VITE_APP_VERSION as string) || '1.0.0',
     IS_DEV: (import.meta as any).env.DEV as boolean,

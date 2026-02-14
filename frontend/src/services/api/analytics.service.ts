@@ -1,4 +1,4 @@
-import { api } from './client';
+import api from './client';
 import { AppEvent, UserMetrics, AnalyticsEvent } from '../../types/events.types';
 
 // Endpoints are relative to the client's baseURL (which already includes /api/v1)
