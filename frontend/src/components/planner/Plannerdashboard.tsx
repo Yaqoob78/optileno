@@ -1,7 +1,7 @@
 // src/components/planner/PlannerDashboard.tsx
 import React from 'react';
 import { CheckCircle, Clock, Battery, Smile, Activity, Flame, TrendingUp, BarChart, Target, Zap, Brain } from 'lucide-react';
-import '../../styles/components/planner/plannerDashboard.css';
+import '../../styles/components/planner/Plannerdashboard.css';
 
 interface PlannerDashboardProps {
   totalTasks?: number;
