@@ -379,7 +379,7 @@ export default function Landing() {
             <p className="cta-subtext">
               People are getting ahead. Start today.
               <br />
-              Get 7 days refund policy. <span className="secure-badge"><Lock size={12} style={{ display: 'inline', verticalAlign: 'middle' }} /> Payment secure with Stripe</span>
+              Get 7 days free trial. <span className="secure-badge"><Lock size={12} style={{ display: 'inline', verticalAlign: 'middle' }} /> Payment secure with Stripe</span>
             </p>
           </div>
 

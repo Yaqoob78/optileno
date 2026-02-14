@@ -69,18 +69,23 @@ db_metrics = DatabaseMetrics()
 def create_database_engine() -> AsyncEngine:
     """Create database engine with enterprise configuration."""
 
-    engine = create_async_engine(
-        settings.DATABASE_URL,
-        echo=settings.DEBUG,
-        pool_pre_ping=True,
-        pool_size=settings.DB_POOL_SIZE,
-        max_overflow=settings.DB_MAX_OVERFLOW,
-    )
+    engine_kwargs = {
+        "echo": settings.DEBUG,
+        "pool_pre_ping": True,
+    }
+    if "sqlite" not in settings.DATABASE_URL:
+        engine_kwargs["pool_size"] = settings.DB_POOL_SIZE
+        engine_kwargs["max_overflow"] = settings.DB_MAX_OVERFLOW
 
-    logger.info(
-        f"[DB] Created engine with pool_size={settings.DB_POOL_SIZE}, "
-        f"max_overflow={settings.DB_MAX_OVERFLOW}"
-    )
+    engine = create_async_engine(settings.DATABASE_URL, **engine_kwargs)
+
+    if "sqlite" in settings.DATABASE_URL:
+        logger.info("[DB] Created engine for SQLite")
+    else:
+        logger.info(
+            f"[DB] Created engine with pool_size={settings.DB_POOL_SIZE}, "
+            f"max_overflow={settings.DB_MAX_OVERFLOW}"
+        )
 
     return engine
 
