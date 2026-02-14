@@ -41,6 +41,21 @@ def _normalize_alembic_database_url(url: str) -> str:
     return normalized
 
 
+def _to_async_database_url(url: str) -> str:
+    normalized = _strip_wrapping_quotes(url or "")
+    if not normalized:
+        return normalized
+    if normalized.startswith("postgres://"):
+        normalized = normalized.replace("postgres://", "postgresql+asyncpg://", 1)
+    elif normalized.startswith("postgresql://"):
+        normalized = normalized.replace("postgresql://", "postgresql+asyncpg://", 1)
+    elif normalized.startswith("postgresql+psycopg2://"):
+        normalized = normalized.replace("postgresql+psycopg2://", "postgresql+asyncpg://", 1)
+    elif normalized.startswith("sqlite://"):
+        normalized = normalized.replace("sqlite://", "sqlite+aiosqlite://", 1)
+    return normalized
+
+
 def _build_sync_db_url_from_pg_env() -> str:
     host = (os.getenv("PGHOST") or "").strip()
     user = (os.getenv("PGUSER") or "").strip()
@@ -78,7 +93,7 @@ if _is_unresolved_template(DATABASE_URL):
     )
 
 # Keep env normalized so imports that read settings see a clean value.
-os.environ["DATABASE_URL"] = DATABASE_URL
+os.environ["DATABASE_URL"] = _to_async_database_url(DATABASE_URL)
 
 config = context.config
 
