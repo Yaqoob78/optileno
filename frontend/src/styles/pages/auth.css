@@ -136,30 +136,33 @@
   position: relative;
   display: flex;
   align-items: center;
+  min-height: 52px;
 }
 
 .input-icon {
   position: absolute;
-  left: 0.75rem;
-  /* Shift icon to the far left */
+  left: 1rem;
   top: 50%;
   width: 18px;
   height: 18px;
   transform: translateY(-50%);
   color: var(--text-muted);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.2s ease, transform 0.2s ease, color 0.2s ease;
   pointer-events: none;
   z-index: 5;
 }
 
-.auth-input:focus~.input-icon,
-.auth-input:not(:placeholder-shown)~.input-icon {
+.auth-input:focus~.input-icon {
   color: var(--primary);
-  opacity: 1;
-  transform: translateY(-50%);
 }
 
-/* Remove the padding reset so text never overlaps icon */
+.input-wrapper.has-value .input-icon,
+.auth-input:not(:placeholder-shown)~.input-icon,
+.auth-input:-webkit-autofill~.input-icon {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-50%) scale(0.92);
+}
 
 .auth-input {
   width: 100%;
@@ -170,9 +173,14 @@
   padding: 0.875rem 1rem 0.875rem 3rem;
   color: var(--text-main);
   font-size: 1rem;
+  line-height: 1.25;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   height: 52px;
-  /* Enforce consistent height */
+}
+
+.auth-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.9;
 }
 
 .auth-input:focus {
@@ -180,10 +188,6 @@
   border-color: #818cf8;
   background: rgba(255, 255, 255, 0.05);
   box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
-}
-
-.auth-input:focus+.input-icon {
-  color: var(--primary);
 }
 
 .form-options {

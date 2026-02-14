@@ -221,8 +221,8 @@
 }
 
 /* ===== FORM ELEMENTS ===== */
-input,
-select {
+.settings-page input,
+.settings-page select {
   background: var(--s-input-bg) !important;
   border: 1px solid var(--s-input-border) !important;
   border-radius: 8px !important;
@@ -232,8 +232,8 @@ select {
   transition: 0.2s;
 }
 
-input:focus,
-select:focus {
+.settings-page input:focus,
+.settings-page select:focus {
   outline: none !important;
   border-color: #1f6feb !important;
   box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.2) !important;

@@ -71,7 +71,7 @@ export default function Login() {
                     <form className="auth-form" onSubmit={handleSubmit}>
                         <div className="form-group">
                             <label className="form-label">Email Address</label>
-                            <div className="input-wrapper">
+                            <div className={`input-wrapper ${formData.email ? 'has-value' : ''}`}>
                                 <input
                                     type="email"
                                     className="auth-input"
@@ -86,7 +86,7 @@ export default function Login() {
 
                         <div className="form-group">
                             <label className="form-label">Password</label>
-                            <div className="input-wrapper">
+                            <div className={`input-wrapper ${formData.password ? 'has-value' : ''}`}>
                                 <input
                                     type="password"
                                     className="auth-input"

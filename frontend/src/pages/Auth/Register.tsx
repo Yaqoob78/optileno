@@ -118,7 +118,7 @@ export default function Register() {
 
                         <div className="form-group">
                             <label className="form-label">Full Name</label>
-                            <div className="input-wrapper">
+                            <div className={`input-wrapper ${formData.full_name ? 'has-value' : ''}`}>
                                 <input
                                     type="text"
                                     className="auth-input"
@@ -133,7 +133,7 @@ export default function Register() {
 
                         <div className="form-group">
                             <label className="form-label">Email Address</label>
-                            <div className="input-wrapper">
+                            <div className={`input-wrapper ${formData.email ? 'has-value' : ''}`}>
                                 <input
                                     type="email"
                                     className="auth-input"
@@ -148,7 +148,7 @@ export default function Register() {
 
                         <div className="form-group">
                             <label className="form-label">Password</label>
-                            <div className="input-wrapper">
+                            <div className={`input-wrapper ${formData.password ? 'has-value' : ''}`}>
                                 <input
                                     type="password"
                                     className="auth-input"
@@ -164,7 +164,7 @@ export default function Register() {
 
                         <div className="form-group">
                             <label className="form-label">Confirm Password</label>
-                            <div className="input-wrapper">
+                            <div className={`input-wrapper ${formData.confirmPassword ? 'has-value' : ''}`}>
                                 <input
                                     type="password"
                                     className="auth-input"
