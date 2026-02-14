@@ -12,7 +12,7 @@ import {
 import Sidebar from "./Sidebar";
 import GlassMorphBG from "../ui/GlassMorphBG";
 import Header from "./Header";
-import StatusBar from "./StatusBar";
+import StatusBar from "./Statusbar";
 import "../../styles/layout/layout.css"; // CSS CONNECTION";
 
 interface MenuItem {
