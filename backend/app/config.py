@@ -44,7 +44,12 @@ def _env_list(name: str) -> List[str]:
     value = os.getenv(name)
     if not value:
         return []
-    return [item.strip() for item in value.split(",") if item.strip()]
+    items: List[str] = []
+    for raw in value.split(","):
+        cleaned = _strip_wrapping_quotes(raw.strip())
+        if cleaned:
+            items.append(cleaned)
+    return items
 
 
 def _strip_wrapping_quotes(value: str) -> str:
@@ -140,7 +145,7 @@ class Settings:
     # =========================
     HOST: str = os.getenv("HOST", "0.0.0.0")
     PORT: int = _env_int("PORT", 8000)
-    BASE_URL: str = os.getenv("BASE_URL", "http://localhost:8000")
+    BASE_URL: str = _strip_wrapping_quotes(os.getenv("BASE_URL", "http://localhost:8000"))
     
     # =========================
     # Scaling Configuration (5,000 Users)
@@ -187,7 +192,8 @@ class Settings:
         "COOKIE_SAMESITE",
         "none" if COOKIE_SECURE else "lax"
     )
-    COOKIE_DOMAIN: Optional[str] = os.getenv("COOKIE_DOMAIN") or None
+    COOKIE_SAMESITE: str = _strip_wrapping_quotes(COOKIE_SAMESITE)
+    COOKIE_DOMAIN: Optional[str] = _strip_wrapping_quotes(os.getenv("COOKIE_DOMAIN", "")) or None
 
     # Owner Account (Auto-provisioned)
     OWNER_EMAIL: str = os.getenv("OWNER_EMAIL", "")
@@ -197,8 +203,8 @@ class Settings:
     # CORS
     # =========================
     # When using credentials, cannot use wildcard - must specify origins
-    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
-    PRODUCTION_FRONTEND_URL: str = os.getenv("PRODUCTION_FRONTEND_URL", "")
+    FRONTEND_URL: str = _strip_wrapping_quotes(os.getenv("FRONTEND_URL", "http://localhost:3000"))
+    PRODUCTION_FRONTEND_URL: str = _strip_wrapping_quotes(os.getenv("PRODUCTION_FRONTEND_URL", ""))
     _cors_env = _env_list("CORS_ORIGINS")
     CORS_ORIGINS: List[str] = _cors_env or [
         "http://localhost:3000",
@@ -215,6 +221,13 @@ class Settings:
         
     if FRONTEND_URL and FRONTEND_URL not in CORS_ORIGINS:
         CORS_ORIGINS.append(FRONTEND_URL)
+
+    CORS_ALLOW_ORIGIN_REGEX: Optional[str] = _strip_wrapping_quotes(
+        os.getenv("CORS_ALLOW_ORIGIN_REGEX", "")
+    ) or None
+    if not CORS_ALLOW_ORIGIN_REGEX:
+        if ".vercel.app" in FRONTEND_URL.lower() or ".vercel.app" in PRODUCTION_FRONTEND_URL.lower():
+            CORS_ALLOW_ORIGIN_REGEX = r"^https://([a-z0-9-]+\.)*vercel\.app$"
 
     # =========================
     # Database - Enterprise Scaling
@@ -467,6 +480,9 @@ def log_startup_settings():
     print(f"[ROCKET] Optileno SaaS v{settings.VERSION}")
     print(f"[SCALE] Max Concurrent Users: {settings.MAX_CONCURRENT_USERS}")
     print(f"[DB] Pool Size: {settings.DB_POOL_SIZE}, Max Overflow: {settings.DB_MAX_OVERFLOW}")
+    print(f"[CORS] Origins: {settings.CORS_ORIGINS}")
+    if settings.CORS_ALLOW_ORIGIN_REGEX:
+        print(f"[CORS] Origin Regex: {settings.CORS_ALLOW_ORIGIN_REGEX}")
     print(f"[CACHE] Redis Max Connections: {settings.REDIS_MAX_CONNECTIONS}")
     print(f"[WS] Max WebSocket Connections: {settings.WEBSOCKET_MAX_CONNECTIONS}")
     print(f"[ROCKET] AI Provider: {settings.AI_PROVIDER if settings.AI_PROVIDER else 'Not configured'}")
