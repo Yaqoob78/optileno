@@ -86,7 +86,12 @@ function StoreInitializer({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (profile?.id) {
       console.log('🔄 Initializing Realtime Connection for user:', profile.id);
-      realtimeClient.connect(profile.id)
+      const token = localStorage.getItem('access_token')
+        || localStorage.getItem('auth_token')
+        || localStorage.getItem('token')
+        || undefined;
+
+      realtimeClient.connect(profile.id, token)
         .then(() => {
           console.log('✅ Realtime Connected');
           initPlannerSockets();

@@ -9,6 +9,30 @@ const resolveApiUrl = (url: string): string => {
   return `${env.API_BASE_URL}${url}`;
 };
 
+const getAccessToken = (): string | null => {
+  const candidates = ['access_token', 'auth_token', 'token'];
+  for (const key of candidates) {
+    const value = localStorage.getItem(key);
+    if (value && value !== 'null' && value !== 'undefined') {
+      return value;
+    }
+  }
+  return null;
+};
+
+const applyAuthDefaults = (headersInput: HeadersInit | undefined): Headers => {
+  const headers = new Headers(headersInput);
+
+  if (!headers.has('Authorization')) {
+    const token = getAccessToken();
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+  }
+
+  return headers;
+};
+
 export function installApiFetchProxy(): void {
   if (typeof window === 'undefined') return;
 
@@ -19,7 +43,17 @@ export function installApiFetchProxy(): void {
 
   window.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
     if (typeof input === 'string') {
-      return originalFetch(resolveApiUrl(input), init);
+      if (!input.startsWith('/api/v1/')) {
+        return originalFetch(input, init);
+      }
+
+      const nextInit: RequestInit = {
+        ...init,
+        credentials: init?.credentials ?? 'include',
+        headers: applyAuthDefaults(init?.headers),
+      };
+
+      return originalFetch(resolveApiUrl(input), nextInit);
     }
 
     if (input instanceof Request) {
@@ -27,7 +61,12 @@ export function installApiFetchProxy(): void {
       if (input.url.startsWith(`${currentOrigin}/api/v1/`)) {
         const relativePath = input.url.slice(currentOrigin.length);
         const apiRequest = new Request(resolveApiUrl(relativePath), input);
-        return originalFetch(apiRequest, init);
+        const nextInit: RequestInit = {
+          ...init,
+          credentials: init?.credentials ?? apiRequest.credentials ?? 'include',
+          headers: applyAuthDefaults(init?.headers ?? apiRequest.headers),
+        };
+        return originalFetch(apiRequest, nextInit);
       }
     }
 
