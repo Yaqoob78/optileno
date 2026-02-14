@@ -43,19 +43,8 @@ if [ -z "${DATABASE_URL:-}" ] && [ -n "${PGHOST:-}" ] && [ -n "${PGUSER:-}" ] &&
 fi
 
 if [ -z "${DATABASE_URL:-}" ]; then
-  # If a persistent volume is mounted, allow SQLite fallback.
-  if [ -d "/app/data" ]; then
-    export DATABASE_URL="sqlite+aiosqlite:////app/data/optileno.db"
-    echo "DATABASE_URL is not set; falling back to SQLite at /app/data/optileno.db"
-  elif [ -d "/data" ]; then
-    export DATABASE_URL="sqlite+aiosqlite:////data/optileno.db"
-    echo "DATABASE_URL is not set; falling back to SQLite at /data/optileno.db"
-  else
-    echo "DATABASE_URL is not set."
-    echo "Option 1 (recommended): set DATABASE_URL=\${{<DatabaseService>.DATABASE_URL}} in Railway Variables."
-    echo "Option 2: mount a persistent volume at /app/data or /data to use SQLite fallback."
-    exit 1
-  fi
+  echo "DATABASE_URL is not set. PostgreSQL is required in production."
+  exit 1
 fi
 
 # Run migrations

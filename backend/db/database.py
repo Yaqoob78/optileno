@@ -19,8 +19,7 @@ from sqlalchemy.ext.asyncio import (
     AsyncEngine,
 )
 from sqlalchemy.orm import declarative_base
-from sqlalchemy import event, text
-from sqlalchemy.pool import QueuePool
+from sqlalchemy import text
 
 from backend.app.config import settings
 
@@ -69,50 +68,20 @@ db_metrics = DatabaseMetrics()
 # ==================================================
 def create_database_engine() -> AsyncEngine:
     """Create database engine with enterprise configuration."""
-    
-    if "sqlite" in settings.DATABASE_URL:
-        # SQLite-specific configuration (for development)
-        engine = create_async_engine(
-            settings.DATABASE_URL,
-            echo=settings.DEBUG,
-            pool_pre_ping=True,
-            connect_args={
-                "check_same_thread": False, 
-                "timeout": 30
-            }
-        )
-    else:
-        # PostgreSQL-specific configuration (for production with Supabase)
-        # Scaled for 5,000+ concurrent users
-        engine = create_async_engine(
-            settings.DATABASE_URL,
-            echo=settings.DEBUG,
-            pool_pre_ping=True,
-            poolclass=QueuePool,
-            pool_recycle=settings.DB_POOL_RECYCLE,
-            pool_size=settings.DB_POOL_SIZE,
-            max_overflow=settings.DB_MAX_OVERFLOW,
-            pool_timeout=settings.DB_POOL_TIMEOUT,
-            connect_args={
-                "options": f"-c statement_timeout={settings.DB_STATEMENT_TIMEOUT}"
-            },
-            # Pool event listeners for monitoring
-            pool_events=True,
-        )
-        
-        # Add pool event listeners for metrics
-        @event.listens_for(engine.sync_engine, "checkout")
-        def on_checkout(dbapi_conn, connection_record, connection_proxy):
-            db_metrics.active_connections += 1
-            db_metrics.total_connections = engine.pool.size() if hasattr(engine, 'pool') else 0
-            
-        @event.listens_for(engine.sync_engine, "checkin")
-        def on_checkin(dbapi_conn, connection_record):
-            db_metrics.active_connections = max(0, db_metrics.active_connections - 1)
-        
-        logger.info(f"[DB] Created engine with pool_size={settings.DB_POOL_SIZE}, "
-                   f"max_overflow={settings.DB_MAX_OVERFLOW}")
-    
+
+    engine = create_async_engine(
+        settings.DATABASE_URL,
+        echo=settings.DEBUG,
+        pool_pre_ping=True,
+        pool_size=settings.DB_POOL_SIZE,
+        max_overflow=settings.DB_MAX_OVERFLOW,
+    )
+
+    logger.info(
+        f"[DB] Created engine with pool_size={settings.DB_POOL_SIZE}, "
+        f"max_overflow={settings.DB_MAX_OVERFLOW}"
+    )
+
     return engine
 
 
