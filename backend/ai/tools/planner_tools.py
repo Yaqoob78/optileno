@@ -30,7 +30,20 @@ class PlannerToolSet:
     ) -> Dict[str, Any]:
         """Create a task in the planner"""
         
-        # 1. Parse Time
+        # 1. Handle AI Hallucination/Tool Calling Error where all args are passed to title
+        if isinstance(title, dict):
+            args = title
+            title = args.get("title", "New Task")
+            # Override other args if they are present in the dict and were defaults in function signature
+            if "priority" in args: priority = args["priority"]
+            if "description" in args: description = args["description"]
+            if "duration_minutes" in args: duration_minutes = args["duration_minutes"]
+            if "category" in args: category = args["category"]
+            if "tags" in args: tags = args["tags"]
+            if "goal_link" in args: goal_link = args["goal_link"]
+            if "scheduled_time" in args: scheduled_time = args["scheduled_time"]
+            
+        # 2. Parse Time
         due_date = None
         if scheduled_time:
             now = datetime.now()
@@ -160,6 +173,16 @@ class PlannerToolSet:
         category: str = "Personal"
     ) -> Dict[str, Any]:
         """Create a goal in the planner"""
+        
+        # Handle AI Hallucination: title is actually the args dict
+        if isinstance(title, dict):
+            args = title
+            title = args.get("title", "New Goal")
+            description = args.get("description", description)
+            category = args.get("category", category)
+            target_date = args.get("target_date", target_date)
+            milestones = args.get("milestones", milestones)
+
         goal_data = {
             'title': title,
             'description': description,
@@ -211,6 +234,19 @@ class PlannerToolSet:
         Create a goal with AI-generated cascade of tasks and habits.
         Use this when the user asks for a full plan or agrees to automatic generation.
         """
+        # Handle AI Hallucination
+        if isinstance(title, dict):
+             args = title
+             title = args.get("title", "New Goal")
+             description = args.get("description", description)
+             category = args.get("category", category)
+             timeframe = args.get("timeframe", timeframe)
+             complexity = args.get("complexity", complexity)
+             target_date = args.get("target_date", target_date)
+             auto_create_tasks = args.get("auto_create_tasks", auto_create_tasks)
+             auto_create_habits = args.get("auto_create_habits", auto_create_habits)
+             propose_deep_work = args.get("propose_deep_work", propose_deep_work)
+             
         from backend.ai.tools.goal_automation import create_goal_with_cascade
         
         payload = {
@@ -243,6 +279,17 @@ class PlannerToolSet:
         goal_link: Optional[str] = None
     ) -> Dict[str, Any]:
         """Create a habit in the planner"""
+        
+        # Handle AI Hallucination
+        if isinstance(title, dict):
+            args = title
+            title = args.get("title", "New Habit")
+            if not title and "name" in args: title = args["name"]
+            description = args.get("description", description)
+            frequency = args.get("frequency", frequency)
+            category = args.get("category", category)
+            goal_link = args.get("goal_link", goal_link)
+
         habit_data = {
             'title': title,  # Changed from 'name' to 'title' to match API
             'description': description,
