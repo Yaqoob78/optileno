@@ -6,6 +6,13 @@ from typing import Any, Dict
 from zoneinfo import ZoneInfo
 
 from backend.db.models import User
+from backend.services.entitlements_service import (
+    PLAN_ULTRA,
+    canonical_plan_type,
+    get_entitlements,
+    get_limits,
+    normalize_plan_tier,
+)
 
 DEFAULT_PREFERENCES: Dict[str, Any] = {
     "theme": "dark",
@@ -134,24 +141,6 @@ def set_security_settings(prefs: Dict[str, Any], updates: Dict[str, Any]) -> Dic
     return prefs
 
 
-def _normalize_plan_type(plan_type: str | None) -> str:
-    plan_raw = (plan_type or "BASIC").upper()
-    plan_map = {
-        "BASIC": "EXPLORER",
-        "EXPLORER": "EXPLORER",
-        "PRO": "ULTRA",
-        "ULTRA": "ULTRA",
-        "ENTERPRISE": "ULTRA",
-    }
-    return plan_map.get(plan_raw, "EXPLORER")
-
-
-def _subscription_features(tier: str, role: str) -> list[str]:
-    if role == "admin" or tier in {"elite", "pro", "enterprise"}:
-        return ["all-features"]
-    return ["basic-chat", "basic-analytics"]
-
-
 def build_user_profile(user: User) -> Dict[str, Any]:
     prefs = merge_preferences(user.preferences or {})
     security = get_security_settings(prefs)
@@ -159,10 +148,14 @@ def build_user_profile(user: User) -> Dict[str, Any]:
     usage_time = usage_time if isinstance(usage_time, dict) else {}
 
     name = user.full_name or (user.email.split("@")[0] if user.email else "")
-    plan_type = _normalize_plan_type(user.plan_type)
-    tier = (user.tier or "free").lower()
-    if user.role == "admin" and tier != "elite":
-        tier = "elite"
+    plan_tier = normalize_plan_tier(
+        plan_type=user.plan_type,
+        tier=user.tier,
+        role=user.role,
+    )
+    plan_type = canonical_plan_type(plan_tier)
+    entitlements = get_entitlements(plan_tier)
+    limits = get_limits(plan_tier)
 
     created_at = user.created_at or datetime.now(timezone.utc)
     updated_at = user.updated_at or created_at
@@ -179,11 +172,14 @@ def build_user_profile(user: User) -> Dict[str, Any]:
         "avatar": prefs.get("avatar", ""),
         "role": user.role,
         "planType": plan_type,
+        "plan_tier": plan_tier,
         "subscription": {
-            "tier": tier,
+            "tier": plan_tier,
             "expiresAt": None,
-            "features": _subscription_features(tier, user.role),
+            "features": ["all-features"] if plan_tier == PLAN_ULTRA else ["basic-chat", "basic-analytics"],
         },
+        "entitlements": entitlements,
+        "limits": limits,
         "stats": {
             "totalSessions": 0,
             "totalTokens": 0,

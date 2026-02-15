@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useUserStore } from '../stores/useUserStore';
 import { usePlannerStore } from '../stores/planner.store';
+import { plannerApi } from '../services/api/planner.service';
 
 interface CreateTaskPayload {
   title: string;
@@ -50,30 +51,20 @@ export const usePlannerCreate = () => {
     setError(null);
 
     try {
-      const response = await fetch('/api/v1/plans/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-        },
-        body: JSON.stringify({
-          title: payload.title,
-          description: payload.description || '',
-          priority: payload.priority || 'medium',
-          estimated_duration_minutes: payload.duration || 60,
-          category: payload.category || 'work',
-          tags: payload.tags || [],
-          energy_level: payload.energy || 'medium',
-          created_by_ai: payload.createdByAI || false,
-        }),
+      const response = await plannerApi.createTask({
+        title: payload.title,
+        description: payload.description || '',
+        priority: payload.priority || 'medium',
+        estimated_duration_minutes: payload.duration || 60,
+        category: payload.category || 'work',
+        tags: payload.tags || [],
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.detail || 'Failed to create task');
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || 'Failed to create task');
       }
 
-      const data = await response.json();
+      const data: any = response.data;
 
       // Update local store with complete task object
       const newTask = {
@@ -115,28 +106,18 @@ export const usePlannerCreate = () => {
     setError(null);
 
     try {
-      const response = await fetch('/api/v1/goals/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-        },
-        body: JSON.stringify({
-          title: payload.title,
-          description: payload.description || '',
-          target_date: payload.targetDate,
-          category: payload.category || 'personal',
-          priority: payload.priority || 'medium',
-          tags: payload.tags || [],
-        }),
+      const response = await plannerApi.createGoal({
+        title: payload.title,
+        description: payload.description || '',
+        target_date: payload.targetDate,
+        category: payload.category || 'personal',
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.detail || 'Failed to create goal');
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || 'Failed to create goal');
       }
 
-      const data = await response.json();
+      const data: any = response.data;
 
       // Update local store with complete goal object
       const newGoal = {
@@ -176,27 +157,18 @@ export const usePlannerCreate = () => {
     setError(null);
 
     try {
-      const response = await fetch('/api/v1/habits/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-        },
-        body: JSON.stringify({
-          title: payload.title,
-          description: payload.description || '',
-          frequency: payload.frequency || 'daily',
-          category: payload.category || 'personal',
-          tags: payload.tags || [],
-        }),
+      const response = await plannerApi.createHabit({
+        name: payload.title,
+        description: payload.description || '',
+        frequency: payload.frequency || 'daily',
+        category: payload.category || 'personal',
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.detail || 'Failed to create habit');
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || 'Failed to create habit');
       }
 
-      const data = await response.json();
+      const data: any = response.data;
 
       // Update local store with complete habit object
       const newHabit = {

@@ -163,7 +163,7 @@ class RedisAIQuota:
         Args:
             user_id: User identifier
             daily_limit: Daily quota limit
-            quota_type: Type of AI usage (general, premium, etc.)
+            quota_type: Type of AI usage (general, explorer, ultra)
         
         Returns:
             True if quota is available, False otherwise
@@ -230,9 +230,13 @@ class RedisAIQuota:
             # For now, return default limits
             limits = {
                 "general": 100,
-                "premium": 500,
-                "elite": 2000
+                "explorer": 100,
+                "ultra": 500
             }
+            if quota_type == "premium":
+                return limits["ultra"]
+            if quota_type == "elite":
+                return 2000
             return limits.get(quota_type, 100)
         except Exception:
             return 100

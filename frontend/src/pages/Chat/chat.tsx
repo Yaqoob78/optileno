@@ -69,9 +69,8 @@ export default function Chat() {
   const { onMessageReceived, onConversationUpdated } = useRealtime();
   const _isUltra = useUserStore((state) => state.isUltra);
   const userProfile = useUserStore((state) => state.profile);
-  // Force Ultra for owner and check subscription tier
   const isOwner = userProfile?.email === 'khan011504@gmail.com';
-  const isUltra = _isUltra || isOwner || userProfile?.role === 'premium' || userProfile?.role === 'admin' || userProfile?.planType === 'ULTRA';
+  const isUltra = _isUltra || isOwner;
 
   // Initialize Conversation if missing
   useEffect(() => {
@@ -107,12 +106,8 @@ export default function Chat() {
     const key = `daily_usage_${today}`;
     const usage = JSON.parse(localStorage.getItem(key) || '{"conversations": 0, "tokens": 0}');
 
-    if (usage.conversations >= 20) {
-      alert("Daily conversation limit (20) reached. Upgrade to Ultra to continue.");
-      return false;
-    }
-    if (usage.tokens >= 1000) {
-      alert("Daily token limit (1000) reached. Upgrade to Ultra to continue.");
+    if (usage.conversations >= 25) {
+      alert("Daily request limit (25) reached. Upgrade to Ultra to continue.");
       return false;
     }
     return true;

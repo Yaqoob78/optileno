@@ -71,7 +71,7 @@ export default function Dashboard() {
   // Action to fetch analytics if stale
   const fetchAnalytics = useAnalyticsStore((state) => state.fetchAnalytics);
 
-  // Force Premium for owner email
+  // Force Ultra for owner email
   const isPremium = user?.email === 'khan011504@gmail.com' ? true : _isPremium;
 
   // Real-time integration
@@ -115,7 +115,7 @@ export default function Dashboard() {
       // Clean up URL
       navigate('/dashboard', { replace: true });
 
-      // Refresh user profile to get Pro status
+      // Refresh user profile to get latest plan tier
       const refreshUser = async () => {
         const profileRes = await userService.getProfile();
         if (profileRes.success && profileRes.data) {
@@ -169,7 +169,7 @@ export default function Dashboard() {
                 <Award size={20} />
               </div>
               <div>
-                <h4 className="font-bold text-main">Welcome to Pro!</h4>
+                <h4 className="font-bold text-main">Welcome to Ultra!</h4>
                 <p className="text-secondary text-sm">Your subscription has been activated successfully.</p>
               </div>
             </div>
@@ -227,7 +227,7 @@ export default function Dashboard() {
                 <div className="user-name">{user?.name || 'Creator'}</div>
                 <div className="user-plan-tag">
                   <span className={`plan-badge ${isPremium ? '' : 'free'}`}>
-                    {isPremium ? 'PREMIUM ACTIVE' : 'FREE VERSION'}
+                    {isPremium ? 'ULTRA ACTIVE' : 'EXPLORER'}
                   </span>
                 </div>
               </div>
@@ -250,7 +250,7 @@ export default function Dashboard() {
             <div className="plan-indicator">
               <div className="plan-label">PLAN</div>
               <div className={`plan-value ${isPremium ? 'premium' : ''}`}>
-                {isPremium ? 'Premium Pro' : 'Free Tier'}
+                {isPremium ? 'ULTRA' : 'EXPLORER'}
               </div>
             </div>
           </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { api } from '../services/api/client';
 
 export interface ChronotypeData {
     type: string;
@@ -52,25 +53,11 @@ export function useTimeIntelligence() {
     const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch('/api/v1/analytics/time-intelligence', {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            // Check if response is actually JSON
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                throw new Error('API unavailable - server returned non-JSON response');
+            const response = await api.get<TimeIntelligenceData>('/analytics/time-intelligence');
+            if (!response.success || !response.data) {
+                throw new Error(response.error?.message || 'Failed to fetch time intelligence data');
             }
-
-            if (!response.ok) {
-                throw new Error('Failed to fetch time intelligence data');
-            }
-
-            const jsonData = await response.json();
-            setData(jsonData);
+            setData(response.data);
             setError(null);
         } catch (err: any) {
             console.error('Time Intelligence fetch error:', err);

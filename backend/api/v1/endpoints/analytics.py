@@ -1,9 +1,12 @@
 from fastapi import APIRouter, Depends, Query, HTTPException, status, Body
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+from backend.app.config import settings
 from backend.core.security import get_current_user
 from backend.services.analytics_service import analytics_service
 from backend.services.goal_analytics_service import goal_analytics_service
+from backend.services.analytics_v2_service import analytics_v2_service
+from backend.services.entitlements_service import normalize_plan_tier, require_ultra_feature
 from pydantic import BaseModel
 from backend.types.events import AppEvent, UserMetrics, AnalyticsEvent
 from backend.realtime.socket_manager import (
@@ -17,6 +20,14 @@ class AnalyticsEventIn(BaseModel):
     event: str
     source: str
     metadata: dict = {}
+
+
+def _plan_tier(user: Any) -> str:
+    return normalize_plan_tier(plan_type=getattr(user, "plan_type", None), tier=getattr(user, "tier", None), role=getattr(user, "role", None))
+
+
+def _require_ultra(user: Any, feature: str) -> None:
+    require_ultra_feature(user, feature)
 
 @router.get("/metrics")
 async def get_realtime_metrics(user = Depends(get_current_user)):
@@ -250,21 +261,53 @@ async def get_focus_weekly(user = Depends(get_current_user)):
 async def get_focus_heatmap(
     user = Depends(get_current_user),
     year: Optional[int] = Query(None),
-    month: Optional[int] = Query(None, ge=1, le=12)
+    month: Optional[int] = Query(None, ge=1, le=12),
+    time_range: str = Query("monthly", pattern="^(daily|weekly|monthly)$"),
 ):
     """Get monthly focus heatmap (calendar grid)"""
+    _require_ultra(user, "focus_heatmap")
     from backend.services.attention_integrity_service import attention_integrity_service
     
     heatmap_data = await attention_integrity_service.get_monthly_heatmap(user.id, year, month)
+    window = await analytics_v2_service.resolve_window(user, time_range)
+    if isinstance(heatmap_data, dict):
+        heatmap_data.update(
+            {
+                "time_range": window.time_range,
+                "period_start": window.period_start.isoformat(),
+                "period_end": window.period_end.isoformat(),
+                "score_version": analytics_v2_service.SCORE_VERSION,
+                "source": "heatmap",
+                "confidence": 0.8,
+                "generated_at": datetime.utcnow().isoformat(),
+            }
+        )
     return heatmap_data
 
 
 @router.get("/focus/stats")
-async def get_focus_stats(user = Depends(get_current_user)):
+async def get_focus_stats(
+    user = Depends(get_current_user),
+    time_range: str = Query("monthly", pattern="^(daily|weekly|monthly)$"),
+):
     """Get comprehensive focus statistics for the stats panel"""
+    _require_ultra(user, "focus_heatmap")
     from backend.services.attention_integrity_service import attention_integrity_service
     
     stats = await attention_integrity_service.get_focus_stats(user.id)
+    window = await analytics_v2_service.resolve_window(user, time_range)
+    if isinstance(stats, dict):
+        stats.update(
+            {
+                "time_range": window.time_range,
+                "period_start": window.period_start.isoformat(),
+                "period_end": window.period_end.isoformat(),
+                "score_version": analytics_v2_service.SCORE_VERSION,
+                "source": "heatmap",
+                "confidence": 0.75,
+                "generated_at": datetime.utcnow().isoformat(),
+            }
+        )
     return stats
 
 
@@ -367,6 +410,8 @@ async def get_productivity_score_today(
     current_user = Depends(get_current_user)
 ):
     """Get today's productivity score with detailed breakdown."""
+    if settings.ANALYTICS_V2_ENABLED:
+        return await analytics_v2_service.productivity_score(current_user, "daily")
     try:
         from backend.services.execution_quality_service import execution_quality_service
         return await execution_quality_service.calculate_execution_quality(current_user.id)
@@ -382,6 +427,15 @@ async def get_productivity_score_weekly(
     current_user = Depends(get_current_user)
 ):
     """Get weekly average productivity score."""
+    if settings.ANALYTICS_V2_ENABLED:
+        result = await analytics_v2_service.productivity_score(current_user, "weekly")
+        score = result.get("score")
+        return {
+            **result,
+            "average": score,
+            "period": "weekly",
+            "days": 7,
+        }
     try:
         from backend.services.execution_quality_service import execution_quality_service
         avg_score = await execution_quality_service.get_weekly_average(current_user.id)
@@ -402,6 +456,15 @@ async def get_productivity_score_monthly(
     current_user = Depends(get_current_user)
 ):
     """Get monthly average productivity score."""
+    if settings.ANALYTICS_V2_ENABLED:
+        result = await analytics_v2_service.productivity_score(current_user, "monthly")
+        score = result.get("score")
+        return {
+            **result,
+            "average": score,
+            "period": "monthly",
+            "days": 30,
+        }
     try:
         from backend.services.execution_quality_service import execution_quality_service
         avg_score = await execution_quality_service.get_monthly_average(current_user.id)
@@ -426,6 +489,8 @@ async def get_focus_score_today(
     current_user = Depends(get_current_user)
 ):
     """Get today's focus score with detailed breakdown from heatmap data."""
+    if settings.ANALYTICS_V2_ENABLED:
+        return await analytics_v2_service.focus_score(current_user, _plan_tier(current_user), "daily")
     try:
         from backend.services.attention_integrity_service import attention_integrity_service
         return await attention_integrity_service.calculate_attention_integrity(current_user.id)
@@ -441,6 +506,16 @@ async def get_focus_score_weekly(
     current_user = Depends(get_current_user)
 ):
     """Get weekly average focus score."""
+    if settings.ANALYTICS_V2_ENABLED:
+        result = await analytics_v2_service.focus_score(current_user, _plan_tier(current_user), "weekly")
+        score = result.get("score")
+        return {
+            **result,
+            "average_score": score,
+            "average_minutes": None,
+            "period": "weekly",
+            "days": 7,
+        }
     try:
         from backend.services.attention_integrity_service import attention_integrity_service
         return await attention_integrity_service.get_weekly_average(current_user.id)
@@ -456,6 +531,16 @@ async def get_focus_score_monthly(
     current_user = Depends(get_current_user)
 ):
     """Get monthly average focus score."""
+    if settings.ANALYTICS_V2_ENABLED:
+        result = await analytics_v2_service.focus_score(current_user, _plan_tier(current_user), "monthly")
+        score = result.get("score")
+        return {
+            **result,
+            "average_score": score,
+            "average_minutes": None,
+            "period": "monthly",
+            "days": 30,
+        }
     try:
         from backend.services.attention_integrity_service import attention_integrity_service
         return await attention_integrity_service.get_monthly_average(current_user.id)
@@ -475,6 +560,9 @@ async def get_burnout_risk_today(
     current_user = Depends(get_current_user)
 ):
     """Get today's burnout risk with AI-powered sentiment analysis from chat."""
+    _require_ultra(current_user, "burnout_risk")
+    if settings.ANALYTICS_V2_ENABLED:
+        return await analytics_v2_service.burnout_risk(current_user, "daily")
     try:
         from backend.services.burnout_risk_conservative_service import burnout_risk_conservative_service
         return await burnout_risk_conservative_service.calculate_burnout_risk(current_user.id)
@@ -490,6 +578,15 @@ async def get_burnout_risk_weekly(
     current_user = Depends(get_current_user)
 ):
     """Get weekly average burnout risk."""
+    _require_ultra(current_user, "burnout_risk")
+    if settings.ANALYTICS_V2_ENABLED:
+        result = await analytics_v2_service.burnout_risk(current_user, "weekly")
+        return {
+            **result,
+            "average_risk": result.get("risk"),
+            "period": "weekly",
+            "days": 7,
+        }
     try:
         from backend.services.burnout_risk_conservative_service import burnout_risk_conservative_service
         return await burnout_risk_conservative_service.get_weekly_average(current_user.id)
@@ -504,7 +601,16 @@ async def get_burnout_risk_weekly(
 async def get_burnout_risk_monthly(
     current_user = Depends(get_current_user)
 ):
-    """Get monthly burnout risk (always 0 - burnout is short-term)."""
+    """Get monthly burnout risk."""
+    _require_ultra(current_user, "burnout_risk")
+    if settings.ANALYTICS_V2_ENABLED:
+        result = await analytics_v2_service.burnout_risk(current_user, "monthly")
+        return {
+            **result,
+            "average_risk": result.get("risk"),
+            "period": "monthly",
+            "days": 30,
+        }
     try:
         from backend.services.burnout_risk_conservative_service import burnout_risk_conservative_service
         return await burnout_risk_conservative_service.get_monthly_risk(current_user.id)
@@ -624,12 +730,21 @@ async def get_ai_intelligence(
     Get real-time cognitive analytic score.
     Supports daily, weekly, and monthly contexts.
     """
+    _require_ultra(current_user, "ai_intelligence")
+    if settings.ANALYTICS_V2_ENABLED:
+        return await analytics_v2_service.ai_intelligence(current_user, time_range)
     try:
         from backend.services.enhanced_ai_intelligence_service import enhanced_ai_intelligence_service
-        return await enhanced_ai_intelligence_service.get_score(current_user.id, time_range)
+        result = await enhanced_ai_intelligence_service.get_score(current_user.id, time_range)
+        if isinstance(result, dict):
+            result.setdefault("score_version", analytics_v2_service.SCORE_VERSION)
+            result.setdefault("time_range", time_range)
+            result.setdefault("source", "derived")
+            result.setdefault("confidence", 0.6)
+            result.setdefault("generated_at", datetime.utcnow().isoformat())
+        return result
     except Exception as e:
         import logging
-        from datetime import datetime
         logger = logging.getLogger(__name__)
         logger.error(f"Error calculating AI intelligence for user {current_user.id}: {e}", exc_info=True)
         # Return fallback data to prevent frontend crash
@@ -653,6 +768,7 @@ async def get_strategic_insight(
     """
     Get the single most impactful behavioral insight for the user.
     """
+    _require_ultra(current_user, "ai_insights")
     try:
         from backend.services.strategic_insight_service import strategic_insight_service
         return await strategic_insight_service.get_active_insight(current_user.id)
@@ -671,6 +787,7 @@ async def apply_strategic_insight(
     Apply the strategic insight to the user's workflow.
     Automatically implements the recommendation.
     """
+    _require_ultra(current_user, "ai_insights")
     try:
         from backend.services.strategic_insight_service import strategic_insight_service
         insight_id_raw = insight_data.get("insight_id")
@@ -699,7 +816,8 @@ async def apply_strategic_insight(
 @router.get("/goals/progress", response_model=Dict[str, Any])
 async def get_goal_progress_report(
     current_user = Depends(get_current_user),
-    goal_id: Optional[int] = Query(None, description="Specific goal ID, or all goals if not provided")
+    goal_id: Optional[int] = Query(None, description="Specific goal ID, or all goals if not provided"),
+    time_range: str = Query("weekly", pattern="^(daily|weekly|monthly)$"),
 ):
     """
     Get comprehensive goal progress report.
@@ -711,6 +829,9 @@ async def get_goal_progress_report(
     - Predicted completion dates
     - Habit contribution scores
     """
+    _require_ultra(current_user, "goal_progress_detailed")
+    if settings.ANALYTICS_V2_ENABLED:
+        return await analytics_v2_service.goal_progress(current_user, time_range, goal_id=goal_id)
     try:
         from backend.services.enhanced_goal_analytics_service import enhanced_goal_analytics_service
         report = await enhanced_goal_analytics_service.get_goal_progress_report(
@@ -738,6 +859,7 @@ async def get_daily_achievement_score(
     - Focus time
     - Comparison to weekly average
     """
+    _require_ultra(current_user, "goal_progress_detailed")
     try:
         from backend.services.enhanced_goal_analytics_service import enhanced_goal_analytics_service
         score = await enhanced_goal_analytics_service.get_daily_achievement_score(
@@ -763,6 +885,7 @@ async def get_goal_timeline(
     - Milestone markers
     - Progress overlay data
     """
+    _require_ultra(current_user, "goal_progress_detailed")
     try:
         from backend.services.enhanced_goal_analytics_service import enhanced_goal_analytics_service
         timeline = await enhanced_goal_analytics_service.get_goal_timeline(
@@ -790,6 +913,7 @@ async def get_goal_health(
     - Contributing habits impact
     - Trend analysis
     """
+    _require_ultra(current_user, "goal_progress_detailed")
     try:
         from backend.services.enhanced_goal_analytics_service import enhanced_goal_analytics_service
         report = await enhanced_goal_analytics_service.get_goal_progress_report(
@@ -811,7 +935,7 @@ async def get_goal_health(
 
 @router.get("/big-five", response_model=Dict[str, Any])
 async def get_big_five_profile(current_user = Depends(get_current_user)):
-    """Get Big Five Behavioral Profile (14-day rolling average)"""
+    """Get Big Five Behavioral Profile (rolling behavioral average)"""
     try:
         from backend.services.big_five_service import big_five_service
         return await big_five_service.get_profile(current_user.id)

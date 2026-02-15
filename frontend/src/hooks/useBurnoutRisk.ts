@@ -1,6 +1,8 @@
 // frontend/src/hooks/useBurnoutRisk.ts
 import { useState, useEffect, useCallback } from 'react';
 import { realtimeClient } from '../services/realtime/socket-client';
+import { api } from '../services/api/client';
+import { useUserStore } from '../stores/useUserStore';
 
 interface BurnoutBreakdown {
     time_based: number;
@@ -36,59 +38,79 @@ interface UseBurnoutRiskReturn {
     refresh: () => Promise<void>;
 }
 
-export function useBurnoutRisk(timeRange: 'daily' | 'weekly' | 'monthly' = 'daily'): UseBurnoutRiskReturn {
+export function useBurnoutRisk(
+    timeRange: 'daily' | 'weekly' | 'monthly' = 'daily',
+    enabled: boolean = true
+): UseBurnoutRiskReturn {
+    const isAuthenticated = useUserStore((state) => state.isAuthenticated);
+    const isEnabled = enabled && isAuthenticated;
     const [risk, setRisk] = useState<BurnoutRisk | null>(null);
     const [weeklyAverage, setWeeklyAverage] = useState<BurnoutAverageData | null>(null);
     const [monthlyData, setMonthlyData] = useState<BurnoutAverageData | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const getAuthHeaders = useCallback(() => {
-        const token = localStorage.getItem('token');
-        return {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-        };
-    }, []);
-
     const refresh = useCallback(async () => {
+        if (!isEnabled) {
+            setRisk(null);
+            setWeeklyAverage(null);
+            setMonthlyData(null);
+            setError(null);
+            setIsLoading(false);
+            return;
+        }
+
         try {
             setIsLoading(true);
             setError(null);
 
             // Fetch today's risk
-            const todayResponse = await fetch('/api/v1/analytics/burnout/risk/today', {
-                headers: getAuthHeaders(),
-            });
-
-            if (!todayResponse.ok) {
-                throw new Error('Failed to fetch burnout risk');
+            const todayResponse = await api.get<BurnoutRisk>('/analytics/burnout/risk/today');
+            if (!todayResponse.success || !todayResponse.data) {
+                if (todayResponse.error?.code === 'HTTP_401' || todayResponse.error?.code === 'HTTP_403') {
+                    setRisk(null);
+                    setWeeklyAverage(null);
+                    setMonthlyData(null);
+                    setError(null);
+                    return;
+                }
+                throw new Error(todayResponse.error?.message || 'Failed to fetch burnout risk');
             }
-
-            const todayData = await todayResponse.json();
-            setRisk(todayData);
+            const todayPayload = todayResponse.data as any;
+            setRisk({
+                risk: Number(todayPayload.risk ?? 0),
+                date: todayPayload.period_end || todayPayload.date || new Date().toISOString(),
+                level: String(todayPayload.level || 'moderate'),
+                breakdown: {
+                    time_based: Number(todayPayload.breakdown?.time_based ?? todayPayload.breakdown?.recovery_deficit ?? 0),
+                    workload: Number(todayPayload.breakdown?.workload ?? todayPayload.breakdown?.workload_strain ?? 0),
+                    chat_sentiment: Number(todayPayload.breakdown?.chat_sentiment ?? todayPayload.breakdown?.mood_modulation ?? 0),
+                    deep_work_intensity: Number(todayPayload.breakdown?.deep_work_intensity ?? todayPayload.breakdown?.focus_volatility ?? 0),
+                    recovery_bonus: Number(todayPayload.breakdown?.recovery_bonus ?? 0),
+                },
+                ai_insights: Array.isArray(todayPayload.ai_insights)
+                    ? todayPayload.ai_insights
+                    : [`Current burnout risk is ${String(todayPayload.level || 'moderate')}.`],
+                recommendation: String(todayPayload.recommendation || 'Keep workload and recovery balanced this week.'),
+            });
 
             // Fetch weekly average if needed
             if (timeRange === 'weekly' || timeRange === 'monthly') {
-                const weeklyResponse = await fetch('/api/v1/analytics/burnout/risk/weekly', {
-                    headers: getAuthHeaders(),
-                });
-
-                if (weeklyResponse.ok) {
-                    const weeklyData = await weeklyResponse.json();
-                    setWeeklyAverage(weeklyData);
+                const weeklyResponse = await api.get<BurnoutAverageData>('/analytics/burnout/risk/weekly');
+                if (weeklyResponse.success && weeklyResponse.data) {
+                    setWeeklyAverage(weeklyResponse.data);
+                } else if (weeklyResponse.error?.code === 'HTTP_401' || weeklyResponse.error?.code === 'HTTP_403') {
+                    setWeeklyAverage(null);
                 }
             }
 
-            // Fetch monthly data (always 0)
+            // Fetch monthly data
             if (timeRange === 'monthly') {
-                const monthlyResponse = await fetch('/api/v1/analytics/burnout/risk/monthly', {
-                    headers: getAuthHeaders(),
-                });
-
-                if (monthlyResponse.ok) {
-                    const monthlyDataResponse = await monthlyResponse.json();
-                    setMonthlyData(monthlyDataResponse);
+                const monthlyResponse = await api.get<BurnoutAverageData>('/analytics/burnout/risk/monthly');
+                if (monthlyResponse.success && monthlyResponse.data) {
+                    setMonthlyData(monthlyResponse.data);
+                } else if (monthlyResponse.error?.code === 'HTTP_401' || monthlyResponse.error?.code === 'HTTP_403') {
+                    setMonthlyData(null);
                 }
             }
         } catch (err: any) {
@@ -97,21 +119,24 @@ export function useBurnoutRisk(timeRange: 'daily' | 'weekly' | 'monthly' = 'dail
         } finally {
             setIsLoading(false);
         }
-    }, [getAuthHeaders, timeRange]);
+    }, [timeRange, isEnabled]);
 
     // Initial load
     useEffect(() => {
+        if (!isEnabled) return;
         refresh();
-    }, [refresh]);
+    }, [refresh, isEnabled]);
 
     // Refresh every 3 minutes (more frequent for burnout monitoring)
     useEffect(() => {
+        if (!isEnabled) return;
         const interval = setInterval(refresh, 3 * 60 * 1000);
         return () => clearInterval(interval);
-    }, [refresh]);
+    }, [refresh, isEnabled]);
 
     // Refresh risk quickly when work patterns change
     useEffect(() => {
+        if (!isEnabled) return;
         let timeout: ReturnType<typeof setTimeout> | null = null;
         const queueRefresh = () => {
             if (timeout) clearTimeout(timeout);
@@ -134,7 +159,7 @@ export function useBurnoutRisk(timeRange: 'daily' | 'weekly' | 'monthly' = 'dail
             realtimeClient.off('planner:deepwork:completed', queueRefresh);
             if (timeout) clearTimeout(timeout);
         };
-    }, [refresh]);
+    }, [refresh, isEnabled]);
 
     return {
         risk,

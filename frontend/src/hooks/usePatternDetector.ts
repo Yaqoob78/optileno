@@ -1,5 +1,6 @@
 // frontend/src/hooks/usePatternDetector.ts
 import { useState, useEffect, useCallback } from 'react';
+import { api } from '../services/api/client';
 
 export interface Pattern {
     id: string;
@@ -44,28 +45,17 @@ export function usePatternDetector(): UsePatternDetectorReturn {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const getAuthHeaders = useCallback(() => {
-        const token = localStorage.getItem('token');
-        return {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-        };
-    }, []);
-
     const refresh = useCallback(async () => {
         try {
             setIsLoading(true);
             setError(null);
 
-            const response = await fetch('/api/v1/analytics/patterns/all', {
-                headers: getAuthHeaders(),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to fetch patterns');
+            const response = await api.get<PatternsResponse>('/analytics/patterns/all');
+            if (!response.success || !response.data) {
+                throw new Error(response.error?.message || 'Failed to fetch patterns');
             }
 
-            const data: PatternsResponse = await response.json();
+            const data = response.data;
             setPatterns(data.patterns || []);
             setDataQuality(data.data_quality);
         } catch (err: any) {
@@ -75,7 +65,7 @@ export function usePatternDetector(): UsePatternDetectorReturn {
         } finally {
             setIsLoading(false);
         }
-    }, [getAuthHeaders]);
+    }, []);
 
     // Initial load
     useEffect(() => {

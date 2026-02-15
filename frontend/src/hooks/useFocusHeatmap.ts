@@ -1,6 +1,7 @@
 // frontend/src/hooks/useFocusHeatmap.ts
 import { useState, useEffect, useCallback } from 'react';
 import { realtimeClient } from '../services/realtime/socket-client';
+import { api } from '../services/api/client';
 
 interface FocusBreakdown {
     task_points: number;
@@ -99,87 +100,66 @@ export function useFocusHeatmap(): UseFocusHeatmapReturn {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Get auth token
-    const getAuthHeaders = useCallback(() => {
-        const token = localStorage.getItem('token');
-        return {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-        };
-    }, []);
-
     // Fetch today's score
     const fetchToday = useCallback(async () => {
         try {
-            const response = await fetch('/api/v1/analytics/focus/today', {
-                headers: getAuthHeaders(),
-            });
-
-            if (!response.ok) throw new Error('Failed to fetch today\'s focus score');
-
-            const data = await response.json();
-            setTodayScore(data);
+            const response = await api.get<DailyScore>('/analytics/focus/today');
+            if (!response.success || !response.data) {
+                throw new Error(response.error?.message || "Failed to fetch today's focus score");
+            }
+            setTodayScore(response.data);
         } catch (err: any) {
             console.error('Error fetching today\'s focus:', err);
             setError(err.message);
         }
-    }, [getAuthHeaders]);
+    }, []);
 
     // Fetch weekly data
     const fetchWeekly = useCallback(async () => {
         try {
-            const response = await fetch('/api/v1/analytics/focus/weekly', {
-                headers: getAuthHeaders(),
-            });
-
-            if (!response.ok) throw new Error('Failed to fetch weekly focus data');
-
-            const data = await response.json();
-            setWeeklyData(data);
+            const response = await api.get<WeeklyData>('/analytics/focus/weekly');
+            if (!response.success || !response.data) {
+                throw new Error(response.error?.message || 'Failed to fetch weekly focus data');
+            }
+            setWeeklyData(response.data);
         } catch (err: any) {
             console.error('Error fetching weekly focus:', err);
             setError(err.message);
         }
-    }, [getAuthHeaders]);
+    }, []);
 
     // Fetch monthly heatmap
     const fetchHeatmap = useCallback(async (year?: number, month?: number) => {
         try {
-            let url = '/api/v1/analytics/focus/heatmap';
+            let url = '/analytics/focus/heatmap';
             if (year && month) {
                 url += `?year=${year}&month=${month}`;
             }
 
-            const response = await fetch(url, {
-                headers: getAuthHeaders(),
-            });
-
-            if (!response.ok) throw new Error('Failed to fetch focus heatmap');
-
-            const data = await response.json();
-            setHeatmapData(data);
+            const response = await api.get<HeatmapData>(url);
+            if (!response.success || !response.data) {
+                throw new Error(response.error?.message || 'Failed to fetch focus heatmap');
+            }
+            setHeatmapData(response.data);
         } catch (err: any) {
             console.error('Error fetching heatmap:', err);
             setError(err.message);
         }
-    }, [getAuthHeaders]);
+    }, []);
 
     // Fetch comprehensive stats
     const fetchStats = useCallback(async () => {
         try {
-            const response = await fetch('/api/v1/analytics/focus/stats', {
-                headers: getAuthHeaders(),
-            });
-
-            if (!response.ok) throw new Error('Failed to fetch focus stats');
-
-            const data = await response.json();
-            setStats(data);
+            const response = await api.get<FocusStats>('/analytics/focus/stats');
+            if (!response.success || !response.data) {
+                throw new Error(response.error?.message || 'Failed to fetch focus stats');
+            }
+            setStats(response.data);
         } catch (err: any) {
             console.error('Error fetching focus stats:', err);
             setError(err.message);
         }
-    }, [getAuthHeaders]);
+    }, []);
 
     // Refresh all data
     const refresh = useCallback(async () => {

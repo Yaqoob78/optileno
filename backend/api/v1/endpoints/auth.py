@@ -22,7 +22,7 @@ class UserCreate(BaseModel):
     username: str
     password: str
     full_name: Optional[str] = None
-    plan_type: str = "BASIC"
+    plan_type: str = "EXPLORER"
 
 
 class UserResponse(BaseModel):

@@ -315,6 +315,38 @@ export const usePlannerStore = create<PlannerState>()(
           get().addHabit(habit);
         });
 
+        // NEW: Habit Completed
+        plannerApi.onHabitCompleted((habit) => {
+          console.log('✨ Socket Event: Habit Completed', habit);
+          set((state) => ({
+            habits: state.habits.map((h) => (h.id === habit.id ? habit : h)),
+          }));
+        });
+
+        // NEW: Goal Events
+        plannerApi.onGoalCreated((goal) => {
+          console.log('✨ Socket Event: Goal Created', goal);
+          get().addGoal(goal);
+        });
+
+        plannerApi.onGoalUpdated((goal) => {
+          console.log('✨ Socket Event: Goal Updated', goal);
+          set((state) => ({
+            goals: state.goals.map((g) => (g.id === goal.id ? goal : g)),
+          }));
+        });
+
+        plannerApi.onGoalProgressChanged(({ goalId, progress }) => {
+          console.log('✨ Socket Event: Goal Progress Changed', goalId, progress);
+          set((state) => ({
+            goals: state.goals.map((g) =>
+              String(g.id) === String(goalId)
+                ? { ...g, current_progress: progress }
+                : g
+            ),
+          }));
+        });
+
         // Deep Work Started
         plannerApi.onDeepWorkStarted((session) => {
           console.log('✨ Socket Event: Deep Work Started', session);

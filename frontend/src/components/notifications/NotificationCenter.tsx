@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Bell, CheckCircle, AlertCircle, Info, Trash2 } from 'lucide-react';
 import { socket } from '../../services/realtime/socket-client';
+import { api } from '../../services/api/client';
 
 interface Notification {
   id: string;
@@ -30,31 +31,28 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
     if (!isOpen) return;
 
     // Listen for new notifications
-    socket.on('notification:received', (data: any) => {
+    const onNewNotification = (data: any) => {
       const newNotif: Notification = {
         id: Math.random().toString(),
         ...data.notification,
       };
       setNotifications((prev) => [newNotif, ...prev]);
-    });
+    };
+    socket.on('notification:new', onNewNotification);
 
     // Fetch existing notifications
     fetchNotifications();
 
     return () => {
-      socket.off('notification:received');
+      socket.off('notification:new', onNewNotification);
     };
   }, [isOpen]);
 
   const fetchNotifications = async () => {
     try {
-      const response = await fetch('/api/v1/notifications', {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-        },
-      });
-      const data = await response.json();
-      setNotifications(data.notifications || []);
+      const response = await api.get<Notification[]>('/users/me/notifications');
+      if (!response.success || !response.data) return;
+      setNotifications(response.data || []);
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
     }
@@ -62,12 +60,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
 
   const markAsRead = async (id: string) => {
     try {
-      await fetch(`/api/v1/notifications/${id}/read`, {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-        },
-      });
+      await api.patch(`/users/me/notifications/${id}/read`);
       setNotifications((prev) =>
         prev.map((n) => (n.id === id ? { ...n, read: true } : n))
       );
@@ -78,12 +71,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
 
   const deleteNotification = async (id: string) => {
     try {
-      await fetch(`/api/v1/notifications/${id}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-        },
-      });
+      await api.delete(`/users/me/notifications/${id}`);
       setNotifications((prev) => prev.filter((n) => n.id !== id));
     } catch (error) {
       console.error('Failed to delete notification:', error);

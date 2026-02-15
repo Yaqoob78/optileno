@@ -253,6 +253,41 @@ class PlannerService {
       }
     });
   }
+
+  // NEW: Goal Event Listeners
+  onGoalCreated(callback: (goal: Goal) => void) {
+    realtimeClient.on('planner:goal:created', (data: any) => {
+      if (data && data.goal) {
+        callback(data.goal);
+      }
+    });
+  }
+
+  onGoalUpdated(callback: (goal: Goal) => void) {
+    realtimeClient.on('planner:goal:updated', (data: any) => {
+      if (data && data.goal) {
+        callback(data.goal);
+      }
+    });
+  }
+
+  onGoalProgressChanged(callback: (data: { goalId: string, progress: number }) => void) {
+    realtimeClient.on('planner:goal:progress_changed', (data: any) => {
+      // Data: { goal_id, progress, ... }
+      if (data && data.goal_id !== undefined) {
+        callback({ goalId: String(data.goal_id), progress: data.progress });
+      }
+    });
+  }
+
+  // NEW: Habit Event Listeners
+  onHabitCompleted(callback: (habit: Habit) => void) {
+    realtimeClient.on('planner:habit:completed', (data: any) => {
+      if (data && data.habit) {
+        callback(data.habit);
+      }
+    });
+  }
 }
 
 

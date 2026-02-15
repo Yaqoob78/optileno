@@ -60,9 +60,9 @@ class StripeService:
         stripe_subscription_id = subscription_data.id
         status = subscription_data.status
         
-        # Map stripe status to app tier
-        tier = "pro" if status in ["active", "trialing"] else "free"
-        plan_type = "PRO" if tier == "pro" else "BASIC"
+        # Map stripe status to canonical app tiers
+        tier = "ultra" if status in ["active", "trialing"] else "explorer"
+        plan_type = "ULTRA" if tier == "ultra" else "EXPLORER"
         
         await db.execute(
             update(User)

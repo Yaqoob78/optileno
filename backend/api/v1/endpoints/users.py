@@ -392,11 +392,12 @@ async def get_subscription(
     tier = profile["subscription"]["tier"]
 
     plan_lookup = {
-        "free": {"id": "free", "name": "Explorer", "tier": "free", "price": {"monthly": 0, "yearly": 0}},
-        "pro": {"id": "pro", "name": "Ultra", "tier": "pro", "price": {"monthly": 9.99, "yearly": 99}},
-        "elite": {"id": "elite", "name": "Ultra", "tier": "elite", "price": {"monthly": 9.99, "yearly": 99}},
+        "explorer": {"id": "explorer", "name": "Explorer", "tier": "explorer", "price": {"monthly": 0, "yearly": 0}},
+        "ultra": {"id": "ultra", "name": "Ultra", "tier": "ultra", "price": {"monthly": 9.99, "yearly": 99}},
     }
-    current_plan = plan_lookup.get(tier, plan_lookup["free"])
+    current_plan = plan_lookup.get(tier, plan_lookup["explorer"])
+
+    support_level = "priority" if tier == "ultra" else "basic"
 
     return {
         "currentPlan": {
@@ -406,7 +407,7 @@ async def get_subscription(
                 "chatHistory": 1000,
                 "fileUploads": 0,
                 "aiModels": ["default"],
-                "supportLevel": "basic",
+                "supportLevel": support_level,
             },
         },
         "nextBillingDate": None,

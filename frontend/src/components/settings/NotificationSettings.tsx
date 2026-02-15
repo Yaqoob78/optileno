@@ -16,7 +16,7 @@ const NotificationSettings: React.FC = () => {
     return (
       <div className="space-y-4">
         <LockedFeature
-          title="Pro Notifications"
+          title="Ultra Notifications"
           description="Upgrade to Ultra for real-time alerts."
         />
         <div className="opacity-30 pointer-events-none">

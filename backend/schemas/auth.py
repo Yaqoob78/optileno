@@ -8,7 +8,7 @@ class UserBase(BaseModel):
 
 class UserRegister(UserBase):
     password: str = Field(..., min_length=8)
-    plan_type: str = "BASIC" # BASIC, PRO
+    plan_type: str = "EXPLORER"  # EXPLORER, ULTRA
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -18,7 +18,7 @@ class UserResponse(UserBase):
     id: int
     email: EmailStr
     full_name: Optional[str] = None
-    plan_type: str # BASIC, PRO
+    plan_type: str  # EXPLORER, ULTRA
     tier: str
     role: str
     is_active: bool

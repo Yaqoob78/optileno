@@ -1,9 +1,10 @@
 // types/user.types.ts
 
 // User profile types
-export type UserRole = 'user' | 'premium' | 'admin';
+export type UserRole = 'user' | 'admin';
+export type PlanTier = 'explorer' | 'ultra';
 
-export type SubscriptionTier = 'free' | 'pro' | 'enterprise' | 'elite';
+export type SubscriptionTier = PlanTier;
 
 export interface Subscription {
   tier: SubscriptionTier;
@@ -41,7 +42,14 @@ export interface UserProfile {
   avatar: string;
   role: UserRole;
   planType: 'EXPLORER' | 'ULTRA'; // Add planType
+  plan_tier?: PlanTier;
   subscription: Subscription;
+  entitlements?: Record<string, boolean | number | string>;
+  limits?: {
+    chat_daily_limit?: number;
+    big_five_interval_days?: number;
+    [key: string]: any;
+  };
   stats: UserStats;
   metadata?: {
     emailVerified: boolean;
@@ -290,8 +298,9 @@ export const defaultProfile: UserProfile = {
   avatar: '',
   role: 'user',
   planType: 'EXPLORER',
+  plan_tier: 'explorer',
   subscription: {
-    tier: 'free',
+    tier: 'explorer',
     expiresAt: null,
     features: ['basic-chat', 'basic-analytics'],
   },

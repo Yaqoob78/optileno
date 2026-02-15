@@ -8,6 +8,7 @@ import {
     Brain
 } from 'lucide-react';
 import '../../styles/components/analytics/PredictiveTrajectory.css';
+import { api } from '../../services/api/client';
 
 interface TrajectoryData {
     current_score: number;
@@ -37,20 +38,12 @@ export default function PredictiveTrajectory() {
             setIsLoading(true);
             setError(null);
 
-            const token = localStorage.getItem('token');
-            const response = await fetch('/api/v1/analytics/predictive-trajectory', {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to fetch trajectory');
+            const response = await api.get<TrajectoryData>('/analytics/predictive-trajectory');
+            if (!response.success || !response.data) {
+                throw new Error(response.error?.message || 'Failed to fetch trajectory');
             }
 
-            const result: TrajectoryData = await response.json();
-            setData(result);
+            setData(response.data);
         } catch (err: any) {
             console.error('Error fetching trajectory:', err);
             setError(err.message);

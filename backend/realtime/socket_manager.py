@@ -178,6 +178,13 @@ connected_users: Dict[str, Set[str]] = {}  # user_id -> set of session_ids
 user_sessions: Dict[str, str] = {}  # session_id -> user_id
 session_metadata: Dict[str, Dict[str, Any]] = {}  # session_id -> metadata
 
+# Canonical event names plus one-release legacy aliases.
+EVENT_ALIASES: Dict[str, List[str]] = {
+    "analytics:update": ["analytics:updated"],
+    "analytics:focus:updated": ["focus_score_updated"],
+    "notification:new": ["notification:received"],
+}
+
 
 def _get_cookie_token(environ: dict) -> Optional[str]:
     cookie_header = environ.get("HTTP_COOKIE") or ""
@@ -373,6 +380,8 @@ async def _safe_emit(event: str, data: Dict[str, Any], room: str, use_queue: boo
             message_queue.enqueue(event, data, room)
         else:
             await sio.emit(event, data, room=room)
+            for alias in EVENT_ALIASES.get(event, []):
+                await sio.emit(alias, data, room=room)
             ws_metrics.record_message_sent((time.time() - start_time) * 1000)
     except Exception as e:
         ws_metrics.record_failed_broadcast()
@@ -813,7 +822,7 @@ async def broadcast_notification_received(user_id: int, notification: Dict[str, 
     """Broadcast when notification is sent"""
     room = f'user_{user_id}'
     await _safe_emit(
-        'notification:received',
+        'notification:new',
         {
             'event': 'notification_received',
             'notification': notification,

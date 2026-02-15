@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Send, MoreVertical, Trash2 } from 'lucide-react';
+import { Send, MoreVertical } from 'lucide-react';
 import { socket } from '../../services/realtime/socket-client';
+import { api } from '../../services/api/client';
 
 interface Comment {
   id: string;
@@ -42,12 +43,11 @@ export const CommentThread: React.FC<CommentThreadProps> = ({
   const fetchComments = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/v1/tasks/${taskId}/comments`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-        },
-      });
-      const data = await response.json();
+      const response = await api.get<any>(`/tasks/${taskId}/comments`);
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to fetch comments');
+      }
+      const data = response.data;
       setComments(data.comments || []);
     } catch (error) {
       console.error('Failed to fetch comments:', error);
@@ -60,24 +60,19 @@ export const CommentThread: React.FC<CommentThreadProps> = ({
     if (!newComment.trim()) return;
 
     try {
-      const response = await fetch(`/api/v1/tasks/${taskId}/comments`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-        },
-        body: JSON.stringify({
-          content: newComment,
-          parent_comment_id: replyingTo,
-        }),
+      const response = await api.post<any>(`/tasks/${taskId}/comments`, {
+        content: newComment,
+        parent_comment_id: replyingTo,
       });
 
-      if (response.ok) {
-        const comment = await response.json();
+      if (response.success && response.data) {
+        const comment = response.data;
         setComments((prev) => [...prev, comment]);
         setNewComment('');
         setReplyingTo(null);
         onCommentAdded?.(comment);
+      } else {
+        throw new Error(response.error?.message || 'Failed to add comment');
       }
     } catch (error) {
       console.error('Failed to add comment:', error);
@@ -86,12 +81,10 @@ export const CommentThread: React.FC<CommentThreadProps> = ({
 
   const handleDeleteComment = async (commentId: string) => {
     try {
-      await fetch(`/api/v1/tasks/${taskId}/comments/${commentId}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-        },
-      });
+      const response = await api.delete(`/tasks/${taskId}/comments/${commentId}`);
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to delete comment');
+      }
       setComments((prev) => prev.filter((c) => c.id !== commentId));
     } catch (error) {
       console.error('Failed to delete comment:', error);

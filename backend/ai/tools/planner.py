@@ -30,7 +30,7 @@ async def _trigger_focus_recalculation(user_id: str):
     """Trigger focus score recalculation and broadcast update."""
     try:
         from backend.services.focus_score_service import focus_score_service
-        score_data = await focus_score_service.calculate_daily_score(int(user_id), date.today())
+        score_data = await focus_score_service.calculate_focus_score(int(user_id), date.today())
         await broadcast_focus_score_updated(int(user_id), score_data)
         logger.debug(f"Focus score recalculated for user {user_id}: {score_data['score']}%")
     except Exception as e:

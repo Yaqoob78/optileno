@@ -54,7 +54,7 @@ SUBSCRIPTION_PLANS = {
     },
     "ultra": {
         "name": "Ultra",
-        "tier": "elite",
+        "tier": "ultra",
         "plan_type": "ULTRA",
         "trial_days": settings.ULTRA_TRIAL_DAYS,  # 0 days (no trial)
         "monthly_price": settings.ULTRA_MONTHLY_PRICE,  # $10.00
@@ -368,7 +368,7 @@ class RazorpayService:
                 "plan": "ultra",
                 "plan_details": SUBSCRIPTION_PLANS["ultra"],
                 "status": "owner",
-                "tier": "elite",
+                "tier": "ultra",
                 "is_owner": True,
                 "has_full_access": True,
                 "message": "Owner account with full access",
@@ -377,9 +377,9 @@ class RazorpayService:
         now = datetime.now(timezone.utc)
         
         return {
-            "plan": user.plan_type.lower() if user.plan_type else "free",
-            "plan_details": self.get_plan(user.plan_type) if user.plan_type else None,
-            "status": user.subscription_status or "free",
+            "plan": user.plan_type.lower() if user.plan_type else "explorer",
+            "plan_details": self.get_plan((user.plan_type or "").lower()) if user.plan_type else SUBSCRIPTION_PLANS["explorer"],
+            "status": user.subscription_status or "explorer",
             "tier": user.tier,
             "is_owner": False,
             "has_full_access": user.is_superuser,

@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 from backend.core.security import get_current_user
 from backend.services.planner_service import planner_service
+from backend.services.entitlements_service import require_ultra_feature
 from backend.db.models import User
 
 
@@ -114,12 +115,7 @@ async def toggle_goal_tracking(
     Toggle AI tracking for a goal (Max 3 active).
     Requires 'ULTRA' plan or Owner.
     """
-    # Check plan permissions
-    if current_user.plan_type != "ULTRA" and not current_user.is_superuser:
-         raise HTTPException(
-             status_code=403, 
-             detail="Goal Intelligence is an ULTRA feature."
-         )
+    require_ultra_feature(current_user, "goal_progress_detailed")
 
     result = await planner_service.toggle_goal_tracking(str(current_user.id), goal_id)
     if "error" in result:
@@ -136,11 +132,7 @@ async def breakdown_goal(
     Generate AI breakdown (Tasks, Habits, Deep Work).
     Requires 'ULTRA' plan or Owner.
     """
-    if current_user.plan_type != "ULTRA" and not current_user.is_superuser:
-         raise HTTPException(
-             status_code=403, 
-             detail="Goal Intelligence is an ULTRA feature."
-         )
+    require_ultra_feature(current_user, "goal_progress_detailed")
 
     result = await planner_service.breakdown_goal(str(current_user.id), goal_id)
     if "error" in result:

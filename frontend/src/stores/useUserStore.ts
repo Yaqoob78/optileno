@@ -2,6 +2,25 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { UserState, defaultProfile, defaultPreferences } from "../types/user.types";
 
+const normalizePlanTier = (value?: string | null): 'explorer' | 'ultra' => {
+  const normalized = (value || '').toLowerCase().trim();
+  if (['ultra', 'pro', 'premium', 'enterprise', 'elite'].includes(normalized)) return 'ultra';
+  return 'explorer';
+};
+
+const normalizePlanType = (
+  planType?: string | null,
+  planTier?: string | null,
+  subscriptionTier?: string | null
+): 'EXPLORER' | 'ULTRA' => {
+  const normalizedType = (planType || '').toUpperCase().trim();
+  if (normalizedType === 'ULTRA' || normalizedType === 'PRO' || normalizedType === 'ENTERPRISE' || normalizedType === 'PREMIUM') {
+    return 'ULTRA';
+  }
+  const tier = normalizePlanTier(planTier || subscriptionTier || '');
+  return tier === 'ultra' ? 'ULTRA' : 'EXPLORER';
+};
+
 
 export const useUserStore = create<UserState>()(
   persist(
@@ -17,8 +36,7 @@ export const useUserStore = create<UserState>()(
         return (
           profile.planType === 'ULTRA' ||
           profile.role === 'admin' ||
-          profile.role === 'premium' ||
-          ['elite', 'pro', 'enterprise'].includes(profile.subscription?.tier)
+          normalizePlanTier(profile.plan_tier || profile.subscription?.tier) === 'ultra'
         );
       },
 
@@ -27,7 +45,7 @@ export const useUserStore = create<UserState>()(
         return (
           profile.planType === 'ULTRA' ||
           profile.role === 'admin' ||
-          ['elite', 'enterprise'].includes(profile.subscription?.tier)
+          normalizePlanTier(profile.plan_tier || profile.subscription?.tier) === 'ultra'
         );
       },
 
@@ -86,12 +104,22 @@ export const useUserStore = create<UserState>()(
 
       // Authentication actions
       login: (profile, preferences) => {
+        const normalizedPlanType = normalizePlanType(
+          profile?.planType,
+          (profile as any)?.plan_tier,
+          profile?.subscription?.tier
+        );
+        const normalizedPlanTier = normalizePlanTier((profile as any)?.plan_tier || profile?.subscription?.tier);
         const finalProfile = {
           ...defaultProfile,
           ...profile,
-          planType: profile?.planType || defaultProfile.planType,
-          role: profile?.role || defaultProfile.role,
-          subscription: profile?.subscription || defaultProfile.subscription,
+          planType: normalizedPlanType,
+          plan_tier: normalizedPlanTier,
+          role: (profile?.role === 'admin' ? 'admin' : 'user') as 'admin' | 'user',
+          subscription: {
+            ...(profile?.subscription || defaultProfile.subscription),
+            tier: normalizedPlanTier,
+          },
         };
         return set({
           profile: finalProfile,

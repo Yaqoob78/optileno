@@ -8,8 +8,7 @@ export default function BillingSettings() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Owner email always gets Ultra
-    const isUltra = profile.planType === 'ULTRA' || profile.email === 'khan011504@gmail.com' || profile.role === 'admin' || profile.subscription?.tier === 'elite';
+    const isUltra = profile.planType === 'ULTRA' || profile.email === 'khan011504@gmail.com' || profile.role === 'admin';
 
     const handleUpgrade = async () => {
         setLoading(true);
@@ -63,7 +62,7 @@ export default function BillingSettings() {
                         </p>
                     </div>
                     <div className={`billing-status ${isUltra ? 'billing-status-premium' : ''}`}>
-                        {isUltra ? 'PREMIUM' : 'FREE'}
+                        {isUltra ? 'ULTRA' : 'EXPLORER'}
                     </div>
                 </div>
 

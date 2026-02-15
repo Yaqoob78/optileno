@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, type ReactNode, createElement } from 'react';
 import { useAnalyticsStore } from '../stores/analytics.store';
 
 interface OptimizationOptions {
@@ -176,11 +176,11 @@ export function useAnalyticsOptimization(options: OptimizationOptions = {}) {
 
   // Lazy loading component
   const LazyComponent = useCallback(({ children, fallback = null }: {
-    children: React.ReactNode;
-    fallback?: React.ReactNode;
+    children: ReactNode;
+    fallback?: ReactNode;
   }) => {
     if (!enableLazyLoading) {
-      return <>{children}</>;
+      return children as any;
     }
 
     const [isVisible, setIsVisible] = useState(false);
@@ -204,11 +204,7 @@ export function useAnalyticsOptimization(options: OptimizationOptions = {}) {
       return () => observer.disconnect();
     }, []);
 
-    return (
-      <div ref={elementRef}>
-        {isVisible ? children : fallback}
-      </div>
-    );
+    return createElement('div', { ref: elementRef }, isVisible ? children : fallback);
   }, [enableLazyLoading]);
 
   // Performance monitoring

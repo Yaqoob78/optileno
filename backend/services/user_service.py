@@ -10,6 +10,7 @@ from sqlalchemy import select, update
 from backend.app.config import settings
 from backend.db.models import User
 from backend.db.database import get_db
+from backend.services.entitlements_service import PLAN_EXPLORER, PLAN_ULTRA, canonical_plan_type
 
 logger = logging.getLogger(__name__)
 
@@ -53,8 +54,8 @@ class UserService:
                 # Privilege Escalation for Owner
                 is_superuser=True if is_owner else False,
                 role="admin" if is_owner else "user",
-                tier="elite" if is_owner else "free",
-                plan_type="ULTRA" if is_owner else "BASIC"
+                tier=PLAN_ULTRA if is_owner else PLAN_EXPLORER,
+                plan_type=canonical_plan_type(PLAN_ULTRA if is_owner else PLAN_EXPLORER),
             )
 
             db.add(new_user)

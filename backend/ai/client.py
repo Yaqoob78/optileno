@@ -10,6 +10,7 @@ from groq import AsyncGroq
 
 from backend.app.config import settings
 from backend.services.user_service import user_service
+from backend.services.entitlements_service import normalize_plan_tier
 from backend.ai.response_formatter import response_formatter
 from backend.analytics.insights.insight_engine import generate_insights
 
@@ -24,7 +25,7 @@ class DualAIClient:
     """
     Intelligent AI Client that manages:
     1. Dual Provider Switching (NVIDIA -> Groq)
-    2. Token Limit Enforcement based on Plan (Basic/Pro)
+    2. Token Limit Enforcement based on Plan (Explorer/Ultra)
     3. Daily Quota Reset Logic
     """
 
@@ -70,13 +71,15 @@ class DualAIClient:
                 "limit_secondary": 999999
             }
 
-        # Determine Limits
-        if user.plan_type == "PRO":
-            limit_primary = settings.LIMIT_PRO_NVIDIA
-            limit_secondary = settings.LIMIT_PRO_GROQ
-        else:
-            limit_primary = settings.LIMIT_BASIC_NVIDIA
-            limit_secondary = settings.LIMIT_BASIC_GROQ
+        # Determine limits by canonical plan tier
+        plan_tier = normalize_plan_tier(
+            plan_type=getattr(user, "plan_type", None),
+            tier=getattr(user, "tier", None),
+            role=getattr(user, "role", None),
+        )
+        limits = settings.get_plan_limits(plan_tier)
+        limit_primary = limits["nvidia"]
+        limit_secondary = limits["groq"]
 
         # Check Reset (Simple daily check)
         now = datetime.now(timezone.utc)
@@ -154,7 +157,7 @@ class DualAIClient:
         msg = (
             "🚫 **Daily Limit Reached**\n\n"
             "You have used your daily AI allowance for both Primary (NVIDIA) and Backup (Groq) models.\n"
-            "Upgrade to Pro for higher limits.\n\n"
+            "Upgrade to Ultra for higher limits.\n\n"
             "Your quota resets at midnight UTC."
         )
         return {"text": msg, "provider": "system", "model": "limit_reached"}

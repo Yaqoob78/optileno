@@ -7,7 +7,7 @@ This service manages the Big Five personality assessment, including:
 2. AI-powered question generation (20-44 questions based on BFI-44)
 3. Score calculation for each trait dimension
 4. Behavioral adjustments based on user activity
-5. 14-day cooldown between tests
+5. Plan-aware cooldown between tests (Explorer: 14 days, Ultra: 7 days)
 """
 
 from datetime import datetime, timedelta, timezone
@@ -19,8 +19,9 @@ from sqlalchemy import select, func, and_, desc, text
 from sqlalchemy.orm import Session
 
 from backend.db.database import get_db
-from backend.db.models import BigFiveTest, Task, AnalyticsEvent, FocusScore, Goal
+from backend.db.models import BigFiveTest, Task, AnalyticsEvent, FocusScore, Goal, User
 from backend.ai.tools.personality_tools import personality_tools
+from backend.services.entitlements_service import get_limits, normalize_plan_tier
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +115,23 @@ class BigFiveTestService:
             return dt.replace(tzinfo=timezone.utc)
         return dt
 
+    async def _get_user_plan_tier(self, db: Session, user_id: int) -> str:
+        result = await db.execute(select(User).where(User.id == user_id).limit(1))
+        user = result.scalars().first()
+        if not user:
+            return "explorer"
+        return normalize_plan_tier(
+            plan_type=getattr(user, "plan_type", None),
+            tier=getattr(user, "tier", None),
+            role=getattr(user, "role", None),
+        )
+
+    async def _get_test_interval_days(self, db: Session, user_id: int) -> int:
+        plan_tier = await self._get_user_plan_tier(db, user_id)
+        limits = get_limits(plan_tier)
+        interval_days = int(limits.get("big_five_interval_days", 14))
+        return max(1, interval_days)
+
     async def get_test_status(self, user_id: int) -> Dict[str, Any]:
         """
         Get the current test status for a user.
@@ -127,6 +145,7 @@ class BigFiveTestService:
         """
         try:
             async for db in get_db():
+                interval_days = await self._get_test_interval_days(db, user_id)
                 # Get the most recent test
                 result = await db.execute(
                     select(BigFiveTest)
@@ -143,7 +162,8 @@ class BigFiveTestService:
                         "current_scores": None,
                         "days_until_next_test": None,
                         "next_test_available": True,
-                        "can_take_test": True
+                        "can_take_test": True,
+                        "test_interval_days": interval_days,
                     }
                 
                 # Check if test is in progress
@@ -157,6 +177,7 @@ class BigFiveTestService:
                         "days_until_next_test": None,
                         "next_test_available": False,
                         "can_take_test": False,
+                        "test_interval_days": interval_days,
                         "test_id": test.id
                     }
                 
@@ -165,14 +186,14 @@ class BigFiveTestService:
                     await self._refresh_scores_from_responses_if_needed(db, test)
                     # Calculate adjusted scores
                     adjusted_scores = await self._get_adjusted_scores(test)
+                    interval_days = await self._get_test_interval_days(db, user_id)
                     
                     # Check if next test is available
                     now = datetime.now(timezone.utc)
                     completed_at = await self._ensure_timezones(test.test_completed_at)
                     
                     if completed_at:
-                        # DEV OVERRIDE: Ignore DB stored future date to allow testing
-                        next_available = completed_at + timedelta(minutes=1)
+                        next_available = completed_at + timedelta(days=interval_days)
                         is_available = now >= next_available
                     else:
                         is_available = True
@@ -188,6 +209,7 @@ class BigFiveTestService:
                             "days_until_next_test": days_remaining,
                             "next_test_available": False,
                             "can_take_test": False,
+                            "test_interval_days": interval_days,
                             "test_completed_at": test.test_completed_at.isoformat() if test.test_completed_at else None,
                             "test_id": test.id
                         }
@@ -199,6 +221,7 @@ class BigFiveTestService:
                             "days_until_next_test": 0,
                             "next_test_available": True,
                             "can_take_test": True,
+                            "test_interval_days": interval_days,
                             "test_completed_at": test.test_completed_at.isoformat() if test.test_completed_at else None,
                             "test_id": test.id
                         }
@@ -209,7 +232,8 @@ class BigFiveTestService:
                     "current_scores": None,
                     "days_until_next_test": None,
                     "next_test_available": True,
-                    "can_take_test": True
+                    "can_take_test": True,
+                    "test_interval_days": interval_days,
                 }
         except Exception as e:
             logger.error(f"Error getting test status for user {user_id}: {e}")
@@ -288,15 +312,15 @@ class BigFiveTestService:
                     .limit(1)
                 )
                 last_completed = result.scalars().first()
+                interval_days = await self._get_test_interval_days(db, user_id)
                 
-                # Respect 14-day cooldown between completed tests
+                # Respect plan-aware cooldown between completed tests
                 if last_completed:
                     now = datetime.now(timezone.utc)
                     completed_at = await self._ensure_timezones(last_completed.test_completed_at)
                     
                     if completed_at:
-                        # DEV OVERRIDE: Ignore DB stored future date to allow testing
-                        next_available = completed_at + timedelta(minutes=1)
+                        next_available = completed_at + timedelta(days=interval_days)
                         is_future = next_available > now
                     else:
                         is_future = False
@@ -308,6 +332,7 @@ class BigFiveTestService:
                         return {
                             "error": f"Next personality test will be available in {days_remaining} day(s).",
                             "days_remaining": days_remaining,
+                            "test_interval_days": interval_days,
                             "can_retry": False,
                         }
                 
@@ -463,7 +488,8 @@ class BigFiveTestService:
                 test.test_completed = True
                 test.test_in_progress = False
                 test.test_completed_at = datetime.now(timezone.utc)
-                test.next_test_available_at = datetime.now(timezone.utc) + timedelta(minutes=1)
+                interval_days = await self._get_test_interval_days(db, user_id)
+                test.next_test_available_at = datetime.now(timezone.utc) + timedelta(days=interval_days)
                 
                 await db.commit()
                 
@@ -471,7 +497,7 @@ class BigFiveTestService:
                     "test_completed": True,
                     "scores": scores,
                     "live_scores": scores,
-                    "next_test_available_in_days": 14,
+                    "next_test_available_in_days": interval_days,
                     "message": "Test completed! Your Big Five personality profile has been calculated."
                 }
             

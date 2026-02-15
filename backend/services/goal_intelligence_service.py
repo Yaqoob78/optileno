@@ -131,12 +131,72 @@ class GoalIntelligenceService:
                 # 4. Map to Label
                 label = self._get_probability_label(final_consistency)
                 
-                # 5. Update Goal
+                # 5. Update Goal Probability & Progress
+                old_progress = goal.current_progress or 0
+                
+                # "Real Measure of Progress": Weighted average of Tasks (Actions), Habits (Consistency), Deep Work (Focus)
+                # Weights: Tasks (50%), Habits (30%), Deep Work (20%)
+                # Only active if items exist in that category.
+                
+                weights = {'task': 0.5, 'habit': 0.3, 'dw': 0.2}
+                numerator = 0
+                denominator = 0
+                
+                if task_stats['total'] > 0:
+                    numerator += task_stats['consistency'] * weights['task']
+                    denominator += weights['task']
+                
+                if habit_stats['total'] > 0:
+                    numerator += habit_stats['consistency'] * weights['habit']
+                    denominator += weights['habit']
+                    
+                if dw_stats['total'] > 0:
+                    numerator += dw_stats['consistency'] * weights['dw']
+                    denominator += weights['dw']
+                    
+                if denominator > 0:
+                    new_progress = int(numerator / denominator)
+                else:
+                    # Fallback if no linked items yet
+                    new_progress = old_progress
+                    
+                goal.current_progress = new_progress
+                
                 goal.probability_status = label
                 goal.last_analyzed_at = datetime.utcnow()
                 await db.commit()
                 
-                logger.info(f"Updated Goal {goal_id} probability: {label} ({final_consistency:.1f}%)")
+                logger.info(f"Updated Goal {goal_id}: Prob={label}, Progress={goal.current_progress}%")
+
+                # 6. Broadcast Real-time Updates
+                try:
+                    from backend.realtime.socket_manager import broadcast_goal_updated, broadcast_goal_progress_changed
+                    
+                    # Broadcast generic update
+                    # Re-construct goal dict manually or use a helper
+                    goal_dict = {
+                        "id": str(goal.id),
+                        "title": goal.title,
+                        "description": goal.description,
+                        "category": goal.category,
+                        "target_date": goal.target_date.isoformat() if goal.target_date else None,
+                        "current_progress": goal.current_progress,
+                        "milestones": goal.milestones,
+                        "probability_status": goal.probability_status,
+                        "created_at": goal.created_at.isoformat() if goal.created_at else None,
+                    }
+                    await broadcast_goal_updated(int(user_id), goal_dict)
+                    
+                    # Broadcast specific progress change if it changed
+                    if goal.current_progress != old_progress:
+                        await broadcast_goal_progress_changed(int(user_id), {
+                            "goal_id": str(goal.id),
+                            "progress": goal.current_progress,
+                            "previous_progress": old_progress
+                        })
+                        
+                except Exception as e:
+                    logger.error(f"Failed to broadcast goal updates: {e}")
 
         except Exception as e:
             logger.error(f"Failed to update probability for goal {goal_id}: {e}")

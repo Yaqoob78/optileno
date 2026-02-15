@@ -28,17 +28,17 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     full_name = Column(String)
     hashed_password = Column(String, nullable=False)
-    role = Column(String, default="user") # user, premium, admin
+    role = Column(String, default="user")  # user, admin
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)
     is_superuser = Column(Boolean, default=False)
-    tier = Column(String, default="free")  # free, pro, elite
-    plan_type = Column(String, default="BASIC") # BASIC, PRO, ENTERPRISE
+    tier = Column(String, default="explorer")  # explorer, ultra
+    plan_type = Column(String, default="EXPLORER")  # EXPLORER, ULTRA
     
     # Razorpay payment fields
     razorpay_customer_id = Column(String, index=True, nullable=True)
     razorpay_subscription_id = Column(String, index=True, nullable=True)
-    subscription_status = Column(String, default="free")  # free, trialing, active, cancelled, payment_failed
+    subscription_status = Column(String, default="explorer")  # explorer, trialing, active, canceled, payment_failed
     trial_ends_at = Column(DateTime(timezone=True), nullable=True)
     subscription_starts_at = Column(DateTime(timezone=True), nullable=True)
     subscription_ends_at = Column(DateTime(timezone=True), nullable=True)

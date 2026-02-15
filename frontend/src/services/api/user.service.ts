@@ -25,11 +25,19 @@ export interface UserProfileResponse {
   email: string;
   name: string;
   avatar: string;
-  role: 'user' | 'premium' | 'admin';
+  role: 'user' | 'admin' | string;
+  planType?: 'EXPLORER' | 'ULTRA' | string;
+  plan_tier?: 'explorer' | 'ultra' | string;
   subscription: {
-    tier: 'free' | 'pro' | 'enterprise';
+    tier: 'explorer' | 'ultra' | string;
     expiresAt: string | null;
     features: string[];
+  };
+  entitlements?: Record<string, boolean | number | string>;
+  limits?: {
+    chat_daily_limit?: number;
+    big_five_interval_days?: number;
+    [key: string]: any;
   };
   preferences: {
     theme: 'light' | 'dark' | 'auto';
@@ -116,7 +124,7 @@ export interface UpdateEmailRequest {
 export interface SubscriptionPlan {
   id: string;
   name: string;
-  tier: 'free' | 'pro' | 'enterprise';
+  tier: 'explorer' | 'ultra';
   price: {
     monthly: number;
     yearly: number;

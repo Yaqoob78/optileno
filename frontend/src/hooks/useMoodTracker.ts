@@ -1,6 +1,7 @@
 // frontend/src/hooks/useMoodTracker.ts
 import { useState, useEffect, useCallback } from 'react';
 import { realtimeClient } from '../services/realtime/socket-client';
+import { api } from '../services/api/client';
 
 interface MoodBreakdown {
     chat_sentiment: number;
@@ -31,45 +32,30 @@ export function useMoodTracker(): UseMoodTrackerReturn {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Get auth token
-    const getAuthHeaders = useCallback(() => {
-        const token = localStorage.getItem('token');
-        return {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-        };
-    }, []);
-
     // Fetch current mood
     const refresh = useCallback(async () => {
         try {
             setIsLoading(true);
-            const response = await fetch('/api/v1/analytics/mood/current', {
-                headers: getAuthHeaders(),
-            });
-
-            if (!response.ok) throw new Error('Failed to fetch mood data');
-
-            const data = await response.json();
-            setMoodData(data);
+            const response = await api.get<MoodData>('/analytics/mood/current');
+            if (!response.success || !response.data) {
+                throw new Error(response.error?.message || 'Failed to fetch mood data');
+            }
+            setMoodData(response.data);
         } catch (err: any) {
             console.error('Error fetching mood:', err);
             setError(err.message);
         } finally {
             setIsLoading(false);
         }
-    }, [getAuthHeaders]);
+    }, []);
 
     // Check-in (manual mood log)
     const checkIn = useCallback(async (mood: string, context?: string) => {
         try {
-            const response = await fetch('/api/v1/analytics/mood/check-in', {
-                method: 'POST',
-                headers: getAuthHeaders(),
-                body: JSON.stringify({ mood, context }),
-            });
-
-            if (!response.ok) throw new Error('Failed to log mood');
+            const response = await api.post('/analytics/mood/check-in', { mood, context });
+            if (!response.success) {
+                throw new Error(response.error?.message || 'Failed to log mood');
+            }
 
             // Refresh after check-in
             await refresh();
@@ -77,7 +63,7 @@ export function useMoodTracker(): UseMoodTrackerReturn {
             console.error('Error logging mood:', err);
             setError(err.message);
         }
-    }, [getAuthHeaders, refresh]);
+    }, [refresh]);
 
     // Initial load
     useEffect(() => {

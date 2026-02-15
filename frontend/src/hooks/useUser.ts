@@ -11,29 +11,49 @@ interface LoginCredentials {
 }
 
 interface LoginResponse {
-  access_token: string;
-  refresh_token: string;
+  access_token?: string;
+  refresh_token?: string;
   user: {
     id: string;
     email: string;
     name: string;
     avatar?: string;
-    role: 'user' | 'premium' | 'admin';
-    tier: 'free' | 'pro' | 'enterprise' | 'elite';
+    role?: 'user' | 'admin' | string;
+    tier?: string;
+    plan_tier?: 'explorer' | 'ultra' | string;
     plan_type?: string;
+    planType?: string;
     subscription?: {
-      tier: 'free' | 'pro' | 'enterprise' | 'elite';
+      tier: string;
       expiresAt: string | null;
       features: string[];
     };
+    entitlements?: Record<string, boolean | number | string>;
+    limits?: Record<string, number | boolean | string>;
     stats: {
       totalSessions: number;
       totalTokens: number;
       avgRating: number;
       joinedAt: string;
+      lastActiveAt?: string;
     };
   };
 }
+
+const normalizePlanTier = (user: LoginResponse["user"]): 'explorer' | 'ultra' => {
+  const direct = (user.plan_tier || '').toLowerCase().trim();
+  if (direct === 'ultra') return 'ultra';
+  if (direct === 'explorer') return 'explorer';
+
+  const planType = (user.planType || user.plan_type || '').toUpperCase().trim();
+  if (['ULTRA', 'PRO', 'PREMIUM', 'ENTERPRISE'].includes(planType)) return 'ultra';
+
+  const tier = (user.subscription?.tier || user.tier || '').toLowerCase().trim();
+  if (['ultra', 'pro', 'premium', 'enterprise', 'elite'].includes(tier)) return 'ultra';
+
+  if ((user.role || '').toLowerCase().trim() === 'admin') return 'ultra';
+  return 'explorer';
+};
 
 export const useUser = () => {
   const {
@@ -43,63 +63,50 @@ export const useUser = () => {
     login: storeLogin,
     logout: storeLogout,
     setProfile,
-    setPreferences,
   } = useUserStore();
 
   const handleLogin = useCallback(
     async (credentials: LoginCredentials): Promise<{ success: boolean; error?: string }> => {
       try {
-        // Clear old cached user data before login
         localStorage.removeItem('user-storage');
 
-        // Use apiClient for making requests
         const response = await apiClient.post<LoginResponse>('/auth/login', credentials);
-
         if (!response.success || !response.data) {
           return { success: false, error: response.error?.message || 'Login failed' };
         }
 
-        const { access_token, refresh_token, user } = response.data;
-
-        // Set tokens - handled by cookies, but can call to clear internal state if needed
+        const { user } = response.data;
         apiClient.setAuthTokens();
 
-        // Debug: Log what the backend sent
-        console.log('🔐 Login response user data:', user);
-
-        // Check if this is the owner email - always Ultra
         const isOwner = user.email === 'khan011504@gmail.com';
-        const shouldBeUltra = isOwner || user.subscription?.tier === 'pro' || user.tier === 'pro' || user.tier === 'elite' || user.role === 'premium' || user.role === 'admin' || user.plan_type === 'ULTRA';
+        const planTier = isOwner ? 'ultra' : normalizePlanTier(user);
+        const shouldBeUltra = planTier === 'ultra';
 
-        console.log('🔐 Is Owner:', isOwner, '| Should be Ultra:', shouldBeUltra);
-
-        // Map backend user to our store shape
         const profileData: UserProfile = {
           id: user.id,
           email: user.email,
           name: user.name,
           avatar: user.avatar || '',
-          role: user.role,
+          role: user.role === 'admin' ? 'admin' : 'user',
+          planType: shouldBeUltra ? 'ULTRA' : 'EXPLORER',
+          plan_tier: planTier,
           subscription: {
-            tier: isOwner ? 'elite' : (user.subscription?.tier || user.tier || 'free'),
-            expiresAt: user.subscription?.expiresAt ? new Date(user.subscription.expiresAt as string) : null,
-            features: isOwner ? ['all-features'] : (user.subscription?.features || (user.tier === 'pro' ? ['premium-chat', 'full-analytics'] : ['basic-chat'])),
+            tier: planTier,
+            expiresAt: user.subscription?.expiresAt ? new Date(user.subscription.expiresAt) : null,
+            features: user.subscription?.features || (shouldBeUltra ? ['all-features'] : ['basic-chat', 'basic-analytics']),
           },
+          entitlements: user.entitlements,
+          limits: user.limits as any,
           stats: {
             totalSessions: user.stats.totalSessions,
             totalTokens: user.stats.totalTokens,
             avgRating: user.stats.avgRating,
             joinedAt: new Date(user.stats.joinedAt),
-            lastActiveAt: new Date(),
+            lastActiveAt: user.stats.lastActiveAt ? new Date(user.stats.lastActiveAt) : new Date(),
           },
-          planType: shouldBeUltra ? 'ULTRA' : 'EXPLORER',
         };
 
-        console.log('🔐 Final profile data:', profileData);
-
-        // Login to store
         storeLogin(profileData);
-
         return { success: true };
       } catch (err: any) {
         console.error('Login error:', err);
@@ -115,20 +122,15 @@ export const useUser = () => {
   const handleLogout = useCallback(() => {
     apiClient.clearAuthTokens();
     storeLogout();
-    // Also reset planner state
     usePlannerStore.getState().resetPlanner();
-    // Optional: redirect to login page
-    // window.location.href = '/login';
   }, [storeLogout]);
 
-  // Listen for forced logout from token refresh failure
   useEffect(() => {
     const handleAuthLogout = () => {
       handleLogout();
     };
 
     window.addEventListener('auth:logout', handleAuthLogout);
-
     return () => {
       window.removeEventListener('auth:logout', handleAuthLogout);
     };
@@ -137,10 +139,6 @@ export const useUser = () => {
   const updateUserProfile = useCallback(
     async (updates: Partial<UserProfile>) => {
       try {
-        // Call backend PATCH /user/profile if you have it
-        // await apiClient.patch('/user/profile', updates);
-
-        // Update local store
         setProfile(updates);
       } catch (err) {
         console.error('Profile update failed:', err);
@@ -153,19 +151,14 @@ export const useUser = () => {
   const isUltra = useUserStore((s) => s.isUltra);
 
   return {
-    // State
     user: profile,
     preferences,
     isAuthenticated,
     isPremium,
     isUltra,
-
-    // Actions
     login: handleLogin,
     logout: handleLogout,
     updateProfile: updateUserProfile,
-
-    // Quick selectors (optional convenience)
     userId: profile?.id || null,
     userEmail: profile?.email || null,
     userName: profile?.name || null,

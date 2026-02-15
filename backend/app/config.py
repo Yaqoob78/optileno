@@ -314,6 +314,7 @@ class Settings:
     # Features
     # =========================
     ENABLE_DOCS: bool = _env_bool("ENABLE_DOCS", ENVIRONMENT == "development")
+    ANALYTICS_V2_ENABLED: bool = _env_bool("ANALYTICS_V2_ENABLED", True)
 
     # =========================
     # Redis Cache - Enterprise HA
@@ -462,12 +463,20 @@ class Settings:
     def get_plan_limits(self, plan: str) -> dict:
         """Get AI limits for a subscription plan."""
         plans = {
+            "explorer": {"nvidia": self.LIMIT_BASIC_NVIDIA, "groq": self.LIMIT_BASIC_GROQ},
+            "ultra": {"nvidia": self.LIMIT_PRO_NVIDIA, "groq": self.LIMIT_PRO_GROQ},
+            # Legacy compatibility for one migration window
             "free": {"nvidia": self.LIMIT_FREE_NVIDIA, "groq": self.LIMIT_FREE_GROQ},
             "basic": {"nvidia": self.LIMIT_BASIC_NVIDIA, "groq": self.LIMIT_BASIC_GROQ},
             "pro": {"nvidia": self.LIMIT_PRO_NVIDIA, "groq": self.LIMIT_PRO_GROQ},
             "enterprise": {"nvidia": self.LIMIT_ENTERPRISE_NVIDIA, "groq": self.LIMIT_ENTERPRISE_GROQ},
         }
-        return plans.get(plan.lower(), plans["free"])
+        normalized = (plan or "").strip().lower()
+        if normalized in {"premium", "elite"}:
+            normalized = "ultra"
+        if normalized in {"trial"}:
+            normalized = "explorer"
+        return plans.get(normalized, plans["explorer"])
 
 
 settings = Settings()

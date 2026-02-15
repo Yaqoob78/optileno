@@ -41,7 +41,7 @@ export default function Sidebar({
 }: SidebarProps) {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const { user, isUltra } = useUser();
-  const profile = { planType: isUltra ? 'ULTRA' : 'EXPLORER' }; // Simplified for display
+  const profile = { planType: isUltra ? 'ULTRA' : 'EXPLORER' };
 
   return (
     <aside className="premium-sidebar">
@@ -133,7 +133,7 @@ export default function Sidebar({
               <p className="user-name">{user.name || (user.email === 'khan011504@gmail.com' ? 'Owner' : 'User')}</p>
               <div className={`user-badge ${profile.planType === 'ULTRA' ? 'ultra' : ''}`}>
                 <Zap size={10} className={profile.planType === 'ULTRA' ? 'text-purple-400' : 'text-amber-400'} />
-                <span className="user-badge-text">{profile.planType === 'ULTRA' ? 'ULTRA' : 'Pro'}</span>
+                <span className="user-badge-text">{profile.planType === 'ULTRA' ? 'ULTRA' : 'EXPLORER'}</span>
               </div>
             </div>
           </div>

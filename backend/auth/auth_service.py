@@ -9,6 +9,7 @@ from jose import JWTError
 from backend.app.config import settings
 from backend.db.models import User, RefreshToken
 from backend.schemas.auth import UserRegister, UserLogin
+from backend.services.entitlements_service import normalize_plan_tier, canonical_plan_type
 from .auth_utils import (
     get_password_hash,
     verify_password,
@@ -26,27 +27,11 @@ class AuthService:
     def _normalize_plan(self, plan_type: str | None) -> tuple[str, str]:
         """
         Normalize plan type and determine initial tier.
-        For Explorer, we might start them as 'free' until they complete payment setup for trial,
-        or 'trialing' if no payment setup is required immediately.
-        Given the Razorpay flow usually requires an order, we'll default to 'BASIC'/'free' 
-        and let them subscribe via the frontend to activate the trial/plan.
+        Default new users to canonical Explorer tier and let billing flows
+        upgrade to Ultra when payment activates.
         """
-        plan_raw = (plan_type or "BASIC").upper()
-
-        # Owner plan (handled in caller usually, but good to have)
-        if plan_raw == "OWNER":
-            return "ULTRA", "elite"
-
-        # Valid plans
-        if plan_raw in {"EXPLORER", "BASIC"}:
-            return "BASIC", "free"  # User upgrades to Explorer (and gets trial) via payment flow
-            
-        if plan_raw in {"ULTRA", "PRO", "ENTERPRISE"}:
-            # Ultra requires payment/subscription, so initial auth/register 
-            # without payment defaults to BASIC/free unless it's the owner checking in.
-            return "BASIC", "free"
-
-        return "BASIC", "free"
+        normalized = normalize_plan_tier(plan_type=plan_type)
+        return canonical_plan_type(normalized), normalized
 
     async def register(self, db: AsyncSession, user_in: UserRegister):
         # Check if email exists
@@ -63,7 +48,7 @@ class AuthService:
         
         # Determine plan
         if is_owner:
-            plan_type, tier = "ULTRA", "elite"
+            plan_type, tier = "ULTRA", "ultra"
             role = "admin"
             is_verified = True
             is_superuser = True
@@ -109,7 +94,7 @@ class AuthService:
                         full_name="System Owner",
                         hashed_password=settings.OWNER_PASSWORD_HASH,
                         plan_type="ULTRA",
-                        tier="elite",
+                        tier="ultra",
                         role="admin",
                         is_active=True,
                         is_verified=True,
@@ -136,8 +121,8 @@ class AuthService:
                 )
             # Ensure owner always has full privileges
             # Force update if permissions are missing or outdated
-            if user.tier != "elite" or user.role != "admin" or user.plan_type != "ULTRA" or not user.is_superuser:
-                user.tier = "elite"
+            if user.tier != "ultra" or user.role != "admin" or user.plan_type != "ULTRA" or not user.is_superuser:
+                user.tier = "ultra"
                 user.role = "admin"
                 user.plan_type = "ULTRA"
                 user.is_superuser = True

@@ -9,30 +9,6 @@ const resolveApiUrl = (url: string): string => {
   return `${env.API_BASE_URL}${url}`;
 };
 
-const getAccessToken = (): string | null => {
-  const candidates = ['access_token', 'auth_token', 'token'];
-  for (const key of candidates) {
-    const value = localStorage.getItem(key);
-    if (value && value !== 'null' && value !== 'undefined') {
-      return value;
-    }
-  }
-  return null;
-};
-
-const applyAuthDefaults = (headersInput: HeadersInit | undefined): Headers => {
-  const headers = new Headers(headersInput);
-
-  if (!headers.has('Authorization')) {
-    const token = getAccessToken();
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`);
-    }
-  }
-
-  return headers;
-};
-
 export function installApiFetchProxy(): void {
   if (typeof window === 'undefined') return;
 
@@ -50,7 +26,7 @@ export function installApiFetchProxy(): void {
       const nextInit: RequestInit = {
         ...init,
         credentials: init?.credentials ?? 'include',
-        headers: applyAuthDefaults(init?.headers),
+        headers: new Headers(init?.headers),
       };
 
       return originalFetch(resolveApiUrl(input), nextInit);
@@ -64,7 +40,7 @@ export function installApiFetchProxy(): void {
         const nextInit: RequestInit = {
           ...init,
           credentials: init?.credentials ?? apiRequest.credentials ?? 'include',
-          headers: applyAuthDefaults(init?.headers ?? apiRequest.headers),
+          headers: new Headers(init?.headers ?? apiRequest.headers),
         };
         return originalFetch(apiRequest, nextInit);
       }

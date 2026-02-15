@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useUserStore } from '../stores/useUserStore';
+import { api } from '../services/api/client';
 
 interface ProductivityMetrics {
   score: number;
@@ -57,45 +58,24 @@ export const useAnalyticsLoader = (period: number = 1) => {
     setAnalytics((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      // Fetch productivity score
-      const prodRes = await fetch(`/api/v1/analytics/productivity?days=${period}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-        },
-      });
+      const range = period >= 30 ? 'monthly' : period >= 7 ? 'weekly' : 'daily';
+      const [prodRes, focusRes, moodRes] = await Promise.all([
+        api.get<any>(`/analytics/productivity/score/${range === 'daily' ? 'today' : range}`),
+        api.get<any>(`/analytics/focus/score/${range === 'daily' ? 'today' : range}`),
+        api.get<any>('/analytics/mood/current'),
+      ]);
 
-      if (!prodRes.ok) throw new Error('Failed to fetch productivity metrics');
-      const prodData = await prodRes.json();
-
-      // Fetch task metrics
-      const taskRes = await fetch('/api/v1/analytics/tasks', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-        },
-      });
-      const taskData = taskRes.ok ? await taskRes.json() : null;
-
-      // Fetch habit metrics
-      const habitRes = await fetch('/api/v1/analytics/habits', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-        },
-      });
-      const habitData = habitRes.ok ? await habitRes.json() : null;
-
-      // Fetch goal metrics
-      const goalRes = await fetch('/api/v1/analytics/goals', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-        },
-      });
-      const goalData = goalRes.ok ? await goalRes.json() : null;
+      if (!prodRes.success || !prodRes.data) throw new Error(prodRes.error?.message || 'Failed to fetch productivity metrics');
+      const prodData = prodRes.data;
+      const taskData = focusRes.success ? focusRes.data : null;
+      const habitData = moodRes.success ? moodRes.data : null;
+      const goalData = null;
 
       setAnalytics({
-        productivity: prodData.success ? prodData : null,
-        taskMetrics: taskData?.success ? taskData.metrics : null,
-        habitMetrics: habitData?.success ? habitData.metrics : null,
-        goalMetrics: goalData?.success ? goalData.metrics : null,
+        productivity: prodData || null,
+        taskMetrics: taskData || null,
+        habitMetrics: habitData || null,
+        goalMetrics: goalData,
         isLoading: false,
         error: null,
         lastUpdated: new Date(),

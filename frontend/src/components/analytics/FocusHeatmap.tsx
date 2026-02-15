@@ -14,6 +14,8 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { realtimeClient } from '../../services/realtime/socket-client';
+import { api } from '../../services/api/client';
+import { useUserStore } from '../../stores/useUserStore';
 import '../../styles/components/analytics/FocusheatMap.css';
 
 // Types
@@ -66,6 +68,7 @@ const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export default function FocusHeatmap({ timeRange = 'monthly' }: FocusHeatmapProps) {
+  const isAuthenticated = useUserStore((state) => state.isAuthenticated);
   const [heatmapData, setHeatmapData] = useState<any>(null);
   const [stats, setStats] = useState<FocusStats | null>(null);
   const [selectedCell, setSelectedCell] = useState<DailyScore | null>(null);
@@ -148,6 +151,14 @@ export default function FocusHeatmap({ timeRange = 'monthly' }: FocusHeatmapProp
 
   // Fetch real data from backend API
   const fetchFocusData = useCallback(async () => {
+    if (!isAuthenticated) {
+      setHeatmapData(null);
+      setStats(null);
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -161,29 +172,31 @@ export default function FocusHeatmap({ timeRange = 'monthly' }: FocusHeatmapProp
 
       // Fetch heatmap and stats in parallel
       const [heatmapRes, statsRes] = await Promise.all([
-        fetch(`/api/v1/analytics/focus/heatmap?${heatmapParams.toString()}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        }),
-        fetch(`/api/v1/analytics/focus/stats?time_range=${timeRange}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        })
+        api.get<any>(`/analytics/focus/heatmap?${heatmapParams.toString()}`),
+        api.get<any>(`/analytics/focus/stats?time_range=${timeRange}`),
       ]);
 
-      // Check if responses are actually JSON (not HTML error pages)
-      const heatmapContentType = heatmapRes.headers.get('content-type');
-      const statsContentType = statsRes.headers.get('content-type');
-
-      if (!heatmapContentType?.includes('application/json') ||
-        !statsContentType?.includes('application/json')) {
-        throw new Error('API unavailable - server returned non-JSON response');
+      if (!heatmapRes.success || !heatmapRes.data) {
+        if (heatmapRes.error?.code === 'HTTP_401' || heatmapRes.error?.code === 'HTTP_403') {
+          setHeatmapData(null);
+          setStats(null);
+          setError(null);
+          return;
+        }
+        throw new Error(heatmapRes.error?.message || 'Failed to fetch heatmap');
+      }
+      if (!statsRes.success || !statsRes.data) {
+        if (statsRes.error?.code === 'HTTP_401' || statsRes.error?.code === 'HTTP_403') {
+          setHeatmapData(null);
+          setStats(null);
+          setError(null);
+          return;
+        }
+        throw new Error(statsRes.error?.message || 'Failed to fetch focus stats');
       }
 
-      if (!heatmapRes.ok || !statsRes.ok) {
-        throw new Error(`Failed to fetch focus data: ${heatmapRes.status} ${statsRes.status}`);
-      }
-
-      const heatmapData = await heatmapRes.json();
-      const statsData = await statsRes.json();
+      const heatmapData = heatmapRes.data;
+      const statsData = statsRes.data;
 
       const normalizedHeatmap = normalizeHeatmap(heatmapData);
       const normalizedStats = normalizeStats(statsData);
@@ -200,15 +213,17 @@ export default function FocusHeatmap({ timeRange = 'monthly' }: FocusHeatmapProp
     } finally {
       setIsLoading(false);
     }
-  }, [normalizeHeatmap, normalizeStats, timeRange]);
+  }, [normalizeHeatmap, normalizeStats, timeRange, isAuthenticated]);
 
   // Load data on mount
   useEffect(() => {
+    if (!isAuthenticated) return;
     fetchFocusData();
-  }, [fetchFocusData]);
+  }, [fetchFocusData, isAuthenticated]);
 
   // Keep heatmap aligned with real user activity.
   useEffect(() => {
+    if (!isAuthenticated) return;
     let timeout: ReturnType<typeof setTimeout> | null = null;
     const queueRefresh = () => {
       if (timeout) clearTimeout(timeout);
@@ -231,12 +246,13 @@ export default function FocusHeatmap({ timeRange = 'monthly' }: FocusHeatmapProp
       realtimeClient.off('planner:deepwork:completed', queueRefresh);
       if (timeout) clearTimeout(timeout);
     };
-  }, [fetchFocusData]);
+  }, [fetchFocusData, isAuthenticated]);
 
   useEffect(() => {
+    if (!isAuthenticated) return;
     const interval = setInterval(fetchFocusData, 2 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [fetchFocusData]);
+  }, [fetchFocusData, isAuthenticated]);
 
   // Format date for display
   const formatDate = (dateStr: string | null): string => {

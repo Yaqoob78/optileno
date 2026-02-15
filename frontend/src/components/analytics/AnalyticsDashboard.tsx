@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { TrendingUp, Target, AlertCircle } from 'lucide-react';
 import { socket } from '../../services/realtime/socket-client';
+import { api } from '../../services/api/client';
 
 interface AnalyticsDatum {
   date: string;
@@ -32,31 +33,34 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ userId }
     fetchAnalytics();
 
     // Listen for analytics updates
-    socket.on('analytics:updated', (data: any) => {
+    const onAnalyticsUpdate = (data: any) => {
       setData((prev) => [...prev.slice(-6), data.analytics_data]);
-    });
+    };
+    socket.on('analytics:update', onAnalyticsUpdate);
 
-    socket.on('forecast:available', (data: any) => {
+    const onForecast = (data: any) => {
       setForecasts(data.forecasts || []);
-    });
+    };
+    socket.on('forecast:available', onForecast);
 
     return () => {
-      socket.off('analytics:updated');
-      socket.off('forecast:available');
+      socket.off('analytics:update', onAnalyticsUpdate);
+      socket.off('forecast:available', onForecast);
     };
   }, [timeRange]);
 
   const fetchAnalytics = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/v1/analytics?timeRange=${timeRange}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-        },
-      });
-      const result = await response.json();
-      setData(result.data || []);
-      setForecasts(result.forecasts || []);
+      const mappedRange = timeRange === 'week' ? 'weekly' : timeRange === 'month' ? 'monthly' : 'yearly';
+      const response = await api.get<any>(`/analytics/historical/${mappedRange}`);
+      if (response.success && response.data) {
+        setData(response.data.data || response.data.focus_scores || []);
+        setForecasts(response.data.forecasts || []);
+      } else {
+        setData([]);
+        setForecasts([]);
+      }
     } catch (error) {
       console.error('Failed to fetch analytics:', error);
     } finally {

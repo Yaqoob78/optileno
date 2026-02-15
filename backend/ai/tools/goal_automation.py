@@ -208,55 +208,80 @@ async def generate_tasks_from_goal(
     timeframe: str,
 ) -> List[Dict[str, Any]]:
     """
-    Generate and create tasks based on goal parameters.
-    Uses roadmap templates split into daily chunks.
+    Generate and create tasks based on goal parameters using AI.
+    Replaces static templates with dynamic AI breakdown.
     """
     created_tasks = []
     
-    # Get roadmap template
-    roadmap = ROADMAP_TEMPLATES.get(category, ROADMAP_TEMPLATES["default"])
-    
-    # Calculate task distribution
-    target_date = calculate_target_date(timeframe)
-    days_available = (target_date - datetime.utcnow()).days
-    
-    if days_available < 1:
-        days_available = 7  # Minimum 7 days
-    
-    # Distribute tasks across available days
-    tasks_per_day = max(1, len(roadmap) // days_available)
-    
-    for i, template in enumerate(roadmap):
-        # Calculate due date for this task
-        task_day = min(i // tasks_per_day, days_available - 1)
-        due_date = datetime.utcnow() + timedelta(days=task_day + 1)
+    try:
+        from backend.services.goal_intelligence_service import goal_intelligence_service
         
-        task_data = {
-            "title": f"{goal_title}: {template['title']}",
-            "description": f"Part of goal: {goal_title}",
-            "priority": "medium",
-            "category": category,
-            "estimated_minutes": template["duration"],
-            "due_date": due_date.isoformat(),
-            "tags": [f"goal:{goal_id}", category],
-        }
+        # Calculate duration days
+        target_date = calculate_target_date(timeframe)
+        duration_days = max(1, (target_date - datetime.utcnow()).days)
         
-        try:
-            task = await planner_service.create_task(user_id, task_data)
+        # 1. Get AI Breakdown
+        logger.info(f"Requesting AI breakdown for goal: {goal_title} ({duration_days} days)")
+        breakdown_json = await goal_intelligence_service.breakdown_goal_with_ai(user_id, goal_title, duration_days)
+        
+        # 2. Extract Tasks
+        ai_tasks = breakdown_json.get("tasks", [])
+        
+        if not ai_tasks:
+            # Fallback to templates if AI fails
+            logger.warning("AI breakdown returned no tasks, falling back to templates.")
+            roadmap = ROADMAP_TEMPLATES.get(category, ROADMAP_TEMPLATES["default"])
             
-            # Check if it's an error dict
-            if "error" in task:
-                logger.error(f"Failed to create task: {task['error']}")
-            else:
-                created_tasks.append(task)
+            # Simple conversion of template to mock AI task objects
+            for t in roadmap:
+                ai_tasks.append({
+                    "title": t["title"],
+                    "estimated_minutes": t["duration"],
+                    "priority": "medium",
+                    "due_in_days": t.get("order", 1) * 3 # rough spacing
+                })
+        
+        # 3. Create Tasks in DB
+        for i, task_def in enumerate(ai_tasks):
+            # Calculate due date based on "due_in_days" or distribute evenly
+            due_in = task_def.get("due_in_days", (i + 1) * 2)
+            due_date = datetime.utcnow() + timedelta(days=due_in)
+            
+            task_data = {
+                "title": task_def.get("title", f"Task for {goal_title}"),
+                "description": task_def.get("description", f"AI generated task for goal: {goal_title}"),
+                "priority": task_def.get("priority", "medium").lower(),
+                "category": category,
+                "estimated_minutes": task_def.get("estimated_minutes", 30),
+                "due_date": due_date.isoformat(),
+                "goal_id": goal_id, # Link directly
+                "tags": ["ai-generated", f"goal:{goal_id}", category],
+            }
+            
+            try:
+                task = await planner_service.create_task(user_id, task_data)
                 
-                # Broadcast task creation
-                try:
-                    await broadcast_task_created(int(user_id), task)
-                except Exception:
-                    pass
-        except Exception as e:
-            logger.error(f"Failed to create task: {e}")
+                if "error" in task:
+                    logger.error(f"Failed to create task: {task['error']}")
+                else:
+                    created_tasks.append(task)
+                    
+                    # Broadcast task creation
+                    try:
+                        await broadcast_task_created(int(user_id), task)
+                    except Exception:
+                        pass
+            except Exception as e:
+                logger.error(f"Failed to create individual task: {e}")
+
+        # 4. Handle Habits from AI Breakdown (Optional: if we want to merge this logic here or keep separate)
+        # The current calling function `create_goal_with_cascade` handles habits separately via `get_recommended_habits`.
+        # For now, we'll stick to just returning tasks here to minimize refactoring risk, 
+        # BUT we can log the AI suggested habits for later use or future enhancement.
+        
+    except Exception as e:
+        logger.error(f"AI Task Generation failed: {e}")
+        # Fallback to empty list or template implementation if strictly required
     
     logger.info(f"Generated {len(created_tasks)} tasks for goal {goal_id}")
     return created_tasks
@@ -437,33 +462,86 @@ async def create_goal_with_cascade(
             "deep_work_session": None,
         }
         
-        # 2. Generate supporting tasks
+        # 2. GET AI BREAKDOWN (The Core Integration)
+        # We fetch the plan once and distribute it
+        from backend.services.goal_intelligence_service import goal_intelligence_service
+        
+        # Calculate duration days
+        duration_days = max(1, (target_date_obj - datetime.utcnow()).days)
+        
+        logger.info(f"Requesting full AI breakdown for goal: {title} ({duration_days} days)")
+        ai_plan = await goal_intelligence_service.breakdown_goal_with_ai(user_id, title, duration_days)
+        
+        # 3. GENERATE TASKS (From AI Plan)
         if auto_create_tasks:
-            tasks = await generate_tasks_from_goal(
-                user_id, goal_id, title, category, timeframe
-            )
-            result["tasks_created"] = tasks
+            ai_tasks = ai_plan.get("tasks", [])
+            created_tasks = []
+            
+            for i, task_def in enumerate(ai_tasks):
+                # Calculate due date based on "due_in_days" or distribute evenly
+                due_in = task_def.get("due_in_days", (i + 1) * 2)
+                due_date = datetime.utcnow() + timedelta(days=due_in)
+                
+                task_data = {
+                    "title": task_def.get("title", f"Task for {title}"),
+                    "description": task_def.get("description", f"AI generated task for goal: {title}"),
+                    "priority": task_def.get("priority", "medium").lower(),
+                    "category": category,
+                    "estimated_minutes": task_def.get("estimated_minutes", 30),
+                    "due_date": due_date.isoformat(),
+                    "goal_id": goal_id, # Link directly
+                    "tags": ["ai-generated", f"goal:{goal_id}", category],
+                }
+                
+                try:
+                    task = await planner_service.create_task(user_id, task_data)
+                    if "error" not in task:
+                        created_tasks.append(task)
+                        # Broadcast task creation
+                        try:
+                            await broadcast_task_created(int(user_id), task)
+                        except Exception:
+                            pass
+                except Exception as e:
+                    logger.error(f"Failed to create individual task: {e}")
+            
+            result["tasks_created"] = created_tasks
         
-        # 3. Suggest habits
-        suggested_habits = get_recommended_habits(category)
-        result["habits_suggested"] = suggested_habits
+        # 4. GENERATE HABITS (From AI Plan)
+        # Use AI suggestions if available, otherwise fallback to static recommendations
+        ai_habits = ai_plan.get("habits", [])
+        if not ai_habits:
+            ai_habits = get_recommended_habits(category)
+            
+        result["habits_suggested"] = ai_habits
         
-        # 4. Auto-create habits if requested
-        if auto_create_habits and suggested_habits:
+        if auto_create_habits and ai_habits:
             created_habits = await create_habits_for_goal(
-                user_id, goal_id, category, suggested_habits
+                user_id, goal_id, category, ai_habits
             )
             result["habits_created"] = created_habits
         
-        # 5. Propose deep work for complex goals
-        if propose_deep_work and should_propose_deep_work(complexity):
-            result["deep_work_proposed"] = True
-            # Only schedule if explicitly requested
-            if payload.get("schedule_deep_work", False):
-                session = await schedule_deep_work_block(
-                    user_id, goal_id, title, duration_minutes=180
-                )
-                result["deep_work_session"] = session
+        # 5. PROPOSE DEEP WORK (From AI Plan or Heuristic)
+        # Check if AI suggested deep work
+        ai_deep_work = ai_plan.get("deep_work", [])
+        
+        if propose_deep_work:
+            should_propose = should_propose_deep_work(complexity) or (len(ai_deep_work) > 0)
+            
+            if should_propose:
+                result["deep_work_proposed"] = True
+                
+                # If explicit schedule requested or AI has strong recommendation
+                if payload.get("schedule_deep_work", False):
+                    # Use AI duration if available
+                    duration = 180
+                    if ai_deep_work and "duration_minutes" in ai_deep_work[0]:
+                        duration = ai_deep_work[0]["duration_minutes"]
+                        
+                    session = await schedule_deep_work_block(
+                        user_id, goal_id, title, duration_minutes=duration
+                    )
+                    result["deep_work_session"] = session
         
         # Log analytics event
         await analytics_service.save_event({

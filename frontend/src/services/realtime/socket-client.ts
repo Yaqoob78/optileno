@@ -1,7 +1,7 @@
 // frontend/src/services/realtime/socket-client.ts
 /**
- * Socket.IO client for real-time Concierge AI updates
- * Handles connection, authentication, and event subscriptions
+ * Socket.IO client for real-time Concierge AI updates.
+ * Uses cookie-session auth first, token auth as optional fallback.
  */
 
 import { io, Socket } from 'socket.io-client';
@@ -12,18 +12,28 @@ const SOCKET_URL = env.SOCKET_URL;
 class RealtimeClient {
   private socket: Socket | null = null;
   private userId: string | null = null;
-  private connected: boolean = false;
+  private connected = false;
   private listeners: Map<string, Set<Function>> = new Map();
 
-  /**
-   * Connect to socket server and authenticate
-   */
   connect(userId: string, token?: string): Promise<void> {
     return new Promise((resolve, reject) => {
+      let settled = false;
+      const finishResolve = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+      const finishReject = (error: any) => {
+        if (settled) return;
+        settled = true;
+        reject(error);
+      };
+
       try {
         this.userId = userId;
 
         this.socket = io(SOCKET_URL, {
+          path: '/socket.io',
           transports: ['websocket', 'polling'],
           withCredentials: true,
           reconnection: true,
@@ -32,49 +42,51 @@ class RealtimeClient {
           reconnectionAttempts: 5,
         });
 
-        // Handle connection
+        const authTimeout = window.setTimeout(() => {
+          // Cookie-auth sessions may connect without explicit authenticated event.
+          finishResolve();
+        }, 5000);
+
         this.socket.on('connect', () => {
-          console.log('✨ Socket connected:', this.socket?.id);
           this.connected = true;
-
-          // Authenticate with user ID
-          this.socket?.emit('authenticate', {
-            user_id: userId,
-            token,
-          });
+          if (token) {
+            this.socket?.emit('authenticate', { user_id: userId, token });
+          } else {
+            finishResolve();
+          }
         });
 
-        // Handle authentication
-        this.socket.on('authenticated', (data) => {
-          console.log('✅ Authenticated:', data);
-          resolve();
+        this.socket.on('authenticated', () => {
+          window.clearTimeout(authTimeout);
+          finishResolve();
         });
 
-        // Handle errors
         this.socket.on('error', (error) => {
-          console.error('❌ Socket error:', error);
-          reject(error);
+          // Non-fatal when cookie auth succeeds but explicit token auth was omitted.
+          if (token) {
+            window.clearTimeout(authTimeout);
+            finishReject(error);
+          }
         });
 
-        // Handle disconnection
+        this.socket.on('connect_error', (error) => {
+          window.clearTimeout(authTimeout);
+          finishReject(error);
+        });
+
         this.socket.on('disconnect', () => {
-          console.log('👋 Socket disconnected');
           this.connected = false;
         });
 
-        // Re-emit all received events
         this.socket.onAny((event: string, ...args: any[]) => {
           this.emit(event, ...args);
         });
       } catch (error) {
-        reject(error);
+        finishReject(error);
       }
     });
   }
 
-  /**
-   * Disconnect from socket server
-   */
   disconnect(): void {
     if (this.socket) {
       this.socket.disconnect();
@@ -83,9 +95,6 @@ class RealtimeClient {
     }
   }
 
-  /**
-   * Subscribe to an event
-   */
   on(event: string, callback: (data: any) => void): void {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, new Set());
@@ -93,48 +102,37 @@ class RealtimeClient {
     this.listeners.get(event)?.add(callback);
   }
 
-  /**
-   * Unsubscribe from an event
-   */
-  off(event: string, callback: Function): void {
+  off(event: string, callback?: Function): void {
+    if (!callback) {
+      this.listeners.delete(event);
+      return;
+    }
     this.listeners.get(event)?.delete(callback);
   }
 
-  /**
-   * Emit event to all subscribers
-   */
   private emit(event: string, ...args: any[]): void {
     const callbacks = this.listeners.get(event);
-    if (callbacks) {
-      callbacks.forEach((callback) => {
-        try {
-          callback(...args);
-        } catch (error) {
-          console.error(`Error in listener for ${event}:`, error);
-        }
-      });
-    }
+    if (!callbacks) return;
+    callbacks.forEach((callback) => {
+      try {
+        callback(...args);
+      } catch (error) {
+        console.error(`Error in listener for ${event}:`, error);
+      }
+    });
   }
 
-  /**
-   * Check if connected
-   */
   isConnected(): boolean {
     return this.connected;
   }
 
-  /**
-   * Get socket ID
-   */
   getSocketId(): string | null {
     return this.socket?.id || null;
   }
 }
 
-// Export singleton instance
 export const realtimeClient = new RealtimeClient();
 
-// Export type for event data
 export interface TaskEvent {
   event: string;
   task: any;
@@ -165,14 +163,12 @@ export interface NotificationEvent {
   timestamp: string;
 }
 
-// Provide a backwards-compatible `socket` object used across the frontend.
-// This proxy exposes common methods (`connect`, `disconnect`, `on`, `off`, `isConnected`, `getSocketId`)
-// so existing imports of `{ socket }` continue to work.
 export const socket = {
   connect: (userId?: string, token?: string) => realtimeClient.connect(userId || '', token),
   disconnect: () => realtimeClient.disconnect(),
   on: (event: string, cb: (data: any) => void) => realtimeClient.on(event, cb),
-  off: (event: string, cb: Function) => realtimeClient.off(event, cb),
+  off: (event: string, cb?: Function) => realtimeClient.off(event, cb),
   isConnected: () => realtimeClient.isConnected(),
   getSocketId: () => realtimeClient.getSocketId(),
 };
+

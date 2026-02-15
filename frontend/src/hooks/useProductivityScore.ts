@@ -1,6 +1,8 @@
 // frontend/src/hooks/useProductivityScore.ts
 import { useState, useEffect, useCallback } from 'react';
 import { realtimeClient } from '../services/realtime/socket-client';
+import { api } from '../services/api/client';
+import { useUserStore } from '../stores/useUserStore';
 
 interface ProductivityBreakdown {
     base_usage: number;
@@ -29,58 +31,75 @@ interface UseProductivityScoreReturn {
 }
 
 export function useProductivityScore(timeRange: 'daily' | 'weekly' | 'monthly' = 'daily'): UseProductivityScoreReturn {
+    const isAuthenticated = useUserStore((state) => state.isAuthenticated);
     const [score, setScore] = useState<ProductivityScore | null>(null);
     const [weeklyAverage, setWeeklyAverage] = useState<number | null>(null);
     const [monthlyAverage, setMonthlyAverage] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const getAuthHeaders = useCallback(() => {
-        const token = localStorage.getItem('token');
-        return {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-        };
-    }, []);
-
     const refresh = useCallback(async () => {
+        if (!isAuthenticated) {
+            setScore(null);
+            setWeeklyAverage(null);
+            setMonthlyAverage(null);
+            setError(null);
+            setIsLoading(false);
+            return;
+        }
+
         try {
             setIsLoading(true);
             setError(null);
 
             // Fetch today's score
-            const todayResponse = await fetch('/api/v1/analytics/productivity/score/today', {
-                headers: getAuthHeaders(),
-            });
-
-            if (!todayResponse.ok) {
-                throw new Error('Failed to fetch productivity score');
+            const todayResponse = await api.get<ProductivityScore>('/analytics/productivity/score/today');
+            if (!todayResponse.success || !todayResponse.data) {
+                if (todayResponse.error?.code === 'HTTP_401') {
+                    setScore(null);
+                    setWeeklyAverage(null);
+                    setMonthlyAverage(null);
+                    setError(null);
+                    return;
+                }
+                throw new Error(todayResponse.error?.message || 'Failed to fetch productivity score');
             }
-
-            const todayData = await todayResponse.json();
-            setScore(todayData);
+            const todayPayload = todayResponse.data as any;
+            const normalizedBreakdown: ProductivityBreakdown = {
+                base_usage: Number(todayPayload.breakdown?.base_usage ?? todayPayload.breakdown?.execution_block ?? 0),
+                task_completion: Number(todayPayload.breakdown?.task_completion ?? todayPayload.breakdown?.task_component ?? 0),
+                focus_quality: Number(todayPayload.breakdown?.focus_quality ?? todayPayload.breakdown?.deep_work_component ?? 0),
+                habit_consistency: Number(todayPayload.breakdown?.habit_consistency ?? todayPayload.breakdown?.habit_component ?? 0),
+                planning_accuracy: Number(todayPayload.breakdown?.planning_accuracy ?? todayPayload.breakdown?.goal_progress_block ?? 0),
+                engagement_depth: Number(todayPayload.breakdown?.engagement_depth ?? todayPayload.breakdown?.engagement_block ?? 0),
+            };
+            setScore({
+                score: Number(todayPayload.score ?? 0),
+                date: todayPayload.period_end || todayPayload.date || new Date().toISOString(),
+                breakdown: normalizedBreakdown,
+                grade: String(todayPayload.grade || todayPayload.goal_band || todayPayload.level || 'Live'),
+                next_update: todayPayload.generated_at || todayPayload.next_update,
+            });
 
             // Fetch weekly average if needed
             if (timeRange === 'weekly' || timeRange === 'monthly') {
-                const weeklyResponse = await fetch('/api/v1/analytics/productivity/score/weekly', {
-                    headers: getAuthHeaders(),
-                });
-
-                if (weeklyResponse.ok) {
-                    const weeklyData = await weeklyResponse.json();
-                    setWeeklyAverage(weeklyData.average);
+                const weeklyResponse = await api.get<{ average?: number; score?: number | null }>('/analytics/productivity/score/weekly');
+                if (weeklyResponse.success && weeklyResponse.data) {
+                    const weeklyData = weeklyResponse.data;
+                    setWeeklyAverage(weeklyData.average ?? weeklyData.score ?? null);
+                } else if (weeklyResponse.error?.code === 'HTTP_401') {
+                    setWeeklyAverage(null);
                 }
             }
 
             // Fetch monthly average if needed
             if (timeRange === 'monthly') {
-                const monthlyResponse = await fetch('/api/v1/analytics/productivity/score/monthly', {
-                    headers: getAuthHeaders(),
-                });
-
-                if (monthlyResponse.ok) {
-                    const monthlyData = await monthlyResponse.json();
-                    setMonthlyAverage(monthlyData.average);
+                const monthlyResponse = await api.get<{ average?: number; score?: number | null }>('/analytics/productivity/score/monthly');
+                if (monthlyResponse.success && monthlyResponse.data) {
+                    const monthlyData = monthlyResponse.data;
+                    setMonthlyAverage(monthlyData.average ?? monthlyData.score ?? null);
+                } else if (monthlyResponse.error?.code === 'HTTP_401') {
+                    setMonthlyAverage(null);
                 }
             }
         } catch (err: any) {
@@ -89,21 +108,24 @@ export function useProductivityScore(timeRange: 'daily' | 'weekly' | 'monthly' =
         } finally {
             setIsLoading(false);
         }
-    }, [getAuthHeaders, timeRange]);
+    }, [timeRange, isAuthenticated]);
 
     // Initial load
     useEffect(() => {
+        if (!isAuthenticated) return;
         refresh();
-    }, [refresh]);
+    }, [refresh, isAuthenticated]);
 
     // Refresh every 5 minutes to keep score current
     useEffect(() => {
+        if (!isAuthenticated) return;
         const interval = setInterval(refresh, 5 * 60 * 1000);
         return () => clearInterval(interval);
-    }, [refresh]);
+    }, [refresh, isAuthenticated]);
 
     // Real-time refresh on productivity-impacting events
     useEffect(() => {
+        if (!isAuthenticated) return;
         let timeout: ReturnType<typeof setTimeout> | null = null;
         const queueRefresh = () => {
             if (timeout) clearTimeout(timeout);
@@ -126,7 +148,7 @@ export function useProductivityScore(timeRange: 'daily' | 'weekly' | 'monthly' =
             realtimeClient.off('planner:deepwork:completed', queueRefresh);
             if (timeout) clearTimeout(timeout);
         };
-    }, [refresh]);
+    }, [refresh, isAuthenticated]);
 
     return {
         score,

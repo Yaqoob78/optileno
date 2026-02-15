@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Sparkles, CheckCircle, Zap, Loader2, ArrowRight } from 'lucide-react';
 import { realtimeClient } from '../../services/realtime/socket-client';
+import { api } from '../../services/api/client';
 import '../../styles/components/analytics/StrategicInsight.css';
 
 interface InsightData {
@@ -33,12 +34,11 @@ const StrategicInsight: React.FC = () => {
                 setIsLoading(true);
             }
             setError(null);
-            const token = localStorage.getItem('token');
-            const response = await fetch('/api/v1/analytics/strategic-insight', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (!response.ok) throw new Error('Failed to fetch insight');
-            const data = await response.json();
+            const response = await api.get<InsightData>('/analytics/strategic-insight');
+            if (!response.success || !response.data) {
+                throw new Error(response.error?.message || 'Failed to fetch insight');
+            }
+            const data = response.data;
             setInsight(data);
             hasLoadedInsightRef.current = true;
         } catch (err: any) {
@@ -56,20 +56,11 @@ const StrategicInsight: React.FC = () => {
         try {
             setIsApplying(true);
             setError(null);
-            const token = localStorage.getItem('token');
-            const response = await fetch('/api/v1/analytics/strategic-insight/apply', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ insight_id: insight.id })
-            });
-
-            if (!response.ok) throw new Error('Failed to apply insight');
-
-            const result = await response.json();
-            setInsight({ ...insight, applied_at: result.applied_at });
+            const response = await api.post<{ applied_at?: string }>('/analytics/strategic-insight/apply', { insight_id: insight.id });
+            if (!response.success) {
+                throw new Error(response.error?.message || 'Failed to apply insight');
+            }
+            setInsight({ ...insight, applied_at: response.data?.applied_at || new Date().toISOString() });
         } catch (err: any) {
             setError(err.message);
         } finally {

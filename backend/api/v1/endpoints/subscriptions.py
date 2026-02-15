@@ -7,6 +7,7 @@ from backend.core.security import get_current_user
 from backend.db.database import get_db
 from backend.db.models import User
 from backend.payments.stripe_service import stripe_service
+from backend.services.entitlements_service import PLAN_EXPLORER, PLAN_ULTRA, canonical_plan_type, normalize_plan_tier
 
 router = APIRouter()
 
@@ -15,9 +16,9 @@ router = APIRouter()
 async def get_plans():
     return [
         {
-            "id": "free",
+            "id": "explorer",
             "name": "Explorer",
-            "tier": "free",
+            "tier": "explorer",
             "price": {"monthly": 0, "yearly": 0},
             "features": ["basic-chat", "basic-analytics"],
             "limits": {
@@ -28,9 +29,9 @@ async def get_plans():
             },
         },
         {
-            "id": "pro",
+            "id": "ultra",
             "name": "Ultra",
-            "tier": "pro",
+            "tier": "ultra",
             "price": {"monthly": 9.99, "yearly": 99},
             "features": ["all-features"],
             "limits": {
@@ -51,17 +52,21 @@ async def upgrade_subscription(
     current_user: User = Depends(get_current_user),
 ):
     plan_id = payload.get("planId")
+    normalized_plan = str(plan_id or "").strip().lower()
+    requested_tier = normalize_plan_tier(tier=normalized_plan, plan_type=normalized_plan)
     if settings.ENVIRONMENT == "production":
+        if requested_tier != PLAN_ULTRA:
+            raise HTTPException(status_code=400, detail="Unknown plan")
         if not settings.STRIPE_API_KEY or not settings.STRIPE_PRO_PRICE_ID:
             raise HTTPException(status_code=501, detail="Stripe not configured")
         checkout_url = await stripe_service.create_checkout_session(db, current_user)
         return {"status": "requires_payment", "checkoutUrl": checkout_url}
 
-    if plan_id in {"pro", "ultra", "elite"}:
+    if requested_tier == PLAN_ULTRA:
         await db.execute(
             update(User)
             .where(User.id == current_user.id)
-            .values(tier="pro", plan_type="PRO", role="premium")
+            .values(tier=PLAN_ULTRA, plan_type=canonical_plan_type(PLAN_ULTRA))
         )
         await db.commit()
         return {"status": "upgraded"}
@@ -80,7 +85,7 @@ async def cancel_subscription(
     await db.execute(
         update(User)
         .where(User.id == current_user.id)
-        .values(tier="free", plan_type="BASIC", role="user")
+        .values(tier=PLAN_EXPLORER, plan_type=canonical_plan_type(PLAN_EXPLORER))
     )
     await db.commit()
     return {"status": "cancelled"}

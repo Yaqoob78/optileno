@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Send, Loader, Zap, TrendingUp, CheckSquare, Brain } from 'lucide-react';
 import { socket } from '../../services/realtime/socket-client';
 import { usePlanner } from '../../hooks/usePlanner';
+import { api } from '../../services/api/client';
 
 
 interface Message {
@@ -77,19 +78,14 @@ export const AgentChat: React.FC<AgentChatProps> = ({ conversationId }) => {
     setAgentThinking(true);
 
     try {
-      const response = await fetch('/api/v1/chat/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-        },
-        body: JSON.stringify({
-          message: textToSend,
-          mode: agentMode,
-        }),
+      const response = await api.post<any>('/chat/send', {
+        message: textToSend,
+        mode: agentMode,
       });
-
-      const data = await response.json();
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || 'Failed to send message');
+      }
+      const data = response.data;
 
       // Check if any actions were executed and refresh planner data
       if (data.actions && data.actions.length > 0) {

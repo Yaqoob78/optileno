@@ -51,10 +51,10 @@ export default function AnalyticsPage() {
   // Safe time range for hooks that don't support yearly yet
   const safeTimeRange = timeRange === 'yearly' ? 'monthly' : timeRange;
 
-  // Use subscription tier and owner status for premium features
   const { isUltra: storeIsUltra, user } = useUser();
   const isOwner = user?.email?.toLowerCase().trim() === 'khan011504@gmail.com';
-  const isUltra = storeIsUltra || isOwner || user?.role === 'premium' || user?.role === 'admin' || user?.planType === 'ULTRA';
+  const isUltra = storeIsUltra || isOwner;
+  const bigFiveIntervalDays = Number((user as any)?.limits?.big_five_interval_days ?? (isUltra ? 7 : 14));
   const navigate = useNavigate();
 
   const {
@@ -114,7 +114,7 @@ export default function AnalyticsPage() {
     weeklyAverage: weeklyBurnoutAvg,
     monthlyData: monthlyBurnoutData,
     isLoading: burnoutLoading
-  } = useBurnoutRisk(safeTimeRange);
+  } = useBurnoutRisk(safeTimeRange, isUltra);
 
   // Get real productivity score (not hardcoded)
   const getRealProductivityScore = () => {
@@ -232,18 +232,20 @@ export default function AnalyticsPage() {
     },
     {
       label: 'Burnout Risk',
-      value: burnoutLoading ? '...' : (() => {
+      value: !isUltra ? 'Locked' : burnoutLoading ? '...' : (() => {
         if (timeRange === 'monthly' && monthlyBurnoutData) return `${monthlyBurnoutData.average_risk.toFixed(0)}%`;
         if (timeRange === 'weekly' && weeklyBurnoutAvg) return `${weeklyBurnoutAvg.average_risk.toFixed(0)}%`;
         if (burnoutData) return `${burnoutData.risk.toFixed(0)}%`;
         return '--';
       })(),
       change: (() => {
+        if (!isUltra) return 'Ultra only';
         if (timeRange === 'monthly' && monthlyBurnoutData) return monthlyBurnoutData.level;
         if (timeRange === 'weekly' && weeklyBurnoutAvg) return weeklyBurnoutAvg.level;
         return burnoutData?.level || 'Low';
       })(),
       trend: (() => {
+        if (!isUltra) return 'neutral';
         const risk = timeRange === 'monthly' && monthlyBurnoutData ? monthlyBurnoutData.average_risk
           : timeRange === 'weekly' && weeklyBurnoutAvg ? weeklyBurnoutAvg.average_risk
             : burnoutData?.risk || 0;
@@ -251,6 +253,7 @@ export default function AnalyticsPage() {
       })(),
       icon: Activity,
       progress: (() => {
+        if (!isUltra) return 0;
         const risk = timeRange === 'monthly' && monthlyBurnoutData ? monthlyBurnoutData.average_risk
           : timeRange === 'weekly' && weeklyBurnoutAvg ? weeklyBurnoutAvg.average_risk
             : burnoutData?.risk || 0;
@@ -258,6 +261,9 @@ export default function AnalyticsPage() {
       })(),
       subtitle: burnoutData?.ai_insights?.[0] || monthlyBurnoutData?.note,
       customColors: (() => {
+        if (!isUltra) {
+          return { bg: 'rgba(148, 163, 184, 0.08)', text: '#94a3b8', glow: 'none' };
+        }
         const risk = timeRange === 'monthly' && monthlyBurnoutData ? monthlyBurnoutData.average_risk
           : timeRange === 'weekly' && weeklyBurnoutAvg ? weeklyBurnoutAvg.average_risk
             : burnoutData?.risk || 0;
@@ -521,20 +527,18 @@ export default function AnalyticsPage() {
 
               {/* Mood Tracker */}
               <div className="component-card glass-card">
-                {isUltra ? (
-                  <>
-                    <div className="component-header">
-                      <div className="component-title">
-                        <Activity size={18} />
-                        <h3>Mood Tracker</h3>
-                        <span className="component-badge">Emotional</span>
-                      </div>
+                <>
+                  <div className="component-header">
+                    <div className="component-title">
+                      <Activity size={18} />
+                      <h3>Mood Tracker</h3>
+                      <span className="component-badge">Emotional</span>
                     </div>
-                    <div className="component-content">
-                      <MoodTracker />
-                    </div>
-                  </>
-                ) : <LockedFeature title="Mood Tracker" className="h-full" />}
+                  </div>
+                  <div className="component-content">
+                    <MoodTracker />
+                  </div>
+                </>
               </div>
 
               {/* Goal Progress — AI Probability Analysis */}
@@ -578,16 +582,20 @@ export default function AnalyticsPage() {
 
               {/* AI Strategic Insight */}
               <div className="component-card glass-card">
-                <div className="component-header">
-                  <div className="component-title">
-                    <Sparkles size={18} />
-                    <h3>AI Strategic Insight</h3>
-                    <span className="component-badge ai-badge">Actionable</span>
-                  </div>
-                </div>
-                <div className="component-content">
-                  <StrategicInsight />
-                </div>
+                {isUltra ? (
+                  <>
+                    <div className="component-header">
+                      <div className="component-title">
+                        <Sparkles size={18} />
+                        <h3>AI Strategic Insight</h3>
+                        <span className="component-badge ai-badge">Actionable</span>
+                      </div>
+                    </div>
+                    <div className="component-content">
+                      <StrategicInsight />
+                    </div>
+                  </>
+                ) : <LockedFeature title="AI Strategic Insight" className="h-full" />}
               </div>
 
               {/* Behavior Timeline */}
@@ -602,24 +610,22 @@ export default function AnalyticsPage() {
           {/* Bottom Section - Big Five Behavioral Profile (Full Width) */}
           <div className="analytics-bottom-section">
             <div className="component-card glass-card full-width-card" style={{ height: 'auto', minHeight: '400px' }}>
-              {isUltra ? (
-                <>
-                  <div className="component-header">
-                    <div className="component-title">
-                      <Fingerprint size={18} className="text-primary" />
-                      <h3>Behavioral Fingerprint</h3>
-                      <span className="component-badge">Big Five Profile</span>
-                    </div>
-                    <div className="component-meta">
-                      <Calendar size={14} />
-                      <span>14-Day Baseline Analysis</span>
-                    </div>
+              <>
+                <div className="component-header">
+                  <div className="component-title">
+                    <Fingerprint size={18} className="text-primary" />
+                    <h3>Behavioral Fingerprint</h3>
+                    <span className="component-badge">Big Five Profile</span>
                   </div>
-                  <div className="component-content">
-                    <BigFiveProfile />
+                  <div className="component-meta">
+                    <Calendar size={14} />
+                    <span>{bigFiveIntervalDays}-Day Baseline Analysis</span>
                   </div>
-                </>
-              ) : <LockedFeature title="Behavioral Analytics" className="h-full" />}
+                </div>
+                <div className="component-content">
+                  <BigFiveProfile />
+                </div>
+              </>
             </div>
           </div>
 

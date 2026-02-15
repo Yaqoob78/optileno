@@ -75,23 +75,11 @@ export class PlannerAIManager {
 
       console.log('[PlannerAI] Creating task:', payload);
 
-      // Note: createTask is exposed from usePlanner hook
-      // This assumes the task will be created through the component state
-      // For AI agent integration, we might need to use the API directly
-      const response = await fetch('/api/v1/planner/tasks', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || ''}`
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.statusText}`);
+      const response = await plannerApi.createTask(payload as any);
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || 'Failed to create task');
       }
-
-      const result = await response.json();
+      const result = response.data;
       console.log('[PlannerAI] Task created successfully:', result);
 
       return {
@@ -119,17 +107,9 @@ export class PlannerAIManager {
     try {
       console.log(`[PlannerAI] Updating task ${taskId} to status: ${status}`);
 
-      const response = await fetch(`/api/v1/planner/tasks/${taskId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || ''}`
-        },
-        body: JSON.stringify({ status })
-      });
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.statusText}`);
+      const response = await plannerApi.updateTask(taskId, { status } as any);
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to update task');
       }
 
       console.log(`[PlannerAI] Task ${taskId} updated successfully`);
@@ -160,20 +140,11 @@ export class PlannerAIManager {
 
       console.log('[PlannerAI] Creating goal:', payload);
 
-      const response = await fetch('/api/v1/planner/goals', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || ''}`
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.statusText}`);
+      const response = await plannerApi.createGoal(payload as any);
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || 'Failed to create goal');
       }
-
-      const result = await response.json();
+      const result = response.data;
       console.log('[PlannerAI] Goal created successfully:', result);
 
       return {
@@ -199,17 +170,9 @@ export class PlannerAIManager {
       const clampedProgress = Math.min(100, Math.max(0, progress));
       console.log(`[PlannerAI] Updating goal ${goalId} progress to: ${clampedProgress}%`);
 
-      const response = await fetch(`/api/v1/planner/goals/${goalId}/progress`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || ''}`
-        },
-        body: JSON.stringify({ progress: clampedProgress })
-      });
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.statusText}`);
+      const response = await plannerApi.updateGoalProgress(goalId, clampedProgress);
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to update goal progress');
       }
 
       console.log(`[PlannerAI] Goal ${goalId} progress updated successfully`);
@@ -238,20 +201,11 @@ export class PlannerAIManager {
 
       console.log('[PlannerAI] Creating habit:', payload);
 
-      const response = await fetch('/api/v1/planner/habits', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || ''}`
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.statusText}`);
+      const response = await plannerApi.createHabit(payload);
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || 'Failed to create habit');
       }
-
-      const result = await response.json();
+      const result = response.data;
       console.log('[PlannerAI] Habit created successfully:', result);
 
       return {
@@ -275,17 +229,9 @@ export class PlannerAIManager {
     try {
       console.log(`[PlannerAI] Completing habit: ${habitId}`);
 
-      const response = await fetch(`/api/v1/planner/habits/${habitId}/complete`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || ''}`
-        },
-        body: JSON.stringify({})
-      });
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.statusText}`);
+      const response = await plannerApi.trackHabit(habitId);
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to complete habit');
       }
 
       console.log(`[PlannerAI] Habit ${habitId} completed successfully`);
@@ -336,21 +282,14 @@ export class PlannerAIManager {
    */
   static async getTasks(): Promise<{ success: boolean; data?: any[]; error?: string }> {
     try {
-      const response = await fetch('/api/v1/planner/tasks', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || ''}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.statusText}`);
+      const response = await plannerApi.getTasks();
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to fetch tasks');
       }
-
-      const result = await response.json();
+      const result = response.data || [];
       return {
         success: true,
-        data: Array.isArray(result) ? result : result.data || []
+        data: Array.isArray(result) ? result : (result as any)?.data || []
       };
     } catch (error: any) {
       console.error('[PlannerAI] Failed to fetch tasks:', error);
@@ -366,21 +305,14 @@ export class PlannerAIManager {
    */
   static async getGoals(): Promise<{ success: boolean; data?: any[]; error?: string }> {
     try {
-      const response = await fetch('/api/v1/planner/goals', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || ''}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.statusText}`);
+      const response = await plannerApi.getGoals();
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to fetch goals');
       }
-
-      const result = await response.json();
+      const result = response.data || [];
       return {
         success: true,
-        data: Array.isArray(result) ? result : result.data || []
+        data: Array.isArray(result) ? result : (result as any)?.data || []
       };
     } catch (error: any) {
       console.error('[PlannerAI] Failed to fetch goals:', error);
@@ -396,21 +328,14 @@ export class PlannerAIManager {
    */
   static async getHabits(): Promise<{ success: boolean; data?: any[]; error?: string }> {
     try {
-      const response = await fetch('/api/v1/planner/habits', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || ''}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.statusText}`);
+      const response = await plannerApi.getHabits();
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to fetch habits');
       }
-
-      const result = await response.json();
+      const result = response.data || [];
       return {
         success: true,
-        data: Array.isArray(result) ? result : result.data || []
+        data: Array.isArray(result) ? result : (result as any)?.data || []
       };
     } catch (error: any) {
       console.error('[PlannerAI] Failed to fetch habits:', error);
@@ -471,19 +396,11 @@ export class PlannerAIManager {
     error?: string;
   }> {
     try {
-      const response = await fetch('/api/v1/planner/dashboard', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || ''}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.statusText}`);
+      const response = await plannerApi.getDashboard();
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || 'Failed to fetch stats');
       }
-
-      const result = await response.json();
-      const stats = result.data || result;
+      const stats = response.data;
 
       return {
         success: true,
