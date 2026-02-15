@@ -85,29 +85,39 @@ class AnalyticsService:
         async for db in get_db():
             events = []
             for event_data in events_data:
-                normalized = await normalize_event(event_data)
+                try:
+                    normalized = await normalize_event(event_data)
+                    
+                    try:
+                        ts = datetime.fromisoformat(normalized["timestamp"].replace('Z', '+00:00'))
+                    except (ValueError, TypeError):
+                        ts = datetime.utcnow()
+
+                    event = AnalyticsEvent(
+                        user_id=normalized["user_id"],
+                        event_type=normalized["event"],
+                        event_source=normalized["source"],
+                        category=normalized.get("category", "other"),
+                        timestamp=ts,
+                        meta=normalized.get("metadata", {}),
+                        raw_data=normalized,
+                        processed_at=datetime.utcnow(),
+                    )
+                    events.append(event)
+                    db.add(event)
+                except Exception as e:
+                    logger.error(f"Error processing event in batch: {e}")
+                    continue
+            
+            if events:
+                await db.commit()
                 
-                event = AnalyticsEvent(
-                    user_id=normalized["user_id"],
-                    event_type=normalized["event"],
-                    event_source=normalized["source"],
-                    category=normalized.get("category", "other"),
-                    timestamp=datetime.fromisoformat(normalized["timestamp"].replace('Z', '+00:00')),
-                    meta=normalized.get("metadata", {}),
-                    raw_data=normalized,
-                    processed_at=datetime.utcnow(),
-                )
-                events.append(event)
-                db.add(event)
-            
-            await db.commit()
-            
-            # Refresh all events to get IDs
-            for event in events:
-                await db.refresh(event)
-            
-            # Process batch
-            asyncio.create_task(self._process_batch_async([e.id for e in events], events_data))
+                # Refresh all events to get IDs
+                for event in events:
+                    await db.refresh(event)
+                
+                # Process batch
+                asyncio.create_task(self._process_batch_async([e.id for e in events], events_data))
             
             return events
     

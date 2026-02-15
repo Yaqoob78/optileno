@@ -57,12 +57,6 @@ def _normalize_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
         # Convert datetime objects to ISO strings
         if isinstance(value, datetime):
             normalized[key] = value.isoformat()
-        # Convert other objects to JSON strings
-        elif isinstance(value, (dict, list)):
-            try:
-                normalized[key] = json.dumps(value)
-            except:
-                normalized[key] = str(value)
         else:
             normalized[key] = value
     
