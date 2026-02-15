@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 import time
 import logging
+import re
 from pathlib import Path
 
 from backend.app.config import settings, log_startup_settings
@@ -157,7 +158,7 @@ async def global_exception_handler(request, exc):
     # Include CORS headers so errors aren't masked as CORS errors in browsers
     origin = request.headers.get("origin", "")
     headers = {}
-    if origin in settings.CORS_ORIGINS:
+    if _is_origin_allowed(origin):
         headers["Access-Control-Allow-Origin"] = origin
         headers["Access-Control-Allow-Credentials"] = "true"
     
@@ -175,11 +176,24 @@ async def validation_exception_handler(request, exc: RequestValidationError):
     
     origin = request.headers.get("origin", "")
     headers = {}
-    if origin in settings.CORS_ORIGINS:
+    if _is_origin_allowed(origin):
         headers["Access-Control-Allow-Origin"] = origin
         headers["Access-Control-Allow-Credentials"] = "true"
     
     return JSONResponse(status_code=422, content=content, headers=headers)
+
+
+def _is_origin_allowed(origin: str) -> bool:
+    if not origin:
+        return False
+    if origin in settings.CORS_ORIGINS:
+        return True
+    if settings.CORS_ALLOW_ORIGIN_REGEX:
+        try:
+            return re.match(settings.CORS_ALLOW_ORIGIN_REGEX, origin) is not None
+        except re.error:
+            logger.warning("Invalid CORS_ALLOW_ORIGIN_REGEX configured")
+    return False
 
 
 # ==================================================

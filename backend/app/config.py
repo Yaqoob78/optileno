@@ -1,4 +1,5 @@
 import os
+import re
 import urllib.parse
 from typing import List, Optional
 from pathlib import Path
@@ -44,12 +45,25 @@ def _env_list(name: str) -> List[str]:
     value = os.getenv(name)
     if not value:
         return []
+    # Accept comma/newline/semicolon-delimited lists and strip accidental wrapping quotes.
+    cleaned_value = _strip_wrapping_quotes(value.strip())
+    if not cleaned_value:
+        return []
+
     items: List[str] = []
-    for raw in value.split(","):
+    for raw in re.split(r"[,\n;]", cleaned_value):
         cleaned = _strip_wrapping_quotes(raw.strip())
         if cleaned:
             items.append(cleaned)
-    return items
+
+    # Stable de-duplication.
+    deduped: List[str] = []
+    seen = set()
+    for item in items:
+        if item not in seen:
+            deduped.append(item)
+            seen.add(item)
+    return deduped
 
 
 def _strip_wrapping_quotes(value: str) -> str:
@@ -221,6 +235,12 @@ class Settings:
         
     if FRONTEND_URL and FRONTEND_URL not in CORS_ORIGINS:
         CORS_ORIGINS.append(FRONTEND_URL)
+
+    # Ensure canonical production domains are always allowed in production.
+    if ENVIRONMENT == "production":
+        for canonical_origin in ("https://optileno.com", "https://www.optileno.com"):
+            if canonical_origin not in CORS_ORIGINS:
+                CORS_ORIGINS.append(canonical_origin)
 
     CORS_ALLOW_ORIGIN_REGEX: Optional[str] = _strip_wrapping_quotes(
         os.getenv("CORS_ALLOW_ORIGIN_REGEX", "")

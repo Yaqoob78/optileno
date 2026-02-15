@@ -19,6 +19,20 @@ from backend.analytics.processors.even_normalizer import normalize_event
 
 logger = logging.getLogger(__name__)
 
+
+def _coerce_user_id(user_id: Any) -> int:
+    """Coerce user identifiers to database integer IDs."""
+    if isinstance(user_id, bool):
+        raise ValueError("Invalid user_id type")
+    if isinstance(user_id, int):
+        return user_id
+    if isinstance(user_id, str):
+        cleaned = user_id.strip()
+        if cleaned.isdigit():
+            return int(cleaned)
+    raise ValueError(f"Invalid user_id value: {user_id!r}")
+
+
 class AnalyticsService:
     """Complete analytics service with real-time processing"""
     
@@ -29,6 +43,8 @@ class AnalyticsService:
         async for db in get_db():
             # Normalize event first
             normalized = await normalize_event(event_data)
+            user_id = _coerce_user_id(normalized.get("user_id"))
+            normalized["user_id"] = user_id
             
             try:
                 ts = datetime.fromisoformat(normalized["timestamp"].replace('Z', '+00:00'))
@@ -37,7 +53,7 @@ class AnalyticsService:
             
             # Create event record
             event = AnalyticsEvent(
-                user_id=normalized["user_id"],
+                user_id=user_id,
                 event_type=normalized["event"],
                 event_source=normalized["source"],
                 category=normalized.get("category", "other"),
@@ -89,9 +105,12 @@ class AnalyticsService:
         """Save multiple events efficiently"""
         async for db in get_db():
             events = []
+            normalized_events: List[Dict[str, Any]] = []
             for event_data in events_data:
                 try:
                     normalized = await normalize_event(event_data)
+                    user_id = _coerce_user_id(normalized.get("user_id"))
+                    normalized["user_id"] = user_id
                     
                     try:
                         ts = datetime.fromisoformat(normalized["timestamp"].replace('Z', '+00:00'))
@@ -99,7 +118,7 @@ class AnalyticsService:
                         ts = datetime.utcnow()
 
                     event = AnalyticsEvent(
-                        user_id=normalized["user_id"],
+                        user_id=user_id,
                         event_type=normalized["event"],
                         event_source=normalized["source"],
                         category=normalized.get("category", "other"),
@@ -109,6 +128,7 @@ class AnalyticsService:
                         processed_at=datetime.utcnow(),
                     )
                     events.append(event)
+                    normalized_events.append(normalized)
                     db.add(event)
                 except Exception as e:
                     logger.error(f"Error processing event in batch: {e}")
@@ -122,7 +142,7 @@ class AnalyticsService:
                     await db.refresh(event)
                 
                 # Process batch
-                asyncio.create_task(self._process_batch_async([e.id for e in events], events_data))
+                asyncio.create_task(self._process_batch_async([e.id for e in events], normalized_events))
             
             return events
     
@@ -132,7 +152,7 @@ class AnalyticsService:
             if not events_data:
                 return
             
-            user_id = events_data[0]["user_id"]
+            user_id = _coerce_user_id(events_data[0]["user_id"])
             
             # Update metrics with batch
             for event_data in events_data:

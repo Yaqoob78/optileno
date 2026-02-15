@@ -13,7 +13,7 @@ async def normalize_event(event_data: Dict[str, Any]) -> Dict[str, Any]:
     """
     # Ensure required fields
     normalized = {
-        "user_id": str(event_data.get("user_id", "")),
+        "user_id": _normalize_user_id(event_data.get("user_id", "")),
         "event": event_data.get("event", "unknown").lower().strip(),
         "source": event_data.get("source", "unknown").lower().strip(),
         "timestamp": event_data.get("timestamp") or datetime.utcnow().isoformat(),
@@ -61,6 +61,19 @@ def _normalize_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
             normalized[key] = value
     
     return normalized
+
+def _normalize_user_id(value: Any) -> Any:
+    """Normalize user_id while preserving non-numeric values for upstream validation."""
+    if isinstance(value, bool):
+        return ""
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        cleaned = value.strip()
+        if cleaned.isdigit():
+            return int(cleaned)
+        return cleaned
+    return value
 
 def _extract_hour(timestamp: str) -> int:
     """Extract hour from timestamp"""
