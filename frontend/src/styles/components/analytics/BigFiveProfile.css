@@ -27,16 +27,16 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    width: 180px;
-    height: 180px;
+    width: 156px;
+    height: 156px;
 }
 
 /* Futuristic Big Five Hand Animation */
 .big-five-hand-container {
     width: 100%;
     height: 100%;
-    max-width: 180px;
-    max-height: 180px;
+    max-width: 150px;
+    max-height: 150px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -48,13 +48,12 @@
     width: 100%;
     height: 100%;
     overflow: visible;
-    /* Prevent clipping of glows */
-    filter: drop-shadow(0 0 15px rgba(34, 211, 238, 0.4));
+    filter: drop-shadow(0 0 12px rgba(34, 211, 238, 0.36));
 }
 
 .finger-tip-glow {
     filter: drop-shadow(0 0 5px #22d3ee);
-    animation: tip-pulse 2s ease-in-out infinite;
+    animation: tip-pulse 1.8s ease-in-out infinite;
     transform-origin: center;
     transform-box: fill-box;
 }
@@ -74,12 +73,13 @@
 }
 
 .big-five-finger rect {
-    transition: all 0.3s ease;
+    transition: transform 0.25s ease, filter 0.25s ease, opacity 0.25s ease;
 }
 
 .big-five-hand-container:hover .big-five-finger rect {
-    opacity: 1;
+    opacity: 0.98;
     filter: brightness(1.2);
+    transform: translateY(-1px);
 }
 
 .empty-state-icon.in-progress .big-five-hand-svg {

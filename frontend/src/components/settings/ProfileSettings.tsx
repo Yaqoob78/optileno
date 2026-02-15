@@ -3,14 +3,14 @@ import { User, Mail, Zap, Edit2, Save, X } from 'lucide-react';
 import { useUserStore } from '../../stores/useUserStore';
 
 const ProfileSettings: React.FC = () => {
-  const { profile, updateProfile } = useUserStore();
+  const { profile, updateProfile, isUltra } = useUserStore();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     name: profile.name || '',
     email: profile.email || '',
   });
 
-  const planName = profile.planType === 'ULTRA' ? 'Ultra' : 'Explorer';
+  const planName = isUltra ? 'Ultra' : 'Explorer';
   const joinedDate = profile?.stats?.joinedAt
     ? new Date(profile.stats.joinedAt).toLocaleDateString()
     : '—';

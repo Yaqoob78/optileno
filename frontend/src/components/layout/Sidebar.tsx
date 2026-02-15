@@ -41,7 +41,9 @@ export default function Sidebar({
 }: SidebarProps) {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const { user, isUltra } = useUser();
-  const profile = { planType: isUltra ? 'ULTRA' : 'EXPLORER' };
+  const ownerEmail = 'khan011504@gmail.com';
+  const effectiveIsUltra = isUltra || (user.email || '').toLowerCase().trim() === ownerEmail;
+  const profile = { planType: effectiveIsUltra ? 'ULTRA' : 'EXPLORER' };
 
   return (
     <aside className="premium-sidebar">

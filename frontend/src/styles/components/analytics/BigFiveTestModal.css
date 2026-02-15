@@ -15,7 +15,8 @@
     z-index: 9999;
     padding: 20px;
     animation: fadeIn 0.3s ease;
-    overflow: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
 }
 
 @keyframes fadeIn {
@@ -31,9 +32,11 @@
 /* ===== MODAL ===== */
 .bf-test-modal {
     position: relative;
+    display: flex;
+    flex-direction: column;
     width: 100%;
     max-width: 540px;
-    max-height: calc(100vh - 40px);
+    max-height: calc(100dvh - 40px);
     box-sizing: border-box;
     overflow: hidden;
     overflow-x: hidden;
@@ -93,13 +96,16 @@
 }
 
 .bf-test-scroll {
-    max-height: calc(100vh - 108px);
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
     overflow-y: auto;
     overflow-x: hidden;
     box-sizing: border-box;
     scrollbar-gutter: stable;
-    padding-top: 2px;
+    padding-top: 6px;
     padding-right: 4px;
+    padding-bottom: 4px;
 }
 
 .bf-test-scroll::-webkit-scrollbar {
@@ -659,13 +665,19 @@
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 540px) {
+    .bf-test-modal-overlay {
+        align-items: flex-start;
+        padding: calc(env(safe-area-inset-top, 0px) + 10px) 10px 12px;
+    }
+
     .bf-test-modal {
+        max-height: calc(100dvh - 24px);
         padding: 24px;
-        margin: 10px;
+        margin: 0;
     }
 
     .bf-test-scroll {
-        max-height: calc(100vh - 118px);
+        max-height: none;
         padding-right: 2px;
     }
 

@@ -6,7 +6,6 @@ import {
     Minus,
     RefreshCw,
     Fingerprint,
-    Hand,
     Play,
     Lock,
     Calendar,
@@ -21,7 +20,7 @@ import { bigFiveTestService, BigFiveTestStatus, BigFiveProfile as BigFiveProfile
 
 const BigFiveHand = () => (
     <div className="big-five-hand-container">
-        <svg viewBox="0 0 120 160" className="big-five-hand-svg">
+        <svg viewBox="0 0 128 160" className="big-five-hand-svg" aria-hidden="true">
             <defs>
                 <linearGradient id="handGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stopColor="#06b6d4" />
@@ -29,50 +28,55 @@ const BigFiveHand = () => (
                 </linearGradient>
             </defs>
 
-            {/* Futuristic Palm Base - Deeply shifted down */}
-            <path d="M 35 130 C 35 148, 85 148, 85 130 L 85 105 C 85 95, 35 95, 35 105 Z"
-                fill="url(#handGrad)" opacity="0.05" stroke="#06b6d4" strokeWidth="0.5" />
+            <path
+                d="M 35 104 C 35 92, 43 88, 54 88 H 78 C 88 88, 96 93, 96 104 V 124 C 96 136, 87 145, 75 145 H 53 C 42 145, 33 136, 33 124 V 107 Z"
+                fill="url(#handGrad)"
+                opacity="0.16"
+                stroke="rgba(34,211,238,0.45)"
+                strokeWidth="1"
+            />
 
-            <path d="M 40 125 C 40 140, 80 140, 80 125 L 80 108 C 80 100, 40 100, 40 108 Z"
-                fill="url(#handGrad)" opacity="0.15" />
-
-            {/* Five Fingers (Representing the Big Five Traits) */}
-            {/* 1. Openness (Thumb) */}
+            {/* Thumb */}
             <g className="big-five-finger">
-                <rect x="18" y="108" width="10" height="24" rx="5" transform="rotate(-35 23 120)" fill="url(#handGrad)" opacity="0.8" />
-                <circle cx="16" cy="105" r="2.5" fill="#22d3ee" className="finger-tip-glow" />
+                <rect
+                    x="26"
+                    y="92"
+                    width="12"
+                    height="34"
+                    rx="6"
+                    transform="rotate(-30 32 109)"
+                    fill="url(#handGrad)"
+                    opacity="0.9"
+                />
+                <circle cx="22" cy="88" r="2.4" fill="#22d3ee" className="finger-tip-glow" />
             </g>
 
-            {/* 2. Conscientiousness (Index) */}
+            {/* Index */}
             <g className="big-five-finger">
-                <rect x="36" y="68" width="10" height="42" rx="5" fill="url(#handGrad)" opacity="0.9" />
-                <circle cx="41" cy="64" r="2.5" fill="#22d3ee" className="finger-tip-glow" style={{ animationDelay: '0.2s' }} />
-                <rect x="40" y="75" width="2" height="12" rx="1" fill="#fff" opacity="0.3" />
+                <rect x="42" y="40" width="12" height="58" rx="6" fill="url(#handGrad)" opacity="0.95" />
+                <circle cx="48" cy="36" r="2.6" fill="#22d3ee" className="finger-tip-glow" style={{ animationDelay: '0.12s' }} />
             </g>
 
-            {/* 3. Extraversion (Middle) */}
+            {/* Middle */}
             <g className="big-five-finger">
-                <rect x="55" y="58" width="10" height="52" rx="5" fill="url(#handGrad)" />
-                <circle cx="60" cy="54" r="3" fill="#22d3ee" className="finger-tip-glow" style={{ animationDelay: '0.4s' }} />
-                <rect x="59" y="65" width="2" height="15" rx="1" fill="#fff" opacity="0.4" />
+                <rect x="58" y="28" width="12" height="70" rx="6" fill="url(#handGrad)" />
+                <circle cx="64" cy="24" r="2.8" fill="#22d3ee" className="finger-tip-glow" style={{ animationDelay: '0.24s' }} />
             </g>
 
-            {/* 4. Agreeableness (Ring) */}
+            {/* Ring */}
             <g className="big-five-finger">
-                <rect x="74" y="72" width="10" height="38" rx="5" fill="url(#handGrad)" opacity="0.9" />
-                <circle cx="79" cy="68" r="2.5" fill="#22d3ee" className="finger-tip-glow" style={{ animationDelay: '0.6s' }} />
-                <rect x="78" y="80" width="2" height="10" rx="1" fill="#fff" opacity="0.3" />
+                <rect x="74" y="40" width="12" height="58" rx="6" fill="url(#handGrad)" opacity="0.95" />
+                <circle cx="80" cy="36" r="2.6" fill="#22d3ee" className="finger-tip-glow" style={{ animationDelay: '0.36s' }} />
             </g>
 
-            {/* 5. Neuroticism / Stability (Pinky) */}
+            {/* Pinky */}
             <g className="big-five-finger">
-                <rect x="92" y="88" width="10" height="28" rx="5" fill="url(#handGrad)" opacity="0.8" />
-                <circle cx="97" cy="84" r="2.5" fill="#22d3ee" className="finger-tip-glow" style={{ animationDelay: '0.8s' }} />
+                <rect x="90" y="52" width="12" height="46" rx="6" fill="url(#handGrad)" opacity="0.88" />
+                <circle cx="96" cy="48" r="2.5" fill="#22d3ee" className="finger-tip-glow" style={{ animationDelay: '0.48s' }} />
             </g>
 
-            {/* Palm Circuit Grid */}
-            <path d="M 45 118 L 75 118 M 60 110 L 60 130 M 50 125 L 70 125" stroke="#fff" strokeWidth="0.5" opacity="0.3" />
-            <circle cx="60" cy="122" r="6" fill="none" stroke="#22d3ee" strokeWidth="0.5" opacity="0.4" strokeDasharray="2 2" />
+            <path d="M 45 111 H 83 M 64 102 V 131 M 51 122 H 77" stroke="rgba(255,255,255,0.36)" strokeWidth="0.75" />
+            <circle cx="64" cy="117" r="7" fill="none" stroke="rgba(34,211,238,0.5)" strokeWidth="0.8" strokeDasharray="2.5 2.5" />
         </svg>
     </div>
 );

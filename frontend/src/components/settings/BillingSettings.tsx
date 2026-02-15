@@ -4,11 +4,11 @@ import { useUserStore } from '../../stores/useUserStore';
 import { paymentService } from '../../services/api/payment.service';
 
 export default function BillingSettings() {
-    const { profile } = useUserStore();
+    const { profile, isUltra: storeIsUltra } = useUserStore();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const isUltra = profile.planType === 'ULTRA' || profile.email === 'khan011504@gmail.com' || profile.role === 'admin';
+    const isUltra = storeIsUltra;
 
     const handleUpgrade = async () => {
         setLoading(true);
