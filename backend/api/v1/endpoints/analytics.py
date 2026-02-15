@@ -119,7 +119,14 @@ async def log_events_batch(
     # Broadcast analytics update to connected clients
     await broadcast_analytics_update(user.id, {
         "event_count": len(saved_events),
-        "events": [e.dict() if hasattr(e, 'dict') else e for e in saved_events]
+        "events": [
+            {
+                "event": e.event_type,
+                "source": e.event_source,
+                "timestamp": e.timestamp.isoformat() if e.timestamp else None
+            }
+            for e in saved_events
+        ]
     })
     
     return {

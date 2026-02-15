@@ -37,8 +37,9 @@ class AnalyticsService:
                 event_source=normalized["source"],
                 category=normalized.get("category", "other"),
                 timestamp=datetime.fromisoformat(normalized["timestamp"].replace('Z', '+00:00')),
-                meta=json.dumps(normalized.get("metadata", {})),
-                raw_data=json.dumps(normalized),
+                # Store as dict, let SQLAlchemy/Driver handle JSON serialization
+                meta=normalized.get("metadata", {}),
+                raw_data=normalized,
                 processed_at=datetime.utcnow(),
             )
             
@@ -92,8 +93,8 @@ class AnalyticsService:
                     event_source=normalized["source"],
                     category=normalized.get("category", "other"),
                     timestamp=datetime.fromisoformat(normalized["timestamp"].replace('Z', '+00:00')),
-                    meta=json.dumps(normalized.get("metadata", {})),
-                    raw_data=json.dumps(normalized),
+                    meta=normalized.get("metadata", {}),
+                    raw_data=normalized,
                     processed_at=datetime.utcnow(),
                 )
                 events.append(event)
@@ -146,8 +147,9 @@ class AnalyticsService:
                     "source": e.event_source,
                     "category": e.category,
                     "timestamp": e.timestamp.isoformat(),
-                    "metadata": json.loads(e.meta) if e.meta else {},
-                    "raw_data": json.loads(e.raw_data) if e.raw_data else {},
+                    # Handle both dict (if JSON type) and string (if legacy/text type)
+                    "metadata": e.meta if isinstance(e.meta, dict) else (json.loads(e.meta) if e.meta else {}),
+                    "raw_data": e.raw_data if isinstance(e.raw_data, dict) else (json.loads(e.raw_data) if e.raw_data else {}),
                 }
                 for e in events
             ]
