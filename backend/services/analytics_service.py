@@ -30,13 +30,18 @@ class AnalyticsService:
             # Normalize event first
             normalized = await normalize_event(event_data)
             
+            try:
+                ts = datetime.fromisoformat(normalized["timestamp"].replace('Z', '+00:00'))
+            except (ValueError, TypeError):
+                ts = datetime.utcnow()
+            
             # Create event record
             event = AnalyticsEvent(
                 user_id=normalized["user_id"],
                 event_type=normalized["event"],
                 event_source=normalized["source"],
                 category=normalized.get("category", "other"),
-                timestamp=datetime.fromisoformat(normalized["timestamp"].replace('Z', '+00:00')),
+                timestamp=ts,
                 # Store as dict, let SQLAlchemy/Driver handle JSON serialization
                 meta=normalized.get("metadata", {}),
                 raw_data=normalized,
@@ -669,18 +674,7 @@ class AnalyticsService:
                     focus_score=50,
                     productivity_score=50,
                     planning_accuracy=60,
-                    # habits_consistency is incorrect in some models, using habit_consistency check
-                    # Checking models.py it is habit_consistency=70? 
-                    # Warning: The original code had habit_consistency=70 but field is current_habit_streak etc.
-                    # In models.py: current_habit_streak ID is there.
-                    # Wait, RealTimeMetrics in models.py has no habit_consistency field!
-                    # It has current_habit_streak, habits_completed_today.
-                    # It does NOT have habit_consistency column.
-                    # Ah, I see habitConsistency in get_comprehensive_analytics original code.
-                    # I should remove habit_consistency from init if not in model.
-                    # Checking models.py again via memory...
-                    # RealTimeMetrics has: focus_score, focus_sessions_today, total_focus_minutes, planning_accuracy, tasks_completed_today, current_habit_streak, habits_completed_today, burnout_risk, engagement_score.
-                    # NO habit_consistency!
+                    # habit_consistency removed as it is not in the model
                     burnout_risk=25,
                     engagement_score=50,
                     current_habit_streak=0,
