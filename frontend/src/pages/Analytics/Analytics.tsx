@@ -553,7 +553,7 @@ export default function AnalyticsPage() {
                       </div>
                     </div>
                     <div className="component-content">
-                      <GoalProgress />
+                      <GoalProgress timeRange={safeTimeRange} />
                     </div>
                   </>
                 ) : <LockedFeature title="Goal Analytics" className="h-full" />}

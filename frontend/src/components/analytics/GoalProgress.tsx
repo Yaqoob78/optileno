@@ -1,27 +1,20 @@
 /**
- * GoalProgress — Enhanced with AI Probability Analysis
+ * GoalProgress
  *
- * Now renders the GoalAnalyticsDashboard which shows:
- * - Up to 3 goals prioritized by deadline
- * - AI probability levels (Very High → Very Low)
- * - Task cards, habits, and deep work breakdown
- * - Max goal limit message
- * - Real-time updates via WebSocket
+ * Backend-first goal analytics wrapper.
+ * Listens to realtime planner events and triggers backend goal progress refreshes.
  */
 
-import React, { useEffect } from 'react';
-import { usePlanner } from '../../hooks/usePlanner';
+import React, { useEffect, useState } from 'react';
 import { useRealtime } from '../../hooks/useRealtime';
 import GoalAnalyticsDashboard from './GoalAnalyticsDashboard';
 
-export default function GoalProgress() {
-  const {
-    isLoading,
-    fetchGoals,
-    fetchTasks,
-    fetchHabits,
-  } = usePlanner();
+interface GoalProgressProps {
+  timeRange?: 'daily' | 'weekly' | 'monthly';
+}
 
+export default function GoalProgress({ timeRange = 'weekly' }: GoalProgressProps) {
+  const [refreshKey, setRefreshKey] = useState(0);
   const {
     onGoalCreated,
     onGoalUpdated,
@@ -34,27 +27,24 @@ export default function GoalProgress() {
     onDeepWorkCompleted,
   } = useRealtime();
 
-  // Real-time subscriptions to keep data fresh
   useEffect(() => {
+    const tick = () => setRefreshKey((prev) => prev + 1);
     const unsubscribers = [
-      onGoalCreated(() => fetchGoals()),
-      onGoalUpdated(() => fetchGoals()),
-      onGoalProgressChanged(() => fetchGoals()),
-      onTaskCreated(() => fetchTasks()),
-      onTaskUpdated(() => fetchTasks()),
-      onTaskDeleted(() => fetchTasks()),
-      onHabitCreated(() => fetchHabits()),
-      onHabitCompleted(() => fetchHabits()),
-      onDeepWorkCompleted(() => fetchTasks()),
+      onGoalCreated(tick),
+      onGoalUpdated(tick),
+      onGoalProgressChanged(tick),
+      onTaskCreated(tick),
+      onTaskUpdated(tick),
+      onTaskDeleted(tick),
+      onHabitCreated(tick),
+      onHabitCompleted(tick),
+      onDeepWorkCompleted(tick),
     ];
 
     return () => {
       unsubscribers.forEach((unsubscribe) => unsubscribe?.());
     };
   }, [
-    fetchGoals,
-    fetchHabits,
-    fetchTasks,
     onDeepWorkCompleted,
     onGoalCreated,
     onGoalProgressChanged,
@@ -66,6 +56,5 @@ export default function GoalProgress() {
     onTaskUpdated,
   ]);
 
-  // Render the enhanced AI-powered analytics dashboard
-  return <GoalAnalyticsDashboard />;
+  return <GoalAnalyticsDashboard timeRange={timeRange} refreshKey={refreshKey} />;
 }

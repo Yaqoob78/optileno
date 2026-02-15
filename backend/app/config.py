@@ -335,6 +335,7 @@ class Settings:
     # =========================
     ENABLE_DOCS: bool = _env_bool("ENABLE_DOCS", ENVIRONMENT == "development")
     ANALYTICS_V2_ENABLED: bool = _env_bool("ANALYTICS_V2_ENABLED", True)
+    GOAL_PROGRESS_V3_ENABLED: bool = _env_bool("GOAL_PROGRESS_V3_ENABLED", True)
 
     # =========================
     # Redis Cache - Enterprise HA
