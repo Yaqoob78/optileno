@@ -108,40 +108,11 @@ class BigFiveTestService:
     """
     _schema_checked: bool = False
 
-    async def _ensure_questions_column(self, db: Session) -> None:
-        """
-        Ensure backwards compatibility when `questions` column migration
-        was not applied on an existing database.
-        """
-        if self._schema_checked:
-            return
-
-        try:
-            dialect_name = db.get_bind().dialect.name
-
-            if dialect_name == "sqlite":
-                result = await db.execute(text("PRAGMA table_info(big_five_tests)"))
-                columns = [row[1] for row in result.fetchall()]
-                if "questions" not in columns:
-                    logger.warning("Schema fix: adding missing big_five_tests.questions column (sqlite).")
-                    await db.execute(text("ALTER TABLE big_five_tests ADD COLUMN questions JSON"))
-                    await db.commit()
-            else:
-                result = await db.execute(
-                    text(
-                        "SELECT 1 FROM information_schema.columns "
-                        "WHERE table_name = 'big_five_tests' AND column_name = 'questions'"
-                    )
-                )
-                has_column = result.first() is not None
-                if not has_column:
-                    logger.warning("Schema fix: adding missing big_five_tests.questions column.")
-                    await db.execute(text("ALTER TABLE big_five_tests ADD COLUMN questions JSON"))
-                    await db.commit()
-
-            self._schema_checked = True
-        except Exception as e:
-            logger.warning(f"Schema compatibility check failed for big_five_tests.questions: {e}")
+    async def _ensure_timezones(self, dt: Optional[datetime]) -> Optional[datetime]:
+        """Ensure datetime is timezone-aware."""
+        if dt and dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt
 
     async def get_test_status(self, user_id: int) -> Dict[str, Any]:
         """
@@ -156,7 +127,6 @@ class BigFiveTestService:
         """
         try:
             async for db in get_db():
-                await self._ensure_questions_column(db)
                 # Get the most recent test
                 result = await db.execute(
                     select(BigFiveTest)
@@ -198,10 +168,17 @@ class BigFiveTestService:
                     
                     # Check if next test is available
                     now = datetime.now(timezone.utc)
-                    # DEV OVERRIDE: Ignore DB stored future date to allow testing
-                    next_available = test.test_completed_at + timedelta(minutes=1)
+                    completed_at = await self._ensure_timezones(test.test_completed_at)
                     
-                    if next_available and next_available > now:
+                    if completed_at:
+                        # DEV OVERRIDE: Ignore DB stored future date to allow testing
+                        next_available = completed_at + timedelta(minutes=1)
+                        is_available = now >= next_available
+                    else:
+                        is_available = True
+                        next_available = None
+                    
+                    if next_available and not is_available:
                         seconds_remaining = max(0.0, (next_available - now).total_seconds())
                         days_remaining = max(1, math.ceil(seconds_remaining / 86400))
                         return {
@@ -255,7 +232,6 @@ class BigFiveTestService:
         """
         try:
             async for db in get_db():
-                await self._ensure_questions_column(db)
                 # Check for existing in-progress test
                 result = await db.execute(
                     select(BigFiveTest)
@@ -316,10 +292,17 @@ class BigFiveTestService:
                 # Respect 14-day cooldown between completed tests
                 if last_completed:
                     now = datetime.now(timezone.utc)
-                    # DEV OVERRIDE: Ignore DB stored future date to allow testing
-                    next_available = last_completed.test_completed_at + timedelta(minutes=1)
+                    completed_at = await self._ensure_timezones(last_completed.test_completed_at)
+                    
+                    if completed_at:
+                        # DEV OVERRIDE: Ignore DB stored future date to allow testing
+                        next_available = completed_at + timedelta(minutes=1)
+                        is_future = next_available > now
+                    else:
+                        is_future = False
+                        next_available = None
 
-                    if next_available and next_available > now:
+                    if next_available and is_future:
                         seconds_remaining = max(0.0, (next_available - now).total_seconds())
                         days_remaining = max(1, math.ceil(seconds_remaining / 86400))
                         return {
@@ -413,7 +396,6 @@ class BigFiveTestService:
             return {"error": "Response must be between 1 and 5"}
         
         async for db in get_db():
-            await self._ensure_questions_column(db)
             # Get the test
             result = await db.execute(
                 select(BigFiveTest)
@@ -512,7 +494,6 @@ class BigFiveTestService:
     async def get_completed_profile(self, user_id: int) -> Optional[Dict[str, Any]]:
         """Get the most recent completed personality profile with adjusted scores."""
         async for db in get_db():
-            await self._ensure_questions_column(db)
             result = await db.execute(
                 select(BigFiveTest)
                 .where(
@@ -553,7 +534,6 @@ class BigFiveTestService:
         Adjustments are capped at ±5 points max to prevent drastic changes.
         """
         async for db in get_db():
-            await self._ensure_questions_column(db)
             # Get the most recent completed test
             result = await db.execute(
                 select(BigFiveTest)
