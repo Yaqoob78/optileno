@@ -94,6 +94,17 @@ const ENGAGEMENT_HEIGHT: Record<string, number> = {
   absent: 12,
 };
 
+const ENGAGEMENT_LABEL: Record<DayState['engagement'], string> = {
+  active: 'Active day',
+  partial: 'Partially active',
+  absent: 'No activity',
+};
+
+const RESISTANCE_LABELS: Record<string, string> = {
+  avoidance: 'Avoidance pattern',
+  skipped_all: 'Skipped all due tasks',
+};
+
 export default function BehaviorTimeline() {
   const [days, setDays] = useState<number>(30);
   const [data, setData] = useState<TimelineResponse | null>(null);
@@ -150,6 +161,34 @@ export default function BehaviorTimeline() {
     setSelectedDay(selectedDay?.date === day.date ? null : day);
   };
 
+  const normalizeText = (value: string): string => {
+    return String(value || '')
+      .replace(/[â€”]/g, '-')
+      .replace(/_/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
+  const toTitleCase = (value: string): string => {
+    return normalizeText(value).replace(/\b\w/g, (m) => m.toUpperCase());
+  };
+
+  const getQuickRead = (day: DayState): string => {
+    if (day.engagement === 'absent') {
+      return 'Low activity day. A small restart tomorrow will help momentum.';
+    }
+    if (day.emotion === 'flow') {
+      return 'Strong day with healthy momentum.';
+    }
+    if (day.emotion === 'frustrated' || day.emotion === 'drained') {
+      return 'High strain signal detected. Protect recovery.';
+    }
+    if (day.engagement === 'partial') {
+      return 'Some progress made. A focused next step can stabilize rhythm.';
+    }
+    return 'Steady day with balanced progress.';
+  };
+
   const getInterventionIcon = (iconName?: string) => {
     const size = 18;
     switch (iconName) {
@@ -202,8 +241,8 @@ export default function BehaviorTimeline() {
             <Activity size={18} strokeWidth={2.5} />
           </div>
           <div>
-            <h3 className="bt-title">Behavioral Flow</h3>
-            <p className="bt-subtitle">Energy, mood & momentum over time</p>
+            <h3 className="bt-title">Behavior Timeline</h3>
+            <p className="bt-subtitle">Track daily engagement, mood, and effort</p>
           </div>
         </div>
         <div className="bt-controls">
@@ -225,12 +264,12 @@ export default function BehaviorTimeline() {
           <div className="bt-stat">
             <Flame size={14} />
             <span className="bt-stat-value">{summary.current_streak}</span>
-            <span className="bt-stat-label">Streak</span>
+            <span className="bt-stat-label">Current Streak</span>
           </div>
           <div className="bt-stat">
             <TrendingUp size={14} />
             <span className="bt-stat-value">{summary.engagement_rate}%</span>
-            <span className="bt-stat-label">Engaged</span>
+            <span className="bt-stat-label">Engagement</span>
           </div>
           <div className="bt-stat">
             <Star size={14} />
@@ -238,10 +277,19 @@ export default function BehaviorTimeline() {
             <span className="bt-stat-label">Flow Days</span>
           </div>
           <div className="bt-stat bt-stat-pattern">
-            <span className="bt-stat-pattern-text">{summary.dominant_pattern}</span>
+            <span className="bt-stat-pattern-label">Pattern</span>
+            <span className="bt-stat-pattern-text">{normalizeText(summary.dominant_pattern)}</span>
           </div>
         </div>
       )}
+
+      <div className="bt-guide">
+        <span className="bt-guide-title">How to read:</span>
+        <span>Bar = engagement</span>
+        <span>Dot = mood</span>
+        <span>Lightning = effort</span>
+        <span>Marker = intervention</span>
+      </div>
 
       {/* Timeline Track with scroll arrows */}
       <div className="bt-timeline-wrapper">
@@ -264,7 +312,7 @@ export default function BehaviorTimeline() {
                   key={day.date}
                   className={`bt-day ${day.engagement} ${isSelected ? 'bt-day-selected' : ''} ${today ? 'bt-day-today' : ''}`}
                   onClick={() => handleDayClick(day)}
-                  title={`${day.date}: ${day.engagement} engagement, ${day.emotion} mood`}
+                  title={`${day.date}: ${ENGAGEMENT_LABEL[day.engagement]}, ${toTitleCase(day.emotion)} mood`}
                 >
                   {/* Month label */}
                   {showMonthLabel && (
@@ -339,6 +387,10 @@ export default function BehaviorTimeline() {
       {/* Legend */}
       <div className="bt-legend">
         <div className="bt-legend-item">
+          <div className="bt-legend-bar" />
+          <span>Daily engagement bar</span>
+        </div>
+        <div className="bt-legend-item">
           <div className="bt-legend-dot" style={{ background: '#10b981' }} />
           <span>Flow</span>
         </div>
@@ -357,6 +409,10 @@ export default function BehaviorTimeline() {
         <div className="bt-legend-item">
           <Zap size={10} fill="#f59e0b" color="#f59e0b" />
           <span>Effort</span>
+        </div>
+        <div className="bt-legend-item">
+          <div className="bt-legend-marker" />
+          <span>Intervention marker</span>
         </div>
       </div>
 
@@ -384,15 +440,15 @@ export default function BehaviorTimeline() {
           <div className="bt-detail-states">
             <div className="bt-state-chip" style={{ background: EMOTION_CONFIG[selectedDay.emotion]?.bg }}>
               <Heart size={12} style={{ color: EMOTION_CONFIG[selectedDay.emotion]?.color }} />
-              <span>{EMOTION_CONFIG[selectedDay.emotion]?.label || selectedDay.emotion}</span>
+              <span>{EMOTION_CONFIG[selectedDay.emotion]?.label || toTitleCase(selectedDay.emotion)}</span>
             </div>
             <div className="bt-state-chip">
               <Activity size={12} />
-              <span>{selectedDay.engagement}</span>
+              <span>{ENGAGEMENT_LABEL[selectedDay.engagement]}</span>
             </div>
             <div className="bt-state-chip">
               <Zap size={12} />
-              <span>{EFFORT_CONFIG[selectedDay.effort]?.label || selectedDay.effort} effort</span>
+              <span>{EFFORT_CONFIG[selectedDay.effort]?.label || toTitleCase(selectedDay.effort)} effort</span>
             </div>
             {selectedDay.recovery && (
               <div className="bt-state-chip bt-recovery-chip">
@@ -400,6 +456,10 @@ export default function BehaviorTimeline() {
                 <span>Comeback</span>
               </div>
             )}
+          </div>
+
+          <div className="bt-quick-read">
+            <strong>Quick read:</strong> {getQuickRead(selectedDay)}
           </div>
 
           {/* Detail metrics */}
@@ -420,13 +480,25 @@ export default function BehaviorTimeline() {
               {selectedDay.detail.focus_score > 0 && (
                 <div className="bt-metric-row">
                   <span className="bt-metric-label">Focus score</span>
-                  <span className="bt-metric-value">{selectedDay.detail.focus_score}</span>
+                  <span className="bt-metric-value">{selectedDay.detail.focus_score}%</span>
+                </div>
+              )}
+              {selectedDay.detail.focus_minutes > 0 && (
+                <div className="bt-metric-row">
+                  <span className="bt-metric-label">Focus minutes</span>
+                  <span className="bt-metric-value">{selectedDay.detail.focus_minutes} min</span>
                 </div>
               )}
               {selectedDay.detail.high_priority_done > 0 && (
                 <div className="bt-metric-row">
-                  <span className="bt-metric-label">High priority done</span>
+                  <span className="bt-metric-label">High priority completed</span>
                   <span className="bt-metric-value">{selectedDay.detail.high_priority_done}</span>
+                </div>
+              )}
+              {selectedDay.detail.chat_messages > 0 && (
+                <div className="bt-metric-row">
+                  <span className="bt-metric-label">Chat messages</span>
+                  <span className="bt-metric-value">{selectedDay.detail.chat_messages}</span>
                 </div>
               )}
               {selectedDay.detail.stress_level > 0 && (
@@ -435,6 +507,19 @@ export default function BehaviorTimeline() {
                   <span className="bt-metric-value">{selectedDay.detail.stress_level}/10</span>
                 </div>
               )}
+            </div>
+          )}
+
+          {selectedDay.resistance?.length > 0 && (
+            <div className="bt-resistance">
+              <span className="bt-resistance-label">Friction signals:</span>
+              <div className="bt-resistance-list">
+                {selectedDay.resistance.map((signal) => (
+                  <span key={signal} className="bt-resistance-chip">
+                    {RESISTANCE_LABELS[signal] || toTitleCase(signal)}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
 
