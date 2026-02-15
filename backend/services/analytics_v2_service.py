@@ -1127,42 +1127,99 @@ class AnalyticsV2Service:
 
     async def focus_score(self, user: User, plan_tier: str, time_range: str) -> Dict[str, Any]:
         window = await self.resolve_window(user, time_range)
-        async for db in get_db():
-            usage = await self._usage_inputs(db, user.id, window)
-            goals = await self._goal_progress_summary(db, user.id, window)
+        preferred_source = "heatmap" if plan_tier == "ultra" else "derived"
 
-            task_component = 0.0
-            if usage["tasks_created"] > 0:
-                task_component = _clamp((usage["tasks_completed"] / usage["tasks_created"]) * 100.0)
-            elif usage["tasks_completed"] > 0:
-                task_component = 80.0
-            deep_work_component = _clamp((usage["deep_work_minutes"] / 120.0) * 100.0)
-            goal_alignment = float(goals["score"] or 0.0)
-            derived_score = _clamp(deep_work_component * 0.55 + task_component * 0.30 + goal_alignment * 0.15)
+        try:
+            from backend.services.attention_integrity_service import attention_integrity_service
 
-            if plan_tier == "ultra":
-                heatmap_rows = await db.execute(
-                    select(FocusScore.score).where(
-                        FocusScore.user_id == user.id,
-                        FocusScore.date >= window.period_start,
-                        FocusScore.date <= window.period_end,
-                    )
+            if window.time_range == "daily":
+                daily = await attention_integrity_service.calculate_attention_integrity(
+                    user.id, window.period_end.date()
                 )
-                scores = [float(x) for x in heatmap_rows.scalars().all()]
-                if scores:
-                    avg_score = sum(scores) / len(scores)
-                    return {
-                        "score": round(_clamp(avg_score), 1),
-                        "breakdown": {
-                            "heatmap_samples": len(scores),
-                            "derived_fallback": round(derived_score, 1),
-                        },
-                        **self._meta(
-                            window,
-                            source="heatmap",
-                            confidence=0.65 + min(0.3, len(scores) / 40.0),
-                        ),
-                    }
+                score = daily.get("score")
+                breakdown = daily.get("breakdown", {}) or {}
+                confidence = float(daily.get("confidence", 0.62))
+
+                return {
+                    "score": round(float(score), 1) if score is not None else None,
+                    "reason": daily.get("reason") if score is None else None,
+                    "date": daily.get("date"),
+                    "total_minutes": int(daily.get("total_minutes", 0)),
+                    "focus_profile": daily.get("focus_profile"),
+                    "profile_confidence": daily.get("profile_confidence"),
+                    "status": daily.get("status"),
+                    "grade": daily.get("grade"),
+                    "confidence_state": daily.get("confidence_state"),
+                    "reason_codes": daily.get("reason_codes", []),
+                    "breakdown": {
+                        # New model keys.
+                        **breakdown,
+                        # Compatibility keys consumed by existing frontend mappings.
+                        "deep_work_component": round(float(breakdown.get("deep_work", 0.0)), 1),
+                        "task_component": round(float(breakdown.get("task_focus", 0.0)), 1),
+                        "goal_alignment_component": round(float(breakdown.get("goal_momentum", 0.0)), 1),
+                    },
+                    **self._meta(
+                        window,
+                        source=preferred_source if score is not None else "fallback",
+                        confidence=confidence if score is not None else 0.35,
+                    ),
+                }
+
+            if window.time_range == "weekly":
+                weekly = await attention_integrity_service.get_weekly_average(user.id)
+                scored_days = int(weekly.get("scored_days", 0))
+                score = float(weekly.get("average_score", 0.0)) if scored_days > 0 else None
+                return {
+                    "score": round(score, 1) if score is not None else None,
+                    "reason": None if score is not None else "NO_DATA",
+                    "average_score": weekly.get("average_score", 0.0),
+                    "average_minutes": weekly.get("average_minutes", 0),
+                    "period": "weekly",
+                    "days": 7,
+                    "scored_days": scored_days,
+                    "breakdown": {"heatmap_samples": scored_days},
+                    **self._meta(
+                        window,
+                        source=preferred_source if score is not None else "fallback",
+                        confidence=float(weekly.get("confidence", 0.6)),
+                    ),
+                }
+
+            monthly = await attention_integrity_service.get_monthly_average(user.id)
+            scored_days = int(monthly.get("scored_days", 0))
+            score = float(monthly.get("average_score", 0.0)) if scored_days > 0 else None
+            return {
+                "score": round(score, 1) if score is not None else None,
+                "reason": None if score is not None else "NO_DATA",
+                "average_score": monthly.get("average_score", 0.0),
+                "average_minutes": monthly.get("average_minutes", 0),
+                "period": "monthly",
+                "days": 30,
+                "scored_days": scored_days,
+                "breakdown": {"heatmap_samples": scored_days},
+                **self._meta(
+                    window,
+                    source=preferred_source if score is not None else "fallback",
+                    confidence=float(monthly.get("confidence", 0.62)),
+                ),
+            }
+
+        except Exception:
+            # Fallback path keeps endpoint available even if focus v3 engine fails.
+            async for db in get_db():
+                usage = await self._usage_inputs(db, user.id, window)
+                goals = await self._goal_progress_summary(db, user.id, window)
+
+                task_component = 0.0
+                if usage["tasks_created"] > 0:
+                    task_component = _clamp((usage["tasks_completed"] / usage["tasks_created"]) * 100.0)
+                elif usage["tasks_completed"] > 0:
+                    task_component = 80.0
+                deep_work_component = _clamp((usage["deep_work_minutes"] / 120.0) * 100.0)
+                goal_alignment = float(goals["score"] or 0.0)
+                derived_score = _clamp(deep_work_component * 0.55 + task_component * 0.30 + goal_alignment * 0.15)
+
                 return {
                     "score": round(derived_score, 1) if derived_score > 0 else None,
                     "reason": None if derived_score > 0 else "NO_DATA",
@@ -1173,17 +1230,6 @@ class AnalyticsV2Service:
                     },
                     **self._meta(window, source="fallback", confidence=0.45),
                 }
-
-            return {
-                "score": round(derived_score, 1) if derived_score > 0 else None,
-                "reason": None if derived_score > 0 else "NO_DATA",
-                "breakdown": {
-                    "deep_work_component": round(deep_work_component, 1),
-                    "task_component": round(task_component, 1),
-                    "goal_alignment_component": round(goal_alignment, 1),
-                },
-                **self._meta(window, source="derived", confidence=0.62),
-            }
 
     async def burnout_risk(self, user: User, time_range: str) -> Dict[str, Any]:
         window = await self.resolve_window(user, time_range)

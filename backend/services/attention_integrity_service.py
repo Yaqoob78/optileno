@@ -1,19 +1,18 @@
 # backend/services/attention_integrity_service.py
 """
-Attention Integrity Score Service
-Measures sustained, goal-directed cognitive effort across multiple signals:
-- Deep Work Blocks (40%)
-- Task-Based Focus (25%)
-- Habit Consistency (15%)
-- AI Cognitive Engagement (10%)
-- Goal Progress Momentum (10%)
-Global disruption penalty applied as a multiplier.
-Behavior-derived only - AI classifies intent but does not invent scores.
+Attention Integrity Score Service (Focus v3)
+
+Core idea:
+- Focus = execution of daily intent.
+- Daily intent is resolved to one profile: athlete, student, or maker.
+- Profile-specific weighting is applied, then quality multipliers and bounded AI bonus.
+- The service remains behavior-derived only (no fabricated signals).
 """
 
-from datetime import datetime, timedelta, date, time
+from datetime import datetime, timedelta, date, time, timezone
 from typing import Dict, Any, List, Optional
 import logging
+import re
 import statistics
 from sqlalchemy import select, func, and_, or_
 from sqlalchemy.orm import Session
@@ -29,14 +28,185 @@ class AttentionIntegrityService:
     Measures focus ability, not time spent.
     """
 
-    # Component weights (total = 100%)
-    WEIGHTS = {
-        "deep_work": 0.40,
-        "task_based": 0.25,
-        "habit_consistency": 0.15,
-        "ai_engagement": 0.10,
-        "goal_momentum": 0.10
+    # Profile-specific component weights (total = 100%)
+    PROFILE_WEIGHTS = {
+        "athlete": {"habit_discipline": 0.80, "deep_work": 0.15, "ai_engagement": 0.05},
+        "student": {"deep_work": 0.80, "task_focus": 0.15, "ai_engagement": 0.05},
+        "maker": {"task_focus": 0.80, "deep_work": 0.15, "ai_engagement": 0.05},
     }
+
+    ATHLETE_MARKERS = {
+        "fitness", "health", "workout", "gym", "weight", "run", "training", "sport",
+        "sports", "football", "recovery", "diet", "sleep", "body", "stamina",
+    }
+    STUDENT_MARKERS = {
+        "exam", "study", "revision", "chapter", "research", "mock", "assignment",
+        "syllabus", "neet", "jee", "test", "interview", "course", "academic",
+    }
+    MAKER_MARKERS = {
+        "build", "project", "product", "code", "coding", "business", "ship", "launch",
+        "design", "portfolio", "startup", "create", "art", "skill",
+    }
+
+    CONSTRUCTIVE_EVENT_TYPES = {
+        "insight_applied",
+        "strategy_applied",
+        "plan_adjusted",
+        "goal_replanned",
+        "analytics_viewed",
+        "goal_progress_checked",
+    }
+
+    @staticmethod
+    def _clamp(value: float, lo: float = 0.0, hi: float = 100.0) -> float:
+        return max(lo, min(hi, value))
+
+    @staticmethod
+    def _parse_iso_date(value: Any) -> Optional[date]:
+        if not value:
+            return None
+        try:
+            dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt.date()
+        except Exception:
+            return None
+
+    @staticmethod
+    def _parse_iso_dt(value: Any) -> Optional[datetime]:
+        if not value:
+            return None
+        try:
+            dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+            return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+        except Exception:
+            return None
+
+    def _keyword_hits(self, text: str, markers: set[str]) -> int:
+        tokens = set(re.findall(r"[a-z]{3,}", (text or "").lower()))
+        return sum(1 for marker in markers if marker in tokens or marker in text.lower())
+
+    async def _resolve_focus_profile(
+        self,
+        db: Session,
+        user_id: int,
+        *,
+        deep_work: Dict[str, Any],
+        task_focus: Dict[str, Any],
+        habit_discipline: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        goals_rows = await db.execute(
+            select(Goal).where(Goal.user_id == user_id, Goal.current_progress < 100)
+        )
+        goals = goals_rows.scalars().all()
+        goal_text = " ".join(
+            f"{g.title or ''} {g.description or ''} {g.category or ''}" for g in goals
+        ).lower()
+
+        athlete_hits = self._keyword_hits(goal_text, self.ATHLETE_MARKERS)
+        student_hits = self._keyword_hits(goal_text, self.STUDENT_MARKERS)
+        maker_hits = self._keyword_hits(goal_text, self.MAKER_MARKERS)
+
+        # Daily intent from execution signals.
+        athlete_signal = (
+            athlete_hits * 3.0
+            + min(6.0, float(habit_discipline.get("completed_today", 0)))
+            + (habit_discipline.get("score", 0.0) / 20.0)
+        )
+        student_signal = (
+            student_hits * 3.0
+            + min(6.0, float(deep_work.get("total_minutes", 0)) / 45.0)
+            + (deep_work.get("score", 0.0) / 20.0)
+        )
+        maker_signal = (
+            maker_hits * 3.0
+            + min(6.0, float(task_focus.get("completed_tasks", 0)) * 1.5)
+            + (task_focus.get("score", 0.0) / 20.0)
+        )
+
+        score_map = {
+            "athlete": athlete_signal,
+            "student": student_signal,
+            "maker": maker_signal,
+        }
+        ordered = sorted(score_map.items(), key=lambda kv: kv[1], reverse=True)
+        selected, best = ordered[0]
+        second = ordered[1][1] if len(ordered) > 1 else 0.0
+
+        # Fallback to dominant behavioral component when semantic evidence is weak.
+        if best < 2.0:
+            core_scores = {
+                "athlete": float(habit_discipline.get("score", 0.0)),
+                "student": float(deep_work.get("score", 0.0)),
+                "maker": float(task_focus.get("score", 0.0)),
+            }
+            selected = max(core_scores, key=core_scores.get)
+            best = core_scores[selected]
+            second = sorted(core_scores.values(), reverse=True)[1]
+
+        confidence = self._clamp(((best - second) + 3.0) / 12.0, 0.45, 0.95)
+        return {
+            "profile": selected,
+            "confidence": round(confidence, 3),
+            "signals": {
+                "athlete": round(athlete_signal, 2),
+                "student": round(student_signal, 2),
+                "maker": round(maker_signal, 2),
+            },
+            "goal_keyword_hits": {
+                "athlete": athlete_hits,
+                "student": student_hits,
+                "maker": maker_hits,
+            },
+        }
+
+    async def _calculate_constructive_ai_bonus(
+        self,
+        db: Session,
+        user_id: int,
+        start: datetime,
+        end: datetime,
+        *,
+        core_component_score: float,
+        ai_engagement: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        if core_component_score < 50:
+            return {
+                "points": 0.0,
+                "reason": "core_below_threshold",
+                "qualified": False,
+                "constructive_points": 0,
+            }
+
+        event_count = (
+            await db.execute(
+                select(func.count(AnalyticsEvent.id)).where(
+                    AnalyticsEvent.user_id == user_id,
+                    AnalyticsEvent.timestamp >= start,
+                    AnalyticsEvent.timestamp <= end,
+                    AnalyticsEvent.event_type.in_(list(self.CONSTRUCTIVE_EVENT_TYPES)),
+                )
+            )
+        ).scalar() or 0
+
+        constructive_points = int(ai_engagement.get("constructive_messages", 0)) + min(int(event_count), 4)
+        if constructive_points >= 3:
+            bonus = 5.0
+        elif constructive_points == 2:
+            bonus = 3.0
+        elif constructive_points == 1:
+            bonus = 1.0
+        else:
+            bonus = 0.0
+
+        return {
+            "points": bonus,
+            "reason": "constructive_interaction" if bonus > 0 else "no_constructive_interaction",
+            "qualified": bonus > 0,
+            "constructive_points": constructive_points,
+            "event_points": int(event_count),
+        }
 
     async def calculate_attention_integrity(
         self, 
@@ -52,84 +222,166 @@ class AttentionIntegrityService:
 
         try:
             async for db in get_db():
-                # Get time range for the day
                 start_of_day = datetime.combine(target_date, time.min)
                 end_of_day = datetime.combine(target_date, time.max)
-                
-                # 1. Deep Work Blocks (40%)
-                dw_score = await self._calculate_dw_integrity(db, user_id, start_of_day, end_of_day)
-                
-                # 2. Task-Based Focus (25%)
-                task_score = await self._calculate_task_focus(db, user_id, start_of_day, end_of_day)
-                
-                # 3. Habit Consistency (15%)
-                habit_score = await self._calculate_habit_discipline(db, user_id, start_of_day, end_of_day)
-                
-                # 4. AI Cognitive Engagement (10%)
-                ai_score = await self._calculate_ai_engagement(db, user_id, start_of_day, end_of_day)
-                
-                # 5. Goal Progress Momentum (10%)
-                goal_score = await self._calculate_goal_momentum(db, user_id, start_of_day, end_of_day)
 
-                # Total Raw Focus
+                deep_work = await self._calculate_dw_integrity(db, user_id, start_of_day, end_of_day)
+                task_focus = await self._calculate_task_focus(db, user_id, start_of_day, end_of_day)
+                habit_discipline = await self._calculate_habit_discipline(db, user_id, start_of_day, end_of_day)
+                ai_engagement = await self._calculate_ai_engagement(db, user_id, start_of_day, end_of_day)
+                goal_momentum = await self._calculate_goal_momentum(db, user_id, start_of_day, end_of_day)
+
+                profile = await self._resolve_focus_profile(
+                    db,
+                    user_id,
+                    deep_work=deep_work,
+                    task_focus=task_focus,
+                    habit_discipline=habit_discipline,
+                )
+                profile_name = profile["profile"]
+                weights = self.PROFILE_WEIGHTS.get(profile_name, self.PROFILE_WEIGHTS["maker"])
+
                 raw_focus = (
-                    dw_score * self.WEIGHTS["deep_work"] +
-                    task_score * self.WEIGHTS["task_based"] +
-                    habit_score * self.WEIGHTS["habit_consistency"] +
-                    ai_score * self.WEIGHTS["ai_engagement"] +
-                    goal_score * self.WEIGHTS["goal_momentum"]
+                    deep_work["score"] * weights.get("deep_work", 0.0)
+                    + task_focus["score"] * weights.get("task_focus", 0.0)
+                    + habit_discipline["score"] * weights.get("habit_discipline", 0.0)
+                    + ai_engagement["score"] * weights.get("ai_engagement", 0.0)
                 )
 
-                # If no meaningful effort, return None (Neutral Gray)
-                if raw_focus < 5:  # Threshold for "Inactive"
+                # Keep goal momentum as an auxiliary realism signal without dominating profile intent.
+                raw_focus += goal_momentum["score"] * 0.03
+                raw_focus = self._clamp(raw_focus)
+
+                data_points = (
+                    int(deep_work.get("sessions", 0))
+                    + int(task_focus.get("completed_tasks", 0))
+                    + int(habit_discipline.get("completed_today", 0))
+                    + int(ai_engagement.get("constructive_messages", 0))
+                    + int(goal_momentum.get("goal_linked_completions", 0))
+                )
+                activity_minutes = (
+                    int(deep_work.get("total_minutes", 0))
+                    + int(task_focus.get("active_minutes", 0))
+                    + int(ai_engagement.get("active_minutes", 0))
+                )
+
+                if data_points <= 0 and activity_minutes <= 0:
                     return {
                         "score": None,
+                        "reason": "NO_DATA",
                         "date": target_date.isoformat(),
                         "total_minutes": 0,
-                        "breakdown": {},
+                        "breakdown": {
+                            "deep_work": round(deep_work["score"], 1),
+                            "task_focus": round(task_focus["score"], 1),
+                            "habit_discipline": round(habit_discipline["score"], 1),
+                            "ai_engagement": round(ai_engagement["score"], 1),
+                            "goal_momentum": round(goal_momentum["score"], 1),
+                        },
+                        "profile": profile_name,
+                        "profile_confidence": profile["confidence"],
                         "grade": "N/A",
-                        "status": "Inactive"
+                        "status": "Inactive",
+                        "confidence": 0.2,
+                        "confidence_state": "calibrating",
                     }
 
-                # Apply Global Disruption Penalty (Multiplier)
-                disruption_multiplier = await self._calculate_disruption_multiplier(db, user_id, start_of_day, end_of_day)
-                final_score = raw_focus * disruption_multiplier
+                disruption_multiplier = await self._calculate_disruption_multiplier(
+                    db, user_id, start_of_day, end_of_day
+                )
 
-                # Clamp to 0-100
-                final_score = max(0, min(100, final_score))
+                core_component_score = {
+                    "athlete": habit_discipline["score"],
+                    "student": deep_work["score"],
+                    "maker": task_focus["score"],
+                }.get(profile_name, task_focus["score"])
+                ai_bonus = await self._calculate_constructive_ai_bonus(
+                    db,
+                    user_id,
+                    start_of_day,
+                    end_of_day,
+                    core_component_score=float(core_component_score),
+                    ai_engagement=ai_engagement,
+                )
 
-                # Calculate total focus minutes (metadata)
+                final_score = raw_focus * disruption_multiplier + float(ai_bonus["points"])
+
+                confidence = min(
+                    0.95,
+                    0.35
+                    + min(0.35, data_points / 10.0)
+                    + min(0.25, activity_minutes / 180.0),
+                )
+                confidence_state = "established"
+                score_cap = 100.0
+                reason_codes: List[str] = []
+
+                if data_points < 3:
+                    score_cap = min(score_cap, 60.0)
+                    confidence_state = "calibrating"
+                    reason_codes.append("low_data_points")
+                elif data_points < 8:
+                    score_cap = min(score_cap, 80.0)
+                    confidence_state = "calibrating"
+                    reason_codes.append("insufficient_track_record")
+
+                final_score = min(self._clamp(final_score), score_cap)
                 total_minutes = await self._calculate_total_focus_minutes(db, user_id, target_date)
 
                 return {
                     "score": round(final_score, 1),
                     "date": target_date.isoformat(),
                     "total_minutes": total_minutes,
+                    "focus_profile": profile_name,
+                    "profile_confidence": profile["confidence"],
+                    "profile_signals": profile["signals"],
+                    "focus_model_version": "v3",
                     "breakdown": {
-                        "deep_work": round(dw_score, 1),
-                        "task_focus": round(task_score, 1),
-                        "habit_discipline": round(habit_score, 1),
-                        "ai_engagement": round(ai_score, 1),
-                        "goal_momentum": round(goal_score, 1),
-                        "disruption_penalty": round((1 - disruption_multiplier) * 100, 1)
+                        # Legacy-compatible keys used by frontend.
+                        "deep_work": round(deep_work["score"], 1),
+                        "task_focus": round(task_focus["score"], 1),
+                        "habit_discipline": round(habit_discipline["score"], 1),
+                        "ai_engagement": round(ai_engagement["score"], 1),
+                        "goal_momentum": round(goal_momentum["score"], 1),
+                        "disruption_penalty": round((1 - disruption_multiplier) * 100, 1),
+                        # Additional v3 detail.
+                        "raw_focus": round(raw_focus, 1),
+                        "ai_bonus": round(float(ai_bonus["points"]), 1),
+                        "data_points": int(data_points),
+                        "active_minutes": int(activity_minutes),
+                        "weights": weights,
                     },
+                    "components": {
+                        "deep_work": deep_work,
+                        "task_focus": task_focus,
+                        "habit_discipline": habit_discipline,
+                        "ai_engagement": ai_engagement,
+                        "goal_momentum": goal_momentum,
+                    },
+                    "bonus": ai_bonus,
+                    "reason_codes": reason_codes,
                     "grade": self._get_grade(final_score),
-                    "status": self._get_status(final_score)
+                    "status": self._get_status(final_score),
+                    "confidence": round(confidence, 3),
+                    "confidence_state": confidence_state,
                 }
         except Exception as e:
             logger.error(f"Error calculating attention integrity: {e}")
             return {
-                "score": 0,
+                "score": None,
                 "date": target_date.isoformat(),
                 "total_minutes": 0,
                 "breakdown": {},
-                "grade": "F",
+                "grade": "N/A",
                 "status": "No Data",
-                "error": str(e)
+                "reason": "CALCULATION_ERROR",
+                "error": str(e),
+                "confidence": 0.2,
+                "confidence_state": "calibrating",
             }
 
-    async def _calculate_dw_integrity(self, db, user_id, start, end) -> float:
-        """Deep Work Blocks (40%) - Planned vs Actual."""
+    async def _calculate_dw_integrity(self, db, user_id, start, end) -> Dict[str, Any]:
+        """Deep Work quality score (0-100) with anti-gaming checks."""
         result = await db.execute(
             select(Plan).where(
                 Plan.user_id == user_id,
@@ -140,22 +392,53 @@ class AttentionIntegrityService:
         )
         sessions = result.scalars().all()
         if not sessions:
-            return 0
+            return {
+                "score": 0.0,
+                "sessions": 0,
+                "total_minutes": 0,
+                "planned_minutes": 0,
+                "interruption_events": 0,
+            }
         
         session_scores = []
+        total_minutes = 0.0
+        planned_minutes = 0.0
+        interruption_events = 0
         for s in sessions:
             schedule = s.schedule or {}
-            planned = schedule.get("planned_duration") or (s.duration_hours * 60 if s.duration_hours else 0)
-            actual = schedule.get("actual_duration", 0)
-            
+            planned = (
+                schedule.get("planned_duration")
+                or schedule.get("planned_minutes")
+                or (float(s.duration_hours or 0.0) * 60.0)
+            )
+            actual = (
+                schedule.get("actual_duration")
+                or schedule.get("actual_minutes")
+                or (float(s.duration_hours or 0.0) * 60.0)
+            )
+            interruptions = int(schedule.get("interruptions", 0) or 0)
+            interruption_events += max(0, interruptions)
+            total_minutes += max(float(actual), 0.0)
+            planned_minutes += max(float(planned), 0.0)
+
             if planned > 0:
-                score = min(100, (actual / planned) * 100)
+                completion_score = self._clamp((float(actual) / float(planned)) * 100.0)
+                duration_quality = self._clamp((float(actual) / 90.0) * 100.0)
+                interruption_penalty = min(25.0, interruptions * 6.0)
+                score = self._clamp((completion_score * 0.65) + (duration_quality * 0.35) - interruption_penalty)
                 session_scores.append(score)
         
-        return sum(session_scores) / len(session_scores) if session_scores else 0
+        score = sum(session_scores) / len(session_scores) if session_scores else 0.0
+        return {
+            "score": round(score, 2),
+            "sessions": len(sessions),
+            "total_minutes": int(total_minutes),
+            "planned_minutes": int(planned_minutes),
+            "interruption_events": interruption_events,
+        }
 
-    async def _calculate_task_focus(self, db, user_id, start, end) -> float:
-        """Task-Based Focus (25%) - Engagement >= 45 min."""
+    async def _calculate_task_focus(self, db, user_id, start, end) -> Dict[str, Any]:
+        """Task output score (0-100) emphasizing high-impact completion."""
         result = await db.execute(
             select(Task).where(
                 Task.user_id == user_id,
@@ -166,23 +449,52 @@ class AttentionIntegrityService:
         )
         tasks = result.scalars().all()
         if not tasks:
-            return 0
+            return {
+                "score": 0.0,
+                "completed_tasks": 0,
+                "high_impact_completed": 0,
+                "goal_linked_completed": 0,
+                "active_minutes": 0,
+            }
         
-        # 1 long task (>=45m) = 50 points, 2 = 100 points
-        # Goal-linked tasks weighted higher
-        score = 0
+        weighted_output = 0.0
+        high_impact_completed = 0
+        goal_linked_completed = 0
+        active_minutes = 0
         for t in tasks:
             actual = t.actual_minutes or 0
-            if actual >= 45:
-                # Check for goal link in tags
-                is_goal_linked = any(tag.startswith("goal:") for tag in (t.tags or []))
-                score += 50 if is_goal_linked else 30
-        
-        return min(100, score)
+            active_minutes += max(int(actual), 0)
+            priority = str(t.priority or "medium").lower()
+            priority_bonus = 0.0
+            if priority == "high":
+                priority_bonus = 0.35
+            elif priority == "urgent":
+                priority_bonus = 0.55
 
-    async def _calculate_habit_discipline(self, db, user_id, start, end) -> float:
-        """Habit Consistency (15%) - Streak >= 3 days."""
-        # Query habits (Plans with type='habit')
+            duration_weight = 1.0 if actual >= 45 else (0.75 if actual >= 25 else 0.45)
+            impact = duration_weight + priority_bonus
+
+            is_goal_linked = bool(t.goal_id) or any(str(tag).startswith("goal:") for tag in (t.tags or []))
+            if is_goal_linked:
+                impact += 0.45
+                goal_linked_completed += 1
+            if actual >= 45 or priority in {"high", "urgent"}:
+                high_impact_completed += 1
+
+            weighted_output += impact
+
+        # Target output equivalent: ~3 solid tasks/day.
+        score = self._clamp((weighted_output / 4.8) * 100.0)
+        return {
+            "score": round(score, 2),
+            "completed_tasks": len(tasks),
+            "high_impact_completed": high_impact_completed,
+            "goal_linked_completed": goal_linked_completed,
+            "active_minutes": active_minutes,
+        }
+
+    async def _calculate_habit_discipline(self, db, user_id, start, end) -> Dict[str, Any]:
+        """Habit consistency score (0-100) with streak quality."""
         result = await db.execute(
             select(Plan).where(
                 Plan.user_id == user_id,
@@ -191,31 +503,63 @@ class AttentionIntegrityService:
         )
         habits = result.scalars().all()
         if not habits:
-            return 0
+            return {
+                "score": 0.0,
+                "habits_total": 0,
+                "completed_today": 0,
+                "streak_active": 0,
+                "avg_streak": 0.0,
+            }
         
         completed_habits = 0
-        total_active_habits = 0
+        streak_active = 0
+        streak_sum = 0.0
         
         for h in habits:
             schedule = h.schedule or {}
-            # Check if done today (lastCompleted is today)
-            last_completed_str = schedule.get("lastCompleted")
-            if last_completed_str:
-                last_completed = datetime.fromisoformat(last_completed_str).date()
-                if last_completed == start.date():
-                    total_active_habits += 1
-                    # Check streak
-                    if schedule.get("streak", 0) >= 3:
-                        completed_habits += 1
-        
-        if total_active_habits == 0:
-            return 0
-            
-        return (completed_habits / total_active_habits) * 100
+            history = schedule.get("history")
+            last_completed = self._parse_iso_date(
+                schedule.get("lastCompleted") or schedule.get("last_completed")
+            )
+            is_completed_today = False
 
-    async def _calculate_ai_engagement(self, db, user_id, start, end) -> float:
-        """AI Cognitive Engagement (10%) - Learning/Planning conversations."""
-        # Join through ChatSession to get user_id (ChatMessage only has session_id)
+            if isinstance(history, list):
+                today_iso = start.date().isoformat()
+                is_completed_today = any(str(item)[:10] == today_iso for item in history)
+            if not is_completed_today and last_completed:
+                is_completed_today = last_completed == start.date()
+
+            streak_raw = (
+                schedule.get("streak")
+                or schedule.get("currentStreak")
+                or schedule.get("current_streak")
+                or 0
+            )
+            try:
+                streak = max(int(streak_raw), 0)
+            except Exception:
+                streak = 0
+            streak_sum += streak
+
+            if streak >= 3:
+                streak_active += 1
+            if is_completed_today:
+                completed_habits += 1
+        
+        completion_ratio = completed_habits / max(len(habits), 1)
+        streak_ratio = streak_active / max(len(habits), 1)
+        score = self._clamp((completion_ratio * 70.0) + (streak_ratio * 30.0))
+
+        return {
+            "score": round(score, 2),
+            "habits_total": len(habits),
+            "completed_today": completed_habits,
+            "streak_active": streak_active,
+            "avg_streak": round(streak_sum / max(len(habits), 1), 2),
+        }
+
+    async def _calculate_ai_engagement(self, db, user_id, start, end) -> Dict[str, Any]:
+        """AI engagement score (0-100) from constructive, goal-relevant interactions."""
         result = await db.execute(
             select(ChatMessage)
             .join(ChatSession, ChatMessage.session_id == ChatSession.id)
@@ -228,25 +572,46 @@ class AttentionIntegrityService:
         )
         messages = result.scalars().all()
         if not messages:
-            return 0
+            return {
+                "score": 0.0,
+                "total_messages": 0,
+                "meaningful_messages": 0,
+                "constructive_messages": 0,
+                "active_minutes": 0,
+            }
         
-        # Count messages with learning/planning markers
-        engagement_markers = ['how', 'why', 'plan', 'strategy', 'explain', 'learn', 'goal']
+        engagement_markers = [
+            'how', 'why', 'plan', 'strategy', 'explain', 'learn',
+            'goal', 'improve', 'review', 'schedule', 'practice',
+        ]
         meaningful_messages = 0
+        constructive_messages = 0
+        active_minutes = 0
         for m in messages:
-            content = m.content.lower()
-            if len(content.split()) > 5: # Not trivial
+            content = str(m.content or "").lower()
+            word_count = len(content.split())
+            if word_count > 5:
                 if any(marker in content for marker in engagement_markers):
                     meaningful_messages += 1
-                elif m.meta and m.meta.get("intent") in ['learning', 'planning', 'strategic']:
+                    constructive_messages += 1
+                elif m.meta and m.meta.get("intent") in ['learning', 'planning', 'strategic', 'goal_coaching']:
                     meaningful_messages += 1
-                    
-        # 3+ meaningful interactions = 100 points
-        return min(100, (meaningful_messages / 3) * 100)
+                    constructive_messages += 1
+                elif any(marker in content for marker in ["stuck", "confused", "deadline", "focus"]):
+                    constructive_messages += 1
+            active_minutes += min(4, max(1, word_count // 18))
+        
+        score = self._clamp((meaningful_messages / 4.0) * 100.0)
+        return {
+            "score": round(score, 2),
+            "total_messages": len(messages),
+            "meaningful_messages": meaningful_messages,
+            "constructive_messages": constructive_messages,
+            "active_minutes": active_minutes,
+        }
 
-    async def _calculate_goal_momentum(self, db, user_id, start, end) -> float:
-        """Goal Progress Momentum (10%) - Advancing meaningful intent."""
-        # Simple signal: Any completed goal-linked task today
+    async def _calculate_goal_momentum(self, db, user_id, start, end) -> Dict[str, Any]:
+        """Goal momentum score (0-100) for intent progression checks."""
         result = await db.execute(
             select(Task).where(
                 Task.user_id == user_id,
@@ -256,12 +621,31 @@ class AttentionIntegrityService:
             )
         )
         tasks = result.scalars().all()
-        
+
+        goal_linked_completions = 0
         for t in tasks:
-            if t.tags and any(tag.startswith("goal:") for tag in t.tags):
-                return 100 # Micro-progress detected
-        
-        return 0
+            if t.goal_id or (t.tags and any(str(tag).startswith("goal:") for tag in t.tags)):
+                goal_linked_completions += 1
+
+        progress_events = (
+            await db.execute(
+                select(func.count(AnalyticsEvent.id)).where(
+                    AnalyticsEvent.user_id == user_id,
+                    AnalyticsEvent.timestamp >= start,
+                    AnalyticsEvent.timestamp <= end,
+                    AnalyticsEvent.event_type.in_(
+                        ["goal_progress_updated", "goal_replanned", "milestone_completed"]
+                    ),
+                )
+            )
+        ).scalar() or 0
+
+        score = self._clamp((goal_linked_completions * 35.0) + (min(progress_events, 3) * 15.0))
+        return {
+            "score": round(score, 2),
+            "goal_linked_completions": int(goal_linked_completions),
+            "progress_events": int(progress_events),
+        }
 
     async def _calculate_disruption_multiplier(self, db, user_id, start, end) -> float:
         """Global Disruption Penalty applied as a multiplier."""
@@ -372,7 +756,9 @@ class AttentionIntegrityService:
             "average_score": round(avg_score, 1),
             "average_minutes": avg_minutes,
             "period": "weekly",
-            "days": 7
+            "days": 7,
+            "scored_days": len(scores),
+            "confidence": round(min(0.95, 0.45 + min(0.45, len(scores) / 7.0)), 3),
         }
 
     async def get_monthly_average(self, user_id: int) -> Dict[str, Any]:
@@ -394,7 +780,9 @@ class AttentionIntegrityService:
             "average_score": round(avg_score, 1),
             "average_minutes": avg_minutes,
             "period": "monthly",
-            "days": 30
+            "days": 30,
+            "scored_days": len(scores),
+            "confidence": round(min(0.95, 0.35 + min(0.55, len(scores) / 30.0)), 3),
         }
 
 
