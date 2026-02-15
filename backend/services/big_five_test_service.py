@@ -15,7 +15,7 @@ from typing import Dict, Any, List, Optional, Tuple
 import logging
 import random
 import math
-from sqlalchemy import select, func, and_, desc, text
+from sqlalchemy import select, func, and_, desc, text, case
 from sqlalchemy.orm import Session
 
 from backend.db.database import get_db
@@ -583,7 +583,7 @@ class BigFiveTestService:
                 select(
                     func.count(Task.id).label("total"),
                     func.sum(
-                        func.case(
+                        case(
                             (Task.status == 'completed', 1),
                             else_=0
                         )
@@ -787,7 +787,7 @@ class BigFiveTestService:
             select(
                 func.count(Task.id).label("total"),
                 func.sum(
-                    func.case(
+                    case(
                         (Task.status == "completed", 1),
                         else_=0
                     )

@@ -989,7 +989,19 @@ async def start_big_five_test(
         result = await big_five_test_service.start_test(current_user.id, force_new=force_new)
         
         if "error" in result:
-            raise HTTPException(status_code=400, detail=result["error"])
+            detail = result["error"]
+            # Cooldown/business-rule block: retry after plan interval window.
+            if result.get("can_retry") is False and result.get("days_remaining") is not None:
+                raise HTTPException(status_code=429, detail=detail)
+
+            # Service-level failures should surface as server errors, not bad requests.
+            if isinstance(detail, str) and detail.startswith("Failed to start test:"):
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=detail,
+                )
+
+            raise HTTPException(status_code=400, detail=detail)
         
         return result
     except HTTPException:

@@ -150,13 +150,20 @@ class APIClient {
 
   private normalizeError(error: AxiosError): ApiResponse {
     if (error.response) {
-      const response = error.response.data as ApiResponse;
+      const response = error.response.data as any;
+      const fastApiDetail = response?.detail;
+      const detailMessage = Array.isArray(fastApiDetail)
+        ? fastApiDetail.map((item: any) => item?.msg || JSON.stringify(item)).join('; ')
+        : typeof fastApiDetail === 'string'
+          ? fastApiDetail
+          : undefined;
+
       return {
         success: false,
         error: {
           code: response?.error?.code || `HTTP_${error.response.status}`,
-          message: response?.error?.message || error.response.statusText,
-          details: response?.error?.details,
+          message: response?.error?.message || detailMessage || response?.message || error.response.statusText,
+          details: response?.error?.details ?? fastApiDetail,
         },
         meta: {
           timestamp: new Date().toISOString(),
