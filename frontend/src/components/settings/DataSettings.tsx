@@ -1,19 +1,58 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Database, Download, AlertOctagon, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
+import { userService } from '../../services/api/user.service';
+import { useUserStore } from '../../stores/useUserStore';
+import { usePlannerStore } from '../../stores/planner.store';
 import '../../styles/pages/settings.css';
 
 const DataSettings: React.FC = () => {
   const [showConfirm, setShowConfirm] = useState(false);
+  const [isWiping, setIsWiping] = useState(false);
+  const navigate = useNavigate();
+  const logoutUser = useUserStore((state) => state.logout);
+  const resetPlanner = usePlannerStore((state) => state.resetPlanner);
 
   const handleExport = () => {
     console.log('Exporting data...');
     // Export logic here
   };
 
-  const handleClear = () => {
-    console.log('Clearing data...');
-    setShowConfirm(false);
-    // Clear logic here
+  const clearClientData = () => {
+    // Reset in-memory stores.
+    resetPlanner();
+    logoutUser();
+
+    // Wipe local persisted state/cache keys.
+    localStorage.clear();
+    sessionStorage.clear();
+  };
+
+  const handleClear = async () => {
+    if (isWiping) return;
+    setIsWiping(true);
+
+    try {
+      const response = await userService.deleteAccount('DELETE');
+      if (!response.success) {
+        window.alert(response.error?.message || 'Failed to wipe account data. Please try again.');
+        return;
+      }
+
+      // Best-effort server logout to clear cookies on backend side too.
+      try {
+        await userService.logout();
+      } catch (error) {
+        // Continue local wipe even if logout request fails.
+      }
+      clearClientData();
+      setShowConfirm(false);
+      navigate('/login', { replace: true });
+    } catch (error) {
+      window.alert('Failed to wipe account data. Please try again.');
+    } finally {
+      setIsWiping(false);
+    }
   };
 
   return (
@@ -34,8 +73,8 @@ const DataSettings: React.FC = () => {
           <div>
             <h4>Privacy Guarantee</h4>
             <p>
-              Your productivity data is processed with end-to-end encryption.
-              Intelligence patterns stay local and private. External sharing is strictly disabled.
+              Your data is stored securely and used only to provide core features like planning, analytics, and AI insights.
+              We do not sell or share your personal data with third parties for marketing.
             </p>
           </div>
         </div>
@@ -60,7 +99,7 @@ const DataSettings: React.FC = () => {
       <div className="data-footer">
         <div className="data-protection">
           <span className="data-dot" />
-          <span>Zero-Knowledge Protection Active</span>
+          <span>Data stored securely. Not sold for marketing.</span>
         </div>
       </div>
 
@@ -78,10 +117,10 @@ const DataSettings: React.FC = () => {
               </p>
             </div>
             <div className="data-modal-actions">
-              <button className="data-modal-danger" onClick={handleClear}>
-                Delete Now
+              <button className="data-modal-danger" onClick={handleClear} disabled={isWiping}>
+                {isWiping ? 'Deleting...' : 'Delete Now'}
               </button>
-              <button className="data-modal-cancel" onClick={() => setShowConfirm(false)}>
+              <button className="data-modal-cancel" onClick={() => setShowConfirm(false)} disabled={isWiping}>
                 Cancel Action
               </button>
             </div>

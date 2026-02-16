@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status, Response
 from typing import List, Optional, Any, Dict
 from datetime import datetime
 from pathlib import Path
@@ -170,15 +170,40 @@ async def update_email(
 @router.post("/me/delete")
 async def delete_account(
     request: DeleteAccountRequest,
+    response: Response,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    if request.confirmation not in {"DELETE", current_user.email}:
+    user_result = await db.execute(select(User).where(User.id == current_user.id))
+    user = user_result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if request.confirmation not in {"DELETE", user.email}:
         raise HTTPException(status_code=400, detail="Confirmation text did not match")
 
-    current_user.is_active = False
+    # Best-effort cleanup for uploaded avatar file before deleting account.
+    prefs = merge_preferences(user.preferences or {})
+    avatar_path = str(prefs.get("avatar") or "")
+    if avatar_path.startswith("/media/avatars/"):
+        local_avatar = MEDIA_ROOT / avatar_path.replace("/media/", "", 1)
+        try:
+            if local_avatar.exists() and local_avatar.is_file():
+                local_avatar.unlink()
+        except Exception:
+            # File cleanup failure must not block account data wipe.
+            pass
+
+    # Hard delete user row; related records are removed via ON DELETE CASCADE.
+    await db.delete(user)
     await db.commit()
-    return {"status": "deleted"}
+
+    # Clear auth cookies for current browser session.
+    response.delete_cookie("access_token", path="/")
+    response.delete_cookie("refresh_token", path="/api/v1/auth/refresh")
+    response.delete_cookie("csrf_token", path="/")
+
+    return {"status": "deleted", "wipe": "complete"}
 
 
 @router.get("/me/security")
