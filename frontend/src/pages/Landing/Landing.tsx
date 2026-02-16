@@ -126,6 +126,15 @@ class Raindrop {
   }
 }
 
+// ── Footstep Trail Particle ─────────────────────────────────────────────────
+interface FootstepParticle {
+  x: number;
+  y: number;
+  opacity: number;
+  scale: number;
+  life: number;
+}
+
 // ── MAIN COMPONENT ──────────────────────────────────────────────────────────
 export default function Landing() {
   const navigate = useNavigate();
@@ -138,6 +147,8 @@ export default function Landing() {
   const [pointerLine, setPointerLine] = useState<PointerLine | null>(null);
   const [lightningActive, setLightningActive] = useState(false);
   const [btnHovered, setBtnHovered] = useState(false);
+  const [footsteps, setFootsteps] = useState<FootstepParticle[]>([]);
+  const [walkProgress, setWalkProgress] = useState(0);
 
   // Refs
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -153,16 +164,16 @@ export default function Landing() {
     return () => clearInterval(interval);
   }, []);
 
-  // Stickman walk logic - smooth long run-in, then precise sword pointing at CTA
+  // Stickman walk logic
   useEffect(() => {
     let animationId = 0;
     const timers: number[] = [];
     const startX = -420;
     const startY = window.innerHeight * 0.8;
-    const walkDelayMs = 1300;
-    const walkDurationMs = 8200;
+    const walkDelayMs = 1800;
+    const walkDurationMs = 10000; // Slower, more elegant walk
 
-    const easeInOutSine = (t: number) => -(Math.cos(Math.PI * t) - 1) / 2;
+    const easeInOutCubic = (t: number) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
     setStickmanState('walking');
     setPointerLine(null);
@@ -174,40 +185,55 @@ export default function Landing() {
       if (!buttonRef.current) return;
 
       const btnRect = buttonRef.current.getBoundingClientRect();
-      const targetX = btnRect.left - 170;
-      const targetY = btnRect.top - 72;
+      const targetX = btnRect.left - 200;
+      const targetY = btnRect.top - 90;
       const walkStartTime = performance.now();
+      let lastFootstepTime = 0;
 
       const animateWalk = (now: number) => {
         const elapsed = now - walkStartTime;
         const t = Math.min(elapsed / walkDurationMs, 1);
-        const eased = easeInOutSine(t);
+        const eased = easeInOutCubic(t);
 
-        setStickmanPos({
-          x: startX + (targetX - startX) * eased,
-          y: startY + (targetY - startY) * eased
-        });
+        const currentX = startX + (targetX - startX) * eased;
+        const currentY = startY + (targetY - startY) * eased;
+
+        setStickmanPos({ x: currentX, y: currentY });
         setStickmanPose({
-          scale: 0.54 + eased * 0.4,
+          scale: 0.54 + eased * 0.46,
           opacity: 0.4 + eased * 0.6
         });
+        setWalkProgress(t);
+
+        // Add footstep particles every ~600ms
+        if (t > 0.05 && t < 0.95 && now - lastFootstepTime > 600) {
+          lastFootstepTime = now;
+          setFootsteps(prev => [...prev.slice(-12), {
+            x: currentX + 95,
+            y: currentY + 185,
+            opacity: 0.6,
+            scale: 0.4 + eased * 0.4,
+            life: 1
+          }]);
+        }
 
         if (t < 1) {
           animationId = requestAnimationFrame(animateWalk);
           return;
         }
 
+        // Arrived — switch to pointing
         setStickmanState('pointing');
 
-        const swordBaseX = targetX + 153;
-        const swordBaseY = targetY + 74;
+        const caneBaseX = targetX + 170;
+        const caneBaseY = targetY + 100;
         const ctaX = btnRect.left + btnRect.width * 0.5;
         const ctaY = btnRect.top + btnRect.height * 0.55;
-        const lineDX = ctaX - swordBaseX;
-        const lineDY = ctaY - swordBaseY;
+        const lineDX = ctaX - caneBaseX;
+        const lineDY = ctaY - caneBaseY;
         setPointerLine({
-          left: swordBaseX,
-          top: swordBaseY,
+          left: caneBaseX,
+          top: caneBaseY,
           width: Math.hypot(lineDX, lineDY),
           angle: Math.atan2(lineDY, lineDX) * (180 / Math.PI)
         });
@@ -218,8 +244,9 @@ export default function Landing() {
           timers.push(window.setTimeout(() => {
             setStickmanState('hidden');
             setPointerLine(null);
-          }, 2500));
-        }, 420));
+            setFootsteps([]);
+          }, 3000));
+        }, 500));
       };
 
       animationId = requestAnimationFrame(animateWalk);
@@ -227,9 +254,18 @@ export default function Landing() {
 
     timers.push(window.setTimeout(startWalk, walkDelayMs));
 
+    // Fade out footsteps over time
+    const footstepInterval = setInterval(() => {
+      setFootsteps(prev => prev
+        .map(f => ({ ...f, opacity: f.opacity - 0.02, life: f.life - 0.02 }))
+        .filter(f => f.opacity > 0)
+      );
+    }, 100);
+
     return () => {
       timers.forEach((timerId) => clearTimeout(timerId));
       if (animationId) cancelAnimationFrame(animationId);
+      clearInterval(footstepInterval);
     };
   }, []);
 
@@ -298,80 +334,197 @@ export default function Landing() {
         <div className="concierge-subtitle">Your Personal Leno AI</div>
       </div>
 
-      {/* Stickman Character */}
+      {/* Footstep Trail */}
+      {footsteps.map((step, i) => (
+        <div
+          key={i}
+          className="footstep-particle"
+          style={{
+            left: step.x,
+            top: step.y,
+            opacity: step.opacity,
+            transform: `scale(${step.scale})`
+          }}
+        />
+      ))}
+
+      {/* ═══ GENTLEMAN STICKMAN CHARACTER ═══ */}
       <div
         className={`stickman-container ${stickmanState}`}
         style={{
           transform: `translate(${stickmanPos.x}px, ${stickmanPos.y}px) scale(${stickmanState === 'hidden' ? 0.72 : stickmanPose.scale})`,
           opacity: stickmanState === 'hidden' ? undefined : stickmanPose.opacity,
-          ['--step-seconds' as string]: stickmanState === 'walking' ? '1.24s' : '1.5s'
+          ['--step-seconds' as string]: '1.6s'
         }}
       >
-        <div className="stickman-wrapper warrior-shell">
+        <div className="stickman-wrapper gentleman-shell">
           <svg
-            className="warrior-svg"
-            viewBox="0 0 240 180"
+            className="gentleman-svg"
+            viewBox="0 0 280 220"
             xmlns="http://www.w3.org/2000/svg"
             aria-hidden="true"
           >
-            <g className="warrior-glow">
-              <g className="warrior-body">
-                <circle className="warrior-stroke" cx="92" cy="44" r="16" />
-                <line className="warrior-stroke" x1="92" y1="60" x2="92" y2="108" />
-                <circle className="warrior-fill" cx="92" cy="110" r="4" />
+            <defs>
+              {/* Glow filter for the character */}
+              <filter id="char-glow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+              {/* Soft shadow */}
+              <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="rgba(99,102,241,0.3)" />
+              </filter>
+              {/* Umbrella gradient */}
+              <linearGradient id="umbrella-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="rgba(99,102,241,0.6)" />
+                <stop offset="50%" stopColor="rgba(139,92,246,0.5)" />
+                <stop offset="100%" stopColor="rgba(59,130,246,0.4)" />
+              </linearGradient>
+              {/* Body glow gradient */}
+              <linearGradient id="body-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#e2e8f0" />
+                <stop offset="100%" stopColor="#94a3b8" />
+              </linearGradient>
+              {/* Cane gradient */}
+              <linearGradient id="cane-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#c4b5fd" />
+                <stop offset="40%" stopColor="#a78bfa" />
+                <stop offset="100%" stopColor="#7c3aed" />
+              </linearGradient>
+            </defs>
 
-                <path className="warrior-stroke" d="M78 60 C86 54, 98 54, 106 60" />
-                <path className="warrior-stroke warrior-scarf" d="M82 64 C70 80, 70 92, 84 98" />
-                <path className="warrior-stroke warrior-scarf" d="M102 64 C118 78, 120 88, 110 96" />
+            <g className="gentleman-glow" filter="url(#soft-shadow)">
+              {/* ─── HEAD: Hat + Face ─── */}
+              <g className="gentleman-head">
+                {/* Top Hat */}
+                <rect className="hat-brim" x="70" y="28" width="56" height="5" rx="2.5"
+                  fill="rgba(255,255,255,0.9)" stroke="rgba(255,255,255,0.95)" strokeWidth="1.5" />
+                <rect className="hat-crown" x="78" y="6" width="40" height="24" rx="4"
+                  fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.9)" strokeWidth="2" />
+                <line x1="80" y1="24" x2="116" y2="24" stroke="rgba(139,92,246,0.7)" strokeWidth="2" />
+
+                {/* Face */}
+                <circle className="gent-face" cx="98" cy="46" r="15"
+                  fill="rgba(255,255,255,0.06)" stroke="url(#body-grad)" strokeWidth="2.5" />
+                {/* Eyes - subtle dots */}
+                <circle cx="93" cy="44" r="1.5" fill="rgba(255,255,255,0.8)" />
+                <circle cx="103" cy="44" r="1.5" fill="rgba(255,255,255,0.8)" />
+                {/* Slight smile */}
+                <path d="M93 50 Q98 54 103 50" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="1.2" strokeLinecap="round" />
               </g>
 
-              <g className="warrior-arms">
-                <g className="warrior-arm warrior-arm-right">
-                  <line className="warrior-stroke" x1="92" y1="76" x2="132" y2="80" />
-                  <line className="warrior-stroke" x1="132" y1="80" x2="160" y2="78" />
-                  <g className="warrior-sword">
-                    <line className="warrior-stroke" x1="160" y1="78" x2="210" y2="72" />
-                    <line className="warrior-stroke" x1="156" y1="80" x2="162" y2="74" />
-                    <line className="warrior-stroke" x1="158" y1="78" x2="168" y2="84" />
-                  </g>
-                </g>
+              {/* ─── BODY: Torso ─── */}
+              <g className="gentleman-body">
+                {/* Neck */}
+                <line x1="98" y1="61" x2="98" y2="68" stroke="url(#body-grad)" strokeWidth="3" strokeLinecap="round" />
+                {/* Shoulders */}
+                <path d="M72 72 Q85 66 98 68 Q111 66 124 72" fill="none" stroke="url(#body-grad)" strokeWidth="2.5" strokeLinecap="round" />
+                {/* Torso - slightly tapered */}
+                <path d="M78 72 L82 120 L98 124 L114 120 L118 72" fill="rgba(255,255,255,0.04)"
+                  stroke="url(#body-grad)" strokeWidth="2" strokeLinejoin="round" />
+                {/* Belt line */}
+                <line x1="84" y1="112" x2="112" y2="112" stroke="rgba(139,92,246,0.5)" strokeWidth="1.8" strokeLinecap="round" />
+                {/* Belt buckle */}
+                <rect x="94" y="109" width="8" height="6" rx="1.5" fill="none" stroke="rgba(167,139,250,0.7)" strokeWidth="1.2" />
+                {/* Coat tails / jacket split */}
+                <line x1="98" y1="112" x2="98" y2="124" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
+              </g>
 
-                <g className="warrior-arm warrior-arm-left">
-                  <line className="warrior-stroke" x1="92" y1="74" x2="110" y2="52" />
-                  <line className="warrior-stroke" x1="110" y1="52" x2="122" y2="34" />
-                  <g className="warrior-umbrella">
-                    <line className="warrior-stroke" x1="122" y1="34" x2="122" y2="18" />
-                    <path className="warrior-stroke" d="M122 18 C120 16, 120 14, 122 12" />
-                    <path
-                      className="warrior-stroke warrior-canopy"
-                      d="M64 18 C78 2, 98 2, 122 12 C146 2, 166 2, 180 18"
-                    />
-                    <path
-                      className="warrior-stroke warrior-canopy"
-                      d="M64 18 C74 28, 88 28, 96 20 C104 28, 118 28, 122 20 C126 28, 140 28, 148 20 C156 28, 170 28, 180 18"
-                    />
-                  </g>
+              {/* ─── LEFT ARM (Umbrella arm) ─── */}
+              <g className="gentleman-arm-left">
+                {/* Upper arm */}
+                <line x1="78" y1="74" x2="62" y2="56" stroke="url(#body-grad)" strokeWidth="2.5" strokeLinecap="round" />
+                {/* Lower arm */}
+                <line x1="62" y1="56" x2="56" y2="36" stroke="url(#body-grad)" strokeWidth="2.2" strokeLinecap="round" />
+                {/* Hand grip */}
+                <circle cx="56" cy="34" r="3" fill="rgba(255,255,255,0.15)" stroke="url(#body-grad)" strokeWidth="1.5" />
+
+                {/* ═══ UMBRELLA ═══ */}
+                <g className="gentleman-umbrella">
+                  {/* Umbrella pole */}
+                  <line x1="56" y1="34" x2="56" y2="-4" stroke="rgba(255,255,255,0.85)" strokeWidth="2" strokeLinecap="round" />
+                  {/* Umbrella tip */}
+                  <circle cx="56" cy="-6" r="2" fill="rgba(139,92,246,0.8)" />
+                  {/* Canopy - elegant dome shape */}
+                  <path d="M16 0 Q24 -22 38 -26 Q48 -28 56 -28 Q64 -28 74 -26 Q88 -22 96 0"
+                    fill="url(#umbrella-grad)" stroke="rgba(255,255,255,0.7)" strokeWidth="1.5" />
+                  {/* Canopy scallops */}
+                  <path d="M16 0 Q24 8 32 0 Q40 8 48 0 Q52 4 56 0 Q60 4 64 0 Q72 8 80 0 Q88 8 96 0"
+                    fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="1.5" />
+                  {/* Ribs */}
+                  <line x1="56" y1="-28" x2="32" y2="0" stroke="rgba(255,255,255,0.25)" strokeWidth="0.8" />
+                  <line x1="56" y1="-28" x2="56" y2="0" stroke="rgba(255,255,255,0.25)" strokeWidth="0.8" />
+                  <line x1="56" y1="-28" x2="80" y2="0" stroke="rgba(255,255,255,0.25)" strokeWidth="0.8" />
+                  {/* Handle hook at bottom */}
+                  <path d="M56 34 Q56 40 52 42 Q48 44 48 40" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" strokeLinecap="round" />
                 </g>
               </g>
 
-              <g className="warrior-legs">
-                <g className="warrior-leg warrior-leg-front">
-                  <line className="warrior-stroke" x1="92" y1="110" x2="112" y2="140" />
-                  <line className="warrior-stroke" x1="112" y1="140" x2="98" y2="160" />
-                  <line className="warrior-stroke" x1="94" y1="160" x2="114" y2="160" />
-                </g>
-                <g className="warrior-leg warrior-leg-back">
-                  <line className="warrior-stroke" x1="92" y1="110" x2="78" y2="142" />
-                  <line className="warrior-stroke" x1="78" y1="142" x2="86" y2="162" />
-                  <line className="warrior-stroke" x1="78" y1="162" x2="96" y2="162" />
+              {/* ─── RIGHT ARM (Cane / Walking Stick arm) ─── */}
+              <g className="gentleman-arm-right">
+                {/* Upper arm */}
+                <line x1="118" y1="74" x2="138" y2="90" stroke="url(#body-grad)" strokeWidth="2.5" strokeLinecap="round" />
+                {/* Lower arm */}
+                <line x1="138" y1="90" x2="148" y2="108" stroke="url(#body-grad)" strokeWidth="2.2" strokeLinecap="round" />
+                {/* Hand grip */}
+                <circle cx="148" cy="110" r="3" fill="rgba(255,255,255,0.15)" stroke="url(#body-grad)" strokeWidth="1.5" />
+
+                {/* ═══ WALKING CANE ═══ */}
+                <g className="gentleman-cane">
+                  {/* Cane shaft */}
+                  <line x1="148" y1="110" x2="158" y2="200" stroke="url(#cane-grad)" strokeWidth="2.8" strokeLinecap="round" />
+                  {/* Cane handle - curved hook */}
+                  <path d="M148 110 Q144 104 140 106 Q136 108 140 112"
+                    fill="none" stroke="rgba(167,139,250,0.9)" strokeWidth="2.5" strokeLinecap="round" />
+                  {/* Cane tip */}
+                  <circle cx="158" cy="202" r="2.5" fill="rgba(167,139,250,0.6)" />
+                  {/* Decorative ring on cane */}
+                  <ellipse cx="152" cy="140" rx="3" ry="1.5" fill="none" stroke="rgba(139,92,246,0.5)" strokeWidth="1" />
+                  <ellipse cx="154" cy="160" rx="2.5" ry="1.2" fill="none" stroke="rgba(139,92,246,0.35)" strokeWidth="0.8" />
                 </g>
               </g>
+
+              {/* ─── LEGS ─── */}
+              <g className="gentleman-legs">
+                {/* Front leg */}
+                <g className="gentleman-leg-front">
+                  {/* Thigh */}
+                  <line x1="104" y1="124" x2="120" y2="160" stroke="url(#body-grad)" strokeWidth="2.8" strokeLinecap="round" />
+                  {/* Shin */}
+                  <line x1="120" y1="160" x2="112" y2="194" stroke="url(#body-grad)" strokeWidth="2.4" strokeLinecap="round" />
+                  {/* Shoe */}
+                  <path d="M106 194 L112 194 L122 196 L122 200 L104 200 L104 196 Z"
+                    fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.7)" strokeWidth="1.5" strokeLinejoin="round" />
+                </g>
+                {/* Back leg */}
+                <g className="gentleman-leg-back">
+                  {/* Thigh */}
+                  <line x1="92" y1="124" x2="76" y2="162" stroke="url(#body-grad)" strokeWidth="2.8" strokeLinecap="round" />
+                  {/* Shin */}
+                  <line x1="76" y1="162" x2="82" y2="196" stroke="url(#body-grad)" strokeWidth="2.4" strokeLinecap="round" />
+                  {/* Shoe */}
+                  <path d="M76 196 L82 196 L92 198 L92 202 L74 202 L74 198 Z"
+                    fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.55)" strokeWidth="1.5" strokeLinejoin="round" />
+                </g>
+              </g>
+
+              {/* ─── COAT TAILS (flowing behind) ─── */}
+              <g className="gentleman-coattails">
+                <path className="coattail-left" d="M84 120 Q78 140 70 155"
+                  fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" strokeLinecap="round" />
+                <path className="coattail-right" d="M112 120 Q118 140 124 155"
+                  fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" strokeLinecap="round" />
+              </g>
+
+              {/* ─── SHADOW on ground ─── */}
+              <ellipse className="gentleman-shadow" cx="98" cy="205" rx="35" ry="4"
+                fill="rgba(99,102,241,0.1)" />
             </g>
           </svg>
         </div>
       </div>
 
-      {/* Lightning Effect */}
+      {/* Lightning / Glow Effect */}
       {lightningActive && (
         <div className="lightning-flash-container">
           <Zap size={128} className="giant-bolt" />
@@ -379,16 +532,16 @@ export default function Landing() {
         </div>
       )}
 
-      {/* Sword (Pointing) */}
+      {/* Cane Pointer Line (Pointing) */}
       {stickmanState === 'pointing' && pointerLine && (
-        <div className="sword-pointer" style={{
+        <div className="cane-pointer" style={{
           left: pointerLine.left,
           top: pointerLine.top,
           width: pointerLine.width,
           transform: `rotate(${pointerLine.angle}deg)`
         }}>
-          <span className="sword-guard"></span>
-          <span className="sword-tip"></span>
+          <span className="cane-pointer-tip"></span>
+          <span className="cane-pointer-glow"></span>
         </div>
       )}
 

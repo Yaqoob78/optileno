@@ -1,4 +1,4 @@
-/* Landing Page Styles - Clean & Professional */
+/* Landing Page Styles - Premium Gentleman Stickman Edition */
 
 /* ── BASE & VARIABLES ────────────────────────────────────────────── */
 :root {
@@ -134,12 +134,10 @@ html {
 
 .concierge-text-glow {
     font-size: 12vw;
-    /* Massive */
     font-weight: 900;
     letter-spacing: 0.1em;
     line-height: 1;
     opacity: 0.08;
-    /* Subtle background feel */
     background: linear-gradient(135deg, #fff, var(--neon-blue), var(--neon-pink));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -165,7 +163,6 @@ html {
     align-items: center;
     justify-content: center;
     padding-top: 120px;
-    /* Space from top */
 }
 
 .hero-content {
@@ -195,13 +192,12 @@ html {
     animation: slideUp 0.8s ease-out 0.2s forwards;
 }
 
-/* ── FEATURE SHOWCASE (NEW) ───────────────────────────────────────── */
+/* ── FEATURE SHOWCASE ───────────────────────────────────────────── */
 .feature-showcase {
     margin: 3rem auto;
     width: 100%;
     max-width: 500px;
     height: 140px;
-    /* Fixed height container */
     background: rgba(15, 23, 42, 0.6);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 20px;
@@ -234,7 +230,6 @@ html {
     justify-content: center;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid;
-    /* color set inline */
     flex-shrink: 0;
 }
 
@@ -284,7 +279,6 @@ html {
     animation: fadeIn 1s ease-out 0.6s forwards;
     position: relative;
     z-index: 20;
-    /* Above stickman */
 }
 
 .cta-button-premium {
@@ -392,609 +386,568 @@ html {
     border-radius: 4px;
 }
 
-/* ── STICKMAN ──────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════════
+   GENTLEMAN STICKMAN - PREMIUM CHARACTER
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── Container ─── */
 .stickman-container {
     position: fixed;
     left: 0;
     top: 0;
     z-index: 15;
-    /* Between Background and CTA */
     pointer-events: none;
     transition: transform 0.12s linear, opacity 0.5s ease-out;
-    /* Smooth follow mechanism */
-    filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.28)) drop-shadow(0 10px 20px rgba(15, 23, 42, 0.3));
+    filter:
+        drop-shadow(0 0 24px rgba(139, 92, 246, 0.15)) drop-shadow(0 0 48px rgba(99, 102, 241, 0.08));
 }
 
-.stickman-wrapper {
+.stickman-wrapper.gentleman-shell {
     position: relative;
-    width: 74px;
-    height: 184px;
+    width: 280px;
+    height: 220px;
 }
 
-.stickman-wrapper.warrior-shell {
-    width: 230px;
-    height: 178px;
+.gentleman-svg {
+    width: 280px;
+    height: 220px;
+    overflow: visible;
 }
 
-.stickman-container.walking .stickman-wrapper.warrior-shell {
-    animation: none;
+/* ── Walking State - Body Bob ─── */
+.stickman-container.walking .gentleman-svg {
+    animation: gentlemanBob 1.6s ease-in-out infinite;
 }
 
-.stickman-wrapper.warrior-shell::after {
-    content: none;
-}
+@keyframes gentlemanBob {
 
-.warrior-svg {
-    width: 230px;
-    height: 178px;
-}
-
-.warrior-stroke {
-    stroke: rgba(255, 255, 255, 0.98);
-    stroke-width: 4.2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    fill: none;
-}
-
-.warrior-fill {
-    fill: rgba(255, 255, 255, 0.98);
-}
-
-.warrior-glow {
-    filter: drop-shadow(0 0 7px rgba(255, 255, 255, 0.25)) drop-shadow(0 0 18px rgba(255, 255, 255, 0.12));
-}
-
-.stickman-container.walking .warrior-svg {
-    animation: warriorBob var(--step-seconds, 1.24s) ease-in-out infinite;
-}
-
-.stickman-container.walking .warrior-leg-front {
-    transform-origin: 92px 110px;
-    animation: warriorLegFront var(--step-seconds, 1.24s) ease-in-out infinite;
-}
-
-.stickman-container.walking .warrior-leg-back {
-    transform-origin: 92px 110px;
-    animation: warriorLegBack var(--step-seconds, 1.24s) ease-in-out infinite;
-}
-
-.stickman-container.walking .warrior-arm-right {
-    transform-origin: 92px 76px;
-    animation: warriorSwordArm var(--step-seconds, 1.24s) ease-in-out infinite;
-}
-
-.stickman-container.walking .warrior-arm-left {
-    transform-origin: 92px 74px;
-    animation: warriorUmbrellaArm var(--step-seconds, 1.24s) ease-in-out infinite;
-}
-
-.stickman-container.walking .warrior-umbrella {
-    transform-origin: 122px 34px;
-    animation: warriorUmbrellaSway calc(var(--step-seconds, 1.24s) * 1.6) ease-in-out infinite;
-}
-
-.stickman-container.walking .warrior-sword {
-    transform-origin: 160px 78px;
-    animation: warriorSwordStabilize calc(var(--step-seconds, 1.24s) * 1.2) ease-in-out infinite;
-}
-
-.stickman-container.walking .warrior-scarf {
-    opacity: 0.9;
-    transform-origin: 92px 60px;
-    animation: warriorScarfWave calc(var(--step-seconds, 1.24s) * 1.5) ease-in-out infinite;
-}
-
-.stickman-container.pointing .warrior-svg {
-    animation: none;
-}
-
-.stickman-container.pointing .warrior-arm-right {
-    transform-origin: 92px 76px;
-    transform: rotate(-4deg) translateY(1px);
-}
-
-.stickman-container.pointing .warrior-arm-left {
-    transform-origin: 92px 74px;
-    transform: rotate(-1deg);
-}
-
-.stickman-container.pointing .warrior-umbrella {
-    transform-origin: 122px 34px;
-    transform: rotate(-2deg);
-}
-
-.stickman-container.pointing .warrior-sword {
-    opacity: 0;
-}
-
-.stickman-wrapper::after {
-    content: '';
-    position: absolute;
-    inset: 26px 8px 18px;
-    border-radius: 999px;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0) 72%);
-    filter: blur(12px);
-    opacity: 0.55;
-    z-index: 0;
-}
-
-/* Styles */
-.head {
-    width: 30px;
-    height: 30px;
-    background: #f8fafc;
-    border-radius: 50%;
-    position: absolute;
-    top: 20px;
-    left: 22px;
-    box-shadow: inset -1px -1px 0 rgba(148, 163, 184, 0.35), 0 2px 5px rgba(15, 23, 42, 0.22);
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    z-index: 2;
-}
-
-.headband-knot {
-    position: absolute;
-    right: -2px;
-    top: 10px;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #e2e8f0;
-    box-shadow: 0 0 6px rgba(255, 255, 255, 0.45);
-}
-
-.headband-tail {
-    position: absolute;
-    right: -14px;
-    top: 14px;
-    width: 15px;
-    height: 2px;
-    border-radius: 999px;
-    background: #f8fafc;
-    transform: rotate(-16deg);
-    box-shadow: 0 0 6px rgba(255, 255, 255, 0.45);
-}
-
-.neck {
-    position: absolute;
-    top: 48px;
-    left: 35px;
-    width: 4px;
-    height: 7px;
-    background: #f1f5f9;
-    border-radius: 999px;
-    z-index: 1;
-}
-
-.torso {
-    width: 9px;
-    height: 62px;
-    background: #f1f5f9;
-    position: absolute;
-    top: 56px;
-    left: 33px;
-    border-radius: 999px;
-    z-index: 2;
-}
-
-.shoulder-line {
-    position: absolute;
-    top: 2px;
-    left: -10px;
-    width: 28px;
-    height: 4px;
-    border-radius: 999px;
-    background: #f1f5f9;
-    box-shadow: 0 0 6px rgba(255, 255, 255, 0.2);
-}
-
-/* Limbs */
-.arm,
-.leg {
-    position: absolute;
-    width: 5px;
-    background: #f1f5f9;
-    border-radius: 999px;
-    transform-origin: top;
-    box-shadow: 0 1px 1px rgba(15, 23, 42, 0.2);
-    z-index: 1;
-}
-
-.arm {
-    height: 44px;
-    top: 60px;
-    left: 35px;
-}
-
-.arm::after {
-    content: '';
-    position: absolute;
-    bottom: -3px;
-    left: -1px;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #f8fafc;
-}
-
-.leg {
-    height: 52px;
-    top: 114px;
-    left: 35px;
-}
-
-/* States */
-.stickman-container.walking .stickman-wrapper {
-    animation: walkBounce 0.74s infinite alternate, bodyLean 1.5s infinite ease-in-out;
-}
-
-.stickman-container.walking .leg.left {
-    animation: walkLeft 1.15s infinite linear;
-}
-
-.stickman-container.walking .leg.right {
-    animation: walkRight 1.15s infinite linear;
-}
-
-.stickman-container.walking .arm.left {
-    animation: swingLeft 1.15s infinite linear;
-}
-
-.stickman-container.walking .arm.right {
-    animation: swingRight 1.15s infinite linear;
-}
-
-/* Pointing state - arm points 35 degrees DOWN at button */
-.stickman-container.pointing .arm.right {
-    transform: rotate(40deg) translateX(7px);
-    transition: transform 0.35s cubic-bezier(0.2, 0.85, 0.35, 1.15);
-}
-
-.stickman-container.pointing .arm.left {
-    transform: rotate(-12deg);
-    transition: transform 0.25s ease;
-}
-
-.stickman-container.pointing .head {
-    transform: rotate(0deg);
-    transition: transform 0.25s ease;
-}
-
-.stickman-container.pointing .torso {
-    transform: rotate(2deg);
-    transition: transform 0.25s ease;
-}
-
-/* Umbrella - positioned at top above head */
-.stickman-umbrella {
-    position: absolute;
-    top: -88px;
-    left: 50%;
-    transform: translateX(-50%) rotate(-9deg);
-    width: 110px;
-    height: 100px;
-    z-index: 10;
-}
-
-.stickman-container.walking .stickman-umbrella {
-    animation: umbrellaRunMotion 1.12s ease-in-out infinite;
-}
-
-.stickman-container.pointing .stickman-umbrella {
-    transform: translateX(-50%) rotate(-5deg);
-    transition: transform 0.25s ease;
-}
-
-.umbrella-dome {
-    position: relative;
-    width: 100px;
-    height: 52px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.1) 100%);
-    border: 2px solid rgba(255, 255, 255, 0.92);
-    border-top-left-radius: 54px;
-    border-top-right-radius: 54px;
-    border-bottom-left-radius: 12px;
-    border-bottom-right-radius: 12px;
-    box-shadow: 0 0 20px rgba(255, 255, 255, 0.45), 0 6px 12px rgba(15, 23, 42, 0.25);
-    overflow: hidden;
-}
-
-.umbrella-rib {
-    position: absolute;
-    bottom: 0;
-    width: 2px;
-    height: 34px;
-    background: rgba(255, 255, 255, 0.82);
-    box-shadow: 0 0 8px rgba(255, 255, 255, 0.35);
-}
-
-.rib-1 {
-    left: 24px;
-}
-
-.rib-2 {
-    left: 48px;
-}
-
-.rib-3 {
-    left: 72px;
-}
-
-.umbrella-handle {
-    width: 4px;
-    height: 62px;
-    background: #f8fafc;
-    border-radius: 999px;
-    margin: 0 auto;
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.45);
-}
-
-/* Sword */
-.katana {
-    height: 3px;
-    border-radius: 999px;
-    background: linear-gradient(90deg, rgba(255, 255, 255, 0.98), rgba(226, 232, 240, 0.85));
-    box-shadow: 0 0 12px rgba(255, 255, 255, 0.45);
-    transform-origin: left center;
-}
-
-.sword-pointer {
-    position: fixed;
-    z-index: 26;
-    height: 3px;
-    border-radius: 999px;
-    background: linear-gradient(90deg, rgba(255, 255, 255, 0.98), rgba(226, 232, 240, 0.85));
-    box-shadow: 0 0 12px rgba(255, 255, 255, 0.45);
-    transform-origin: left center;
-    animation: swordSettle 0.26s ease-out;
-}
-
-.sword-guard {
-    position: absolute;
-    left: -5px;
-    top: -4px;
-    width: 10px;
-    height: 11px;
-    border-radius: 3px;
-    background: #f8fafc;
-    box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
-}
-
-.sword-tip {
-    position: absolute;
-    right: -7px;
-    top: -3px;
-    width: 8px;
-    height: 8px;
-    transform: rotate(45deg);
-    background: #f8fafc;
-}
-
-.katana.resting {
-    position: absolute;
-    left: -52px;
-    top: 136px;
-    width: 128px;
-    transform: rotate(157deg);
-    transition: opacity 0.2s ease;
-    z-index: 3;
-}
-
-.stickman-container.pointing .katana.resting {
-    opacity: 0;
-}
-
-.katana.pointing {
-    position: fixed;
-    z-index: 26;
-    animation: swordSettle 0.24s ease-out;
-}
-
-.katana-guard {
-    position: absolute;
-    left: -5px;
-    top: -4px;
-    width: 10px;
-    height: 11px;
-    border-radius: 3px;
-    background: #f8fafc;
-    box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
-}
-
-.katana-tip {
-    position: absolute;
-    right: -7px;
-    top: -3px;
-    width: 8px;
-    height: 8px;
-    transform: rotate(45deg);
-    background: #f8fafc;
-}
-
-/* Hidden State - fade out gracefully */
-.stickman-container.hidden {
-    opacity: 0 !important;
-    transition: opacity 0.7s ease-out, filter 0.7s ease-out;
-    filter: blur(2px);
-    pointer-events: none;
-}
-
-/* ── ANIMATIONS ────────────────────────────────────────────────────── */
-@keyframes walkLeft {
-    0% {
-        transform: rotate(16deg);
-    }
-
-    50% {
-        transform: rotate(-16deg);
-    }
-
-    100% {
-        transform: rotate(16deg);
-    }
-}
-
-@keyframes warriorBob {
     0%,
     100% {
         transform: translateY(0);
     }
 
-    50% {
-        transform: translateY(-3px);
-    }
-}
-
-@keyframes warriorLegFront {
-    0%,
-    100% {
-        transform: rotate(18deg) translateY(0);
+    25% {
+        transform: translateY(-2.5px);
     }
 
     50% {
-        transform: rotate(-16deg) translateY(1px);
+        transform: translateY(0);
+    }
+
+    75% {
+        transform: translateY(-2.5px);
     }
 }
 
-@keyframes warriorLegBack {
-    0%,
-    100% {
-        transform: rotate(-16deg) translateY(1px);
-    }
-
-    50% {
-        transform: rotate(18deg) translateY(0);
-    }
+/* ── Walking State - Head subtle nod ─── */
+.stickman-container.walking .gentleman-head {
+    transform-origin: 98px 46px;
+    animation: headNod 1.6s ease-in-out infinite;
 }
 
-@keyframes warriorSwordArm {
-    0%,
-    100% {
-        transform: rotate(2deg);
-    }
+@keyframes headNod {
 
-    50% {
-        transform: rotate(-2deg);
-    }
-}
-
-@keyframes warriorUmbrellaArm {
-    0%,
-    100% {
-        transform: rotate(-6deg);
-    }
-
-    50% {
-        transform: rotate(6deg);
-    }
-}
-
-@keyframes warriorUmbrellaSway {
-    0%,
-    100% {
-        transform: rotate(-3deg);
-    }
-
-    50% {
-        transform: rotate(3deg);
-    }
-}
-
-@keyframes warriorSwordStabilize {
     0%,
     100% {
         transform: rotate(0deg) translateY(0);
     }
 
+    25% {
+        transform: rotate(-1deg) translateY(-1px);
+    }
+
     50% {
-        transform: rotate(0.8deg) translateY(-0.6px);
+        transform: rotate(0.5deg) translateY(0);
+    }
+
+    75% {
+        transform: rotate(-0.5deg) translateY(-1px);
     }
 }
 
-@keyframes warriorScarfWave {
+/* ── Walking State - Front Leg ─── */
+.stickman-container.walking .gentleman-leg-front {
+    transform-origin: 104px 124px;
+    animation: legFrontWalk 1.6s ease-in-out infinite;
+}
+
+@keyframes legFrontWalk {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    15% {
+        transform: rotate(14deg);
+    }
+
+    35% {
+        transform: rotate(18deg);
+    }
+
+    50% {
+        transform: rotate(0deg);
+    }
+
+    65% {
+        transform: rotate(-14deg);
+    }
+
+    85% {
+        transform: rotate(-18deg);
+    }
+
+    100% {
+        transform: rotate(0deg);
+    }
+}
+
+/* ── Walking State - Back Leg ─── */
+.stickman-container.walking .gentleman-leg-back {
+    transform-origin: 92px 124px;
+    animation: legBackWalk 1.6s ease-in-out infinite;
+}
+
+@keyframes legBackWalk {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    15% {
+        transform: rotate(-14deg);
+    }
+
+    35% {
+        transform: rotate(-18deg);
+    }
+
+    50% {
+        transform: rotate(0deg);
+    }
+
+    65% {
+        transform: rotate(14deg);
+    }
+
+    85% {
+        transform: rotate(18deg);
+    }
+
+    100% {
+        transform: rotate(0deg);
+    }
+}
+
+/* ── Walking State - Left Arm (Umbrella) ─── */
+.stickman-container.walking .gentleman-arm-left {
+    transform-origin: 78px 74px;
+    animation: armLeftSwing 1.6s ease-in-out infinite;
+}
+
+@keyframes armLeftSwing {
+
+    0%,
+    100% {
+        transform: rotate(0deg);
+    }
+
+    25% {
+        transform: rotate(5deg);
+    }
+
+    50% {
+        transform: rotate(0deg);
+    }
+
+    75% {
+        transform: rotate(-5deg);
+    }
+}
+
+/* ── Walking State - Umbrella Sway ─── */
+.stickman-container.walking .gentleman-umbrella {
+    transform-origin: 56px 34px;
+    animation: umbrellaSway 2.4s ease-in-out infinite;
+}
+
+@keyframes umbrellaSway {
+
+    0%,
+    100% {
+        transform: rotate(0deg);
+    }
+
+    25% {
+        transform: rotate(2deg);
+    }
+
+    50% {
+        transform: rotate(-1deg);
+    }
+
+    75% {
+        transform: rotate(2.5deg);
+    }
+}
+
+/* ── Walking State - Right Arm (Cane) ─── */
+.stickman-container.walking .gentleman-arm-right {
+    transform-origin: 118px 74px;
+    animation: armRightSwing 1.6s ease-in-out infinite;
+}
+
+@keyframes armRightSwing {
+
+    0%,
+    100% {
+        transform: rotate(0deg);
+    }
+
+    25% {
+        transform: rotate(-4deg);
+    }
+
+    50% {
+        transform: rotate(0deg);
+    }
+
+    75% {
+        transform: rotate(4deg);
+    }
+}
+
+/* ── Walking State - Cane movement ─── */
+.stickman-container.walking .gentleman-cane {
+    transform-origin: 148px 110px;
+    animation: caneSwing 1.6s ease-in-out infinite;
+}
+
+@keyframes caneSwing {
+
+    0%,
+    100% {
+        transform: rotate(0deg);
+    }
+
+    30% {
+        transform: rotate(-3deg);
+    }
+
+    70% {
+        transform: rotate(3deg);
+    }
+}
+
+/* ── Walking State - Coat Tails ─── */
+.stickman-container.walking .coattail-left {
+    transform-origin: 84px 120px;
+    animation: coattailLeft 2s ease-in-out infinite;
+}
+
+@keyframes coattailLeft {
+
     0%,
     100% {
         transform: rotate(0deg) translateX(0);
-        opacity: 0.85;
     }
 
     50% {
-        transform: rotate(3deg) translateX(1px);
+        transform: rotate(3deg) translateX(-2px);
+    }
+}
+
+.stickman-container.walking .coattail-right {
+    transform-origin: 112px 120px;
+    animation: coattailRight 2s ease-in-out infinite;
+}
+
+@keyframes coattailRight {
+
+    0%,
+    100% {
+        transform: rotate(0deg) translateX(0);
+    }
+
+    50% {
+        transform: rotate(-2deg) translateX(2px);
+    }
+}
+
+/* ── Walking State - Ground Shadow ─── */
+.stickman-container.walking .gentleman-shadow {
+    animation: shadowPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes shadowPulse {
+
+    0%,
+    100% {
+        rx: 35;
+        opacity: 1;
+    }
+
+    25% {
+        rx: 30;
+        opacity: 0.7;
+    }
+
+    50% {
+        rx: 35;
+        opacity: 1;
+    }
+
+    75% {
+        rx: 30;
+        opacity: 0.7;
+    }
+}
+
+/* ── Walking State - Body Torso Sway ─── */
+.stickman-container.walking .gentleman-body {
+    transform-origin: 98px 72px;
+    animation: torsoSway 1.6s ease-in-out infinite;
+}
+
+@keyframes torsoSway {
+
+    0%,
+    100% {
+        transform: rotate(0deg);
+    }
+
+    25% {
+        transform: rotate(0.8deg);
+    }
+
+    50% {
+        transform: rotate(0deg);
+    }
+
+    75% {
+        transform: rotate(-0.8deg);
+    }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   POINTING STATE - Elegant stop & gesture
+   ════════════════════════════════════════════════════════════════════ */
+
+.stickman-container.pointing .gentleman-svg {
+    animation: none;
+}
+
+.stickman-container.pointing .gentleman-head {
+    transform-origin: 98px 46px;
+    transform: rotate(3deg);
+    transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.stickman-container.pointing .gentleman-body {
+    transform-origin: 98px 72px;
+    transform: rotate(2deg);
+    transition: transform 0.5s ease;
+}
+
+.stickman-container.pointing .gentleman-arm-right {
+    transform-origin: 118px 74px;
+    transform: rotate(15deg) translateX(5px);
+    transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.stickman-container.pointing .gentleman-cane {
+    transform-origin: 148px 110px;
+    transform: rotate(20deg);
+    transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.stickman-container.pointing .gentleman-arm-left {
+    transform-origin: 78px 74px;
+    transform: rotate(-2deg);
+    transition: transform 0.4s ease;
+}
+
+.stickman-container.pointing .gentleman-umbrella {
+    transform-origin: 56px 34px;
+    transform: rotate(-2deg);
+    transition: transform 0.4s ease;
+}
+
+.stickman-container.pointing .gentleman-leg-front {
+    transform-origin: 104px 124px;
+    transform: rotate(4deg);
+    transition: transform 0.4s ease;
+}
+
+.stickman-container.pointing .gentleman-leg-back {
+    transform-origin: 92px 124px;
+    transform: rotate(-6deg);
+    transition: transform 0.4s ease;
+}
+
+.stickman-container.pointing .coattail-left,
+.stickman-container.pointing .coattail-right {
+    animation: none;
+    transition: transform 0.4s ease;
+}
+
+/* ── Cane Pointer Line (connecting cane to button) ─── */
+.cane-pointer {
+    position: fixed;
+    z-index: 26;
+    height: 2.5px;
+    border-radius: 999px;
+    background: linear-gradient(90deg,
+            rgba(167, 139, 250, 0.9) 0%,
+            rgba(139, 92, 246, 0.7) 40%,
+            rgba(99, 102, 241, 0.5) 70%,
+            rgba(59, 130, 246, 0.8) 100%);
+    box-shadow:
+        0 0 10px rgba(139, 92, 246, 0.5),
+        0 0 20px rgba(99, 102, 241, 0.3);
+    transform-origin: left center;
+    animation: canePointerAppear 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.cane-pointer-tip {
+    position: absolute;
+    right: -6px;
+    top: -5px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.9) 0%, rgba(99, 102, 241, 0.4) 70%);
+    box-shadow: 0 0 16px rgba(139, 92, 246, 0.7);
+    animation: tipPulse 1.5s ease-in-out infinite;
+}
+
+.cane-pointer-glow {
+    position: absolute;
+    right: -12px;
+    top: -11px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.3) 0%, transparent 70%);
+    animation: tipGlow 2s ease-in-out infinite;
+}
+
+@keyframes canePointerAppear {
+    from {
+        opacity: 0;
+        transform: scaleX(0);
+    }
+
+    to {
+        opacity: 1;
+        transform: scaleX(1);
+    }
+}
+
+@keyframes tipPulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 16px rgba(139, 92, 246, 0.7);
+    }
+
+    50% {
+        transform: scale(1.3);
+        box-shadow: 0 0 24px rgba(139, 92, 246, 0.9);
+    }
+}
+
+@keyframes tipGlow {
+
+    0%,
+    100% {
+        opacity: 0.4;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.8;
+        transform: scale(1.3);
+    }
+}
+
+/* ── Hidden State ─── */
+.stickman-container.hidden {
+    opacity: 0 !important;
+    transition: opacity 1s ease-out, filter 1s ease-out;
+    filter: blur(3px);
+    pointer-events: none;
+}
+
+/* ── Footstep Particles ─── */
+.footstep-particle {
+    position: fixed;
+    z-index: 12;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.6) 0%, rgba(99, 102, 241, 0.2) 70%);
+    box-shadow: 0 0 8px rgba(139, 92, 246, 0.4);
+    pointer-events: none;
+    transition: opacity 0.5s ease-out;
+}
+
+/* ═══════════════════════════════════════════════════
+   LIGHTNING
+   ═══════════════════════════════════════════════════ */
+.lightning-flash-container {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.giant-bolt {
+    color: #a78bfa;
+    filter: drop-shadow(0 0 30px rgba(167, 139, 250, 0.9));
+    animation: strike 0.16s ease-out;
+}
+
+.screen-flash {
+    position: absolute;
+    inset: 0;
+    background: rgba(139, 92, 246, 0.15);
+    opacity: 0;
+    animation: flash 0.3s ease-out;
+}
+
+@keyframes strike {
+    0% {
+        opacity: 0;
+        transform: scale(0.75);
+    }
+
+    50% {
         opacity: 0.95;
-    }
-}
-
-@keyframes walkRight {
-    0% {
-        transform: rotate(-16deg);
-    }
-
-    50% {
-        transform: rotate(16deg);
+        transform: scale(1.05);
     }
 
     100% {
-        transform: rotate(-16deg);
+        opacity: 0;
+        transform: scale(0.95);
     }
 }
 
-@keyframes swingLeft {
+@keyframes flash {
     0% {
-        transform: rotate(-14deg);
-    }
-
-    50% {
-        transform: rotate(14deg);
+        opacity: 0.3;
     }
 
     100% {
-        transform: rotate(-14deg);
+        opacity: 0;
     }
 }
 
-@keyframes swingRight {
-    0% {
-        transform: rotate(14deg);
-    }
-
-    50% {
-        transform: rotate(-14deg);
-    }
-
-    100% {
-        transform: rotate(14deg);
-    }
-}
-
-@keyframes bodyLean {
-    0% {
-        transform: rotate(0.2deg);
-    }
-
-    50% {
-        transform: rotate(1.2deg);
-    }
-
-    100% {
-        transform: rotate(0.2deg);
-    }
-}
-
-@keyframes buttonShimmer {
-    0% {
-        left: -100%;
-    }
-
-    20% {
-        left: 200%;
-    }
-
-    100% {
-        left: 200%;
-    }
-}
-
+/* ═══════════════════════════════════════════════════
+   GENERIC KEYFRAMES
+   ═══════════════════════════════════════════════════ */
 @keyframes slideUp {
     from {
         opacity: 0;
@@ -1025,98 +978,16 @@ html {
     }
 }
 
-/* Lightning */
-.lightning-flash-container {
-    position: fixed;
-    inset: 0;
-    z-index: 100;
-    pointer-events: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.giant-bolt {
-    color: #fbbf24;
-    filter: drop-shadow(0 0 24px rgba(251, 191, 36, 0.9));
-    animation: strike 0.16s ease-out;
-}
-
-.screen-flash {
-    position: absolute;
-    inset: 0;
-    background: rgba(255, 255, 255, 0.8);
-    opacity: 0;
-    animation: flash 0.2s ease-out;
-}
-
-@keyframes strike {
+@keyframes buttonShimmer {
     0% {
-        opacity: 0;
-        transform: scale(0.75);
+        left: -100%;
     }
 
-    50% {
-        opacity: 0.95;
-        transform: scale(1.05);
+    20% {
+        left: 200%;
     }
 
     100% {
-        opacity: 0;
-        transform: scale(0.95);
-    }
-}
-
-@keyframes flash {
-    0% {
-        opacity: 0.45;
-    }
-
-    100% {
-        opacity: 0;
-    }
-}
-
-@keyframes walkBounce {
-    from {
-        transform: translateY(0);
-    }
-
-    to {
-        transform: translateY(-3px);
-    }
-}
-
-@keyframes umbrellaRunMotion {
-    0% {
-        transform: translateX(-50%) rotate(-12deg) translateY(0);
-    }
-
-    25% {
-        transform: translateX(-50%) rotate(-8deg) translateY(-5px);
-    }
-
-    50% {
-        transform: translateX(-50%) rotate(-13deg) translateY(1px);
-    }
-
-    75% {
-        transform: translateX(-50%) rotate(-8deg) translateY(-4px);
-    }
-
-    100% {
-        transform: translateX(-50%) rotate(-12deg) translateY(0);
-    }
-}
-
-@keyframes swordSettle {
-    from {
-        opacity: 0;
-        filter: blur(1px);
-    }
-
-    to {
-        opacity: 1;
-        filter: blur(0);
+        left: 200%;
     }
 }
