@@ -175,6 +175,7 @@ class Settings:
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = _env_int("ACCESS_TOKEN_EXPIRE_MINUTES", 30)
     REFRESH_TOKEN_EXPIRE_DAYS: int = _env_int("REFRESH_TOKEN_EXPIRE_DAYS", 7)
+    PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = _env_int("PASSWORD_RESET_TOKEN_EXPIRE_MINUTES", 30)
     
     # Session Management
     MAX_CONCURRENT_SESSIONS: int = _env_int("MAX_CONCURRENT_SESSIONS", 5)
@@ -219,6 +220,9 @@ class Settings:
     # When using credentials, cannot use wildcard - must specify origins
     FRONTEND_URL: str = _strip_wrapping_quotes(os.getenv("FRONTEND_URL", "http://localhost:3000"))
     PRODUCTION_FRONTEND_URL: str = _strip_wrapping_quotes(os.getenv("PRODUCTION_FRONTEND_URL", ""))
+    APP_URL: str = _strip_wrapping_quotes(os.getenv("APP_URL", ""))
+    if not APP_URL:
+        APP_URL = PRODUCTION_FRONTEND_URL or FRONTEND_URL or BASE_URL
     _cors_env = _env_list("CORS_ORIGINS")
     CORS_ORIGINS: List[str] = _cors_env or [
         "http://localhost:3000",

@@ -121,6 +121,15 @@ export interface UpdateEmailRequest {
   currentPassword: string;
 }
 
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  new_password: string;
+}
+
 export interface SubscriptionPlan {
   id: string;
   name: string;
@@ -222,6 +231,20 @@ class UserService {
    */
   async register(data: any): Promise<ApiResponse<any>> {
     return api.post('/auth/register', data);
+  }
+
+  /**
+   * Request password reset email
+   */
+  async forgotPassword(request: ForgotPasswordRequest): Promise<ApiResponse<{ ok: boolean }>> {
+    return api.post<{ ok: boolean }>('/auth/forgot-password', request);
+  }
+
+  /**
+   * Reset password using one-time token
+   */
+  async resetPassword(request: ResetPasswordRequest): Promise<ApiResponse<{ ok: boolean }>> {
+    return api.post<{ ok: boolean }>('/auth/reset-password', request);
   }
 
   /**

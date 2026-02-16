@@ -1,4 +1,6 @@
 from datetime import datetime, timedelta, timezone
+import hashlib
+import secrets
 from typing import Optional, Any, Union
 from jose import jwt
 from passlib.context import CryptContext
@@ -64,3 +66,13 @@ def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) 
 def decode_token(token: str) -> dict:
     """Decode and validate a JWT token."""
     return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+
+
+def generate_reset_token() -> str:
+    """Generate a secure random token for password reset links."""
+    return secrets.token_urlsafe(48)
+
+
+def hash_token(token: str) -> str:
+    """Hash a reset token before storing in the database."""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()

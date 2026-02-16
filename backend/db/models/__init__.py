@@ -416,6 +416,24 @@ class RefreshToken(Base):
 
 
 # ==================================================
+# PASSWORD RESET TOKEN
+# ==================================================
+class PasswordResetToken(Base):
+    """One-time password reset token (store hash only)."""
+
+    __tablename__ = "password_reset_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    token_hash = Column(String, unique=True, nullable=False, index=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    used_at = Column(DateTime(timezone=True))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    request_ip = Column(String)
+    user_agent = Column(Text)
+
+
+# ==================================================
 # BEHAVIORAL PATTERN
 # ==================================================
 class BehavioralPattern(Base):
@@ -710,6 +728,7 @@ __all__ = [
     "DailyAnalytics",  # NEW
     "AIIntelligenceScore",  # NEW
     "RefreshToken",
+    "PasswordResetToken",
     # Phase 3 models
     "Notification",
     "TaskShare",

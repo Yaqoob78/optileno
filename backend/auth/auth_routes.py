@@ -6,7 +6,13 @@ from jose import JWTError
 
 from backend.app.config import settings
 from backend.db.database import get_db
-from backend.schemas.auth import UserRegister, UserLogin, UserResponse
+from backend.schemas.auth import (
+    UserRegister,
+    UserLogin,
+    UserResponse,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
+)
 from backend.db.models import User
 from backend.utils.user_profile import build_user_profile
 from .auth_service import auth_service
@@ -112,6 +118,50 @@ async def refresh(
         payload["access_token"] = access_token
         payload["refresh_token"] = new_refresh_token
     return payload
+
+
+@router.post("/forgot-password")
+async def forgot_password(
+    request_data: ForgotPasswordRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Always return ok to prevent email enumeration.
+    """
+    forwarded_for = request.headers.get("x-forwarded-for", "")
+    request_ip = (forwarded_for.split(",")[0].strip() if forwarded_for else None) or (
+        request.client.host if request.client else None
+    )
+    user_agent = request.headers.get("user-agent")
+
+    await auth_service.request_password_reset(
+        db=db,
+        email=request_data.email,
+        request_ip=request_ip,
+        user_agent=user_agent,
+    )
+    return {"ok": True}
+
+
+@router.post("/reset-password")
+async def reset_password(
+    request_data: ResetPasswordRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
+    await auth_service.reset_password_with_token(
+        db=db,
+        token=request_data.token,
+        new_password=request_data.new_password,
+    )
+
+    # Clear local auth cookies for this browser session after password reset.
+    response.delete_cookie("access_token", path="/")
+    response.delete_cookie("refresh_token", path="/api/v1/auth/refresh")
+    response.delete_cookie("csrf_token", path="/")
+
+    return {"ok": True}
 
 
 @router.post("/logout")

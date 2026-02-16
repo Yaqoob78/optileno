@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Mail, Lock, LogIn, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
 import { userService } from '../../services/api/user.service';
 import { useUserStore } from '../../stores/useUserStore';
@@ -7,8 +7,11 @@ import '../../styles/pages/auth.css';
 
 export default function Login() {
     const navigate = useNavigate();
-    const setProfile = useUserStore((state) => state.setProfile);
+    const location = useLocation();
     const loginStore = useUserStore((state) => state.login);
+    const routeMessage = typeof (location.state as any)?.message === 'string'
+        ? (location.state as any).message
+        : '';
 
     const [formData, setFormData] = useState({
         email: '',
@@ -67,6 +70,10 @@ export default function Login() {
                             <AlertCircle size={18} />
                             <span>{error}</span>
                         </div>
+                    )}
+
+                    {routeMessage && (
+                        <div className="success-message">{routeMessage}</div>
                     )}
 
                     <form className="auth-form" onSubmit={handleSubmit}>

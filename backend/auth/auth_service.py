@@ -1,4 +1,5 @@
 import hashlib
+import logging
 from datetime import datetime, timezone, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,16 +8,21 @@ from fastapi import HTTPException, status
 from jose import JWTError
 
 from backend.app.config import settings
-from backend.db.models import User, RefreshToken
+from backend.db.models import User, RefreshToken, PasswordResetToken
 from backend.schemas.auth import UserRegister, UserLogin
+from backend.services.email_service import email_service
 from backend.services.entitlements_service import normalize_plan_tier, canonical_plan_type
 from .auth_utils import (
     get_password_hash,
     verify_password,
     create_access_token,
     create_refresh_token,
-    decode_token
+    decode_token,
+    generate_reset_token,
+    hash_token,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class AuthService:
@@ -208,6 +214,134 @@ class AuthService:
             .values(is_revoked=True)
         )
         await db.commit()
+
+    async def revoke_all_refresh_tokens(self, db: AsyncSession, user_id: int):
+        """Revoke all refresh tokens for a user."""
+        await db.execute(
+            update(RefreshToken)
+            .where(RefreshToken.user_id == user_id)
+            .values(is_revoked=True)
+        )
+
+    async def request_password_reset(
+        self,
+        db: AsyncSession,
+        email: str,
+        request_ip: str | None = None,
+        user_agent: str | None = None,
+    ):
+        """
+        Create reset token and send email if account exists.
+        Caller should always return a generic success response.
+        """
+        normalized_email = (email or "").strip().lower()
+        if not normalized_email:
+            return
+
+        result = await db.execute(select(User).where(User.email == normalized_email))
+        user = result.scalar_one_or_none()
+        if not user or not user.is_active:
+            return
+
+        now = datetime.now(timezone.utc)
+
+        # Invalidate previous unused tokens for this user.
+        await db.execute(
+            update(PasswordResetToken)
+            .where(
+                PasswordResetToken.user_id == user.id,
+                PasswordResetToken.used_at.is_(None),
+            )
+            .values(used_at=now)
+        )
+
+        raw_token = generate_reset_token()
+        reset_entry = PasswordResetToken(
+            user_id=user.id,
+            token_hash=hash_token(raw_token),
+            expires_at=now + timedelta(minutes=settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES),
+            request_ip=(request_ip or "")[:255] or None,
+            user_agent=(user_agent or "")[:1024] or None,
+        )
+        db.add(reset_entry)
+        await db.commit()
+
+        await self._send_password_reset_email(user.email, raw_token)
+
+    async def reset_password_with_token(self, db: AsyncSession, token: str, new_password: str):
+        """Consume a reset token once, change password, and revoke all sessions."""
+        if not token:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Reset token is required")
+
+        if len(new_password) < settings.PASSWORD_MIN_LENGTH:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Password must be at least {settings.PASSWORD_MIN_LENGTH} characters",
+            )
+
+        now = datetime.now(timezone.utc)
+        token_digest = hash_token(token)
+
+        result = await db.execute(
+            select(PasswordResetToken)
+            .where(
+                PasswordResetToken.token_hash == token_digest,
+                PasswordResetToken.used_at.is_(None),
+                PasswordResetToken.expires_at > now,
+            )
+            .with_for_update()
+        )
+        reset_entry = result.scalar_one_or_none()
+        if not reset_entry:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired reset token")
+
+        user_result = await db.execute(
+            select(User)
+            .where(User.id == reset_entry.user_id)
+            .with_for_update()
+        )
+        user = user_result.scalar_one_or_none()
+        if not user or not user.is_active:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid reset request")
+
+        user.hashed_password = get_password_hash(new_password)
+        reset_entry.used_at = now
+        await self.revoke_all_refresh_tokens(db, user.id)
+        await db.commit()
+
+    async def _send_password_reset_email(self, to_email: str, raw_token: str):
+        app_url = (settings.APP_URL or settings.FRONTEND_URL or "").rstrip("/")
+        reset_link = f"{app_url}/reset-password?token={raw_token}" if app_url else raw_token
+
+        html_content = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif;">
+                <h2>Reset your Optileno password</h2>
+                <p>We received a request to reset your password.</p>
+                <p>
+                    <a href="{reset_link}" style="background-color: #2563eb; color: white; padding: 10px 18px; text-decoration: none; border-radius: 6px;">
+                        Reset Password
+                    </a>
+                </p>
+                <p>This link expires in {settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES} minutes.</p>
+                <p>If you did not request this, you can ignore this email.</p>
+            </body>
+        </html>
+        """
+
+        try:
+            result = await email_service.send_email(
+                to_email=to_email,
+                subject="Reset your Optileno password",
+                html_content=html_content,
+                text_content=f"Reset your password: {reset_link}",
+            )
+            if result.get("status") != "sent":
+                # Keep flow non-blocking to avoid user enumeration and delivery retries issues.
+                logger.warning("Password reset email delivery failed for %s: %s", to_email, result)
+        except Exception as exc:
+            # Intentionally swallow to keep forgot-password response constant.
+            logger.warning("Password reset email send exception for %s: %s", to_email, exc)
 
 
 auth_service = AuthService()

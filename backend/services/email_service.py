@@ -15,8 +15,12 @@ class EmailService:
     """Service for sending emails via SendGrid"""
     
     def __init__(self):
-        self.api_key = os.getenv('SENDGRID_API_KEY', '')
-        self.from_email = os.getenv('SENDGRID_FROM_EMAIL', 'noreply@concierge.ai')
+        self.api_key = (os.getenv('SENDGRID_API_KEY', '') or '').strip()
+        self.from_email = (
+            os.getenv('SENDGRID_FROM_EMAIL')
+            or os.getenv('EMAIL_FROM')
+            or 'noreply@concierge.ai'
+        )
         self.sg = SendGridAPIClient(self.api_key) if self.api_key else None
     
     async def send_email(
