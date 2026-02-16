@@ -9,6 +9,23 @@ export default function BillingSettings() {
     const [error, setError] = useState<string | null>(null);
 
     const isUltra = storeIsUltra;
+    const configuredLimit = Number(profile?.limits?.chat_daily_limit);
+    const chatDailyLimit = Number.isFinite(configuredLimit) && configuredLimit > 0
+        ? configuredLimit
+        : (isUltra ? 150 : 15);
+    const planFeatures = isUltra
+        ? [
+            { icon: <Zap size={14} />, title: 'AI Chat Limit', sub: `${chatDailyLimit} req/day` },
+            { icon: <ShieldCheck size={14} />, title: 'Agentic Planner', sub: 'Automation enabled' },
+            { icon: <Zap size={14} />, title: 'Advanced Analytics', sub: 'Heatmap, burnout, AI insights' },
+            { icon: <Check size={14} />, title: 'Big Five Interval', sub: 'Every 7 days' },
+        ]
+        : [
+            { icon: <Zap size={14} />, title: 'AI Chat Limit', sub: `${chatDailyLimit} req/day` },
+            { icon: <ShieldCheck size={14} />, title: 'Planner Access', sub: 'Manual tasks, habits, goals' },
+            { icon: <Zap size={14} />, title: 'Analytics', sub: 'Productivity, mood, basic insights' },
+            { icon: <Check size={14} />, title: 'Big Five Interval', sub: 'Every 14 days' },
+        ];
 
     const handleUpgrade = async () => {
         setLoading(true);
@@ -57,8 +74,8 @@ export default function BillingSettings() {
                         </div>
                         <p>
                             {isUltra
-                                ? 'Complete access to advanced behavior analysis and unlimited intelligence.'
-                                : 'Start with basic assistance. Upgrade for full features.'}
+                                ? 'Advanced analytics, agentic planner automation, and higher daily AI limits.'
+                                : 'Core planning with practical daily AI limits. Upgrade for advanced analytics.'}
                         </p>
                     </div>
                     <div className={`billing-status ${isUltra ? 'billing-status-premium' : ''}`}>
@@ -67,12 +84,7 @@ export default function BillingSettings() {
                 </div>
 
                 <div className="billing-features">
-                        {[
-                            { icon: <Zap size={14} />, title: "Unlimited Usage", sub: "No limits" },
-                            { icon: <ShieldCheck size={14} />, title: "Private Compute", sub: "Isolated" },
-                            { icon: <Zap size={14} />, title: "Expert Analysis", sub: "Patterns" },
-                            { icon: <Check size={14} />, title: "Priority Labs", sub: "Early access" }
-                        ].map((feat, i) => (
+                        {planFeatures.map((feat, i) => (
                             <div key={i} className="billing-feature">
                                 <div className="billing-feature-icon">{feat.icon}</div>
                                 <div className="billing-feature-text">

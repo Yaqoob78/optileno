@@ -40,16 +40,17 @@ SUBSCRIPTION_PLANS = {
         "annual_price": settings.EXPLORER_ANNUAL_PRICE,    # $20.00
         "currency": "USD",
         "features": [
-            "Basic AI assistance",
-            "Task management",
-            "Goal tracking",
+            "AI chat up to 15 requests/day",
+            "Manual planner: tasks, habits, deep work, goals",
+            "Mood tracker and productivity score",
             "Basic analytics",
+            "Big Five test every 14 days",
             "Email support",
         ],
         "limits": {
-            "ai_requests_per_day": 50,
-            "goals": 5,
-            "tasks": 100,
+            "ai_requests_per_day": 15,
+            "goals": -1,
+            "tasks": -1,
         }
     },
     "ultra": {
@@ -61,16 +62,15 @@ SUBSCRIPTION_PLANS = {
         "annual_price": settings.ULTRA_ANNUAL_PRICE,    # $80.00 (Save $40)
         "currency": "USD",
         "features": [
-            "Unlimited AI assistance",
-            "Advanced analytics",
+            "AI chat up to 150 requests/day",
+            "Agentic planner automation",
+            "Advanced analytics (focus heatmap, burnout risk, AI insights)",
+            "Detailed goal progress and AI intelligence",
+            "Big Five test every 7 days",
             "Priority support",
-            "Custom integrations",
-            "Team collaboration",
-            "Advanced insights",
-            "API access",
         ],
         "limits": {
-            "ai_requests_per_day": -1,  # Unlimited
+            "ai_requests_per_day": 150,
             "goals": -1,  # Unlimited
             "tasks": -1,  # Unlimited
         }

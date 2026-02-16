@@ -230,8 +230,8 @@ class RedisAIQuota:
             # For now, return default limits
             limits = {
                 "general": 100,
-                "explorer": 100,
-                "ultra": 500
+                "explorer": 15,
+                "ultra": 150
             }
             if quota_type == "premium":
                 return limits["ultra"]

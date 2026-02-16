@@ -99,25 +99,37 @@ export default function Chat() {
   }, [activeConversation?.isKept]);
 
   // Check Daily Limits
-  const checkDailyLimits = (): boolean => {
-    if (isUltra) return true;
-
+  const getDailyUsageKey = (): string => {
     const today = new Date().toISOString().split('T')[0];
-    const key = `daily_usage_${today}`;
-    const usage = JSON.parse(localStorage.getItem(key) || '{"conversations": 0, "tokens": 0}');
+    const userKey = userProfile?.id ? String(userProfile.id) : 'anon';
+    return `daily_usage_${userKey}_${today}`;
+  };
 
-    if (usage.conversations >= 25) {
-      alert("Daily request limit (25) reached. Upgrade to Ultra to continue.");
+  const getChatDailyLimit = (): number => {
+    if (isOwner) return Number.MAX_SAFE_INTEGER;
+    const profileLimit = Number(userProfile?.limits?.chat_daily_limit);
+    if (Number.isFinite(profileLimit) && profileLimit > 0) return profileLimit;
+    return isUltra ? 150 : 15;
+  };
+
+  const checkDailyLimits = (): boolean => {
+    if (isOwner) return true;
+
+    const key = getDailyUsageKey();
+    const usage = JSON.parse(localStorage.getItem(key) || '{"conversations": 0, "tokens": 0}');
+    const dailyLimit = getChatDailyLimit();
+
+    if (usage.conversations >= dailyLimit) {
+      alert(`Daily request limit (${dailyLimit}) reached. Please try again after reset.`);
       return false;
     }
     return true;
   };
 
   const updateDailyUsage = (inputLength: number) => {
-    if (isUltra) return;
+    if (isOwner) return;
 
-    const today = new Date().toISOString().split('T')[0];
-    const key = `daily_usage_${today}`;
+    const key = getDailyUsageKey();
     const usage = JSON.parse(localStorage.getItem(key) || '{"conversations": 0, "tokens": 0}');
 
     // Estimate tokens: ~1 token per 4 chars + base cost

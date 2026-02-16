@@ -10,7 +10,7 @@ from groq import AsyncGroq
 
 from backend.app.config import settings
 from backend.services.user_service import user_service
-from backend.services.entitlements_service import normalize_plan_tier
+from backend.services.entitlements_service import get_limits, normalize_plan_tier
 from backend.ai.response_formatter import response_formatter
 from backend.analytics.insights.insight_engine import generate_insights
 
@@ -45,6 +45,27 @@ class DualAIClient:
         self.primary_provider = "nvidia" 
         self.secondary_provider = "groq"
 
+    @staticmethod
+    def _normalize_request_usage(raw_usage: Any, daily_limit: int) -> int:
+        """
+        Normalize stored usage into request-count units.
+
+        Older builds incremented counters by +100 per request. If usage is above
+        the current daily cap, convert it back to request-count scale.
+        """
+        try:
+            usage = int(raw_usage or 0)
+        except (TypeError, ValueError):
+            return 0
+
+        if usage <= 0:
+            return 0
+
+        if usage > max(daily_limit, 1):
+            return max(0, (usage + 99) // 100)
+
+        return usage
+
     async def _execute_tool(self, tool, payload):
         """
         Execute a tool with flexible payload handling.
@@ -68,7 +89,11 @@ class DualAIClient:
                 "usage_primary": 0,
                 "usage_secondary": 0,
                 "limit_primary": 999999,
-                "limit_secondary": 999999
+                "limit_secondary": 999999,
+                "daily_available": True,
+                "daily_requests_used": 0,
+                "chat_daily_limit": 999999,
+                "plan_tier": "ultra",
             }
 
         # Determine limits by canonical plan tier
@@ -80,10 +105,12 @@ class DualAIClient:
         limits = settings.get_plan_limits(plan_tier)
         limit_primary = limits["nvidia"]
         limit_secondary = limits["groq"]
+        entitlement_limits = get_limits(plan_tier)
+        chat_daily_limit = int(entitlement_limits.get("chat_daily_limit", 15))
 
         # Check Reset (Simple daily check)
         now = datetime.now(timezone.utc)
-        if user.last_token_reset and user.last_token_reset.date() < now.date():
+        if (not user.last_token_reset) or user.last_token_reset.date() < now.date():
             # Reset logic should happen in DB update, but we'll flag it here
             await user_service.reset_daily_tokens(user.id)
             usage_primary = 0
@@ -91,16 +118,25 @@ class DualAIClient:
         else:
             # usage_gemini field in DB we will reuse as primary (nvidia) usage for now to avoid DB migration in this step
             # ideally we rename columns later. "daily_gemini_tokens" -> "daily_primary_tokens"
-            usage_primary = user.daily_gemini_tokens or 0 
-            usage_secondary = user.daily_groq_tokens or 0
+            raw_primary = user.daily_gemini_tokens or 0
+            raw_secondary = user.daily_groq_tokens or 0
+            usage_primary = self._normalize_request_usage(raw_primary, chat_daily_limit)
+            usage_secondary = self._normalize_request_usage(raw_secondary, chat_daily_limit)
+
+        daily_requests_used = usage_primary + usage_secondary
+        daily_available = daily_requests_used < chat_daily_limit
 
         return {
-            "primary_available": usage_primary < limit_primary,
-            "secondary_available": usage_secondary < limit_secondary,
+            "primary_available": daily_available and usage_primary < limit_primary,
+            "secondary_available": daily_available and usage_secondary < limit_secondary,
             "usage_primary": usage_primary,
             "usage_secondary": usage_secondary,
             "limit_primary": limit_primary,
-            "limit_secondary": limit_secondary
+            "limit_secondary": limit_secondary,
+            "daily_available": daily_available,
+            "daily_requests_used": daily_requests_used,
+            "chat_daily_limit": chat_daily_limit,
+            "plan_tier": plan_tier,
         }
 
     async def chat_completion(self, messages: List[Dict[str, str]], mode: str = "CHAT") -> Dict[str, Any]:
@@ -113,6 +149,19 @@ class DualAIClient:
             return {"text": "Error: User not found.", "provider": "system", "model": "none"}
 
         quota = await self._get_user_quota_status(user)
+
+        if not quota.get("daily_available", True):
+            used = int(quota.get("daily_requests_used", 0))
+            daily_limit = int(quota.get("chat_daily_limit", 0))
+            plan_tier = str(quota.get("plan_tier", "explorer"))
+            upgrade_line = "\nUpgrade to Ultra for 150 requests/day." if plan_tier != "ultra" else ""
+            msg = (
+                "Daily limit reached.\n\n"
+                f"You have used {used}/{daily_limit} AI requests today."
+                f"{upgrade_line}\n\n"
+                "Your quota resets at midnight UTC."
+            )
+            return {"text": msg, "provider": "system", "model": "limit_reached"}
 
         # Determine which model to use based on mode
         # "Brain" models for reasoning/chat, "Agent" models for tools/json
@@ -127,7 +176,7 @@ class DualAIClient:
                 response_text = await self._call_nvidia(messages, model=primary_model)
                 
                 # Update Usage
-                await user_service.increment_token_usage(user.id, "gemini", 100) 
+                await user_service.increment_token_usage(user.id, "gemini", 1)
                 return {"text": response_text, "provider": "NVIDIA", "model": primary_model}
             except Exception as e:
                 logger.error(f"NVIDIA (Primary) failed with model {primary_model}: {e}. Failing over to Groq.")
@@ -138,7 +187,7 @@ class DualAIClient:
                 # Use Llama 3 70B on Groq for better reasoning if available
                 model_to_use = "llama-3.3-70b-versatile"
                 response_text = await self._call_groq(messages, model=model_to_use)
-                await user_service.increment_token_usage(user.id, "groq", 100)
+                await user_service.increment_token_usage(user.id, "groq", 1)
                 return {"text": response_text, "provider": "Groq", "model": model_to_use}
             except Exception as e:
                 logger.error(f"Groq (Secondary) failed: {e}")
@@ -155,10 +204,9 @@ class DualAIClient:
 
         # 4. Blocked
         msg = (
-            "🚫 **Daily Limit Reached**\n\n"
-            "You have used your daily AI allowance for both Primary (NVIDIA) and Backup (Groq) models.\n"
-            "Upgrade to Ultra for higher limits.\n\n"
-            "Your quota resets at midnight UTC."
+            "AI capacity limit reached.\n\n"
+            "Both AI providers are currently unavailable for your account quota.\n"
+            "Please try again shortly."
         )
         return {"text": msg, "provider": "system", "model": "limit_reached"}
 

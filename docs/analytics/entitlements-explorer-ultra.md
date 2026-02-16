@@ -1,6 +1,6 @@
 # Entitlements Model (Explorer and Ultra)
 
-Last validated against runtime code on 2026-02-15.
+Last validated against runtime code on 2026-02-16.
 
 ## Canonical Plan Tiers
 Source: `backend/services/entitlements_service.py`
@@ -25,7 +25,7 @@ Normalization function: `normalize_plan_tier(...)`
 ## Entitlements Matrix
 | Feature | Explorer | Ultra |
 |---|---:|---:|
-| Chat daily requests | 25 | 500 |
+| Chat daily requests | 15 | 150 |
 | Chat overflow model | No | Yes |
 | Agentic planner | No | Yes |
 | Advanced analytics | No | Yes |

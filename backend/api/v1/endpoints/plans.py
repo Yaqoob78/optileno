@@ -5,6 +5,7 @@ from datetime import date
 from pydantic import BaseModel, Field
 
 from backend.core.security import get_current_user
+from backend.services.entitlements_service import require_ultra_feature
 from backend.schemas.planner import (
     TaskCreate, TaskUpdate, TaskOut,
     DeepWorkCreate, DeepWorkOut,
@@ -338,6 +339,8 @@ async def ai_create_goal_with_cascade(
     - Suggests supporting habits
     - Proposes deep work blocks if needed
     """
+    require_ultra_feature(current_user, "agentic_planner")
+
     from backend.ai.tools.goal_automation import create_goal_with_cascade
     
     result = await create_goal_with_cascade(

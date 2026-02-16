@@ -95,10 +95,10 @@ export default function Register() {
                                 </div>
                                 <div className="plan-offer-note">Limited deal: first 100 users</div>
                                 <div className="plan-features">
-                                    <div className="plan-feature">Task Management and Habits</div>
-                                    <div className="plan-feature">Planner Dashboard</div>
-                                    <div className="plan-feature">AI Chat (25 req/day)</div>
-                                    <div className="plan-feature">Basic Analytics</div>
+                                    <div className="plan-feature">AI Chat (15 req/day)</div>
+                                    <div className="plan-feature">Manual Planner: tasks, habits, deep work, goals</div>
+                                    <div className="plan-feature">Mood tracker + productivity score</div>
+                                    <div className="plan-feature">Big Five every 14 days</div>
                                 </div>
                             </div>
 
@@ -117,14 +117,11 @@ export default function Register() {
                                 </div>
                                 <div className="plan-offer-note">Limited deal: first 100 users</div>
                                 <div className="plan-features" style={{ gap: '6px' }}>
-                                    <div className="plan-feature">Unlimited Leno AI and Memory</div>
-                                    <div className="plan-feature">Deep Work and Flow Tools</div>
-                                    <div className="plan-feature">Strategic Goal Timeline</div>
-                                    <div className="plan-feature">Advanced Behavioral Analytics</div>
-                                    <div className="plan-feature">Predictive Life Trajectories</div>
-                                    <div className="plan-feature">Smart Context Notifications</div>
-                                    <div className="plan-feature">Mood and Stress Intelligence</div>
-                                    <div className="plan-feature">Priority Features Access</div>
+                                    <div className="plan-feature">AI Chat (150 req/day)</div>
+                                    <div className="plan-feature">Agentic planner automation</div>
+                                    <div className="plan-feature">Focus heatmap + burnout risk + AI insights</div>
+                                    <div className="plan-feature">Detailed goal progress + AI intelligence</div>
+                                    <div className="plan-feature">Big Five every 7 days</div>
                                 </div>
                             </div>
                         </div>

@@ -31,7 +31,7 @@ PLAN_TYPE_TO_PLAN = {
 
 
 EXPLORER_ENTITLEMENTS: Dict[str, Any] = {
-    "chat_requests_daily": 25,
+    "chat_requests_daily": 15,
     "agentic_planner": False,
     "advanced_analytics": False,
     "focus_heatmap": False,
@@ -45,7 +45,7 @@ EXPLORER_ENTITLEMENTS: Dict[str, Any] = {
 }
 
 ULTRA_ENTITLEMENTS: Dict[str, Any] = {
-    "chat_requests_daily": 500,
+    "chat_requests_daily": 150,
     "chat_overflow_model_enabled": True,
     "agentic_planner": True,
     "advanced_analytics": True,
@@ -119,4 +119,3 @@ def require_ultra_feature(user: Any, feature: str) -> None:
         status_code=403,
         detail={"code": "PLAN_UPGRADE_REQUIRED", "feature": feature},
     )
-
