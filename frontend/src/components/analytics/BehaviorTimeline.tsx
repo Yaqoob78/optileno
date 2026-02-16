@@ -38,6 +38,24 @@ interface DayDetail {
   chat_messages: number;
   stress_level: number;
   high_priority_done: number;
+  app_opens?: number;
+  meaningful_actions?: number;
+  deep_work_minutes?: number;
+  habit_completions?: number;
+}
+
+interface AntiQuitState {
+  current_state: string;
+  secondary_state?: string | null;
+  quit_probability: number;
+  risk_level: 'low' | 'moderate' | 'high' | 'critical' | string;
+  warning_label: string;
+  timeline_visual?: string;
+  missed_streak?: number;
+  confidence?: number;
+  confidence_state?: string;
+  evidence?: string[];
+  profile?: string;
 }
 
 interface DayState {
@@ -49,6 +67,7 @@ interface DayState {
   recovery: boolean;
   intervention?: Intervention;
   detail?: DayDetail;
+  anti_quit?: AntiQuitState;
 }
 
 interface TimelineSummary {
@@ -60,6 +79,11 @@ interface TimelineSummary {
   flow_days: number;
   interventions_triggered: number;
   dominant_pattern: string;
+  anti_quit?: AntiQuitState & {
+    profile_confidence?: number;
+    dominant_state_7d?: string;
+    profile_signals?: Record<string, number>;
+  };
 }
 
 interface TimelineResponse {
@@ -163,7 +187,7 @@ export default function BehaviorTimeline() {
 
   const normalizeText = (value: string): string => {
     return String(value || '')
-      .replace(/[â€”]/g, '-')
+      .replace(/[—–]/g, '-')
       .replace(/_/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
@@ -231,6 +255,15 @@ export default function BehaviorTimeline() {
 
   const summary = data?.summary;
   const timeline = data?.timeline || [];
+  const antiQuit = summary?.anti_quit;
+  const antiRiskClass =
+    antiQuit?.risk_level === 'critical'
+      ? 'critical'
+      : antiQuit?.risk_level === 'high'
+      ? 'high'
+      : antiQuit?.risk_level === 'moderate'
+      ? 'moderate'
+      : 'low';
 
   return (
     <div className="bt-container">
@@ -280,6 +313,13 @@ export default function BehaviorTimeline() {
             <span className="bt-stat-pattern-label">Pattern</span>
             <span className="bt-stat-pattern-text">{normalizeText(summary.dominant_pattern)}</span>
           </div>
+          {antiQuit && (
+            <div className={`bt-stat bt-stat-risk bt-risk-${antiRiskClass}`}>
+              <span className="bt-stat-pattern-label">Quit Risk</span>
+              <span className="bt-stat-value">{Math.round(antiQuit.quit_probability || 0)}%</span>
+              <span className="bt-stat-label">{toTitleCase(String(antiQuit.current_state || 'stable'))}</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -462,6 +502,18 @@ export default function BehaviorTimeline() {
             <strong>Quick read:</strong> {getQuickRead(selectedDay)}
           </div>
 
+          {selectedDay.anti_quit && (
+            <div className={`bt-warning-card bt-warning-${String(selectedDay.anti_quit.risk_level || 'low')}`}>
+              <div className="bt-warning-title">
+                {toTitleCase(String(selectedDay.anti_quit.current_state || 'stable'))}
+              </div>
+              <div className="bt-warning-meta">
+                Quit risk {Math.round(selectedDay.anti_quit.quit_probability || 0)}% • Profile {toTitleCase(String(selectedDay.anti_quit.profile || 'maker'))}
+              </div>
+              <div className="bt-warning-text">{selectedDay.anti_quit.warning_label}</div>
+            </div>
+          )}
+
           {/* Detail metrics */}
           {selectedDay.detail && (
             <div className="bt-detail-metrics">
@@ -489,6 +541,18 @@ export default function BehaviorTimeline() {
                   <span className="bt-metric-value">{selectedDay.detail.focus_minutes} min</span>
                 </div>
               )}
+              {selectedDay.detail.deep_work_minutes && selectedDay.detail.deep_work_minutes > 0 && (
+                <div className="bt-metric-row">
+                  <span className="bt-metric-label">Deep work minutes</span>
+                  <span className="bt-metric-value">{selectedDay.detail.deep_work_minutes} min</span>
+                </div>
+              )}
+              {selectedDay.detail.habit_completions && selectedDay.detail.habit_completions > 0 && (
+                <div className="bt-metric-row">
+                  <span className="bt-metric-label">Habits completed</span>
+                  <span className="bt-metric-value">{selectedDay.detail.habit_completions}</span>
+                </div>
+              )}
               {selectedDay.detail.high_priority_done > 0 && (
                 <div className="bt-metric-row">
                   <span className="bt-metric-label">High priority completed</span>
@@ -499,6 +563,12 @@ export default function BehaviorTimeline() {
                 <div className="bt-metric-row">
                   <span className="bt-metric-label">Chat messages</span>
                   <span className="bt-metric-value">{selectedDay.detail.chat_messages}</span>
+                </div>
+              )}
+              {selectedDay.detail.app_opens && selectedDay.detail.app_opens > 0 && (
+                <div className="bt-metric-row">
+                  <span className="bt-metric-label">App opens</span>
+                  <span className="bt-metric-value">{selectedDay.detail.app_opens}</span>
                 </div>
               )}
               {selectedDay.detail.stress_level > 0 && (
