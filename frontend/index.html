@@ -1,61 +1,73 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-US">
 
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Optileno AI - Premium Productivity & Analytics</title>
+  <title>Optileno — AI Life Operating System for Performance & Goal Intelligence</title>
   <meta name="description"
-    content="AI-powered personal Optileno for deep work, planning, and life analytics. Achieve 10x productivity with dual-AI agents." />
-  <meta name="keywords" content="productivity, ai, planner, analytics, deep work, focus, habit tracker" />
-  <meta name="theme-color" content="#1a1a1a" />
+    content="Optileno transforms your goals, habits, and time into measurable performance insights using AI-powered analytics and intelligent planning systems." />
+  <meta name="keywords"
+    content="Optileno, AI productivity, performance intelligence, goal analytics, habit tracking, focus optimization, deep work planner" />
+  <meta name="author" content="Optileno" />
+  <meta name="application-name" content="Optileno" />
+  <meta name="theme-color" content="#0b1220" />
+  <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1" />
+  <meta name="format-detection" content="telephone=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Optileno" />
 
-  <!-- Default favicon (will be updated by JavaScript) -->
+  <link rel="canonical" href="https://www.optileno.com/" />
+  <link rel="manifest" href="/site.webmanifest" />
+  <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 
-  <!-- Theme-aware favicon using JavaScript -->
-  <script>
-    // Function to update favicon based on theme
-    function updateFavicon() {
-      // Check HTML data-theme attribute first (app theme)
-      const htmlTheme = document.documentElement.getAttribute('data-theme');
-      let isDarkMode = false;
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Optileno" />
+  <meta property="og:title" content="Optileno — AI Life Operating System for Performance & Goal Intelligence" />
+  <meta property="og:description"
+    content="Optileno transforms your goals, habits, and time into measurable performance insights using AI-powered analytics and intelligent planning systems." />
+  <meta property="og:url" content="https://www.optileno.com/" />
+  <meta property="og:image" content="https://www.optileno.com/social-preview.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Optileno AI performance intelligence platform preview" />
 
-      if (htmlTheme) {
-        // Use app theme
-        isDarkMode = htmlTheme === 'dark';
-      } else {
-        // Fallback to system theme
-        isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      }
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Optileno — AI Life Operating System for Performance & Goal Intelligence" />
+  <meta name="twitter:description"
+    content="Optileno transforms your goals, habits, and time into measurable performance insights using AI-powered analytics and intelligent planning systems." />
+  <meta name="twitter:image" content="https://www.optileno.com/social-preview.png" />
 
-      const favicon = document.querySelector("link[rel='icon']");
-      if (favicon) {
-        favicon.href = isDarkMode ? '/logo-dark.svg' : '/logo-light.svg';
-      }
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "name": "Optileno",
+          "url": "https://www.optileno.com/",
+          "logo": "https://www.optileno.com/android-chrome-512x512.png"
+        },
+        {
+          "@type": "WebSite",
+          "name": "Optileno",
+          "url": "https://www.optileno.com/",
+          "description": "Optileno transforms your goals, habits, and time into measurable performance insights using AI-powered analytics and intelligent planning systems."
+        },
+        {
+          "@type": "SoftwareApplication",
+          "name": "Optileno",
+          "applicationCategory": "BusinessApplication",
+          "operatingSystem": "Web",
+          "url": "https://www.optileno.com/",
+          "description": "AI Life Operating System for performance and goal intelligence."
+        }
+      ]
     }
-
-    // Update favicon on load
-    document.addEventListener('DOMContentLoaded', () => {
-      updateFavicon();
-
-      // Also update when data-theme changes
-      const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-          if (mutation.attributeName === 'data-theme') {
-            updateFavicon();
-          }
-        });
-      });
-
-      observer.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ['data-theme']
-      });
-    });
-
-    // Update when system theme changes (for auto mode)
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateFavicon);
   </script>
 </head>
 

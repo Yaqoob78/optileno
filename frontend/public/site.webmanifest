@@ -1,0 +1,23 @@
+{
+  "name": "Optileno — AI Life Operating System",
+  "short_name": "Optileno",
+  "description": "Optileno transforms your goals, habits, and time into measurable performance insights using AI-powered analytics and intelligent planning systems.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#060a18",
+  "theme_color": "#0b1220",
+  "icons": [
+    {
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
