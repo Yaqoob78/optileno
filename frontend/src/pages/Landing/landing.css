@@ -411,6 +411,103 @@ html {
     height: 184px;
 }
 
+.stickman-wrapper.warrior-shell {
+    width: 230px;
+    height: 178px;
+}
+
+.stickman-container.walking .stickman-wrapper.warrior-shell {
+    animation: none;
+}
+
+.stickman-wrapper.warrior-shell::after {
+    content: none;
+}
+
+.warrior-svg {
+    width: 230px;
+    height: 178px;
+}
+
+.warrior-stroke {
+    stroke: rgba(255, 255, 255, 0.98);
+    stroke-width: 4.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
+}
+
+.warrior-fill {
+    fill: rgba(255, 255, 255, 0.98);
+}
+
+.warrior-glow {
+    filter: drop-shadow(0 0 7px rgba(255, 255, 255, 0.25)) drop-shadow(0 0 18px rgba(255, 255, 255, 0.12));
+}
+
+.stickman-container.walking .warrior-svg {
+    animation: warriorBob var(--step-seconds, 1.24s) ease-in-out infinite;
+}
+
+.stickman-container.walking .warrior-leg-front {
+    transform-origin: 92px 110px;
+    animation: warriorLegFront var(--step-seconds, 1.24s) ease-in-out infinite;
+}
+
+.stickman-container.walking .warrior-leg-back {
+    transform-origin: 92px 110px;
+    animation: warriorLegBack var(--step-seconds, 1.24s) ease-in-out infinite;
+}
+
+.stickman-container.walking .warrior-arm-right {
+    transform-origin: 92px 76px;
+    animation: warriorSwordArm var(--step-seconds, 1.24s) ease-in-out infinite;
+}
+
+.stickman-container.walking .warrior-arm-left {
+    transform-origin: 92px 74px;
+    animation: warriorUmbrellaArm var(--step-seconds, 1.24s) ease-in-out infinite;
+}
+
+.stickman-container.walking .warrior-umbrella {
+    transform-origin: 122px 34px;
+    animation: warriorUmbrellaSway calc(var(--step-seconds, 1.24s) * 1.6) ease-in-out infinite;
+}
+
+.stickman-container.walking .warrior-sword {
+    transform-origin: 160px 78px;
+    animation: warriorSwordStabilize calc(var(--step-seconds, 1.24s) * 1.2) ease-in-out infinite;
+}
+
+.stickman-container.walking .warrior-scarf {
+    opacity: 0.9;
+    transform-origin: 92px 60px;
+    animation: warriorScarfWave calc(var(--step-seconds, 1.24s) * 1.5) ease-in-out infinite;
+}
+
+.stickman-container.pointing .warrior-svg {
+    animation: none;
+}
+
+.stickman-container.pointing .warrior-arm-right {
+    transform-origin: 92px 76px;
+    transform: rotate(-4deg) translateY(1px);
+}
+
+.stickman-container.pointing .warrior-arm-left {
+    transform-origin: 92px 74px;
+    transform: rotate(-1deg);
+}
+
+.stickman-container.pointing .warrior-umbrella {
+    transform-origin: 122px 34px;
+    transform: rotate(-2deg);
+}
+
+.stickman-container.pointing .warrior-sword {
+    opacity: 0;
+}
+
 .stickman-wrapper::after {
     content: '';
     position: absolute;
@@ -642,6 +739,38 @@ html {
     transform-origin: left center;
 }
 
+.sword-pointer {
+    position: fixed;
+    z-index: 26;
+    height: 3px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.98), rgba(226, 232, 240, 0.85));
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.45);
+    transform-origin: left center;
+    animation: swordSettle 0.26s ease-out;
+}
+
+.sword-guard {
+    position: absolute;
+    left: -5px;
+    top: -4px;
+    width: 10px;
+    height: 11px;
+    border-radius: 3px;
+    background: #f8fafc;
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+}
+
+.sword-tip {
+    position: absolute;
+    right: -7px;
+    top: -3px;
+    width: 8px;
+    height: 8px;
+    transform: rotate(45deg);
+    background: #f8fafc;
+}
+
 .katana.resting {
     position: absolute;
     left: -52px;
@@ -703,6 +832,96 @@ html {
 
     100% {
         transform: rotate(16deg);
+    }
+}
+
+@keyframes warriorBob {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-3px);
+    }
+}
+
+@keyframes warriorLegFront {
+    0%,
+    100% {
+        transform: rotate(18deg) translateY(0);
+    }
+
+    50% {
+        transform: rotate(-16deg) translateY(1px);
+    }
+}
+
+@keyframes warriorLegBack {
+    0%,
+    100% {
+        transform: rotate(-16deg) translateY(1px);
+    }
+
+    50% {
+        transform: rotate(18deg) translateY(0);
+    }
+}
+
+@keyframes warriorSwordArm {
+    0%,
+    100% {
+        transform: rotate(2deg);
+    }
+
+    50% {
+        transform: rotate(-2deg);
+    }
+}
+
+@keyframes warriorUmbrellaArm {
+    0%,
+    100% {
+        transform: rotate(-6deg);
+    }
+
+    50% {
+        transform: rotate(6deg);
+    }
+}
+
+@keyframes warriorUmbrellaSway {
+    0%,
+    100% {
+        transform: rotate(-3deg);
+    }
+
+    50% {
+        transform: rotate(3deg);
+    }
+}
+
+@keyframes warriorSwordStabilize {
+    0%,
+    100% {
+        transform: rotate(0deg) translateY(0);
+    }
+
+    50% {
+        transform: rotate(0.8deg) translateY(-0.6px);
+    }
+}
+
+@keyframes warriorScarfWave {
+    0%,
+    100% {
+        transform: rotate(0deg) translateX(0);
+        opacity: 0.85;
+    }
+
+    50% {
+        transform: rotate(3deg) translateX(1px);
+        opacity: 0.95;
     }
 }
 

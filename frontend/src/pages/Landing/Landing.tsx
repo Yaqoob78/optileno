@@ -133,8 +133,8 @@ export default function Landing() {
   // State
   const [activeFeature, setActiveFeature] = useState(0);
   const [stickmanState, setStickmanState] = useState<'walking' | 'pointing' | 'hidden'>('walking');
-  const [stickmanPos, setStickmanPos] = useState({ x: -340, y: 0 });
-  const [stickmanPose, setStickmanPose] = useState({ scale: 0.58, opacity: 0.42 });
+  const [stickmanPos, setStickmanPos] = useState({ x: -420, y: 0 });
+  const [stickmanPose, setStickmanPose] = useState({ scale: 0.54, opacity: 0.4 });
   const [pointerLine, setPointerLine] = useState<PointerLine | null>(null);
   const [lightningActive, setLightningActive] = useState(false);
   const [btnHovered, setBtnHovered] = useState(false);
@@ -153,14 +153,14 @@ export default function Landing() {
     return () => clearInterval(interval);
   }, []);
 
-  // Stickman walk logic - slower cinematic run-in, then precise sword pointing at CTA
+  // Stickman walk logic - smooth long run-in, then precise sword pointing at CTA
   useEffect(() => {
     let animationId = 0;
     const timers: number[] = [];
-    const startX = -340;
-    const startY = window.innerHeight * 0.76;
-    const walkDelayMs = 1900;
-    const walkDurationMs = 6200;
+    const startX = -420;
+    const startY = window.innerHeight * 0.8;
+    const walkDelayMs = 1300;
+    const walkDurationMs = 8200;
 
     const easeInOutSine = (t: number) => -(Math.cos(Math.PI * t) - 1) / 2;
 
@@ -168,14 +168,14 @@ export default function Landing() {
     setPointerLine(null);
     setLightningActive(false);
     setStickmanPos({ x: startX, y: startY });
-    setStickmanPose({ scale: 0.58, opacity: 0.42 });
+    setStickmanPose({ scale: 0.54, opacity: 0.4 });
 
     const startWalk = () => {
       if (!buttonRef.current) return;
 
       const btnRect = buttonRef.current.getBoundingClientRect();
-      const targetX = btnRect.left - 108;
-      const targetY = btnRect.top + btnRect.height * 0.46 - 96;
+      const targetX = btnRect.left - 170;
+      const targetY = btnRect.top - 72;
       const walkStartTime = performance.now();
 
       const animateWalk = (now: number) => {
@@ -188,8 +188,8 @@ export default function Landing() {
           y: startY + (targetY - startY) * eased
         });
         setStickmanPose({
-          scale: 0.58 + eased * 0.42,
-          opacity: 0.42 + eased * 0.58
+          scale: 0.54 + eased * 0.4,
+          opacity: 0.4 + eased * 0.6
         });
 
         if (t < 1) {
@@ -199,8 +199,8 @@ export default function Landing() {
 
         setStickmanState('pointing');
 
-        const swordBaseX = targetX + 34;
-        const swordBaseY = targetY + 112;
+        const swordBaseX = targetX + 153;
+        const swordBaseY = targetY + 74;
         const ctaX = btnRect.left + btnRect.width * 0.5;
         const ctaY = btnRect.top + btnRect.height * 0.55;
         const lineDX = ctaX - swordBaseX;
@@ -303,43 +303,72 @@ export default function Landing() {
         className={`stickman-container ${stickmanState}`}
         style={{
           transform: `translate(${stickmanPos.x}px, ${stickmanPos.y}px) scale(${stickmanState === 'hidden' ? 0.72 : stickmanPose.scale})`,
-          opacity: stickmanState === 'hidden' ? undefined : stickmanPose.opacity
+          opacity: stickmanState === 'hidden' ? undefined : stickmanPose.opacity,
+          ['--step-seconds' as string]: stickmanState === 'walking' ? '1.24s' : '1.5s'
         }}
       >
-        <div className="stickman-wrapper">
-          {/* Head */}
-          <div className="head">
-            <span className="headband-knot"></span>
-            <span className="headband-tail"></span>
-          </div>
-          <div className="neck"></div>
-          {/* Body */}
-          <div className="torso">
-            <div className="shoulder-line"></div>
-          </div>
-          {/* Arms */}
-          <div className="arm left"></div>
-          <div className="arm right"></div>
-          {/* Legs */}
-          <div className="leg left"></div>
-          <div className="leg right"></div>
-          <div className="katana resting">
-            <span className="katana-guard"></span>
-            <span className="katana-tip"></span>
-          </div>
-        </div>
+        <div className="stickman-wrapper warrior-shell">
+          <svg
+            className="warrior-svg"
+            viewBox="0 0 240 180"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+          >
+            <g className="warrior-glow">
+              <g className="warrior-body">
+                <circle className="warrior-stroke" cx="92" cy="44" r="16" />
+                <line className="warrior-stroke" x1="92" y1="60" x2="92" y2="108" />
+                <circle className="warrior-fill" cx="92" cy="110" r="4" />
 
-        {/* Umbrella stays visible through pointing to keep rain scene coherent */}
-        {stickmanState !== 'hidden' && (
-          <div className="stickman-umbrella">
-            <div className="umbrella-dome">
-              <span className="umbrella-rib rib-1"></span>
-              <span className="umbrella-rib rib-2"></span>
-              <span className="umbrella-rib rib-3"></span>
-            </div>
-            <div className="umbrella-handle"></div>
-          </div>
-        )}
+                <path className="warrior-stroke" d="M78 60 C86 54, 98 54, 106 60" />
+                <path className="warrior-stroke warrior-scarf" d="M82 64 C70 80, 70 92, 84 98" />
+                <path className="warrior-stroke warrior-scarf" d="M102 64 C118 78, 120 88, 110 96" />
+              </g>
+
+              <g className="warrior-arms">
+                <g className="warrior-arm warrior-arm-right">
+                  <line className="warrior-stroke" x1="92" y1="76" x2="132" y2="80" />
+                  <line className="warrior-stroke" x1="132" y1="80" x2="160" y2="78" />
+                  <g className="warrior-sword">
+                    <line className="warrior-stroke" x1="160" y1="78" x2="210" y2="72" />
+                    <line className="warrior-stroke" x1="156" y1="80" x2="162" y2="74" />
+                    <line className="warrior-stroke" x1="158" y1="78" x2="168" y2="84" />
+                  </g>
+                </g>
+
+                <g className="warrior-arm warrior-arm-left">
+                  <line className="warrior-stroke" x1="92" y1="74" x2="110" y2="52" />
+                  <line className="warrior-stroke" x1="110" y1="52" x2="122" y2="34" />
+                  <g className="warrior-umbrella">
+                    <line className="warrior-stroke" x1="122" y1="34" x2="122" y2="18" />
+                    <path className="warrior-stroke" d="M122 18 C120 16, 120 14, 122 12" />
+                    <path
+                      className="warrior-stroke warrior-canopy"
+                      d="M64 18 C78 2, 98 2, 122 12 C146 2, 166 2, 180 18"
+                    />
+                    <path
+                      className="warrior-stroke warrior-canopy"
+                      d="M64 18 C74 28, 88 28, 96 20 C104 28, 118 28, 122 20 C126 28, 140 28, 148 20 C156 28, 170 28, 180 18"
+                    />
+                  </g>
+                </g>
+              </g>
+
+              <g className="warrior-legs">
+                <g className="warrior-leg warrior-leg-front">
+                  <line className="warrior-stroke" x1="92" y1="110" x2="112" y2="140" />
+                  <line className="warrior-stroke" x1="112" y1="140" x2="98" y2="160" />
+                  <line className="warrior-stroke" x1="94" y1="160" x2="114" y2="160" />
+                </g>
+                <g className="warrior-leg warrior-leg-back">
+                  <line className="warrior-stroke" x1="92" y1="110" x2="78" y2="142" />
+                  <line className="warrior-stroke" x1="78" y1="142" x2="86" y2="162" />
+                  <line className="warrior-stroke" x1="78" y1="162" x2="96" y2="162" />
+                </g>
+              </g>
+            </g>
+          </svg>
+        </div>
       </div>
 
       {/* Lightning Effect */}
@@ -352,14 +381,14 @@ export default function Landing() {
 
       {/* Sword (Pointing) */}
       {stickmanState === 'pointing' && pointerLine && (
-        <div className="katana pointing" style={{
+        <div className="sword-pointer" style={{
           left: pointerLine.left,
           top: pointerLine.top,
           width: pointerLine.width,
           transform: `rotate(${pointerLine.angle}deg)`
         }}>
-          <span className="katana-guard"></span>
-          <span className="katana-tip"></span>
+          <span className="sword-guard"></span>
+          <span className="sword-tip"></span>
         </div>
       )}
 
