@@ -1,4 +1,5 @@
 Starting truncate test 50
 Truncated type: <class 'bytes'>
 Truncated length: 50
-Failed with error: password cannot be longer than 72 bytes, truncate manually if necessary (e.g. my_password[:72])
+Hash created successfully: $2b$12$0K8BQ9E1UPv58KNVCW4Q7OiJopafppqU62mIZyl3XeuSt3P9P75Pe
+Verify result: True

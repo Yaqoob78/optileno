@@ -16,6 +16,13 @@ import {
 } from 'lucide-react';
 import './landing.css';
 
+type PointerLine = {
+  left: number;
+  top: number;
+  width: number;
+  angle: number;
+};
+
 // ── CONSTANTS & CONFIG ──────────────────────────────────────────────────────
 const FEATURES = [
   { id: 'ai', title: 'Live Leno AI', description: 'Your personal AI assistant available 24/7.', icon: <Bot size={24} />, color: '#60a5fa' },
@@ -126,7 +133,9 @@ export default function Landing() {
   // State
   const [activeFeature, setActiveFeature] = useState(0);
   const [stickmanState, setStickmanState] = useState<'walking' | 'pointing' | 'hidden'>('walking');
-  const [stickmanPos, setStickmanPos] = useState({ x: -100, y: 0 });
+  const [stickmanPos, setStickmanPos] = useState({ x: -220, y: 0 });
+  const [stickmanPose, setStickmanPose] = useState({ scale: 0.62, opacity: 0.45 });
+  const [pointerLine, setPointerLine] = useState<PointerLine | null>(null);
   const [lightningActive, setLightningActive] = useState(false);
   const [btnHovered, setBtnHovered] = useState(false);
 
@@ -144,47 +153,72 @@ export default function Landing() {
     return () => clearInterval(interval);
   }, []);
 
-  // Stickman walk logic - smoother movement with better easing
+  // Stickman walk logic - enters from distance and points directly to CTA
   useEffect(() => {
     let animationId: number;
+    const timers: number[] = [];
     let hasArrived = false;
+    const startX = -220;
+    const startY = window.innerHeight * 0.72;
+
+    setStickmanPos({ x: startX, y: startY });
+    setStickmanPose({ scale: 0.62, opacity: 0.45 });
 
     const moveStickman = () => {
       if (!buttonRef.current || hasArrived) return;
 
       const btnRect = buttonRef.current.getBoundingClientRect();
-      // Target position: Left of the button, lower to point down at it
-      const targetX = btnRect.left - 120;
-      // Position stickman higher so he points DOWN at button
-      const groundLevel = btnRect.top - 80;
+      const targetX = btnRect.left - 96;
+      const targetY = btnRect.top + btnRect.height * 0.42 - 96;
 
       setStickmanPos(prev => {
         const dx = targetX - prev.x;
-        const dy = groundLevel - prev.y;
+        const dy = targetY - prev.y;
+        const distance = Math.hypot(dx, dy);
+        const progressBase = (prev.x - startX) / Math.max(targetX - startX, 1);
+        const progress = Math.min(1, Math.max(0, progressBase));
+
+        setStickmanPose({
+          scale: 0.62 + progress * 0.38,
+          opacity: 0.45 + progress * 0.55
+        });
 
         // Check if arrived
-        if (Math.abs(dx) < 5 && Math.abs(dy) < 5) {
+        if (distance < 6) {
           if (!hasArrived) {
             hasArrived = true;
+            setStickmanPose({ scale: 1, opacity: 1 });
             setStickmanState('pointing');
 
-            // Lightning strikes when pointing - lasts 1 second
-            setTimeout(() => {
+            const armX = targetX + 58;
+            const armY = targetY + 92;
+            const ctaX = btnRect.left + btnRect.width * 0.5;
+            const ctaY = btnRect.top + btnRect.height * 0.55;
+            const lineDX = ctaX - armX;
+            const lineDY = ctaY - armY;
+            setPointerLine({
+              left: armX,
+              top: armY,
+              width: Math.hypot(lineDX, lineDY),
+              angle: Math.atan2(lineDY, lineDX) * (180 / Math.PI)
+            });
+
+            timers.push(window.setTimeout(() => {
               setLightningActive(true);
-              setTimeout(() => {
-                setLightningActive(false);
-                // Disappear 3 seconds after pointing
-                setTimeout(() => setStickmanState('hidden'), 3000);
-              }, 1000);
-            }, 200);
+              timers.push(window.setTimeout(() => setLightningActive(false), 420));
+              timers.push(window.setTimeout(() => {
+                setStickmanState('hidden');
+                setPointerLine(null);
+              }, 2200));
+            }, 120));
           }
-          return { x: targetX, y: groundLevel };
+          return { x: targetX, y: targetY };
         }
 
-        // Even slower, smoother easing movement
+        // Smooth approach with subtle perspective buildup
         return {
-          x: prev.x + dx * 0.008,
-          y: prev.y + dy * 0.008
+          x: prev.x + dx * 0.014,
+          y: prev.y + dy * 0.014
         };
       });
 
@@ -192,12 +226,12 @@ export default function Landing() {
     };
 
     // Start walking after initial load
-    const timeout = setTimeout(() => {
+    timers.push(window.setTimeout(() => {
       moveStickman();
-    }, 800);
+    }, 1000));
 
     return () => {
-      clearTimeout(timeout);
+      timers.forEach((timerId) => clearTimeout(timerId));
       if (animationId) cancelAnimationFrame(animationId);
     };
   }, []);
@@ -271,7 +305,8 @@ export default function Landing() {
       <div
         className={`stickman-container ${stickmanState}`}
         style={{
-          transform: `translate(${stickmanPos.x}px, ${stickmanPos.y}px)`
+          transform: `translate(${stickmanPos.x}px, ${stickmanPos.y}px) scale(${stickmanState === 'hidden' ? 0.72 : stickmanPose.scale})`,
+          opacity: stickmanState === 'hidden' ? undefined : stickmanPose.opacity
         }}
       >
         <div className="stickman-wrapper">
@@ -281,9 +316,14 @@ export default function Landing() {
             <div className="hat-top"></div>
           </div>
           {/* Head */}
-          <div className="head"></div>
+          <div className="head">
+            <span className="eye eye-left"></span>
+            <span className="eye eye-right"></span>
+          </div>
+          <div className="neck"></div>
           {/* Body */}
           <div className="torso">
+            <div className="shoulder-line"></div>
             <div className="coat-tail"></div>
           </div>
           {/* Arms */}
@@ -294,10 +334,14 @@ export default function Landing() {
           <div className="leg right"></div>
         </div>
 
-        {/* Umbrella (only visible when walking) */}
-        {stickmanState === 'walking' && (
+        {/* Umbrella stays visible through pointing to keep rain scene coherent */}
+        {stickmanState !== 'hidden' && (
           <div className="stickman-umbrella">
-            <div className="umbrella-dome"></div>
+            <div className="umbrella-dome">
+              <span className="umbrella-rib rib-1"></span>
+              <span className="umbrella-rib rib-2"></span>
+              <span className="umbrella-rib rib-3"></span>
+            </div>
             <div className="umbrella-handle"></div>
           </div>
         )}
@@ -306,18 +350,18 @@ export default function Landing() {
       {/* Lightning Effect */}
       {lightningActive && (
         <div className="lightning-flash-container">
-          <Zap size={200} className="giant-bolt" />
+          <Zap size={128} className="giant-bolt" />
           <div className="screen-flash"></div>
         </div>
       )}
 
       {/* Helper Line (Pointing) */}
-      {stickmanState === 'pointing' && (
+      {stickmanState === 'pointing' && pointerLine && (
         <div className="pointing-connector" style={{
-          left: stickmanPos.x + 45,
-          top: stickmanPos.y + 40,
-          width: 80,
-          transform: 'rotate(35deg)'
+          left: pointerLine.left,
+          top: pointerLine.top,
+          width: pointerLine.width,
+          transform: `rotate(${pointerLine.angle}deg)`
         }}></div>
       )}
 
@@ -377,7 +421,7 @@ export default function Landing() {
               <div className="btn-glow"></div>
             </button>
             <p className="cta-subtext">
-              People are getting ahead. Start today.
+              Join today for launch pricing. First 100 users get a limited discount.
               <br />
               Get 7 days free trial. <span className="secure-badge"><Lock size={12} style={{ display: 'inline', verticalAlign: 'middle' }} /> Payment secure with Stripe</span>
             </p>

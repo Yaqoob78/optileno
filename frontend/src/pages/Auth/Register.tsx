@@ -78,6 +78,9 @@ export default function Register() {
 
                     <form className="auth-form" onSubmit={handleSubmit}>
                         {/* Plan Selection */}
+                        <div className="pricing-launch-offer">
+                            Join today and lock launch pricing. Limited deal for the first 100 users.
+                        </div>
                         <div className="pricing-options">
                             <div
                                 className={`pricing-card ${formData.plan_type === 'EXPLORER' ? 'selected' : ''}`}
@@ -85,13 +88,17 @@ export default function Register() {
                             >
                                 <div className="pricing-header">
                                     <span className="plan-name">Explorer</span>
-                                    <span className="plan-price">$1<span style={{ fontSize: '0.7em', opacity: 0.7 }}>/mo</span></span>
+                                    <div className="plan-price-group">
+                                        <span className="plan-price-original">$5</span>
+                                        <span className="plan-price">$1<span style={{ fontSize: '0.7em', opacity: 0.7 }}>/mo</span></span>
+                                    </div>
                                 </div>
+                                <div className="plan-offer-note">Limited deal: first 100 users</div>
                                 <div className="plan-features">
-                                    <div className="plan-feature">✓ Task Management & Habits</div>
-                                    <div className="plan-feature">✓ Planner Dashboard</div>
-                                    <div className="plan-feature">✓ AI Chat (20 req/day)</div>
-                                    <div className="plan-feature">✓ Basic Analytics</div>
+                                    <div className="plan-feature">Task Management and Habits</div>
+                                    <div className="plan-feature">Planner Dashboard</div>
+                                    <div className="plan-feature">AI Chat (25 req/day)</div>
+                                    <div className="plan-feature">Basic Analytics</div>
                                 </div>
                             </div>
 
@@ -100,20 +107,24 @@ export default function Register() {
                                 onClick={() => setFormData({ ...formData, plan_type: 'ULTRA' })}
                                 style={{ borderColor: formData.plan_type === 'ULTRA' ? 'var(--primary-color)' : '' }}
                             >
-                                <div className="plan-badge">BEST VALUE</div>
+                                <div className="plan-badge">LIMITED DEAL</div>
                                 <div className="pricing-header">
                                     <span className="plan-name">Ultra</span>
-                                    <span className="plan-price">$9.99<span style={{ fontSize: '0.7em', opacity: 0.7 }}>/mo</span></span>
+                                    <div className="plan-price-group">
+                                        <span className="plan-price-original">$20</span>
+                                        <span className="plan-price">$10<span style={{ fontSize: '0.7em', opacity: 0.7 }}>/mo</span></span>
+                                    </div>
                                 </div>
+                                <div className="plan-offer-note">Limited deal: first 100 users</div>
                                 <div className="plan-features" style={{ gap: '6px' }}>
-                                    <div className="plan-feature"><span style={{ color: 'var(--primary-color)' }}>✦</span> Unlimited Leno AI & Memory</div>
-                                    <div className="plan-feature"><span style={{ color: 'var(--primary-color)' }}>✦</span> Deep Work & Flow Tools</div>
-                                    <div className="plan-feature"><span style={{ color: 'var(--primary-color)' }}>✦</span> Strategic Goal Timeline</div>
-                                    <div className="plan-feature"><span style={{ color: 'var(--primary-color)' }}>✦</span> Advanced Behavioral Analytics</div>
-                                    <div className="plan-feature"><span style={{ color: 'var(--primary-color)' }}>✦</span> Predictive Life Trajectories</div>
-                                    <div className="plan-feature"><span style={{ color: 'var(--primary-color)' }}>✦</span> Smart Context Notifications</div>
-                                    <div className="plan-feature"><span style={{ color: 'var(--primary-color)' }}>✦</span> Mood & Stress Intelligence</div>
-                                    <div className="plan-feature"><span style={{ color: 'var(--primary-color)' }}>✦</span> Priority Features Access</div>
+                                    <div className="plan-feature">Unlimited Leno AI and Memory</div>
+                                    <div className="plan-feature">Deep Work and Flow Tools</div>
+                                    <div className="plan-feature">Strategic Goal Timeline</div>
+                                    <div className="plan-feature">Advanced Behavioral Analytics</div>
+                                    <div className="plan-feature">Predictive Life Trajectories</div>
+                                    <div className="plan-feature">Smart Context Notifications</div>
+                                    <div className="plan-feature">Mood and Stress Intelligence</div>
+                                    <div className="plan-feature">Priority Features Access</div>
                                 </div>
                             </div>
                         </div>
