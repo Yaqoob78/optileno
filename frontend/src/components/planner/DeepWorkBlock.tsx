@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Brain, Play, Pause, X, Coffee, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { Brain, Play, Pause, X, Coffee, CheckCircle, AlertCircle, Clock, Calendar } from 'lucide-react';
 import '../../styles/components/planner/DeepWorkBlock.css';
 import { usePlanner } from '../../hooks/usePlanner';
 
@@ -27,6 +27,7 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
   const [timeLeft, setTimeLeft] = useState(0); // in seconds
   const [totalDuration, setTotalDuration] = useState(0); // in seconds
   const [progress, setProgress] = useState(0);
+  const [selectedDay, setSelectedDay] = useState<number>(new Date().getDay()); // 0=Sun..6=Sat
 
   // Break Logic State
   const [breakSchedule, setBreakSchedule] = useState<number[]>([]); // Array of break times in seconds (elapsed time)
@@ -441,6 +442,44 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              {/* Day Picker */}
+              <div className="form-group">
+                <label>
+                  <Calendar size={16} style={{ marginRight: '8px' }} />
+                  Schedule Day
+                </label>
+                <div className="day-picker-row">
+                  {(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const).map((label, idx) => {
+                    const isSelected = selectedDay === idx;
+                    const isToday = new Date().getDay() === idx;
+                    return (
+                      <button
+                        key={label}
+                        type="button"
+                        className={`day-pill${isSelected ? ' selected' : ''}${isToday ? ' today' : ''}`}
+                        onClick={() => setSelectedDay(idx)}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <span className="day-picker-hint">
+                  {(() => {
+                    const today = new Date();
+                    const todayDay = today.getDay();
+                    let diff = selectedDay - todayDay;
+                    if (diff < 0) diff += 7;
+                    const target = new Date(today);
+                    target.setDate(today.getDate() + diff);
+                    if (target.toDateString() === today.toDateString()) return 'Today';
+                    const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+                    if (target.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
+                    return target.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+                  })()}
+                </span>
               </div>
             </div>
 

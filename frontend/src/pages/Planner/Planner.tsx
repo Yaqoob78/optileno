@@ -1,6 +1,6 @@
 // frontend/src/pages/Planner/Planner.tsx
 import React, { useState, useEffect, useRef } from 'react';
-import { Calendar, Maximize2, Minimize2, Plus, X, Clock, Timer, Zap, TrendingUp, CheckCircle2, List, PenTool, Loader2 } from 'lucide-react';
+import { Calendar as CalendarIcon, Maximize2, Minimize2, Plus, X, Clock, Timer, Zap, TrendingUp, CheckCircle2, List, PenTool, Loader2 } from 'lucide-react';
 import { clsx } from "clsx";
 
 import { useTheme } from '../../hooks/useTheme';
@@ -20,6 +20,20 @@ import PlannerDashboard from '../../components/planner/Plannerdashboard';
 
 import '../../styles/pages/planner.css';
 
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
+
+/** Given a target weekday (0=Sun..6=Sat), return the Date for the next occurrence (today if matches). */
+function getNextDay(targetDay: number): Date {
+  const today = new Date();
+  const todayDay = today.getDay();
+  let diff = targetDay - todayDay;
+  if (diff < 0) diff += 7;           // wrap to next week
+  const result = new Date(today);
+  result.setDate(today.getDate() + diff);
+  result.setSeconds(0, 0);
+  return result;
+}
+
 interface EditForm {
   id?: string;
   title: string;
@@ -34,6 +48,7 @@ interface EditForm {
   notes?: string;
   dueDate?: string;
   goalId?: string;
+  scheduledDay?: number;            // 0=Sun..6=Sat
 }
 
 
@@ -212,6 +227,7 @@ export default function PlannerPage() {
       description: '',
       notes: '',
       dueDate: new Date().toISOString(),
+      scheduledDay: now.getDay(),           // default to today
     });
     setIsNewTask(true);
     setIsEditing(true);
@@ -490,7 +506,7 @@ export default function PlannerPage() {
         <div className="planner-header">
           <div className="header-left">
             <div className="header-icon animated-calendar">
-              <Calendar size={24} className="calendar-icon" />
+              <CalendarIcon size={24} className="calendar-icon" />
             </div>
             <div className="header-text">
               <h1>Productivity Planner</h1>
@@ -589,6 +605,55 @@ export default function PlannerPage() {
                     className="task-textarea"
                     disabled={isSaving}
                   />
+                </div>
+
+                {/* ── Day Picker ── */}
+                <div className="form-group">
+                  <label>
+                    <span className="label-icon">📅</span>
+                    Schedule Day
+                  </label>
+                  <div className="day-picker-row">
+                    {DAY_LABELS.map((label, idx) => {
+                      const isSelected = editForm.scheduledDay === idx;
+                      const isToday = new Date().getDay() === idx;
+                      return (
+                        <button
+                          key={label}
+                          type="button"
+                          className={`day-pill${isSelected ? ' selected' : ''}${isToday ? ' today' : ''}`}
+                          disabled={isSaving}
+                          onClick={() => {
+                            const target = getNextDay(idx);
+                            // Preserve existing time
+                            if (editForm.startTime) {
+                              const [h, m] = editForm.startTime.split(':').map(Number);
+                              target.setHours(h, m);
+                            }
+                            setEditForm(prev => prev ? {
+                              ...prev,
+                              scheduledDay: idx,
+                              dueDate: target.toISOString(),
+                            } : null);
+                          }}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {editForm.scheduledDay != null && (
+                    <span className="day-picker-hint">
+                      {(() => {
+                        const d = getNextDay(editForm.scheduledDay);
+                        const today = new Date();
+                        if (d.toDateString() === today.toDateString()) return 'Today';
+                        const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+                        if (d.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
+                        return d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+                      })()}
+                    </span>
+                  )}
                 </div>
 
                 <div className="form-row">

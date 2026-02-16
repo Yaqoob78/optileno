@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, Query, HTTPException, status, Body
 from typing import List, Optional, Dict, Any
 from datetime import datetime
-from backend.app.config import settings
 from backend.core.security import get_current_user
 from backend.services.analytics_service import analytics_service
 from backend.services.goal_analytics_service import goal_analytics_service
@@ -402,24 +401,15 @@ async def get_time_intelligence_overview(
 
 
 # ─────────────────────────────────────────────────────────────────────
-# PRODUCTIVITY SCORE ENDPOINTS
+# PRODUCTIVITY SCORE ENDPOINTS (V3 Engine)
 # ─────────────────────────────────────────────────────────────────────
 
 @router.get("/productivity/score/today", response_model=Dict[str, Any])
 async def get_productivity_score_today(
     current_user = Depends(get_current_user)
 ):
-    """Get today's productivity score with detailed breakdown."""
-    if settings.ANALYTICS_V2_ENABLED:
-        return await analytics_v2_service.productivity_score(current_user, "daily")
-    try:
-        from backend.services.execution_quality_service import execution_quality_service
-        return await execution_quality_service.calculate_execution_quality(current_user.id)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to calculate productivity score: {str(e)}"
-        )
+    """Get today's productivity score with V3 context-aware breakdown."""
+    return await analytics_v2_service.productivity_score(current_user, "daily")
 
 
 @router.get("/productivity/score/weekly", response_model=Dict[str, Any])
@@ -427,28 +417,14 @@ async def get_productivity_score_weekly(
     current_user = Depends(get_current_user)
 ):
     """Get weekly average productivity score."""
-    if settings.ANALYTICS_V2_ENABLED:
-        result = await analytics_v2_service.productivity_score(current_user, "weekly")
-        score = result.get("score")
-        return {
-            **result,
-            "average": score,
-            "period": "weekly",
-            "days": 7,
-        }
-    try:
-        from backend.services.execution_quality_service import execution_quality_service
-        avg_score = await execution_quality_service.get_weekly_average(current_user.id)
-        return {
-            "average": round(avg_score, 1),
-            "period": "weekly",
-            "days": 7
-        }
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to calculate weekly average: {str(e)}"
-        )
+    result = await analytics_v2_service.productivity_score(current_user, "weekly")
+    score = result.get("score")
+    return {
+        **result,
+        "average": score,
+        "period": "weekly",
+        "days": 7,
+    }
 
 
 @router.get("/productivity/score/monthly", response_model=Dict[str, Any])
@@ -456,28 +432,14 @@ async def get_productivity_score_monthly(
     current_user = Depends(get_current_user)
 ):
     """Get monthly average productivity score."""
-    if settings.ANALYTICS_V2_ENABLED:
-        result = await analytics_v2_service.productivity_score(current_user, "monthly")
-        score = result.get("score")
-        return {
-            **result,
-            "average": score,
-            "period": "monthly",
-            "days": 30,
-        }
-    try:
-        from backend.services.execution_quality_service import execution_quality_service
-        avg_score = await execution_quality_service.get_monthly_average(current_user.id)
-        return {
-            "average": round(avg_score, 1),
-            "period": "monthly",
-            "days": 30
-        }
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to calculate monthly average: {str(e)}"
-        )
+    result = await analytics_v2_service.productivity_score(current_user, "monthly")
+    score = result.get("score")
+    return {
+        **result,
+        "average": score,
+        "period": "monthly",
+        "days": 30,
+    }
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -489,16 +451,7 @@ async def get_focus_score_today(
     current_user = Depends(get_current_user)
 ):
     """Get today's focus score with detailed breakdown from heatmap data."""
-    if settings.ANALYTICS_V2_ENABLED:
-        return await analytics_v2_service.focus_score(current_user, _plan_tier(current_user), "daily")
-    try:
-        from backend.services.attention_integrity_service import attention_integrity_service
-        return await attention_integrity_service.calculate_attention_integrity(current_user.id)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to calculate focus score: {str(e)}"
-        )
+    return await analytics_v2_service.focus_score(current_user, _plan_tier(current_user), "daily")
 
 
 @router.get("/focus/score/weekly", response_model=Dict[str, Any])
@@ -506,24 +459,15 @@ async def get_focus_score_weekly(
     current_user = Depends(get_current_user)
 ):
     """Get weekly average focus score."""
-    if settings.ANALYTICS_V2_ENABLED:
-        result = await analytics_v2_service.focus_score(current_user, _plan_tier(current_user), "weekly")
-        score = result.get("score")
-        return {
-            **result,
-            "average_score": score,
-            "average_minutes": None,
-            "period": "weekly",
-            "days": 7,
-        }
-    try:
-        from backend.services.attention_integrity_service import attention_integrity_service
-        return await attention_integrity_service.get_weekly_average(current_user.id)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to calculate weekly focus average: {str(e)}"
-        )
+    result = await analytics_v2_service.focus_score(current_user, _plan_tier(current_user), "weekly")
+    score = result.get("score")
+    return {
+        **result,
+        "average_score": score,
+        "average_minutes": None,
+        "period": "weekly",
+        "days": 7,
+    }
 
 
 @router.get("/focus/score/monthly", response_model=Dict[str, Any])
@@ -531,46 +475,28 @@ async def get_focus_score_monthly(
     current_user = Depends(get_current_user)
 ):
     """Get monthly average focus score."""
-    if settings.ANALYTICS_V2_ENABLED:
-        result = await analytics_v2_service.focus_score(current_user, _plan_tier(current_user), "monthly")
-        score = result.get("score")
-        return {
-            **result,
-            "average_score": score,
-            "average_minutes": None,
-            "period": "monthly",
-            "days": 30,
-        }
-    try:
-        from backend.services.attention_integrity_service import attention_integrity_service
-        return await attention_integrity_service.get_monthly_average(current_user.id)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to calculate monthly focus average: {str(e)}"
-        )
+    result = await analytics_v2_service.focus_score(current_user, _plan_tier(current_user), "monthly")
+    score = result.get("score")
+    return {
+        **result,
+        "average_score": score,
+        "average_minutes": None,
+        "period": "monthly",
+        "days": 30,
+    }
 
 
 # ─────────────────────────────────────────────────────────────────────
-# BURNOUT RISK ENDPOINTS (AI-Powered)
+# BURNOUT RISK ENDPOINTS (V3 Engine - AI-Powered)
 # ─────────────────────────────────────────────────────────────────────
 
 @router.get("/burnout/risk/today", response_model=Dict[str, Any])
 async def get_burnout_risk_today(
     current_user = Depends(get_current_user)
 ):
-    """Get today's burnout risk with AI-powered sentiment analysis from chat."""
+    """Get today's burnout risk with V3 strain velocity and offline gap analysis."""
     _require_ultra(current_user, "burnout_risk")
-    if settings.ANALYTICS_V2_ENABLED:
-        return await analytics_v2_service.burnout_risk(current_user, "daily")
-    try:
-        from backend.services.burnout_risk_conservative_service import burnout_risk_conservative_service
-        return await burnout_risk_conservative_service.calculate_burnout_risk(current_user.id)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to calculate burnout risk: {str(e)}"
-        )
+    return await analytics_v2_service.burnout_risk(current_user, "daily")
 
 
 @router.get("/burnout/risk/weekly", response_model=Dict[str, Any])
@@ -579,22 +505,13 @@ async def get_burnout_risk_weekly(
 ):
     """Get weekly average burnout risk."""
     _require_ultra(current_user, "burnout_risk")
-    if settings.ANALYTICS_V2_ENABLED:
-        result = await analytics_v2_service.burnout_risk(current_user, "weekly")
-        return {
-            **result,
-            "average_risk": result.get("risk"),
-            "period": "weekly",
-            "days": 7,
-        }
-    try:
-        from backend.services.burnout_risk_conservative_service import burnout_risk_conservative_service
-        return await burnout_risk_conservative_service.get_weekly_average(current_user.id)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to calculate weekly burnout risk: {str(e)}"
-        )
+    result = await analytics_v2_service.burnout_risk(current_user, "weekly")
+    return {
+        **result,
+        "average_risk": result.get("risk"),
+        "period": "weekly",
+        "days": 7,
+    }
 
 
 @router.get("/burnout/risk/monthly", response_model=Dict[str, Any])
@@ -603,22 +520,13 @@ async def get_burnout_risk_monthly(
 ):
     """Get monthly burnout risk."""
     _require_ultra(current_user, "burnout_risk")
-    if settings.ANALYTICS_V2_ENABLED:
-        result = await analytics_v2_service.burnout_risk(current_user, "monthly")
-        return {
-            **result,
-            "average_risk": result.get("risk"),
-            "period": "monthly",
-            "days": 30,
-        }
-    try:
-        from backend.services.burnout_risk_conservative_service import burnout_risk_conservative_service
-        return await burnout_risk_conservative_service.get_monthly_risk(current_user.id)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get monthly burnout data: {str(e)}"
-        )
+    result = await analytics_v2_service.burnout_risk(current_user, "monthly")
+    return {
+        **result,
+        "average_risk": result.get("risk"),
+        "period": "monthly",
+        "days": 30,
+    }
 
 
 # ─────────────────────────────────────────────────────────────────────

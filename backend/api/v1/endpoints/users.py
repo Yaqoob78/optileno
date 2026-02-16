@@ -11,6 +11,7 @@ from backend.core.security import get_current_user
 from backend.db.database import get_db
 from backend.db.models import User, Notification, ChatSession, ChatMessage
 from backend.auth.auth_utils import verify_password, get_password_hash
+from backend.app.config import settings
 from backend.utils.user_profile import (
     build_user_profile,
     merge_preferences,
@@ -199,9 +200,14 @@ async def delete_account(
     await db.commit()
 
     # Clear auth cookies for current browser session.
-    response.delete_cookie("access_token", path="/")
-    response.delete_cookie("refresh_token", path="/api/v1/auth/refresh")
-    response.delete_cookie("csrf_token", path="/")
+    cookie_kwargs = {}
+    if settings.COOKIE_DOMAIN:
+        cookie_kwargs["domain"] = settings.COOKIE_DOMAIN
+
+    response.delete_cookie("access_token", path="/", **cookie_kwargs)
+    response.delete_cookie("refresh_token", path="/api/v1/auth", **cookie_kwargs)
+    response.delete_cookie("refresh_token", path="/api/v1/auth/refresh", **cookie_kwargs)
+    response.delete_cookie("csrf_token", path="/", **cookie_kwargs)
 
     return {"status": "deleted", "wipe": "complete"}
 

@@ -13,6 +13,7 @@ class UserRegister(UserBase):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+    remember_me: bool = False
 
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr

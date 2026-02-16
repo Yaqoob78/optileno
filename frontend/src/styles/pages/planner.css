@@ -468,6 +468,83 @@
   cursor: not-allowed;
 }
 
+/* ── Day Picker ────────────────────────────────────────── */
+.day-picker-row {
+  display: flex;
+  gap: 6px;
+}
+
+.day-pill {
+  position: relative;
+  flex: 1;
+  padding: 8px 0;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  color: #94a3b8;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(100, 116, 139, 0.25);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  letter-spacing: 0.3px;
+}
+
+.day-pill:hover:not(:disabled) {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.35);
+  color: #c7d2fe;
+}
+
+.day-pill.selected {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(67, 56, 202, 0.25));
+  border-color: #6366f1;
+  color: #e0e7ff;
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.2);
+}
+
+/* Deep-work modal uses violet accent */
+.deepwork-modal .day-pill.selected {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(124, 58, 237, 0.25));
+  border-color: #8b5cf6;
+  color: #ede9fe;
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.2);
+}
+
+.day-pill.today::after {
+  content: '';
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #22d3ee;
+}
+
+.day-pill.selected.today::after {
+  background: #e0e7ff;
+}
+
+.day-pill:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.day-picker-hint {
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #6366f1;
+  letter-spacing: 0.2px;
+}
+
+.deepwork-modal .day-picker-hint {
+  color: #8b5cf6;
+}
+
 /* Main Grid - Updated for better sidebar handling */
 .planner-main-grid {
   display: grid;

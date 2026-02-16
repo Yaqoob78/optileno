@@ -39,275 +39,197 @@ const FEATURES = [
 
 // ── RAIN COMPONENT ──────────────────────────────────────────────────────────
 class Raindrop {
-  x: number;
-  y: number;
-  length: number;
-  speed: number;
-  opacity: number;
-  width: number;
-  hue: number;
-  glowIntensity: number;
-  rippleRadius: number;
-  rippleOpacity: number;
-  canvasHeight: number;
-  canvasWidth: number;
+  x: number; y: number; length: number; speed: number; opacity: number;
+  width: number; hue: number; glowIntensity: number;
+  rippleRadius: number; rippleOpacity: number;
+  canvasHeight: number; canvasWidth: number;
 
   constructor(width: number, height: number) {
-    this.canvasWidth = width;
-    this.canvasHeight = height;
-    this.x = Math.random() * width;
-    this.y = Math.random() * -height;
-    this.length = 15 + Math.random() * 25;
-    this.speed = 3 + Math.random() * 4;
-    this.opacity = 0.1 + Math.random() * 0.3;
-    this.width = 1 + Math.random() * 1.5;
-    this.hue = 210 + Math.random() * 20;
-    this.glowIntensity = 0;
-    this.rippleRadius = 0;
-    this.rippleOpacity = 0;
+    this.canvasWidth = width; this.canvasHeight = height;
+    this.x = Math.random() * width; this.y = Math.random() * -height;
+    this.length = 15 + Math.random() * 25; this.speed = 3 + Math.random() * 4;
+    this.opacity = 0.1 + Math.random() * 0.3; this.width = 1 + Math.random() * 1.5;
+    this.hue = 210 + Math.random() * 20; this.glowIntensity = 0;
+    this.rippleRadius = 0; this.rippleOpacity = 0;
   }
 
   update(mouse: { x: number, y: number, radius: number }) {
     this.y += this.speed;
-
-    const dx = mouse.x - this.x;
-    const dy = mouse.y - this.y;
+    const dx = mouse.x - this.x, dy = mouse.y - this.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
-
     if (distance < mouse.radius) {
       const force = (mouse.radius - distance) / mouse.radius;
       this.glowIntensity = Math.min(this.glowIntensity + force * 0.2, 1);
       this.speed += force * 0.5;
-    } else {
-      this.glowIntensity = Math.max(this.glowIntensity - 0.05, 0);
-    }
-
-    // Ripple logic
-    if (this.rippleRadius > 0) {
-      this.rippleRadius += 4;
-      this.rippleOpacity -= 0.05;
-      if (this.rippleOpacity <= 0) {
-        this.rippleRadius = 0;
-      }
-    }
-
-    // Reset when off screen
-    if (this.y > this.canvasHeight + this.length) {
-      this.y = -this.length;
-      this.x = Math.random() * this.canvasWidth;
-      this.glowIntensity = 0;
-    }
+    } else { this.glowIntensity = Math.max(this.glowIntensity - 0.05, 0); }
+    if (this.rippleRadius > 0) { this.rippleRadius += 4; this.rippleOpacity -= 0.05; if (this.rippleOpacity <= 0) this.rippleRadius = 0; }
+    if (this.y > this.canvasHeight + this.length) { this.y = -this.length; this.x = Math.random() * this.canvasWidth; this.glowIntensity = 0; }
   }
 
   draw(ctx: CanvasRenderingContext2D) {
-    ctx.beginPath();
-    ctx.moveTo(this.x, this.y);
-    ctx.lineTo(this.x, this.y + this.length);
-
-    // Gradient stroke
+    ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(this.x, this.y + this.length);
     const grad = ctx.createLinearGradient(this.x, this.y, this.x, this.y + this.length);
-    const lightColor = this.glowIntensity > 0 ? 100 : 70;
-    grad.addColorStop(0, `hsla(${this.hue}, 80%, ${lightColor}%, 0)`);
-    grad.addColorStop(1, `hsla(${this.hue}, 80%, ${lightColor}%, ${this.opacity + this.glowIntensity})`);
-
-    ctx.strokeStyle = grad;
-    ctx.lineWidth = this.width;
-    ctx.lineCap = 'round';
-    ctx.stroke();
-
-    // Ripple draw
+    const lc = this.glowIntensity > 0 ? 100 : 70;
+    grad.addColorStop(0, `hsla(${this.hue}, 80%, ${lc}%, 0)`);
+    grad.addColorStop(1, `hsla(${this.hue}, 80%, ${lc}%, ${this.opacity + this.glowIntensity})`);
+    ctx.strokeStyle = grad; ctx.lineWidth = this.width; ctx.lineCap = 'round'; ctx.stroke();
     if (this.rippleRadius > 0) {
-      ctx.beginPath();
-      ctx.arc(this.x, this.y + this.length, this.rippleRadius, 0, Math.PI * 2, false);
-      ctx.strokeStyle = `rgba(100, 200, 255, ${this.rippleOpacity})`;
-      ctx.lineWidth = 1;
-      ctx.stroke();
+      ctx.beginPath(); ctx.arc(this.x, this.y + this.length, this.rippleRadius, 0, Math.PI * 2, false);
+      ctx.strokeStyle = `rgba(100, 200, 255, ${this.rippleOpacity})`; ctx.lineWidth = 1; ctx.stroke();
     }
   }
 }
 
-// ── Footstep Trail Particle ─────────────────────────────────────────────────
-interface FootstepParticle {
-  x: number;
-  y: number;
-  opacity: number;
-  scale: number;
-  life: number;
-}
+// ── Footstep Particle ───────────────────────────────────────────────────────
+interface FootstepParticle { x: number; y: number; opacity: number; scale: number; }
 
 // ── MAIN COMPONENT ──────────────────────────────────────────────────────────
 export default function Landing() {
   const navigate = useNavigate();
-
-  // State
   const [activeFeature, setActiveFeature] = useState(0);
   const [stickmanState, setStickmanState] = useState<'walking' | 'pointing' | 'hidden'>('walking');
-  const [stickmanPos, setStickmanPos] = useState({ x: -420, y: 0 });
-  const [stickmanPose, setStickmanPose] = useState({ scale: 0.54, opacity: 0.4 });
+  const [stickmanPos, setStickmanPos] = useState({ x: -300, y: 0 });
+  const [stickmanScale, setStickmanScale] = useState(0.7);
+  const [stickmanOpacity, setStickmanOpacity] = useState(0);
   const [pointerLine, setPointerLine] = useState<PointerLine | null>(null);
   const [lightningActive, setLightningActive] = useState(false);
   const [btnHovered, setBtnHovered] = useState(false);
   const [footsteps, setFootsteps] = useState<FootstepParticle[]>([]);
-  const [walkProgress, setWalkProgress] = useState(0);
 
-  // Refs
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const raindropsRef = useRef<Raindrop[]>([]);
   const mouseRef = useRef({ x: 0, y: 0, radius: 150 });
 
-  // Feature Rotation Timer
+  // Feature Rotation
   useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveFeature(prev => (prev + 1) % FEATURES.length);
-    }, 5000);
+    const interval = setInterval(() => setActiveFeature(p => (p + 1) % FEATURES.length), 5000);
     return () => clearInterval(interval);
   }, []);
 
-  // Stickman walk logic
+  // ── Stickman Walk Logic ─────────────────────────────────────────────────
   useEffect(() => {
-    let animationId = 0;
+    let animId = 0;
     const timers: number[] = [];
-    const startX = -420;
-    const startY = window.innerHeight * 0.8;
-    const walkDelayMs = 1800;
-    const walkDurationMs = 10000; // Slower, more elegant walk
 
-    const easeInOutCubic = (t: number) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    // Character walks HORIZONTALLY at a fixed Y near the CTA button
+    const walkDelayMs = 2000;
+    const walkDurationMs = 13000; // Very slow, elegant
+
+    const easeInOutQuart = (t: number) => t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2;
 
     setStickmanState('walking');
     setPointerLine(null);
     setLightningActive(false);
-    setStickmanPos({ x: startX, y: startY });
-    setStickmanPose({ scale: 0.54, opacity: 0.4 });
+    setStickmanOpacity(0);
 
     const startWalk = () => {
       if (!buttonRef.current) return;
 
       const btnRect = buttonRef.current.getBoundingClientRect();
-      const targetX = btnRect.left - 200;
-      const targetY = btnRect.top - 90;
-      const walkStartTime = performance.now();
-      let lastFootstepTime = 0;
+      // Walk at the same vertical level as the button, horizontally from left edge
+      const walkY = btnRect.top + btnRect.height / 2 - 105; // Center character vertically with btn
+      const startX = -300;
+      const targetX = btnRect.left - 160; // Stop just to the left of the button
+      const walkStart = performance.now();
+      let lastStepTime = 0;
 
-      const animateWalk = (now: number) => {
-        const elapsed = now - walkStartTime;
+      setStickmanPos({ x: startX, y: walkY });
+
+      const animate = (now: number) => {
+        const elapsed = now - walkStart;
         const t = Math.min(elapsed / walkDurationMs, 1);
-        const eased = easeInOutCubic(t);
+        const eased = easeInOutQuart(t);
 
+        // Pure horizontal movement - constant Y
         const currentX = startX + (targetX - startX) * eased;
-        const currentY = startY + (targetY - startY) * eased;
+        setStickmanPos({ x: currentX, y: walkY });
 
-        setStickmanPos({ x: currentX, y: currentY });
-        setStickmanPose({
-          scale: 0.54 + eased * 0.46,
-          opacity: 0.4 + eased * 0.6
-        });
-        setWalkProgress(t);
+        // Fade in during first 10%, then full opacity
+        const fadeIn = Math.min(t / 0.1, 1);
+        setStickmanOpacity(fadeIn);
 
-        // Add footstep particles every ~600ms
-        if (t > 0.05 && t < 0.95 && now - lastFootstepTime > 600) {
-          lastFootstepTime = now;
-          setFootsteps(prev => [...prev.slice(-12), {
-            x: currentX + 95,
-            y: currentY + 185,
-            opacity: 0.6,
-            scale: 0.4 + eased * 0.4,
-            life: 1
+        // Scale grows slightly as character approaches
+        setStickmanScale(0.7 + eased * 0.25);
+
+        // Footstep particles every ~700ms during active walking
+        if (t > 0.05 && t < 0.92 && now - lastStepTime > 700) {
+          lastStepTime = now;
+          setFootsteps(prev => [...prev.slice(-15), {
+            x: currentX + 75,
+            y: walkY + 200,
+            opacity: 0.5,
+            scale: 0.3 + eased * 0.3,
           }]);
         }
 
-        if (t < 1) {
-          animationId = requestAnimationFrame(animateWalk);
-          return;
-        }
+        if (t < 1) { animId = requestAnimationFrame(animate); return; }
 
-        // Arrived — switch to pointing
+        // ── Arrived: Point at button ──
         setStickmanState('pointing');
 
-        const caneBaseX = targetX + 170;
-        const caneBaseY = targetY + 100;
-        const ctaX = btnRect.left + btnRect.width * 0.5;
-        const ctaY = btnRect.top + btnRect.height * 0.55;
-        const lineDX = ctaX - caneBaseX;
-        const lineDY = ctaY - caneBaseY;
+        // The cane tip in the SVG is approximately at (185, 175) in viewBox coords
+        // The SVG is 200x220, rendered at stickmanScale
+        const svgRenderW = 200 * (0.7 + 0.25);
+        const svgRenderH = 220 * (0.7 + 0.25);
+        // Cane tip relative position in SVG: roughly x=185/200, y=175/220
+        const caneTipScreenX = targetX + (185 / 200) * svgRenderW;
+        const caneTipScreenY = walkY + (115 / 220) * svgRenderH;
+
+        const ctaCenterX = btnRect.left + btnRect.width / 2;
+        const ctaCenterY = btnRect.top + btnRect.height / 2;
+        const dx = ctaCenterX - caneTipScreenX;
+        const dy = ctaCenterY - caneTipScreenY;
+
         setPointerLine({
-          left: caneBaseX,
-          top: caneBaseY,
-          width: Math.hypot(lineDX, lineDY),
-          angle: Math.atan2(lineDY, lineDX) * (180 / Math.PI)
+          left: caneTipScreenX,
+          top: caneTipScreenY,
+          width: Math.hypot(dx, dy),
+          angle: Math.atan2(dy, dx) * (180 / Math.PI)
         });
 
         timers.push(window.setTimeout(() => {
           setLightningActive(true);
-          timers.push(window.setTimeout(() => setLightningActive(false), 260));
+          timers.push(window.setTimeout(() => setLightningActive(false), 300));
           timers.push(window.setTimeout(() => {
             setStickmanState('hidden');
             setPointerLine(null);
             setFootsteps([]);
-          }, 3000));
-        }, 500));
+          }, 3500));
+        }, 600));
       };
 
-      animationId = requestAnimationFrame(animateWalk);
+      animId = requestAnimationFrame(animate);
     };
 
     timers.push(window.setTimeout(startWalk, walkDelayMs));
 
-    // Fade out footsteps over time
-    const footstepInterval = setInterval(() => {
-      setFootsteps(prev => prev
-        .map(f => ({ ...f, opacity: f.opacity - 0.02, life: f.life - 0.02 }))
-        .filter(f => f.opacity > 0)
-      );
+    // Fade footsteps
+    const fsInterval = setInterval(() => {
+      setFootsteps(prev => prev.map(f => ({ ...f, opacity: f.opacity - 0.015 })).filter(f => f.opacity > 0));
     }, 100);
 
-    return () => {
-      timers.forEach((timerId) => clearTimeout(timerId));
-      if (animationId) cancelAnimationFrame(animationId);
-      clearInterval(footstepInterval);
-    };
+    return () => { timers.forEach(clearTimeout); cancelAnimationFrame(animId); clearInterval(fsInterval); };
   }, []);
 
-  // Rain Canvas Logic
+  // Rain Canvas
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      raindropsRef.current = Array.from({ length: 150 }, () => new Raindrop(canvas.width, canvas.height));
-    };
-    resize();
-    window.addEventListener('resize', resize);
-
-    const animate = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      raindropsRef.current.forEach(drop => {
-        drop.update(mouseRef.current);
-        drop.draw(ctx);
-      });
-      requestAnimationFrame(animate);
-    };
-    animate();
-
-    const handleMouseMove = (e: MouseEvent) => {
-      mouseRef.current = { x: e.clientX, y: e.clientY, radius: 150 };
-    };
-    window.addEventListener('mousemove', handleMouseMove);
-
-    return () => {
-      window.removeEventListener('resize', resize);
-      window.removeEventListener('mousemove', handleMouseMove);
-    };
+    const canvas = canvasRef.current; if (!canvas) return;
+    const ctx = canvas.getContext('2d'); if (!ctx) return;
+    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; raindropsRef.current = Array.from({ length: 150 }, () => new Raindrop(canvas.width, canvas.height)); };
+    resize(); window.addEventListener('resize', resize);
+    const anim = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); raindropsRef.current.forEach(d => { d.update(mouseRef.current); d.draw(ctx); }); requestAnimationFrame(anim); };
+    anim();
+    const onMouse = (e: MouseEvent) => { mouseRef.current = { x: e.clientX, y: e.clientY, radius: 150 }; };
+    window.addEventListener('mousemove', onMouse);
+    return () => { window.removeEventListener('resize', resize); window.removeEventListener('mousemove', onMouse); };
   }, []);
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // RENDER
+  // ═══════════════════════════════════════════════════════════════════════════
   return (
     <div className="landing-page futuristic">
-      {/* Background Canvas */}
       <canvas ref={canvasRef} className="rain-canvas" />
 
       {/* Navigation */}
@@ -324,207 +246,189 @@ export default function Landing() {
         </div>
       </nav>
 
-      {/* Massive Background Text (Preserved) */}
+      {/* Background Text */}
       <div className="concierge-heading">
         <div className="concierge-text-glow">
-          {'OPTILENO'.split('').map((char, i) => (
-            <span key={i} className={`concierge-letter char-${i}`}>{char}</span>
-          ))}
+          {'OPTILENO'.split('').map((c, i) => <span key={i} className={`concierge-letter char-${i}`}>{c}</span>)}
         </div>
         <div className="concierge-subtitle">Your Personal Leno AI</div>
       </div>
 
       {/* Footstep Trail */}
-      {footsteps.map((step, i) => (
-        <div
-          key={i}
-          className="footstep-particle"
-          style={{
-            left: step.x,
-            top: step.y,
-            opacity: step.opacity,
-            transform: `scale(${step.scale})`
-          }}
-        />
+      {footsteps.map((s, i) => (
+        <div key={i} className="footstep-particle" style={{ left: s.x, top: s.y, opacity: s.opacity, transform: `scale(${s.scale})` }} />
       ))}
 
-      {/* ═══ GENTLEMAN STICKMAN CHARACTER ═══ */}
+      {/* ═══════════════════════════════════════
+          SIDE-PROFILE GENTLEMAN STICKMAN
+          ═══════════════════════════════════════ */}
       <div
         className={`stickman-container ${stickmanState}`}
         style={{
-          transform: `translate(${stickmanPos.x}px, ${stickmanPos.y}px) scale(${stickmanState === 'hidden' ? 0.72 : stickmanPose.scale})`,
-          opacity: stickmanState === 'hidden' ? undefined : stickmanPose.opacity,
-          ['--step-seconds' as string]: '1.6s'
+          transform: `translate(${stickmanPos.x}px, ${stickmanPos.y}px) scale(${stickmanScale})`,
+          opacity: stickmanState === 'hidden' ? undefined : stickmanOpacity,
         }}
       >
         <div className="stickman-wrapper gentleman-shell">
-          <svg
-            className="gentleman-svg"
-            viewBox="0 0 280 220"
-            xmlns="http://www.w3.org/2000/svg"
-            aria-hidden="true"
-          >
+          <svg className="gentleman-svg" viewBox="0 0 200 220" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <defs>
-              {/* Glow filter for the character */}
-              <filter id="char-glow" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur" />
-                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              {/* Multi-layer glow */}
+              <filter id="gent-glow" x="-60%" y="-60%" width="220%" height="220%">
+                <feGaussianBlur in="SourceAlpha" stdDeviation="4" result="blur1" />
+                <feFlood floodColor="#818cf8" floodOpacity="0.35" result="color1" />
+                <feComposite in="color1" in2="blur1" operator="in" result="glow1" />
+                <feGaussianBlur in="SourceAlpha" stdDeviation="12" result="blur2" />
+                <feFlood floodColor="#6366f1" floodOpacity="0.15" result="color2" />
+                <feComposite in="color2" in2="blur2" operator="in" result="glow2" />
+                <feMerge>
+                  <feMergeNode in="glow2" />
+                  <feMergeNode in="glow1" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
               </filter>
-              {/* Soft shadow */}
-              <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
-                <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="rgba(99,102,241,0.3)" />
-              </filter>
-              {/* Umbrella gradient */}
-              <linearGradient id="umbrella-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="rgba(99,102,241,0.6)" />
-                <stop offset="50%" stopColor="rgba(139,92,246,0.5)" />
-                <stop offset="100%" stopColor="rgba(59,130,246,0.4)" />
+              {/* Umbrella fill */}
+              <linearGradient id="umb-fill" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="rgba(129,140,248,0.55)" />
+                <stop offset="100%" stopColor="rgba(99,102,241,0.3)" />
               </linearGradient>
-              {/* Body glow gradient */}
-              <linearGradient id="body-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+              {/* Body stroke */}
+              <linearGradient id="body-stroke" x1="0%" y1="0%" x2="0%" y2="100%">
                 <stop offset="0%" stopColor="#e2e8f0" />
-                <stop offset="100%" stopColor="#94a3b8" />
+                <stop offset="100%" stopColor="#a5b4fc" />
               </linearGradient>
-              {/* Cane gradient */}
-              <linearGradient id="cane-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+              {/* Cane */}
+              <linearGradient id="cane-g" x1="0%" y1="0%" x2="0%" y2="100%">
                 <stop offset="0%" stopColor="#c4b5fd" />
-                <stop offset="40%" stopColor="#a78bfa" />
                 <stop offset="100%" stopColor="#7c3aed" />
               </linearGradient>
             </defs>
 
-            <g className="gentleman-glow" filter="url(#soft-shadow)">
-              {/* ─── HEAD: Hat + Face ─── */}
-              <g className="gentleman-head">
+            <g filter="url(#gent-glow)">
+              {/* ── HEAD (side profile facing right) ── */}
+              <g className="gent-head">
                 {/* Top Hat */}
-                <rect className="hat-brim" x="70" y="28" width="56" height="5" rx="2.5"
-                  fill="rgba(255,255,255,0.9)" stroke="rgba(255,255,255,0.95)" strokeWidth="1.5" />
-                <rect className="hat-crown" x="78" y="6" width="40" height="24" rx="4"
-                  fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.9)" strokeWidth="2" />
-                <line x1="80" y1="24" x2="116" y2="24" stroke="rgba(139,92,246,0.7)" strokeWidth="2" />
+                <rect x="62" y="10" width="36" height="22" rx="3" fill="rgba(255,255,255,0.08)" stroke="url(#body-stroke)" strokeWidth="2.2" />
+                <rect x="55" y="30" width="52" height="5" rx="2.5" fill="rgba(255,255,255,0.85)" stroke="url(#body-stroke)" strokeWidth="1.2" />
+                {/* Hat band */}
+                <line x1="64" y1="28" x2="96" y2="28" stroke="rgba(139,92,246,0.8)" strokeWidth="2.2" />
 
-                {/* Face */}
-                <circle className="gent-face" cx="98" cy="46" r="15"
-                  fill="rgba(255,255,255,0.06)" stroke="url(#body-grad)" strokeWidth="2.5" />
-                {/* Eyes - subtle dots */}
-                <circle cx="93" cy="44" r="1.5" fill="rgba(255,255,255,0.8)" />
-                <circle cx="103" cy="44" r="1.5" fill="rgba(255,255,255,0.8)" />
-                {/* Slight smile */}
-                <path d="M93 50 Q98 54 103 50" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="1.2" strokeLinecap="round" />
+                {/* Head - slightly oval, side profile */}
+                <ellipse cx="80" cy="48" rx="14" ry="15" fill="rgba(255,255,255,0.05)" stroke="url(#body-stroke)" strokeWidth="2.5" />
+                {/* Eye */}
+                <circle cx="88" cy="45" r="2" fill="rgba(255,255,255,0.85)" />
+                <circle cx="88" cy="45" r="0.8" fill="rgba(99,102,241,0.9)" />
+                {/* Nose hint */}
+                <path d="M93 48 Q95 50 93 52" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="1.2" strokeLinecap="round" />
+                {/* Mouth */}
+                <path d="M87 54 Q90 56 93 54" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1" strokeLinecap="round" />
               </g>
 
-              {/* ─── BODY: Torso ─── */}
-              <g className="gentleman-body">
+              {/* ── BODY (side profile) ── */}
+              <g className="gent-body">
                 {/* Neck */}
-                <line x1="98" y1="61" x2="98" y2="68" stroke="url(#body-grad)" strokeWidth="3" strokeLinecap="round" />
-                {/* Shoulders */}
-                <path d="M72 72 Q85 66 98 68 Q111 66 124 72" fill="none" stroke="url(#body-grad)" strokeWidth="2.5" strokeLinecap="round" />
-                {/* Torso - slightly tapered */}
-                <path d="M78 72 L82 120 L98 124 L114 120 L118 72" fill="rgba(255,255,255,0.04)"
-                  stroke="url(#body-grad)" strokeWidth="2" strokeLinejoin="round" />
-                {/* Belt line */}
-                <line x1="84" y1="112" x2="112" y2="112" stroke="rgba(139,92,246,0.5)" strokeWidth="1.8" strokeLinecap="round" />
-                {/* Belt buckle */}
-                <rect x="94" y="109" width="8" height="6" rx="1.5" fill="none" stroke="rgba(167,139,250,0.7)" strokeWidth="1.2" />
-                {/* Coat tails / jacket split */}
-                <line x1="98" y1="112" x2="98" y2="124" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
+                <line x1="80" y1="63" x2="80" y2="72" stroke="url(#body-stroke)" strokeWidth="3" strokeLinecap="round" />
+                {/* Torso - jacket shape, side view */}
+                <path d="M68 74 L66 122 L80 126 L94 122 L92 74 Z"
+                  fill="rgba(255,255,255,0.04)" stroke="url(#body-stroke)" strokeWidth="2.2" strokeLinejoin="round" />
+                {/* Shoulder */}
+                <path d="M68 74 Q76 68 80 72 Q84 68 92 74" fill="none" stroke="url(#body-stroke)" strokeWidth="2.2" strokeLinecap="round" />
+                {/* Jacket lapel line */}
+                <line x1="80" y1="74" x2="80" y2="108" stroke="rgba(255,255,255,0.12)" strokeWidth="0.8" />
+                {/* Belt */}
+                <line x1="68" y1="114" x2="92" y2="114" stroke="rgba(139,92,246,0.6)" strokeWidth="2" strokeLinecap="round" />
+                <rect x="76" y="111" width="8" height="6" rx="1.5" fill="none" stroke="rgba(167,139,250,0.7)" strokeWidth="1.2" />
+                {/* Pocket square hint */}
+                <path d="M87 82 L90 80 L93 83 L90 86 Z" fill="rgba(139,92,246,0.3)" stroke="rgba(139,92,246,0.5)" strokeWidth="0.8" />
               </g>
 
-              {/* ─── LEFT ARM (Umbrella arm) ─── */}
-              <g className="gentleman-arm-left">
+              {/* ── BACK ARM (Left arm - holds umbrella, behind body) ── */}
+              <g className="gent-arm-back">
                 {/* Upper arm */}
-                <line x1="78" y1="74" x2="62" y2="56" stroke="url(#body-grad)" strokeWidth="2.5" strokeLinecap="round" />
-                {/* Lower arm */}
-                <line x1="62" y1="56" x2="56" y2="36" stroke="url(#body-grad)" strokeWidth="2.2" strokeLinecap="round" />
-                {/* Hand grip */}
-                <circle cx="56" cy="34" r="3" fill="rgba(255,255,255,0.15)" stroke="url(#body-grad)" strokeWidth="1.5" />
-
-                {/* ═══ UMBRELLA ═══ */}
-                <g className="gentleman-umbrella">
-                  {/* Umbrella pole */}
-                  <line x1="56" y1="34" x2="56" y2="-4" stroke="rgba(255,255,255,0.85)" strokeWidth="2" strokeLinecap="round" />
-                  {/* Umbrella tip */}
-                  <circle cx="56" cy="-6" r="2" fill="rgba(139,92,246,0.8)" />
-                  {/* Canopy - elegant dome shape */}
-                  <path d="M16 0 Q24 -22 38 -26 Q48 -28 56 -28 Q64 -28 74 -26 Q88 -22 96 0"
-                    fill="url(#umbrella-grad)" stroke="rgba(255,255,255,0.7)" strokeWidth="1.5" />
-                  {/* Canopy scallops */}
-                  <path d="M16 0 Q24 8 32 0 Q40 8 48 0 Q52 4 56 0 Q60 4 64 0 Q72 8 80 0 Q88 8 96 0"
-                    fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="1.5" />
-                  {/* Ribs */}
-                  <line x1="56" y1="-28" x2="32" y2="0" stroke="rgba(255,255,255,0.25)" strokeWidth="0.8" />
-                  <line x1="56" y1="-28" x2="56" y2="0" stroke="rgba(255,255,255,0.25)" strokeWidth="0.8" />
-                  <line x1="56" y1="-28" x2="80" y2="0" stroke="rgba(255,255,255,0.25)" strokeWidth="0.8" />
-                  {/* Handle hook at bottom */}
-                  <path d="M56 34 Q56 40 52 42 Q48 44 48 40" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" strokeLinecap="round" />
-                </g>
+                <line x1="72" y1="76" x2="60" y2="62" stroke="url(#body-stroke)" strokeWidth="2.8" strokeLinecap="round" />
+                {/* Forearm */}
+                <line x1="60" y1="62" x2="58" y2="40" stroke="url(#body-stroke)" strokeWidth="2.4" strokeLinecap="round" />
+                {/* Hand */}
+                <circle cx="58" cy="38" r="3.5" fill="rgba(255,255,255,0.08)" stroke="url(#body-stroke)" strokeWidth="1.5" />
               </g>
 
-              {/* ─── RIGHT ARM (Cane / Walking Stick arm) ─── */}
-              <g className="gentleman-arm-right">
+              {/* ── UMBRELLA (held by back arm, overhead) ── */}
+              <g className="gent-umbrella">
+                {/* Pole */}
+                <line x1="58" y1="38" x2="58" y2="2" stroke="rgba(255,255,255,0.8)" strokeWidth="2" strokeLinecap="round" />
+                {/* Canopy dome */}
+                <path d="M22 6 Q30 -16 44 -20 Q52 -22 58 -22 Q64 -22 72 -20 Q86 -16 94 6"
+                  fill="url(#umb-fill)" stroke="rgba(255,255,255,0.65)" strokeWidth="1.8" />
+                {/* Scalloped edge */}
+                <path d="M22 6 Q30 14 38 6 Q46 14 54 6 Q58 10 62 6 Q70 14 78 6 Q86 14 94 6"
+                  fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" />
+                {/* Ribs */}
+                <line x1="58" y1="-22" x2="38" y2="6" stroke="rgba(255,255,255,0.2)" strokeWidth="0.7" />
+                <line x1="58" y1="-22" x2="58" y2="6" stroke="rgba(255,255,255,0.2)" strokeWidth="0.7" />
+                <line x1="58" y1="-22" x2="78" y2="6" stroke="rgba(255,255,255,0.2)" strokeWidth="0.7" />
+                {/* Tip ornament */}
+                <circle cx="58" cy="-24" r="2.5" fill="rgba(139,92,246,0.7)" stroke="rgba(255,255,255,0.5)" strokeWidth="0.8" />
+                {/* Hook handle */}
+                <path d="M58 38 Q58 44 54 46 Q50 48 50 44" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="1.8" strokeLinecap="round" />
+              </g>
+
+              {/* ── BACK LEG ── */}
+              <g className="gent-leg-back">
+                <line x1="76" y1="126" x2="68" y2="162" stroke="url(#body-stroke)" strokeWidth="2.8" strokeLinecap="round" />
+                <line x1="68" y1="162" x2="72" y2="196" stroke="url(#body-stroke)" strokeWidth="2.4" strokeLinecap="round" />
+                {/* Shoe */}
+                <path d="M66 196 L72 196 L84 198 L84 203 L64 203 L64 198 Z"
+                  fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5" strokeLinejoin="round" />
+              </g>
+
+              {/* ── FRONT LEG ── */}
+              <g className="gent-leg-front">
+                <line x1="84" y1="126" x2="96" y2="160" stroke="url(#body-stroke)" strokeWidth="3" strokeLinecap="round" />
+                <line x1="96" y1="160" x2="90" y2="196" stroke="url(#body-stroke)" strokeWidth="2.6" strokeLinecap="round" />
+                {/* Shoe */}
+                <path d="M84 196 L90 196 L102 198 L102 203 L82 203 L82 198 Z"
+                  fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.65)" strokeWidth="1.5" strokeLinejoin="round" />
+              </g>
+
+              {/* ── FRONT ARM (Right arm - holds cane, in front of body) ── */}
+              <g className="gent-arm-front">
                 {/* Upper arm */}
-                <line x1="118" y1="74" x2="138" y2="90" stroke="url(#body-grad)" strokeWidth="2.5" strokeLinecap="round" />
-                {/* Lower arm */}
-                <line x1="138" y1="90" x2="148" y2="108" stroke="url(#body-grad)" strokeWidth="2.2" strokeLinecap="round" />
-                {/* Hand grip */}
-                <circle cx="148" cy="110" r="3" fill="rgba(255,255,255,0.15)" stroke="url(#body-grad)" strokeWidth="1.5" />
-
-                {/* ═══ WALKING CANE ═══ */}
-                <g className="gentleman-cane">
-                  {/* Cane shaft */}
-                  <line x1="148" y1="110" x2="158" y2="200" stroke="url(#cane-grad)" strokeWidth="2.8" strokeLinecap="round" />
-                  {/* Cane handle - curved hook */}
-                  <path d="M148 110 Q144 104 140 106 Q136 108 140 112"
-                    fill="none" stroke="rgba(167,139,250,0.9)" strokeWidth="2.5" strokeLinecap="round" />
-                  {/* Cane tip */}
-                  <circle cx="158" cy="202" r="2.5" fill="rgba(167,139,250,0.6)" />
-                  {/* Decorative ring on cane */}
-                  <ellipse cx="152" cy="140" rx="3" ry="1.5" fill="none" stroke="rgba(139,92,246,0.5)" strokeWidth="1" />
-                  <ellipse cx="154" cy="160" rx="2.5" ry="1.2" fill="none" stroke="rgba(139,92,246,0.35)" strokeWidth="0.8" />
-                </g>
+                <line x1="88" y1="76" x2="104" y2="92" stroke="url(#body-stroke)" strokeWidth="2.8" strokeLinecap="round" />
+                {/* Forearm */}
+                <line x1="104" y1="92" x2="112" y2="110" stroke="url(#body-stroke)" strokeWidth="2.4" strokeLinecap="round" />
+                {/* Hand */}
+                <circle cx="112" cy="112" r="3.5" fill="rgba(255,255,255,0.08)" stroke="url(#body-stroke)" strokeWidth="1.5" />
               </g>
 
-              {/* ─── LEGS ─── */}
-              <g className="gentleman-legs">
-                {/* Front leg */}
-                <g className="gentleman-leg-front">
-                  {/* Thigh */}
-                  <line x1="104" y1="124" x2="120" y2="160" stroke="url(#body-grad)" strokeWidth="2.8" strokeLinecap="round" />
-                  {/* Shin */}
-                  <line x1="120" y1="160" x2="112" y2="194" stroke="url(#body-grad)" strokeWidth="2.4" strokeLinecap="round" />
-                  {/* Shoe */}
-                  <path d="M106 194 L112 194 L122 196 L122 200 L104 200 L104 196 Z"
-                    fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.7)" strokeWidth="1.5" strokeLinejoin="round" />
-                </g>
-                {/* Back leg */}
-                <g className="gentleman-leg-back">
-                  {/* Thigh */}
-                  <line x1="92" y1="124" x2="76" y2="162" stroke="url(#body-grad)" strokeWidth="2.8" strokeLinecap="round" />
-                  {/* Shin */}
-                  <line x1="76" y1="162" x2="82" y2="196" stroke="url(#body-grad)" strokeWidth="2.4" strokeLinecap="round" />
-                  {/* Shoe */}
-                  <path d="M76 196 L82 196 L92 198 L92 202 L74 202 L74 198 Z"
-                    fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.55)" strokeWidth="1.5" strokeLinejoin="round" />
-                </g>
+              {/* ── WALKING CANE ── */}
+              <g className="gent-cane">
+                {/* Handle - elegant curved crook */}
+                <path d="M112 112 Q108 104 104 106 Q100 108 104 114"
+                  fill="none" stroke="rgba(167,139,250,0.95)" strokeWidth="2.8" strokeLinecap="round" />
+                {/* Shaft */}
+                <line x1="112" y1="112" x2="120" y2="200" stroke="url(#cane-g)" strokeWidth="2.8" strokeLinecap="round" />
+                {/* Decorative rings */}
+                <ellipse cx="115" cy="140" rx="3.5" ry="1.5" fill="none" stroke="rgba(139,92,246,0.5)" strokeWidth="1" />
+                <ellipse cx="117" cy="165" rx="3" ry="1.2" fill="none" stroke="rgba(139,92,246,0.35)" strokeWidth="0.8" />
+                {/* Tip */}
+                <circle cx="120" cy="202" r="2.5" fill="rgba(167,139,250,0.5)" />
               </g>
 
-              {/* ─── COAT TAILS (flowing behind) ─── */}
-              <g className="gentleman-coattails">
-                <path className="coattail-left" d="M84 120 Q78 140 70 155"
-                  fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" strokeLinecap="round" />
-                <path className="coattail-right" d="M112 120 Q118 140 124 155"
-                  fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" strokeLinecap="round" />
+              {/* ── COAT TAIL (flowing behind) ── */}
+              <g className="gent-coattail">
+                <path className="coattail-flow" d="M68 122 Q58 142 50 160"
+                  fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1.8" strokeLinecap="round" />
+                <path className="coattail-flow-2" d="M72 122 Q64 138 58 152"
+                  fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.2" strokeLinecap="round" />
               </g>
 
-              {/* ─── SHADOW on ground ─── */}
-              <ellipse className="gentleman-shadow" cx="98" cy="205" rx="35" ry="4"
-                fill="rgba(99,102,241,0.1)" />
+              {/* ── GROUND SHADOW ── */}
+              <ellipse className="gent-shadow" cx="85" cy="207" rx="40" ry="4" fill="rgba(99,102,241,0.12)" />
             </g>
           </svg>
         </div>
       </div>
 
-      {/* Lightning / Glow Effect */}
+      {/* Lightning Effect */}
       {lightningActive && (
         <div className="lightning-flash-container">
           <Zap size={128} className="giant-bolt" />
@@ -532,11 +436,10 @@ export default function Landing() {
         </div>
       )}
 
-      {/* Cane Pointer Line (Pointing) */}
+      {/* Cane Pointer Line */}
       {stickmanState === 'pointing' && pointerLine && (
         <div className="cane-pointer" style={{
-          left: pointerLine.left,
-          top: pointerLine.top,
+          left: pointerLine.left, top: pointerLine.top,
           width: pointerLine.width,
           transform: `rotate(${pointerLine.angle}deg)`
         }}>
@@ -545,89 +448,54 @@ export default function Landing() {
         </div>
       )}
 
-      {/* Main Content Area */}
+      {/* Main Content */}
       <main className="hero-section">
         <div className="hero-content">
-
           <div className="text-center mb-12">
-            <h2 className="hero-title">
-              Orchestrate Your Life
-            </h2>
+            <h2 className="hero-title">Orchestrate Your Life</h2>
             <p className="hero-subtitle">
               Precision tools for the modern achiever.
               <br />Stop managing tasks. Start designing success.
             </p>
           </div>
 
-          {/* Feature Showcase Box (Replaces Quotes) */}
           <div className="feature-showcase">
             <div className="feature-carousel" style={{ transform: `translateY(-${activeFeature * 140}px)` }}>
-              {FEATURES.map((feat) => (
+              {FEATURES.map(feat => (
                 <div key={feat.id} className="feature-slide">
-                  <div className="feature-icon" style={{ borderColor: feat.color, color: feat.color }}>
-                    {feat.icon}
-                  </div>
-                  <div className="feature-text">
-                    <h3>{feat.title}</h3>
-                    <p>{feat.description}</p>
-                  </div>
+                  <div className="feature-icon" style={{ borderColor: feat.color, color: feat.color }}>{feat.icon}</div>
+                  <div className="feature-text"><h3>{feat.title}</h3><p>{feat.description}</p></div>
                 </div>
               ))}
             </div>
             <div className="feature-indicators">
-              {FEATURES.map((_, idx) => (
-                <div
-                  key={idx}
-                  className={`indicator ${idx === activeFeature ? 'active' : ''}`}
-                  onClick={() => setActiveFeature(idx)}
-                />
-              ))}
+              {FEATURES.map((_, i) => <div key={i} className={`indicator ${i === activeFeature ? 'active' : ''}`} onClick={() => setActiveFeature(i)} />)}
             </div>
           </div>
 
-          {/* CTA */}
           <div className="cta-wrapper">
-            <button
-              ref={buttonRef}
-              className={`cta-button-premium ${btnHovered ? 'hovered' : ''}`}
-              onMouseEnter={() => setBtnHovered(true)}
-              onMouseLeave={() => setBtnHovered(false)}
-              onClick={() => navigate('/register')}
-            >
+            <button ref={buttonRef} className={`cta-button-premium ${btnHovered ? 'hovered' : ''}`}
+              onMouseEnter={() => setBtnHovered(true)} onMouseLeave={() => setBtnHovered(false)}
+              onClick={() => navigate('/register')}>
               <span className="btn-text">Begin Journey</span>
-              <div className="btn-icon">
-                <ArrowRight size={20} />
-              </div>
+              <div className="btn-icon"><ArrowRight size={20} /></div>
               <div className="btn-glow"></div>
             </button>
             <p className="cta-subtext">
               Join today for launch pricing. First 100 users get a limited discount.
-              <br />
-              Get 7 days free trial. <span className="secure-badge"><Lock size={12} style={{ display: 'inline', verticalAlign: 'middle' }} /> Payment secure with Stripe</span>
+              <br />Get 7 days free trial. <span className="secure-badge"><Lock size={12} style={{ display: 'inline', verticalAlign: 'middle' }} /> Payment secure with Stripe</span>
             </p>
           </div>
-
         </div>
       </main>
 
-      {/* Landing Footer */}
-      <footer className="landing-footer" style={{
-        position: 'relative',
-        zIndex: 10,
-        padding: '2rem',
-        textAlign: 'center',
-        borderTop: '1px solid rgba(255, 255, 255, 0.05)',
-        background: 'rgba(2, 6, 23, 0.8)',
-        backdropFilter: 'blur(10px)'
-      }}>
+      <footer className="landing-footer" style={{ position: 'relative', zIndex: 10, padding: '2rem', textAlign: 'center', borderTop: '1px solid rgba(255, 255, 255, 0.05)', background: 'rgba(2, 6, 23, 0.8)', backdropFilter: 'blur(10px)' }}>
         <div className="footer-links" style={{ display: 'flex', justifyContent: 'center', gap: '2rem', marginBottom: '1rem' }}>
-          <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', textDecoration: 'none', transition: 'color 0.2s' }}>Terms of Service</a>
-          <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', textDecoration: 'none', transition: 'color 0.2s' }}>Privacy Policy</a>
-          <a href="mailto:support@optileno.com" style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', textDecoration: 'none', transition: 'color 0.2s' }}>Support</a>
+          <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', textDecoration: 'none' }}>Terms of Service</a>
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', textDecoration: 'none' }}>Privacy Policy</a>
+          <a href="mailto:support@optileno.com" style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', textDecoration: 'none' }}>Support</a>
         </div>
-        <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.7rem' }}>
-          &copy; 2026 Optileno. Built for the modern high achiever.
-        </div>
+        <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.7rem' }}>&copy; 2026 Optileno. Built for the modern high achiever.</div>
       </footer>
     </div>
   );

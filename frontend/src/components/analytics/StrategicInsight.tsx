@@ -1,6 +1,9 @@
 // frontend/src/components/analytics/StrategicInsight.tsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Sparkles, CheckCircle, Zap, Loader2, ArrowRight } from 'lucide-react';
+import {
+    Sparkles, CheckCircle, Zap, Loader2, ArrowRight,
+    AlertTriangle, Target, Brain, Clock, Flame, Heart, MessageCircle, Dumbbell,
+} from 'lucide-react';
 import { realtimeClient } from '../../services/realtime/socket-client';
 import { api } from '../../services/api/client';
 import '../../styles/components/analytics/StrategicInsight.css';
@@ -12,74 +15,103 @@ interface InsightData {
     confidence: number;
     applied_at: string | null;
     type: string;
+    severity: string;
+    category: string;
     generated_at?: string | null;
     evidence?: string[];
     data_points?: number;
-    impact?: string;
 }
 
-const StrategicInsight: React.FC = () => {
-    const [insight, setInsight] = useState<InsightData | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [isApplying, setIsApplying] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const hasLoadedInsightRef = useRef(false);
+interface InsightsResponse {
+    insights: InsightData[];
+    count: number;
+}
 
-    const fetchInsight = useCallback(async (options?: { background?: boolean }) => {
-        const isBackgroundRefresh = options?.background ?? false;
-        const showLoading = !isBackgroundRefresh && !hasLoadedInsightRef.current;
+/** Severity → colors & accent */
+const severityConfig: Record<string, { color: string; bg: string; icon: React.ReactNode }> = {
+    positive: { color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)', icon: <Sparkles size={14} /> },
+    info: { color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)', icon: <Brain size={14} /> },
+    medium: { color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)', icon: <AlertTriangle size={14} /> },
+    high: { color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)', icon: <Flame size={14} /> },
+};
+
+/** Category → icon */
+const categoryIcons: Record<string, React.ReactNode> = {
+    planning: <Target size={13} />,
+    consistency: <Clock size={13} />,
+    wellbeing: <Heart size={13} />,
+    focus: <Zap size={13} />,
+    goals: <Target size={13} />,
+    ai_collaboration: <MessageCircle size={13} />,
+    habits: <Dumbbell size={13} />,
+};
+
+const StrategicInsight: React.FC = () => {
+    const [insights, setInsights] = useState<InsightData[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [applyingId, setApplyingId] = useState<number | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const hasLoadedRef = useRef(false);
+
+    const fetchInsights = useCallback(async (options?: { background?: boolean }) => {
+        const isBackground = options?.background ?? false;
+        const showLoading = !isBackground && !hasLoadedRef.current;
 
         try {
-            if (showLoading) {
-                setIsLoading(true);
-            }
+            if (showLoading) setIsLoading(true);
             setError(null);
-            const response = await api.get<InsightData>('/analytics/strategic-insight');
+
+            const response = await api.get<InsightsResponse>('/analytics/strategic-insight');
             if (!response.success || !response.data) {
-                throw new Error(response.error?.message || 'Failed to fetch insight');
+                throw new Error(response.error?.message || 'Failed to fetch insights');
             }
+
             const data = response.data;
-            setInsight(data);
-            hasLoadedInsightRef.current = true;
+            // Handle both old single-insight and new multi-insight responses
+            if (Array.isArray(data.insights)) {
+                setInsights(data.insights);
+            } else if ((data as any).title) {
+                // Legacy single-insight response
+                setInsights([data as any]);
+            }
+            hasLoadedRef.current = true;
         } catch (err: any) {
             setError(err.message);
         } finally {
-            if (showLoading) {
-                setIsLoading(false);
-            }
+            if (showLoading) setIsLoading(false);
         }
     }, []);
 
-    const applyInsight = useCallback(async () => {
-        if (!insight || insight.applied_at) return;
+    const applyInsight = useCallback(async (insightId: number) => {
+        if (insightId === 0) return; // awaiting data
 
         try {
-            setIsApplying(true);
+            setApplyingId(insightId);
             setError(null);
-            const response = await api.post<{ applied_at?: string }>('/analytics/strategic-insight/apply', { insight_id: insight.id });
+            const response = await api.post<{ applied_at?: string }>('/analytics/strategic-insight/apply', { insight_id: insightId });
             if (!response.success) {
                 throw new Error(response.error?.message || 'Failed to apply insight');
             }
-            setInsight({ ...insight, applied_at: response.data?.applied_at || new Date().toISOString() });
+            // Update the insight locally
+            setInsights(prev => prev.map(ins =>
+                ins.id === insightId
+                    ? { ...ins, applied_at: response.data?.applied_at || new Date().toISOString() }
+                    : ins
+            ));
         } catch (err: any) {
             setError(err.message);
         } finally {
-            setIsApplying(false);
+            setApplyingId(null);
         }
-    }, [insight]);
+    }, []);
 
-    useEffect(() => {
-        fetchInsight();
-    }, [fetchInsight]);
+    useEffect(() => { fetchInsights(); }, [fetchInsights]);
 
-    // Keep strategic insight fresh as user activity changes.
     useEffect(() => {
         let timeout: ReturnType<typeof setTimeout> | null = null;
         const queueRefresh = () => {
             if (timeout) clearTimeout(timeout);
-            timeout = setTimeout(() => {
-                fetchInsight({ background: true });
-            }, 3000); // 3s debounce to prevent request spam from rapid events
+            timeout = setTimeout(() => fetchInsights({ background: true }), 3000);
         };
 
         realtimeClient.on('analytics:update', queueRefresh);
@@ -96,12 +128,12 @@ const StrategicInsight: React.FC = () => {
             realtimeClient.off('planner:deepwork:completed', queueRefresh);
             if (timeout) clearTimeout(timeout);
         };
-    }, [fetchInsight]);
+    }, [fetchInsights]);
 
     useEffect(() => {
-        const interval = setInterval(() => fetchInsight({ background: true }), 2 * 60 * 1000);
+        const interval = setInterval(() => fetchInsights({ background: true }), 2 * 60 * 1000);
         return () => clearInterval(interval);
-    }, [fetchInsight]);
+    }, [fetchInsights]);
 
     if (isLoading) {
         return (
@@ -112,13 +144,14 @@ const StrategicInsight: React.FC = () => {
         );
     }
 
-    if (!insight || insight.type === 'awaiting_data') {
+    if (insights.length === 0 || (insights.length === 1 && insights[0].type === 'awaiting_data')) {
+        const awaiting = insights[0];
         return (
             <div className="strategic-insight-container">
                 <div className="insight-main">
-                    <h4 className="insight-title-text">Awaiting Data</h4>
+                    <h4 className="insight-title-text">Gathering Intelligence</h4>
                     <p className="insight-description">
-                        {insight?.description || "Leno is observing your patterns. High-impact strategies will appear shortly."}
+                        {awaiting?.description || "Leno is observing your patterns. High-impact strategies will appear shortly."}
                     </p>
                     {error && (
                         <p className="insight-description" style={{ marginTop: '0.5rem', opacity: 0.85 }}>
@@ -132,64 +165,105 @@ const StrategicInsight: React.FC = () => {
 
     return (
         <div className="strategic-insight-container">
-            <div className="insight-header">
-                <div className="confidence-badge">
-                    {insight.confidence}% MATCH
+            <div className="strategic-insight-header-bar">
+                <Sparkles size={14} style={{ color: 'var(--primary)' }} />
+                <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', opacity: 0.7 }}>
+                    Strategic Insights ({insights.length})
+                </span>
+            </div>
+
+            <div className="strategic-insights-list">
+                {insights.map((insight) => {
+                    const severity = severityConfig[insight.severity] || severityConfig.info;
+                    const catIcon = categoryIcons[insight.category] || <Zap size={13} />;
+                    const isApplying = applyingId === insight.id;
+
+                    return (
+                        <div
+                            key={insight.id}
+                            className="strategic-insight-card"
+                            style={{ borderLeftColor: severity.color }}
+                        >
+                            <div className="strategic-insight-card-header">
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span style={{
+                                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                        width: '22px', height: '22px', borderRadius: '6px',
+                                        background: severity.bg, color: severity.color,
+                                    }}>
+                                        {severity.icon}
+                                    </span>
+                                    <span style={{
+                                        fontSize: '10px', fontWeight: 600, textTransform: 'uppercase',
+                                        color: severity.color, letterSpacing: '0.3px',
+                                    }}>
+                                        {insight.category?.replace('_', ' ') || 'insight'}
+                                    </span>
+                                </div>
+                                <span className="confidence-badge" style={{
+                                    background: severity.bg, color: severity.color,
+                                    border: `1px solid ${severity.color}40`,
+                                }}>
+                                    {insight.confidence}% MATCH
+                                </span>
+                            </div>
+
+                            <h4 className="insight-title-text" style={{ fontSize: '1rem', marginTop: '6px' }}>
+                                {insight.title}
+                            </h4>
+                            <p className="insight-description" style={{ fontSize: '0.85rem' }}>
+                                {insight.description}
+                            </p>
+
+                            {insight.evidence && insight.evidence.length > 0 && (
+                                <div style={{ marginTop: '8px', fontSize: '11px', opacity: 0.75 }}>
+                                    {insight.evidence.slice(0, 2).map((item, idx) => (
+                                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
+                                            {catIcon}
+                                            <span>{item}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            <div style={{ marginTop: '10px' }}>
+                                {insight.applied_at ? (
+                                    <div className="applied-state" style={{ padding: '0.5rem', fontSize: '0.8rem' }}>
+                                        <CheckCircle size={14} />
+                                        Implemented
+                                        <span style={{ fontSize: '10px', opacity: 0.6, marginLeft: '4px' }}>
+                                            {new Date(insight.applied_at).toLocaleDateString()}
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <button
+                                        className="apply-button"
+                                        onClick={() => applyInsight(insight.id)}
+                                        disabled={isApplying || insight.id === 0}
+                                        style={{ padding: '0.6rem', fontSize: '0.8rem' }}
+                                    >
+                                        {isApplying ? (
+                                            <Loader2 className="spinning" size={14} />
+                                        ) : (
+                                            <>
+                                                <Zap size={14} />
+                                                Apply
+                                                <ArrowRight size={12} />
+                                            </>
+                                        )}
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {error && (
+                <div style={{ fontSize: '11px', color: 'var(--danger)', marginTop: '8px', padding: '0 4px' }}>
+                    {error}
                 </div>
-                <Sparkles size={16} className="text-accent" />
-            </div>
-
-            <div className="insight-main">
-                <h3 className="insight-title-text">{insight.title}</h3>
-                <p className="insight-description">{insight.description}</p>
-                {insight.evidence && insight.evidence.length > 0 && (
-                    <div style={{ marginTop: '0.75rem', fontSize: '12px', opacity: 0.85 }}>
-                        {insight.evidence.slice(0, 2).map((item, idx) => (
-                            <div key={idx}>- {item}</div>
-                        ))}
-                    </div>
-                )}
-                {insight.data_points !== undefined && (
-                    <div style={{ marginTop: '0.5rem', fontSize: '11px', opacity: 0.7 }}>
-                        Based on {insight.data_points} completed tasks in the last 30 days.
-                    </div>
-                )}
-                {error && (
-                    <div style={{ marginTop: '0.5rem', fontSize: '11px', opacity: 0.7 }}>
-                        Last action error: {error}
-                    </div>
-                )}
-            </div>
-
-            <div className="insight-actions">
-                {insight.applied_at ? (
-                    <>
-                        <div className="applied-state">
-                            <CheckCircle size={18} />
-                            Implemented
-                        </div>
-                        <div className="last-applied-meta">
-                            Applied on {new Date(insight.applied_at).toLocaleDateString()}
-                        </div>
-                    </>
-                ) : (
-                    <button
-                        className="apply-button"
-                        onClick={applyInsight}
-                        disabled={isApplying}
-                    >
-                        {isApplying ? (
-                            <Loader2 className="spinning" size={18} />
-                        ) : (
-                            <>
-                                <Zap size={18} />
-                                Apply Strategic Optimization
-                                <ArrowRight size={16} />
-                            </>
-                        )}
-                    </button>
-                )}
-            </div>
+            )}
         </div>
     );
 };

@@ -1,4 +1,4 @@
-/* Landing Page Styles - Premium Gentleman Stickman Edition */
+/* Landing Page Styles - Side-Profile Gentleman Stickman v2 */
 
 /* ── BASE & VARIABLES ────────────────────────────────────────────── */
 :root {
@@ -24,7 +24,7 @@ html {
     overflow: hidden;
 }
 
-/* ── BACKGROUND CANVAS ───────────────────────────────────────────── */
+/* ── CANVAS ──────────────────────────────────────────────────────── */
 .rain-canvas {
     position: fixed;
     top: 0;
@@ -58,8 +58,6 @@ html {
     width: 40px;
     border-radius: 10px;
     transition: transform 0.3s ease;
-    background: url('/logo-light.svg') no-repeat center center;
-    background-size: contain;
     filter: drop-shadow(0 0 8px rgba(124, 58, 237, 0.3));
     display: flex;
     align-items: center;
@@ -120,7 +118,7 @@ html {
     transform: translateY(-1px);
 }
 
-/* ── CONCIERGE HEADER (PRESERVED) ─────────────────────────────────── */
+/* ── CONCIERGE HEADER ─────────────────────────────────────────────── */
 .concierge-heading {
     position: absolute;
     top: 15%;
@@ -154,7 +152,7 @@ html {
     animation: fadeIn 2s forwards 1s;
 }
 
-/* ── MAIN HERO SECTION ────────────────────────────────────────────── */
+/* ── HERO SECTION ────────────────────────────────────────────────── */
 .hero-section {
     position: relative;
     z-index: 10;
@@ -296,19 +294,13 @@ html {
     gap: 1rem;
     overflow: hidden;
     transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-    box-shadow:
-        0 4px 15px rgba(139, 92, 246, 0.4),
-        0 0 30px rgba(59, 130, 246, 0.2),
-        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4), 0 0 30px rgba(59, 130, 246, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2);
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .cta-button-premium:hover {
     transform: translateY(-3px) scale(1.03);
-    box-shadow:
-        0 8px 25px rgba(139, 92, 246, 0.5),
-        0 0 50px rgba(59, 130, 246, 0.3),
-        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 25px rgba(139, 92, 246, 0.5), 0 0 50px rgba(59, 130, 246, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 .cta-button-premium:active {
@@ -386,9 +378,10 @@ html {
     border-radius: 4px;
 }
 
-/* ══════════════════════════════════════════════════════════════════════
-   GENTLEMAN STICKMAN - PREMIUM CHARACTER
-   ══════════════════════════════════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ███ SIDE-PROFILE GENTLEMAN STICKMAN ███
+   ══════════════════════════════════════════════════════════════════════════════ */
 
 /* ── Container ─── */
 .stickman-container {
@@ -397,231 +390,72 @@ html {
     top: 0;
     z-index: 15;
     pointer-events: none;
-    transition: transform 0.12s linear, opacity 0.5s ease-out;
-    filter:
-        drop-shadow(0 0 24px rgba(139, 92, 246, 0.15)) drop-shadow(0 0 48px rgba(99, 102, 241, 0.08));
+    transition: transform 0.08s linear, opacity 0.6s ease-out;
 }
 
 .stickman-wrapper.gentleman-shell {
     position: relative;
-    width: 280px;
+    width: 200px;
     height: 220px;
 }
 
 .gentleman-svg {
-    width: 280px;
+    width: 200px;
     height: 220px;
     overflow: visible;
 }
 
-/* ── Walking State - Body Bob ─── */
+
+/* ══════════════════════════════════════════════════════════════════════
+   WALKING STATE - Smooth side-profile horizontal stride
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── Whole body bob (up-down with each step) ── */
 .stickman-container.walking .gentleman-svg {
-    animation: gentlemanBob 1.6s ease-in-out infinite;
+    animation: walkBob 0.9s ease-in-out infinite;
 }
 
-@keyframes gentlemanBob {
+@keyframes walkBob {
 
     0%,
     100% {
         transform: translateY(0);
     }
 
-    25% {
-        transform: translateY(-2.5px);
-    }
-
     50% {
-        transform: translateY(0);
-    }
-
-    75% {
-        transform: translateY(-2.5px);
+        transform: translateY(-4px);
     }
 }
 
-/* ── Walking State - Head subtle nod ─── */
-.stickman-container.walking .gentleman-head {
-    transform-origin: 98px 46px;
-    animation: headNod 1.6s ease-in-out infinite;
+/* ── Head - subtle forward lean when walking ── */
+.stickman-container.walking .gent-head {
+    transform-origin: 80px 55px;
+    animation: headWalk 0.9s ease-in-out infinite;
 }
 
-@keyframes headNod {
+@keyframes headWalk {
 
     0%,
     100% {
-        transform: rotate(0deg) translateY(0);
+        transform: rotate(0deg) translateX(0);
     }
 
-    25% {
-        transform: rotate(-1deg) translateY(-1px);
+    30% {
+        transform: rotate(1.5deg) translateX(1px);
     }
 
-    50% {
-        transform: rotate(0.5deg) translateY(0);
-    }
-
-    75% {
-        transform: rotate(-0.5deg) translateY(-1px);
+    70% {
+        transform: rotate(-0.5deg) translateX(-0.5px);
     }
 }
 
-/* ── Walking State - Front Leg ─── */
-.stickman-container.walking .gentleman-leg-front {
-    transform-origin: 104px 124px;
-    animation: legFrontWalk 1.6s ease-in-out infinite;
+/* ── Torso - slight forward/backward lean ── */
+.stickman-container.walking .gent-body {
+    transform-origin: 80px 74px;
+    animation: torsoWalk 0.9s ease-in-out infinite;
 }
 
-@keyframes legFrontWalk {
-    0% {
-        transform: rotate(0deg);
-    }
-
-    15% {
-        transform: rotate(14deg);
-    }
-
-    35% {
-        transform: rotate(18deg);
-    }
-
-    50% {
-        transform: rotate(0deg);
-    }
-
-    65% {
-        transform: rotate(-14deg);
-    }
-
-    85% {
-        transform: rotate(-18deg);
-    }
-
-    100% {
-        transform: rotate(0deg);
-    }
-}
-
-/* ── Walking State - Back Leg ─── */
-.stickman-container.walking .gentleman-leg-back {
-    transform-origin: 92px 124px;
-    animation: legBackWalk 1.6s ease-in-out infinite;
-}
-
-@keyframes legBackWalk {
-    0% {
-        transform: rotate(0deg);
-    }
-
-    15% {
-        transform: rotate(-14deg);
-    }
-
-    35% {
-        transform: rotate(-18deg);
-    }
-
-    50% {
-        transform: rotate(0deg);
-    }
-
-    65% {
-        transform: rotate(14deg);
-    }
-
-    85% {
-        transform: rotate(18deg);
-    }
-
-    100% {
-        transform: rotate(0deg);
-    }
-}
-
-/* ── Walking State - Left Arm (Umbrella) ─── */
-.stickman-container.walking .gentleman-arm-left {
-    transform-origin: 78px 74px;
-    animation: armLeftSwing 1.6s ease-in-out infinite;
-}
-
-@keyframes armLeftSwing {
-
-    0%,
-    100% {
-        transform: rotate(0deg);
-    }
-
-    25% {
-        transform: rotate(5deg);
-    }
-
-    50% {
-        transform: rotate(0deg);
-    }
-
-    75% {
-        transform: rotate(-5deg);
-    }
-}
-
-/* ── Walking State - Umbrella Sway ─── */
-.stickman-container.walking .gentleman-umbrella {
-    transform-origin: 56px 34px;
-    animation: umbrellaSway 2.4s ease-in-out infinite;
-}
-
-@keyframes umbrellaSway {
-
-    0%,
-    100% {
-        transform: rotate(0deg);
-    }
-
-    25% {
-        transform: rotate(2deg);
-    }
-
-    50% {
-        transform: rotate(-1deg);
-    }
-
-    75% {
-        transform: rotate(2.5deg);
-    }
-}
-
-/* ── Walking State - Right Arm (Cane) ─── */
-.stickman-container.walking .gentleman-arm-right {
-    transform-origin: 118px 74px;
-    animation: armRightSwing 1.6s ease-in-out infinite;
-}
-
-@keyframes armRightSwing {
-
-    0%,
-    100% {
-        transform: rotate(0deg);
-    }
-
-    25% {
-        transform: rotate(-4deg);
-    }
-
-    50% {
-        transform: rotate(0deg);
-    }
-
-    75% {
-        transform: rotate(4deg);
-    }
-}
-
-/* ── Walking State - Cane movement ─── */
-.stickman-container.walking .gentleman-cane {
-    transform-origin: 148px 110px;
-    animation: caneSwing 1.6s ease-in-out infinite;
-}
-
-@keyframes caneSwing {
+@keyframes torsoWalk {
 
     0%,
     100% {
@@ -629,217 +463,332 @@ html {
     }
 
     30% {
-        transform: rotate(-3deg);
+        transform: rotate(1.2deg);
     }
 
     70% {
-        transform: rotate(3deg);
-    }
-}
-
-/* ── Walking State - Coat Tails ─── */
-.stickman-container.walking .coattail-left {
-    transform-origin: 84px 120px;
-    animation: coattailLeft 2s ease-in-out infinite;
-}
-
-@keyframes coattailLeft {
-
-    0%,
-    100% {
-        transform: rotate(0deg) translateX(0);
-    }
-
-    50% {
-        transform: rotate(3deg) translateX(-2px);
-    }
-}
-
-.stickman-container.walking .coattail-right {
-    transform-origin: 112px 120px;
-    animation: coattailRight 2s ease-in-out infinite;
-}
-
-@keyframes coattailRight {
-
-    0%,
-    100% {
-        transform: rotate(0deg) translateX(0);
-    }
-
-    50% {
-        transform: rotate(-2deg) translateX(2px);
-    }
-}
-
-/* ── Walking State - Ground Shadow ─── */
-.stickman-container.walking .gentleman-shadow {
-    animation: shadowPulse 1.6s ease-in-out infinite;
-}
-
-@keyframes shadowPulse {
-
-    0%,
-    100% {
-        rx: 35;
-        opacity: 1;
-    }
-
-    25% {
-        rx: 30;
-        opacity: 0.7;
-    }
-
-    50% {
-        rx: 35;
-        opacity: 1;
-    }
-
-    75% {
-        rx: 30;
-        opacity: 0.7;
-    }
-}
-
-/* ── Walking State - Body Torso Sway ─── */
-.stickman-container.walking .gentleman-body {
-    transform-origin: 98px 72px;
-    animation: torsoSway 1.6s ease-in-out infinite;
-}
-
-@keyframes torsoSway {
-
-    0%,
-    100% {
-        transform: rotate(0deg);
-    }
-
-    25% {
-        transform: rotate(0.8deg);
-    }
-
-    50% {
-        transform: rotate(0deg);
-    }
-
-    75% {
         transform: rotate(-0.8deg);
     }
 }
 
-/* ════════════════════════════════════════════════════════════════════
-   POINTING STATE - Elegant stop & gesture
-   ════════════════════════════════════════════════════════════════════ */
+/* ── FRONT LEG - big forward stride ── */
+.stickman-container.walking .gent-leg-front {
+    transform-origin: 84px 126px;
+    animation: legFrontStride 0.9s ease-in-out infinite;
+}
+
+@keyframes legFrontStride {
+    0% {
+        transform: rotate(-20deg);
+    }
+
+    25% {
+        transform: rotate(8deg);
+    }
+
+    50% {
+        transform: rotate(22deg);
+    }
+
+    75% {
+        transform: rotate(8deg);
+    }
+
+    100% {
+        transform: rotate(-20deg);
+    }
+}
+
+/* ── BACK LEG - opposite stride ── */
+.stickman-container.walking .gent-leg-back {
+    transform-origin: 76px 126px;
+    animation: legBackStride 0.9s ease-in-out infinite;
+}
+
+@keyframes legBackStride {
+    0% {
+        transform: rotate(22deg);
+    }
+
+    25% {
+        transform: rotate(8deg);
+    }
+
+    50% {
+        transform: rotate(-20deg);
+    }
+
+    75% {
+        transform: rotate(8deg);
+    }
+
+    100% {
+        transform: rotate(22deg);
+    }
+}
+
+/* ── FRONT ARM (cane arm) - swings opposite to front leg ── */
+.stickman-container.walking .gent-arm-front {
+    transform-origin: 88px 76px;
+    animation: armFrontSwing 0.9s ease-in-out infinite;
+}
+
+@keyframes armFrontSwing {
+
+    0%,
+    100% {
+        transform: rotate(6deg);
+    }
+
+    50% {
+        transform: rotate(-6deg);
+    }
+}
+
+/* ── BACK ARM (umbrella arm) - opposite swing ── */
+.stickman-container.walking .gent-arm-back {
+    transform-origin: 72px 76px;
+    animation: armBackSwing 0.9s ease-in-out infinite;
+}
+
+@keyframes armBackSwing {
+
+    0%,
+    100% {
+        transform: rotate(-4deg);
+    }
+
+    50% {
+        transform: rotate(4deg);
+    }
+}
+
+/* ── CANE - swings with the front arm ── */
+.stickman-container.walking .gent-cane {
+    transform-origin: 112px 112px;
+    animation: caneWalk 0.9s ease-in-out infinite;
+}
+
+@keyframes caneWalk {
+
+    0%,
+    100% {
+        transform: rotate(4deg);
+    }
+
+    50% {
+        transform: rotate(-4deg);
+    }
+}
+
+/* ── UMBRELLA - gentle independent sway, slower ── */
+.stickman-container.walking .gent-umbrella {
+    transform-origin: 58px 38px;
+    animation: umbrellaSway 1.8s ease-in-out infinite;
+}
+
+@keyframes umbrellaSway {
+
+    0%,
+    100% {
+        transform: rotate(-1deg);
+    }
+
+    50% {
+        transform: rotate(2deg);
+    }
+}
+
+/* ── COAT TAIL - trailing flutter ── */
+.stickman-container.walking .coattail-flow {
+    transform-origin: 68px 122px;
+    animation: coattailFlutter 1.2s ease-in-out infinite;
+}
+
+@keyframes coattailFlutter {
+
+    0%,
+    100% {
+        transform: rotate(0deg) scaleY(1);
+    }
+
+    50% {
+        transform: rotate(4deg) scaleY(1.05);
+    }
+}
+
+.stickman-container.walking .coattail-flow-2 {
+    transform-origin: 72px 122px;
+    animation: coattailFlutter2 1.4s ease-in-out infinite;
+}
+
+@keyframes coattailFlutter2 {
+
+    0%,
+    100% {
+        transform: rotate(0deg);
+    }
+
+    50% {
+        transform: rotate(3deg);
+    }
+}
+
+/* ── SHADOW - pulses with steps ── */
+.stickman-container.walking .gent-shadow {
+    animation: shadowStep 0.9s ease-in-out infinite;
+}
+
+@keyframes shadowStep {
+
+    0%,
+    100% {
+        rx: 40;
+        opacity: 1;
+    }
+
+    50% {
+        rx: 34;
+        opacity: 0.6;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   POINTING STATE - Elegant stop, cane extends toward CTA
+   ══════════════════════════════════════════════════════════════════════ */
 
 .stickman-container.pointing .gentleman-svg {
     animation: none;
+    transition: transform 0.6s ease;
 }
 
-.stickman-container.pointing .gentleman-head {
-    transform-origin: 98px 46px;
+/* Head turns slightly more toward viewer / button */
+.stickman-container.pointing .gent-head {
+    transform-origin: 80px 55px;
+    transform: rotate(4deg) translateX(2px);
+    transition: transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation: none;
+}
+
+/* Body leans forward slightly */
+.stickman-container.pointing .gent-body {
+    transform-origin: 80px 74px;
     transform: rotate(3deg);
-    transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: transform 0.6s ease;
+    animation: none;
 }
 
-.stickman-container.pointing .gentleman-body {
-    transform-origin: 98px 72px;
-    transform: rotate(2deg);
+/* Front arm extends forward (pointing with cane) */
+.stickman-container.pointing .gent-arm-front {
+    transform-origin: 88px 76px;
+    transform: rotate(18deg) translateX(4px);
+    transition: transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation: none;
+}
+
+/* Cane extends further out */
+.stickman-container.pointing .gent-cane {
+    transform-origin: 112px 112px;
+    transform: rotate(25deg) translateX(3px);
+    transition: transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation: none;
+}
+
+/* Back arm relaxes */
+.stickman-container.pointing .gent-arm-back {
+    transform-origin: 72px 76px;
+    transform: rotate(-2deg);
     transition: transform 0.5s ease;
+    animation: none;
 }
 
-.stickman-container.pointing .gentleman-arm-right {
-    transform-origin: 118px 74px;
-    transform: rotate(15deg) translateX(5px);
-    transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+/* Umbrella settles */
+.stickman-container.pointing .gent-umbrella {
+    transform-origin: 58px 38px;
+    transform: rotate(-1deg);
+    transition: transform 0.5s ease;
+    animation: none;
 }
 
-.stickman-container.pointing .gentleman-cane {
-    transform-origin: 148px 110px;
-    transform: rotate(20deg);
-    transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+/* Front leg forward (weight shift) */
+.stickman-container.pointing .gent-leg-front {
+    transform-origin: 84px 126px;
+    transform: rotate(6deg);
+    transition: transform 0.5s ease;
+    animation: none;
 }
 
-.stickman-container.pointing .gentleman-arm-left {
-    transform-origin: 78px 74px;
-    transform: rotate(-2deg);
-    transition: transform 0.4s ease;
+/* Back leg planted */
+.stickman-container.pointing .gent-leg-back {
+    transform-origin: 76px 126px;
+    transform: rotate(-8deg);
+    transition: transform 0.5s ease;
+    animation: none;
 }
 
-.stickman-container.pointing .gentleman-umbrella {
-    transform-origin: 56px 34px;
-    transform: rotate(-2deg);
-    transition: transform 0.4s ease;
-}
-
-.stickman-container.pointing .gentleman-leg-front {
-    transform-origin: 104px 124px;
-    transform: rotate(4deg);
-    transition: transform 0.4s ease;
-}
-
-.stickman-container.pointing .gentleman-leg-back {
-    transform-origin: 92px 124px;
-    transform: rotate(-6deg);
-    transition: transform 0.4s ease;
-}
-
-.stickman-container.pointing .coattail-left,
-.stickman-container.pointing .coattail-right {
+/* Coattails settle */
+.stickman-container.pointing .coattail-flow,
+.stickman-container.pointing .coattail-flow-2 {
     animation: none;
     transition: transform 0.4s ease;
 }
 
-/* ── Cane Pointer Line (connecting cane to button) ─── */
+
+/* ══════════════════════════════════════════════════════════════════════
+   CANE POINTER LINE
+   ══════════════════════════════════════════════════════════════════════ */
+
 .cane-pointer {
     position: fixed;
     z-index: 26;
-    height: 2.5px;
+    height: 2px;
     border-radius: 999px;
     background: linear-gradient(90deg,
-            rgba(167, 139, 250, 0.9) 0%,
-            rgba(139, 92, 246, 0.7) 40%,
-            rgba(99, 102, 241, 0.5) 70%,
-            rgba(59, 130, 246, 0.8) 100%);
+            rgba(167, 139, 250, 0.95) 0%,
+            rgba(129, 140, 248, 0.7) 30%,
+            rgba(99, 102, 241, 0.5) 60%,
+            rgba(59, 130, 246, 0.9) 100%);
     box-shadow:
-        0 0 10px rgba(139, 92, 246, 0.5),
-        0 0 20px rgba(99, 102, 241, 0.3);
+        0 0 8px rgba(139, 92, 246, 0.6),
+        0 0 24px rgba(99, 102, 241, 0.3),
+        0 0 48px rgba(99, 102, 241, 0.15);
     transform-origin: left center;
-    animation: canePointerAppear 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation: pointerDraw 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
-.cane-pointer-tip {
-    position: absolute;
-    right: -6px;
-    top: -5px;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(139, 92, 246, 0.9) 0%, rgba(99, 102, 241, 0.4) 70%);
-    box-shadow: 0 0 16px rgba(139, 92, 246, 0.7);
-    animation: tipPulse 1.5s ease-in-out infinite;
-}
-
-.cane-pointer-glow {
-    position: absolute;
-    right: -12px;
-    top: -11px;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(99, 102, 241, 0.3) 0%, transparent 70%);
-    animation: tipGlow 2s ease-in-out infinite;
-}
-
-@keyframes canePointerAppear {
+@keyframes pointerDraw {
     from {
         opacity: 0;
-        transform: scaleX(0);
+        width: 0;
     }
 
     to {
         opacity: 1;
-        transform: scaleX(1);
     }
+}
+
+.cane-pointer-tip {
+    position: absolute;
+    right: -8px;
+    top: -7px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(129, 140, 248, 1) 0%, rgba(99, 102, 241, 0.5) 50%, transparent 70%);
+    box-shadow: 0 0 20px rgba(129, 140, 248, 0.8), 0 0 40px rgba(99, 102, 241, 0.4);
+    animation: tipPulse 1.2s ease-in-out infinite;
+}
+
+.cane-pointer-glow {
+    position: absolute;
+    right: -16px;
+    top: -15px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, transparent 70%);
+    animation: tipGlow 1.8s ease-in-out infinite;
 }
 
 @keyframes tipPulse {
@@ -847,12 +796,12 @@ html {
     0%,
     100% {
         transform: scale(1);
-        box-shadow: 0 0 16px rgba(139, 92, 246, 0.7);
+        box-shadow: 0 0 20px rgba(129, 140, 248, 0.8), 0 0 40px rgba(99, 102, 241, 0.4);
     }
 
     50% {
-        transform: scale(1.3);
-        box-shadow: 0 0 24px rgba(139, 92, 246, 0.9);
+        transform: scale(1.4);
+        box-shadow: 0 0 30px rgba(129, 140, 248, 1), 0 0 60px rgba(99, 102, 241, 0.5);
     }
 }
 
@@ -860,40 +809,50 @@ html {
 
     0%,
     100% {
-        opacity: 0.4;
+        opacity: 0.3;
         transform: scale(1);
     }
 
     50% {
-        opacity: 0.8;
-        transform: scale(1.3);
+        opacity: 0.7;
+        transform: scale(1.4);
     }
 }
 
-/* ── Hidden State ─── */
+
+/* ══════════════════════════════════════════════════════════════════════
+   HIDDEN STATE
+   ══════════════════════════════════════════════════════════════════════ */
+
 .stickman-container.hidden {
     opacity: 0 !important;
-    transition: opacity 1s ease-out, filter 1s ease-out;
-    filter: blur(3px);
+    transition: opacity 1.2s ease-out, filter 1.2s ease-out, transform 1.2s ease-out;
+    filter: blur(4px);
     pointer-events: none;
 }
 
-/* ── Footstep Particles ─── */
+
+/* ══════════════════════════════════════════════════════════════════════
+   FOOTSTEP PARTICLES
+   ══════════════════════════════════════════════════════════════════════ */
+
 .footstep-particle {
     position: fixed;
     z-index: 12;
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(139, 92, 246, 0.6) 0%, rgba(99, 102, 241, 0.2) 70%);
-    box-shadow: 0 0 8px rgba(139, 92, 246, 0.4);
+    background: radial-gradient(circle, rgba(129, 140, 248, 0.7) 0%, rgba(99, 102, 241, 0.2) 70%);
+    box-shadow: 0 0 10px rgba(129, 140, 248, 0.5), 0 0 20px rgba(99, 102, 241, 0.2);
     pointer-events: none;
-    transition: opacity 0.5s ease-out;
+    transition: opacity 0.6s ease-out;
 }
 
-/* ═══════════════════════════════════════════════════
+
+/* ══════════════════════════════════════════════════════════════════════
    LIGHTNING
-   ═══════════════════════════════════════════════════ */
+   ══════════════════════════════════════════════════════════════════════ */
+
 .lightning-flash-container {
     position: fixed;
     inset: 0;
@@ -913,7 +872,7 @@ html {
 .screen-flash {
     position: absolute;
     inset: 0;
-    background: rgba(139, 92, 246, 0.15);
+    background: rgba(139, 92, 246, 0.12);
     opacity: 0;
     animation: flash 0.3s ease-out;
 }
@@ -937,7 +896,7 @@ html {
 
 @keyframes flash {
     0% {
-        opacity: 0.3;
+        opacity: 0.25;
     }
 
     100% {
@@ -945,9 +904,11 @@ html {
     }
 }
 
-/* ═══════════════════════════════════════════════════
+
+/* ══════════════════════════════════════════════════════════════════════
    GENERIC KEYFRAMES
-   ═══════════════════════════════════════════════════ */
+   ══════════════════════════════════════════════════════════════════════ */
+
 @keyframes slideUp {
     from {
         opacity: 0;

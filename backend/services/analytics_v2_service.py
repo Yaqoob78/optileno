@@ -39,7 +39,7 @@ def _clamp(value: float, lo: float = 0.0, hi: float = 100.0) -> float:
 
 
 class AnalyticsV2Service:
-    SCORE_VERSION = "v2"
+    SCORE_VERSION = "v3"
 
     async def resolve_window(self, user: User, time_range: str) -> RangeWindow:
         tr = (time_range or "daily").strip().lower()
@@ -1050,41 +1050,89 @@ class AnalyticsV2Service:
             },
         }
 
+    # ── Daily Intent Resolver ───────────────────────────────────────────
+    def _resolve_daily_intent(self, usage: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Detect the user's mode for the day and return adjusted scoring weights.
+        Modes:
+          - Maker   : heavy deep-work, few tasks          -> deep_work weighted high
+          - Student  : lots of tasks, habit-heavy          -> tasks + habits weighted high
+          - Athlete  : balanced across all dimensions      -> even weights
+        """
+        dw = usage["deep_work_minutes"]
+        tc = usage["tasks_completed"]
+        hc = usage["habits_completed"]
+
+        # Heuristic: if deep work dominates, user is in Maker mode
+        if dw >= 90 and tc <= 3:
+            return {
+                "intent": "maker",
+                "weights": {"tasks": 0.20, "habits": 0.15, "deep_work": 0.45, "engagement": 0.05, "goal_progress": 0.15},
+                "confidence": min(0.9, 0.6 + dw / 300.0),
+            }
+        # Heuristic: if tasks + habits dominate
+        if tc >= 5 and dw < 60:
+            return {
+                "intent": "student",
+                "weights": {"tasks": 0.40, "habits": 0.25, "deep_work": 0.15, "engagement": 0.05, "goal_progress": 0.15},
+                "confidence": min(0.9, 0.6 + tc / 20.0),
+            }
+        # Default: balanced (Athlete)
+        return {
+            "intent": "athlete",
+            "weights": {"tasks": 0.30, "habits": 0.20, "deep_work": 0.25, "engagement": 0.05, "goal_progress": 0.20},
+            "confidence": 0.65,
+        }
+
+    # ── Impact Points ────────────────────────────────────────────────────
+    def _task_impact_points(self, tasks_completed: int, goal_linked: int) -> float:
+        """
+        Point-based scoring that avoids the ratio trap.
+        Each completed task earns points; goal-linked tasks earn a bonus.
+        Diminishing returns past 10 tasks to avoid gaming.
+        """
+        if tasks_completed == 0:
+            return 0.0
+        # Base: 8 points per task, capped at soft ceiling
+        base = min(tasks_completed, 10) * 8.0 + max(0, tasks_completed - 10) * 3.0
+        # Goal-linked bonus: +4 per linked task (max 5 bonus slots)
+        goal_bonus = min(goal_linked, 5) * 4.0
+        return _clamp(base + goal_bonus)
+
+    def _habit_impact_points(self, completed: int, total: int) -> float:
+        """
+        Habits use completion ratio BUT with a floor so partial completion
+        is still rewarded meaningfully.
+        """
+        if total == 0:
+            return 30.0  # No habits set = neutral baseline, not zero
+        ratio = completed / total
+        # Floor at 15 (doing any habit work matters), ceiling 100
+        return _clamp(15.0 + ratio * 85.0)
+
+    def _deep_work_impact_points(self, minutes: int) -> float:
+        """
+        Progressive deep work scoring:
+          0-30 min  = 0-30 pts (linear warmup)
+          30-120 min = 30-80 pts (productive zone)
+          120-240 min = 80-100 pts (diminishing returns)
+          240+ min = 100 pts (cap -- more is not always better)
+        """
+        if minutes <= 0:
+            return 0.0
+        if minutes <= 30:
+            return (minutes / 30.0) * 30.0
+        if minutes <= 120:
+            return 30.0 + ((minutes - 30) / 90.0) * 50.0
+        if minutes <= 240:
+            return 80.0 + ((minutes - 120) / 120.0) * 20.0
+        return 100.0
+
     async def productivity_score(self, user: User, time_range: str) -> Dict[str, Any]:
         window = await self.resolve_window(user, time_range)
         async for db in get_db():
             usage = await self._usage_inputs(db, user.id, window)
             goals = await self._goal_progress_summary(db, user.id, window)
-
-            task_component = 0.0
-            if usage["tasks_created"] > 0:
-                task_component = _clamp((usage["tasks_completed"] / usage["tasks_created"]) * 100.0)
-            elif usage["tasks_completed"] > 0:
-                task_component = 85.0
-
-            habit_component = 0.0
-            if usage["habits_total"] > 0:
-                habit_component = _clamp((usage["habits_completed"] / usage["habits_total"]) * 100.0)
-
-            deep_work_component = _clamp((usage["deep_work_minutes"] / 120.0) * 100.0)
-            execution = (
-                task_component * 0.45
-                + habit_component * 0.25
-                + deep_work_component * 0.30
-            )
-
-            goal_progress = float(goals["score"] or 0.0)
-            active_minutes = usage["deep_work_minutes"] + (usage["tasks_completed"] * 12) + (usage["chat_requests"] * 2)
-            engagement = _clamp((min(usage["chat_requests"], 50) / 50.0) * 40.0 + (min(active_minutes, 180) / 180.0) * 60.0)
-
-            bonus = 0
-            if usage["chat_requests"] > 10:
-                bonus += 2
-            if active_minutes >= 50:
-                bonus += 2
-            if usage["chat_requests"] > 40 and active_minutes >= 100:
-                bonus += 4
-            bonus = min(bonus, 6)
 
             has_data = any(
                 [
@@ -1099,30 +1147,141 @@ class AnalyticsV2Service:
                 return {
                     "score": None,
                     "reason": "NO_DATA",
-                    "breakdown": {
-                        "execution_block": round(execution, 1),
-                        "goal_progress_block": goals["score"],
-                        "engagement_block": round(engagement, 1),
-                    },
+                    "breakdown": {},
                     **self._meta(window, source="derived", confidence=0.2),
                 }
 
-            score = _clamp(execution * 0.70 + goal_progress * 0.25 + engagement * 0.05 + bonus)
-            confidence = 0.55 + min(0.35, usage["active_days"] / 30.0)
+            # ── 1. Daily Intent Detection ────────────────────────────
+            intent_info = self._resolve_daily_intent(usage)
+            weights = intent_info["weights"]
+
+            # ── 2. Impact Points (replaces ratio trap) ───────────────
+            task_points = self._task_impact_points(
+                usage["tasks_completed"], usage.get("goal_linked_completed", 0)
+            )
+            habit_points = self._habit_impact_points(
+                usage["habits_completed"], usage["habits_total"]
+            )
+            deep_work_points = self._deep_work_impact_points(usage["deep_work_minutes"])
+
+            goal_progress = float(goals["score"] or 0.0)
+
+            # Engagement: chat + active minutes (minor signal)
+            active_minutes = usage["deep_work_minutes"] + (usage["tasks_completed"] * 8) + (usage["chat_requests"] * 1.5)
+            engagement = _clamp(
+                (min(usage["chat_requests"], 30) / 30.0) * 30.0
+                + (min(active_minutes, 150) / 150.0) * 70.0
+            )
+
+            # ── 3. Weighted Score ────────────────────────────────────
+            raw_score = _clamp(
+                task_points * weights["tasks"]
+                + habit_points * weights["habits"]
+                + deep_work_points * weights["deep_work"]
+                + goal_progress * weights["goal_progress"]
+                + engagement * weights["engagement"]
+            )
+
+            # ── 4. 14-Day Baseline Normalization ─────────────────────
+            baseline_window = RangeWindow(
+                time_range="monthly",
+                period_start=window.period_end - timedelta(days=14),
+                period_end=window.period_start - timedelta(seconds=1),
+                timezone_name=window.timezone_name,
+            )
+            try:
+                baseline_usage = await self._usage_inputs(db, user.id, baseline_window)
+                baseline_days = max(baseline_usage.get("active_days", 1), 1)
+
+                # Compute a naive baseline score from the same formula
+                bl_task = self._task_impact_points(
+                    max(baseline_usage["tasks_completed"] // baseline_days, 0),
+                    max(baseline_usage.get("goal_linked_completed", 0) // baseline_days, 0),
+                )
+                bl_habit = self._habit_impact_points(
+                    max(baseline_usage["habits_completed"] // baseline_days, 0),
+                    max(baseline_usage["habits_total"], 1),
+                )
+                bl_deep = self._deep_work_impact_points(
+                    max(baseline_usage["deep_work_minutes"] // baseline_days, 0)
+                )
+                baseline_score = max(
+                    25.0,
+                    bl_task * 0.30 + bl_habit * 0.20 + bl_deep * 0.25 + 50.0 * 0.20 + 30.0 * 0.05,
+                )
+
+                # Normalize: if today > baseline, boost; if below, penalize gently
+                if baseline_score > 0:
+                    norm_ratio = raw_score / baseline_score
+                    # Smooth normalization: shift toward 1.0 center
+                    normalized = 50.0 + (norm_ratio - 1.0) * 35.0 + (raw_score * 0.40)
+                    raw_score = _clamp(normalized)
+                baseline_state = "established" if baseline_days >= 5 else "calibrating"
+            except Exception:
+                baseline_state = "cold_start"
+                # No baseline available, use raw score as-is
+
+            # ── 5. Burnout Interconnection (False Peak Detection) ────
+            reason_codes: List[str] = []
+            burnout_cap = 100.0
+            try:
+                burnout_data = await self.burnout_risk(user, time_range)
+                burnout_value = float(burnout_data.get("risk", 0))
+                if burnout_value >= 75 and raw_score >= 70:
+                    # False Peak: high productivity + high burnout = unsustainable
+                    burnout_cap = 72.0
+                    reason_codes.append("false_peak_detected")
+                elif burnout_value >= 60:
+                    # Grind Protection: moderate burnout dampens score slightly
+                    burnout_cap = 85.0
+                    reason_codes.append("grind_protection")
+            except Exception:
+                burnout_value = 0.0
+
+            raw_score = min(raw_score, burnout_cap)
+
+            # ── 6. Difficulty Curve ──────────────────────────────────
+            if raw_score > 90:
+                raw_score = 90.0 + (raw_score - 90.0) * 0.6
+            elif raw_score > 80:
+                raw_score = 80.0 + (raw_score - 80.0) * 0.8
+
+            final_score = _clamp(raw_score)
+
+            # Grade
+            if final_score >= 90:
+                grade = "A"
+            elif final_score >= 75:
+                grade = "B"
+            elif final_score >= 55:
+                grade = "C"
+            elif final_score >= 35:
+                grade = "D"
+            else:
+                grade = "F"
+
+            confidence = 0.45 + min(0.45, usage["active_days"] / 20.0)
+            if baseline_state == "cold_start":
+                confidence = min(confidence, 0.50)
+
             return {
-                "score": round(score, 1),
-                "bonus_applied": bonus,
+                "score": round(final_score, 1),
+                "grade": grade,
+                "daily_intent": intent_info["intent"],
+                "baseline_state": baseline_state,
+                "reason_codes": reason_codes,
                 "breakdown": {
-                    "execution_block": round(execution, 1),
+                    "task_points": round(task_points, 1),
+                    "habit_points": round(habit_points, 1),
+                    "deep_work_points": round(deep_work_points, 1),
                     "goal_progress_block": round(goal_progress, 1),
                     "engagement_block": round(engagement, 1),
-                    "task_component": round(task_component, 1),
-                    "habit_component": round(habit_component, 1),
-                    "deep_work_component": round(deep_work_component, 1),
+                    "burnout_cap": round(burnout_cap, 1),
+                    "weights": {k: round(v, 2) for k, v in weights.items()},
                 },
                 "inputs": usage,
                 "goal_band": goals.get("overall_band"),
-                **self._meta(window, source="derived", confidence=confidence),
+                **self._meta(window, source="derived_v3", confidence=confidence),
             }
 
     async def focus_score(self, user: User, plan_tier: str, time_range: str) -> Dict[str, Any]:
@@ -1237,27 +1396,149 @@ class AnalyticsV2Service:
             usage = await self._usage_inputs(db, user.id, window)
             goals = await self._goal_progress_summary(db, user.id, window)
 
-            workload_ratio = usage["pending_tasks"] / max(usage["tasks_completed"] + 1, 1)
-            workload_strain = _clamp(workload_ratio * 35.0 + (20 if usage["deep_work_minutes"] > 240 else 0))
-
             range_days = 1 if window.time_range == "daily" else (7 if window.time_range == "weekly" else 30)
-            recovery_deficit = _clamp((usage["active_days"] / max(range_days, 1)) * 100.0)
 
+            # ── 1. Workload Strain (improved) ────────────────────────
+            # Considers pending task weight AND total work volume per day
+            pending = usage["pending_tasks"]
+            completed = usage["tasks_completed"]
+            workload_ratio = pending / max(completed + 1, 1)
+            daily_volume = (usage["deep_work_minutes"] + completed * 10) / max(range_days, 1)
+            workload_strain = _clamp(
+                workload_ratio * 25.0
+                + (15 if usage["deep_work_minutes"] > 240 else 0)
+                + (min(daily_volume / 120.0, 1.0) * 20.0)  # volume pressure
+            )
+
+            # ── 2. Strain Velocity (NEW) ─────────────────────────────
+            # Measures sustained high-intensity work from focus scores
             focus_rows = await db.execute(
-                select(FocusScore.score).where(
+                select(FocusScore.score, FocusScore.date).where(
                     FocusScore.user_id == user.id,
                     FocusScore.date >= window.period_start,
                     FocusScore.date <= window.period_end,
                 )
             )
-            focus_scores = [float(x) for x in focus_rows.scalars().all()]
-            if len(focus_scores) >= 2:
-                focus_volatility = _clamp(statistics.pstdev(focus_scores) * 4.0)
-            else:
-                focus_volatility = 25.0
+            focus_records = focus_rows.all()
+            focus_scores = [float(r[0]) for r in focus_records]
 
+            # High focus blocks: days with focus > 80 (sustained intensity)
+            high_focus_blocks = sum(1 for s in focus_scores if s > 80)
+            # Focus volatility (erratic patterns = stress)
+            if len(focus_scores) >= 2:
+                focus_volatility = _clamp(statistics.pstdev(focus_scores) * 3.5)
+            else:
+                focus_volatility = 20.0
+
+            # Strain = deep_work_density * 1.5 + high_focus_blocks * 8 + volatility * 0.3
+            deep_work_density = min(usage["deep_work_minutes"] / max(range_days, 1) / 60.0, 4.0)
+            strain_velocity = _clamp(
+                deep_work_density * 15.0
+                + high_focus_blocks * 8.0
+                + focus_volatility * 0.3
+            )
+
+            # ── 3. Offline Gap / Sleep Proxy (NEW) ───────────────────
+            # Gap between last event yesterday and first event today
+            # Short gap (<6h) = poor recovery = high risk
+            offline_gap_risk = 30.0  # default neutral
+            try:
+                today_date = window.period_end.date()
+                yesterday_date = today_date - timedelta(days=1)
+
+                # Last event yesterday
+                last_yesterday = (
+                    await db.execute(
+                        select(func.max(AnalyticsEvent.timestamp)).where(
+                            AnalyticsEvent.user_id == user.id,
+                            AnalyticsEvent.timestamp >= datetime.combine(yesterday_date, time.min, tzinfo=timezone.utc),
+                            AnalyticsEvent.timestamp <= datetime.combine(yesterday_date, time.max, tzinfo=timezone.utc),
+                        )
+                    )
+                ).scalar()
+
+                # First event today
+                first_today = (
+                    await db.execute(
+                        select(func.min(AnalyticsEvent.timestamp)).where(
+                            AnalyticsEvent.user_id == user.id,
+                            AnalyticsEvent.timestamp >= datetime.combine(today_date, time.min, tzinfo=timezone.utc),
+                            AnalyticsEvent.timestamp <= datetime.combine(today_date, time.max, tzinfo=timezone.utc),
+                        )
+                    )
+                ).scalar()
+
+                if last_yesterday and first_today:
+                    if hasattr(last_yesterday, 'replace') and last_yesterday.tzinfo is None:
+                        last_yesterday = last_yesterday.replace(tzinfo=timezone.utc)
+                    if hasattr(first_today, 'replace') and first_today.tzinfo is None:
+                        first_today = first_today.replace(tzinfo=timezone.utc)
+                    gap_hours = (first_today - last_yesterday).total_seconds() / 3600.0
+                    if gap_hours < 5:
+                        offline_gap_risk = 85.0  # Very short sleep / no break
+                    elif gap_hours < 7:
+                        offline_gap_risk = 60.0  # Insufficient recovery
+                    elif gap_hours < 9:
+                        offline_gap_risk = 30.0  # Normal
+                    else:
+                        offline_gap_risk = 10.0  # Good recovery
+                else:
+                    offline_gap_risk = 25.0  # No data = neutral-low
+            except Exception:
+                offline_gap_risk = 30.0
+
+            # ── 4. Rest Day Violation (NEW) ──────────────────────────
+            # Check consecutive working days (no rest in 7+ days = danger)
+            rest_day_violation = 0.0
+            try:
+                consecutive_work_days = 0
+                max_consecutive = 0
+                lookback = min(range_days + 7, 30)  # Look back further for streaks
+                for i in range(lookback):
+                    check_date = (window.period_end - timedelta(days=i)).date()
+                    day_events = (
+                        await db.execute(
+                            select(func.count(AnalyticsEvent.id)).where(
+                                AnalyticsEvent.user_id == user.id,
+                                AnalyticsEvent.timestamp >= datetime.combine(check_date, time.min, tzinfo=timezone.utc),
+                                AnalyticsEvent.timestamp <= datetime.combine(check_date, time.max, tzinfo=timezone.utc),
+                            )
+                        )
+                    ).scalar() or 0
+                    # Working day = > 15 min of activity (>30 events)
+                    if day_events > 30:
+                        consecutive_work_days += 1
+                        max_consecutive = max(max_consecutive, consecutive_work_days)
+                    else:
+                        consecutive_work_days = 0
+
+                if max_consecutive >= 10:
+                    rest_day_violation = 90.0
+                elif max_consecutive >= 7:
+                    rest_day_violation = 70.0
+                elif max_consecutive >= 5:
+                    rest_day_violation = 40.0
+                else:
+                    rest_day_violation = 10.0
+            except Exception:
+                rest_day_violation = 20.0
+
+            # ── 5. Recovery Deficit (fixed) ──────────────────────────
+            # Now properly measures ratio of ACTIVE days (more = less recovery)
+            active_ratio = usage["active_days"] / max(range_days, 1)
+            if active_ratio >= 0.9:
+                recovery_deficit = 80.0  # Almost no rest
+            elif active_ratio >= 0.7:
+                recovery_deficit = 50.0
+            elif active_ratio >= 0.4:
+                recovery_deficit = 25.0
+            else:
+                recovery_deficit = 5.0   # Plenty of rest
+
+            # ── 6. Goal Progress Pressure ────────────────────────────
             goal_progress_pressure = _clamp(100.0 - float(goals["score"] or 0.0))
 
+            # ── 7. Deadline Compression ──────────────────────────────
             goals_rows = await db.execute(
                 select(Goal).where(
                     Goal.user_id == user.id,
@@ -1283,205 +1564,467 @@ class AnalyticsV2Service:
                     deadline_scores.append(_clamp(70.0 - (goal.current_progress or 0) * 0.4))
                 else:
                     deadline_scores.append(_clamp(40.0 - (goal.current_progress or 0) * 0.2))
-            deadline_compression = sum(deadline_scores) / len(deadline_scores) if deadline_scores else 30.0
+            deadline_compression = sum(deadline_scores) / len(deadline_scores) if deadline_scores else 25.0
 
-            active_minutes = usage["deep_work_minutes"] + usage["tasks_completed"] * 12 + usage["chat_requests"] * 2
-            if active_minutes < 10:
-                engagement_extremes = 40.0
-            elif active_minutes > 250:
-                engagement_extremes = 70.0
-            else:
-                engagement_extremes = _clamp(10.0 + abs(active_minutes - 120.0) / 120.0 * 20.0)
-
-            mood_score = 55.0
+            # ── 8. Mood Modulation ───────────────────────────────────
+            mood_score = 50.0
             try:
                 from backend.services.mood_service import mood_service
 
                 mood = await mood_service.calculate_current_mood(user.id)
                 label = str(mood.get("label") or mood.get("category") or "").lower()
                 if any(k in label for k in ["energetic", "calm", "focused", "positive"]):
-                    mood_score = 20.0
+                    mood_score = 15.0
                 elif any(k in label for k in ["stressed", "anxious", "sad", "frustrated", "negative"]):
-                    mood_score = 80.0
+                    mood_score = 85.0
                 else:
-                    mood_score = 55.0
+                    mood_score = 50.0
             except Exception:
-                mood_score = 55.0
+                mood_score = 50.0
 
-            daily_workload: List[float] = []
-            for i in range(range_days):
-                day_start = datetime.combine((window.period_end - timedelta(days=i)).date(), time.min, tzinfo=timezone.utc)
-                day_end = datetime.combine((window.period_end - timedelta(days=i)).date(), time.max, tzinfo=timezone.utc)
-                day_tasks = (
-                    await db.execute(
-                        select(func.count(Task.id)).where(
-                            Task.user_id == user.id,
-                            Task.status == "completed",
-                            Task.completed_at.isnot(None),
-                            Task.completed_at >= day_start,
-                            Task.completed_at <= day_end,
-                        )
-                    )
-                ).scalar() or 0
-                day_deep_minutes = (
-                    await db.execute(
-                        select(func.coalesce(func.sum(Plan.duration_hours), 0.0)).where(
-                            Plan.user_id == user.id,
-                            Plan.plan_type == "deep_work",
-                            Plan.date >= day_start,
-                            Plan.date <= day_end,
-                        )
-                    )
-                ).scalar() or 0.0
-                daily_workload.append(float(day_tasks) + float(day_deep_minutes) * 2.0)
-
-            if len(daily_workload) >= 2 and sum(daily_workload) > 0:
-                mean_load = statistics.mean(daily_workload)
-                std_load = statistics.pstdev(daily_workload)
-                inconsistency_shock = _clamp((std_load / max(mean_load, 1.0)) * 100.0)
+            # ── FINAL WEIGHTED RISK ──────────────────────────────────
+            # Rebalanced weights with new signals:
+            #   Workload Strain:       20%
+            #   Strain Velocity:       15%  (NEW)
+            #   Offline Gap:           10%  (NEW)
+            #   Rest Day Violation:    10%  (NEW)
+            #   Recovery Deficit:      10%  (fixed)
+            #   Goal Pressure:          8%
+            #   Deadline Compression:  10%
+            #   Focus Volatility:       7%
+            #   Mood:                   5%
+            #   Engagement Extremes:    5%
+            active_minutes = usage["deep_work_minutes"] + usage["tasks_completed"] * 8 + usage["chat_requests"] * 1.5
+            if active_minutes < 10:
+                engagement_extremes = 35.0
+            elif active_minutes > 250:
+                engagement_extremes = 75.0
             else:
-                inconsistency_shock = 20.0
+                engagement_extremes = _clamp(10.0 + abs(active_minutes - 110.0) / 110.0 * 25.0)
 
             risk = (
-                workload_strain * 0.30
-                + recovery_deficit * 0.20
-                + focus_volatility * 0.10
-                + goal_progress_pressure * 0.10
+                workload_strain * 0.20
+                + strain_velocity * 0.15
+                + offline_gap_risk * 0.10
+                + rest_day_violation * 0.10
+                + recovery_deficit * 0.10
+                + goal_progress_pressure * 0.08
                 + deadline_compression * 0.10
-                + engagement_extremes * 0.10
+                + focus_volatility * 0.07
                 + mood_score * 0.05
-                + inconsistency_shock * 0.05
+                + engagement_extremes * 0.05
             )
             risk = _clamp(risk)
 
-            if risk < 30:
+            # ── Risk Level ───────────────────────────────────────────
+            if risk < 25:
                 level = "low"
-            elif risk < 55:
+            elif risk < 50:
                 level = "moderate"
-            elif risk < 75:
+            elif risk < 70:
                 level = "high"
             else:
                 level = "critical"
 
+            # ── AI Insights ──────────────────────────────────────────
+            ai_insights: List[str] = []
+            if strain_velocity > 60:
+                ai_insights.append("Sustained high-intensity work detected — consider lighter sessions")
+            if offline_gap_risk > 60:
+                ai_insights.append("Short recovery gap between sessions — prioritize rest tonight")
+            if rest_day_violation > 60:
+                ai_insights.append(f"No rest day in {max_consecutive}+ days — schedule a recovery day")
+            if workload_strain > 60:
+                ai_insights.append("Task backlog growing faster than completion rate")
+            if deadline_compression > 60:
+                ai_insights.append("Multiple goals approaching deadlines — focus on highest impact")
+            if mood_score > 70:
+                ai_insights.append("Elevated stress indicators in your activity patterns")
+            if not ai_insights:
+                ai_insights.append("Work patterns within sustainable parameters")
+
+            # Recommendation
+            if risk < 25:
+                recommendation = "Current pace is sustainable — keep going"
+            elif risk < 50:
+                recommendation = "Consider scheduling short breaks between deep work"
+            elif risk < 70:
+                recommendation = "Reduce workload or add a rest day this week"
+            else:
+                recommendation = "Immediate workload reduction recommended — step back and recover"
+
             return {
                 "risk": round(risk, 1),
                 "level": level,
+                "ai_insights": ai_insights,
+                "recommendation": recommendation,
                 "breakdown": {
                     "workload_strain": round(workload_strain, 1),
+                    "strain_velocity": round(strain_velocity, 1),
+                    "offline_gap_risk": round(offline_gap_risk, 1),
+                    "rest_day_violation": round(rest_day_violation, 1),
                     "recovery_deficit": round(recovery_deficit, 1),
                     "focus_volatility": round(focus_volatility, 1),
                     "goal_progress_pressure": round(goal_progress_pressure, 1),
                     "deadline_compression": round(deadline_compression, 1),
                     "engagement_extremes": round(engagement_extremes, 1),
                     "mood_modulation": round(mood_score, 1),
-                    "inconsistency_shock": round(inconsistency_shock, 1),
                 },
-                **self._meta(window, source="derived", confidence=0.66),
+                **self._meta(window, source="derived_v3", confidence=0.72),
             }
 
     async def ai_intelligence(self, user: User, time_range: str) -> Dict[str, Any]:
+        """V3 AI Intelligence Score — 6 pure-logic dimensions.
+
+        Measures how intelligently a user operates within the system.
+        Every signal is derived from observable, verifiable behaviour.
+        No bias, no static frozen data, no inflated ratios.
+        """
         window = await self.resolve_window(user, time_range)
         async for db in get_db():
             usage = await self._usage_inputs(db, user.id, window)
             goals = await self._goal_progress_summary(db, user.id, window)
+            range_days = 1 if window.time_range == "daily" else (7 if window.time_range == "weekly" else 30)
 
-            planning_quality = 0.0
-            if usage["tasks_created"] > 0:
-                planning_quality = _clamp(
-                    (min(usage["tasks_created"], 40) / 40.0) * 70.0
-                    + (20.0 if goals["score"] is not None else 0.0)
-                    + (10.0 if usage["deep_work_sessions"] > 0 else 0.0)
-                )
+            # ════════════════════════════════════════════════════════
+            # DIM 1 — Strategic Planning  (20%)
+            #   "Are you planning with intent, or just dumping tasks?"
+            #   Measures: goal-alignment, deep work scheduling,
+            #             planning volume (with diminishing returns).
+            # ════════════════════════════════════════════════════════
+            tasks_created = usage["tasks_created"]
+            goal_linked = usage["goal_linked_completed"]
+            has_goals = goals["score"] is not None
 
-            execution_quality = _clamp(
-                (usage["tasks_completed"] / max(usage["tasks_created"], 1)) * 100.0
-                if usage["tasks_created"] > 0
-                else (80.0 if usage["tasks_completed"] > 0 else 0.0)
+            # Volume with diminishing returns (log curve caps at ~20 tasks)
+            volume_signal = min(math.log2(max(tasks_created, 1) + 1) / math.log2(21), 1.0) * 30.0
+
+            # Goal alignment: what % of completed tasks were linked to a goal?
+            completed = usage["tasks_completed"]
+            if completed > 0:
+                alignment_ratio = min(goal_linked / completed, 1.0)
+                goal_alignment_signal = alignment_ratio * 35.0
+            else:
+                goal_alignment_signal = 0.0
+
+            # Deep work scheduling (did you plan deep work, not just tasks?)
+            deep_work_signal = min(usage["deep_work_sessions"] / max(range_days, 1), 2.0) / 2.0 * 20.0
+
+            # Goal existence bonus (small — just having goals shows strategic thinking)
+            goal_existence_signal = 15.0 if has_goals else 0.0
+
+            strategic_planning = _clamp(
+                volume_signal + goal_alignment_signal + deep_work_signal + goal_existence_signal
             )
 
-            adaptation_events = (
+            # ════════════════════════════════════════════════════════
+            # DIM 2 — Execution Intelligence  (25%)
+            #   "Are you getting meaningful things done?"
+            #   Uses Impact Points (same system as Productivity V3),
+            #   NOT ratios. No punishment for ambitious planning.
+            # ════════════════════════════════════════════════════════
+            # Impact points per action (same as productivity_score V3)
+            task_points = min(completed, 15) * 6.0
+            if completed > 15:
+                task_points += (completed - 15) * 2.0  # diminishing
+
+            habit_points = min(usage["habits_completed"], 8) * 4.0
+
+            dw_hours = usage["deep_work_minutes"] / 60.0
+            deep_work_points = min(dw_hours, 4.0) * 10.0
+            if dw_hours > 4.0:
+                deep_work_points += (dw_hours - 4.0) * 3.0  # diminishing
+
+            # Goal-linked bonus (multiplier for strategic completion)
+            goal_bonus = goal_linked * 3.0
+
+            raw_execution = task_points + habit_points + deep_work_points + goal_bonus
+            # Normalise against a "great day" baseline of 120 points
+            execution_intelligence = _clamp((raw_execution / 120.0) * 100.0)
+
+            # ════════════════════════════════════════════════════════
+            # DIM 3 — AI Collaboration  (15%)
+            #   "How effectively are you leveraging the AI?"
+            #   Chat-to-action conversion, insight adoption, and
+            #   AI-created task follow-through.
+            # ════════════════════════════════════════════════════════
+            chat_count = usage["chat_requests"]
+
+            # Chat-to-action conversion: tasks created within the same window
+            # as chat interactions → proxy for "AI helped you plan"
+            if chat_count > 0 and tasks_created > 0:
+                # Higher ratio = user is turning conversations into plans
+                conversion_ratio = min(tasks_created / chat_count, 2.0) / 2.0
+                chat_action_signal = conversion_ratio * 40.0
+            elif chat_count > 0:
+                chat_action_signal = 10.0  # chatted but took no action
+            else:
+                chat_action_signal = 0.0
+
+            # Insight engagement: check if user read/dismissed insights
+            insight_read_count = (
                 await db.execute(
-                    select(func.count(AnalyticsEvent.id)).where(
-                        AnalyticsEvent.user_id == user.id,
-                        AnalyticsEvent.timestamp >= window.period_start,
-                        AnalyticsEvent.timestamp <= window.period_end,
-                        AnalyticsEvent.event_type.in_(
-                            ["insight_applied", "strategy_applied", "plan_adjusted", "goal_replanned"]
-                        ),
+                    select(func.count()).select_from(
+                        select(AnalyticsEvent.id).where(
+                            AnalyticsEvent.user_id == user.id,
+                            AnalyticsEvent.timestamp >= window.period_start,
+                            AnalyticsEvent.timestamp <= window.period_end,
+                            AnalyticsEvent.event_type.in_([
+                                "insight_applied", "strategy_applied",
+                                "plan_adjusted", "goal_replanned",
+                                "insight_read", "insight_dismissed",
+                            ]),
+                        ).subquery()
                     )
                 )
             ).scalar() or 0
-            adaptation_to_insights = _clamp((adaptation_events / 8.0) * 100.0 + (float(goals["score"] or 0.0) * 0.2))
 
-            range_days = 1 if window.time_range == "daily" else (7 if window.time_range == "weekly" else 30)
-            consistency = _clamp((usage["active_days"] / max(range_days, 1)) * 100.0)
-            if usage["habits_total"] > 0:
-                consistency = _clamp(consistency * 0.6 + ((usage["habits_completed"] / usage["habits_total"]) * 100.0) * 0.4)
+            insight_signal = min(insight_read_count / max(range_days, 1), 3.0) / 3.0 * 30.0
 
-            big_five_row = await db.execute(
-                select(BigFiveTest)
-                .where(BigFiveTest.user_id == user.id, BigFiveTest.test_completed == True)  # noqa: E712
-                .order_by(BigFiveTest.test_completed_at.desc().nullslast(), BigFiveTest.created_at.desc())
-                .limit(1)
-            )
-            big_five = big_five_row.scalar_one_or_none()
-            if big_five:
-                emotional_stability = 100.0 - float(big_five.neuroticism or 50)
-                cognitive_profile = _clamp(
-                    (float(big_five.openness or 50) * 0.35)
-                    + (float(big_five.conscientiousness or 50) * 0.45)
-                    + (emotional_stability * 0.20)
-                )
+            # AI usage depth: regular engagement (log curve)
+            if chat_count > 0:
+                depth_signal = min(math.log2(chat_count + 1) / math.log2(20), 1.0) * 30.0
             else:
-                cognitive_profile = 50.0
+                depth_signal = 0.0
 
-            score = _clamp(
-                planning_quality * 0.25
-                + execution_quality * 0.30
-                + adaptation_to_insights * 0.20
-                + consistency * 0.15
-                + cognitive_profile * 0.10
+            ai_collaboration = _clamp(chat_action_signal + insight_signal + depth_signal)
+
+            # ════════════════════════════════════════════════════════
+            # DIM 4 — Adaptive Capacity  (15%)
+            #   "Do you course-correct based on signals?"
+            #   Measured by: goal pace response, focus trend,
+            #                workload adjustment after burnout signals.
+            # ════════════════════════════════════════════════════════
+            # Goal pace adjustment: are behind goals getting more attention?
+            goal_items = goals.get("goals", [])
+            pace_responsiveness = 50.0  # neutral default
+            if goal_items:
+                behind_goals = [g for g in goal_items if g.get("pace_delta", 0) < -10]
+                ahead_goals = [g for g in goal_items if g.get("pace_delta", 0) > 10]
+                if behind_goals:
+                    # Check if behind-goals have recent linked tasks (= user is responding)
+                    behind_with_tasks = sum(
+                        1 for g in behind_goals if g.get("linked_tasks_created", 0) > 0
+                    )
+                    if len(behind_goals) > 0:
+                        pace_responsiveness = _clamp(
+                            (behind_with_tasks / len(behind_goals)) * 70.0 + 15.0
+                        )
+                elif ahead_goals:
+                    pace_responsiveness = 75.0  # ahead is good
+                else:
+                    pace_responsiveness = 50.0  # on track
+
+            # Focus trend: improving or declining over the window?
+            focus_rows = await db.execute(
+                select(FocusScore.score, FocusScore.date).where(
+                    FocusScore.user_id == user.id,
+                    FocusScore.date >= window.period_start,
+                    FocusScore.date <= window.period_end,
+                ).order_by(FocusScore.date.asc())
+            )
+            focus_records = focus_rows.all()
+            focus_trend_signal = 50.0  # neutral
+            if len(focus_records) >= 3:
+                scores_list = [float(r[0]) for r in focus_records]
+                first_half = statistics.mean(scores_list[: len(scores_list) // 2])
+                second_half = statistics.mean(scores_list[len(scores_list) // 2 :])
+                trend_diff = second_half - first_half
+                # Improving = good. Declining = bad.
+                focus_trend_signal = _clamp(50.0 + trend_diff * 2.0)
+
+            adaptive_capacity = _clamp(
+                pace_responsiveness * 0.55 + focus_trend_signal * 0.45
             )
 
-            if score >= 85:
-                category = "Strategic Operator"
-            elif score >= 70:
-                category = "Focused Executor"
-            elif score >= 55:
+            # ════════════════════════════════════════════════════════
+            # DIM 5 — Cognitive Consistency  (15%)
+            #   "Are your work patterns stable and sustainable?"
+            #   Uses: habit completion rate, active day regularity,
+            #         work pattern variance (low = consistent).
+            # ════════════════════════════════════════════════════════
+            # Habit consistency
+            habit_rate = 0.0
+            if usage["habits_total"] > 0:
+                habit_rate = (usage["habits_completed"] / usage["habits_total"]) * 100.0
+            habit_signal = _clamp(habit_rate) * 0.40
+
+            # Active day regularity: for weekly/monthly, is engagement steady?
+            active_ratio = usage["active_days"] / max(range_days, 1)
+            # Ideal is 0.6-0.85 (sustainable, with rest days)
+            if active_ratio >= 0.6 and active_ratio <= 0.85:
+                regularity_signal = 90.0
+            elif active_ratio >= 0.4 and active_ratio < 0.6:
+                regularity_signal = 65.0
+            elif active_ratio > 0.85:
+                regularity_signal = 60.0  # too much, no rest
+            else:
+                regularity_signal = 30.0  # sporadic
+            regularity_component = regularity_signal * 0.30
+
+            # Work pattern variance (from focus scores)
+            if len(focus_records) >= 2:
+                focus_scores_raw = [float(r[0]) for r in focus_records]
+                cv = statistics.pstdev(focus_scores_raw) / max(statistics.mean(focus_scores_raw), 1.0)
+                # Low coefficient of variation = consistent
+                variance_signal = _clamp(100.0 - cv * 200.0)
+            else:
+                variance_signal = 50.0  # neutral when not enough data
+            variance_component = variance_signal * 0.30
+
+            cognitive_consistency = _clamp(
+                habit_signal + regularity_component + variance_component
+            )
+
+            # ════════════════════════════════════════════════════════
+            # DIM 6 — Self-Regulation  (10%)
+            #   "Do you manage your energy, not just your time?"
+            #   Uses real-time burnout risk to see if the user
+            #   is operating sustainably. No static personality tests.
+            # ════════════════════════════════════════════════════════
+            try:
+                burnout_data = await self.burnout_risk(user, time_range)
+                burnout_score = float(burnout_data.get("risk", 50))
+            except Exception:
+                burnout_score = 50.0
+
+            # Low burnout = good self-regulation
+            # But zero burnout + zero activity = not doing anything
+            if completed == 0 and usage["deep_work_sessions"] == 0:
+                self_regulation = 30.0  # inactive, not self-regulating
+            elif burnout_score < 25:
+                self_regulation = 90.0  # sustainable pace
+            elif burnout_score < 45:
+                self_regulation = 70.0  # manageable
+            elif burnout_score < 65:
+                self_regulation = 40.0  # pushing too hard
+            else:
+                self_regulation = 15.0  # overloaded
+
+            # Big Five conscientiousness provides a small modifier (±5 max)
+            # Not a primary signal — just a nudge for personality-aware scoring.
+            big_five_modifier = 0.0
+            try:
+                big_five_row = await db.execute(
+                    select(BigFiveTest)
+                    .where(BigFiveTest.user_id == user.id, BigFiveTest.test_completed == True)  # noqa: E712
+                    .order_by(BigFiveTest.test_completed_at.desc().nullslast(), BigFiveTest.created_at.desc())
+                    .limit(1)
+                )
+                big_five = big_five_row.scalar_one_or_none()
+                if big_five:
+                    conscientiousness = float(big_five.conscientiousness or 50)
+                    big_five_modifier = (conscientiousness - 50.0) / 50.0 * 5.0  # ±5 max
+            except Exception:
+                big_five_modifier = 0.0
+
+            # ════════════════════════════════════════════════════════
+            # FINAL WEIGHTED SCORE
+            # ════════════════════════════════════════════════════════
+            raw_score = (
+                strategic_planning * 0.20
+                + execution_intelligence * 0.25
+                + ai_collaboration * 0.15
+                + adaptive_capacity * 0.15
+                + cognitive_consistency * 0.15
+                + self_regulation * 0.10
+            )
+            score = _clamp(raw_score + big_five_modifier)
+
+            # ── Category assignment ──────────────────────────────
+            if score >= 88:
+                category = "Strategic Architect"
+            elif score >= 75:
+                category = "Focused Operator"
+            elif score >= 60:
                 category = "Adaptive Builder"
-            elif score >= 40:
+            elif score >= 45:
+                category = "Growing Strategist"
+            elif score >= 30:
                 category = "Developing Rhythm"
             else:
-                category = "Early Momentum"
+                category = "Early Explorer"
 
-            has_data = any(
-                [
-                    usage["tasks_created"] > 0,
-                    usage["tasks_completed"] > 0,
-                    usage["deep_work_sessions"] > 0,
-                    usage["chat_requests"] > 0,
-                    adaptation_events > 0,
-                ]
-            )
+            # ── Confidence based on data availability ────────────
+            data_signals = sum([
+                1 if tasks_created > 0 else 0,
+                1 if completed > 0 else 0,
+                1 if usage["deep_work_sessions"] > 0 else 0,
+                1 if chat_count > 0 else 0,
+                1 if usage["habits_total"] > 0 else 0,
+                1 if has_goals else 0,
+                1 if len(focus_records) >= 2 else 0,
+                1 if usage["active_days"] >= 2 else 0,
+            ])
+            confidence = _clamp(0.30 + (data_signals / 8.0) * 0.50, 0.25, 0.85)
+
+            has_data = any([
+                tasks_created > 0,
+                completed > 0,
+                usage["deep_work_sessions"] > 0,
+                chat_count > 0,
+                insight_read_count > 0,
+            ])
             if not has_data:
                 return {
                     "score": None,
                     "reason": "NO_DATA",
-                    "category": category,
-                    **self._meta(window, source="derived", confidence=0.25),
+                    "category": "Early Explorer",
+                    **self._meta(window, source="derived_v3", confidence=0.25),
                 }
+
+            # ── Strengths & Growth Areas ─────────────────────────
+            dimensions = {
+                "strategic_planning": strategic_planning,
+                "execution_intelligence": execution_intelligence,
+                "ai_collaboration": ai_collaboration,
+                "adaptive_capacity": adaptive_capacity,
+                "cognitive_consistency": cognitive_consistency,
+                "self_regulation": self_regulation,
+            }
+            sorted_dims = sorted(dimensions.items(), key=lambda x: x[1], reverse=True)
+            strengths = [d[0] for d in sorted_dims[:2] if d[1] >= 50]
+            growth_areas = [d[0] for d in sorted_dims[-2:] if d[1] < 60]
+
+            # ── Actionable Insight ───────────────────────────────
+            weakest_dim = sorted_dims[-1]
+            insight_map = {
+                "strategic_planning": "Link more tasks to goals — purposeful planning raises your intelligence score",
+                "execution_intelligence": "Focus on completing high-impact tasks rather than creating more",
+                "ai_collaboration": "Ask Leno to help plan your day — turning conversations into actions boosts this score",
+                "adaptive_capacity": "When a goal falls behind pace, create tasks to catch up",
+                "cognitive_consistency": "Build a daily habit routine — consistency compounds over time",
+                "self_regulation": "Your burnout risk is elevated — schedule a recovery day",
+            }
+            primary_insight = insight_map.get(
+                weakest_dim[0], "Keep building consistent patterns across all dimensions"
+            )
 
             return {
                 "score": round(score, 1),
                 "category": category,
+                "score_version": "intelligence_v3",
+                "strengths": strengths,
+                "growth_areas": growth_areas,
+                "primary_insight": primary_insight,
                 "metrics": {
-                    "planning_quality": round(planning_quality, 1),
-                    "execution_quality": round(execution_quality, 1),
-                    "adaptation_to_insights": round(adaptation_to_insights, 1),
-                    "consistency": round(consistency, 1),
-                    "cognitive_profile": round(cognitive_profile, 1),
+                    "strategic_planning": round(strategic_planning, 1),
+                    "execution_intelligence": round(execution_intelligence, 1),
+                    "ai_collaboration": round(ai_collaboration, 1),
+                    "adaptive_capacity": round(adaptive_capacity, 1),
+                    "cognitive_consistency": round(cognitive_consistency, 1),
+                    "self_regulation": round(self_regulation, 1),
+                    "big_five_modifier": round(big_five_modifier, 1),
                 },
-                **self._meta(window, source="derived", confidence=0.68),
+                "weights": {
+                    "strategic_planning": 0.20,
+                    "execution_intelligence": 0.25,
+                    "ai_collaboration": 0.15,
+                    "adaptive_capacity": 0.15,
+                    "cognitive_consistency": 0.15,
+                    "self_regulation": 0.10,
+                },
+                **self._meta(window, source="derived_v3", confidence=round(confidence, 2)),
             }
 
     async def goal_progress(self, user: User, time_range: str, goal_id: Optional[int] = None) -> Dict[str, Any]:

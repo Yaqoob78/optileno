@@ -24,6 +24,9 @@ from .auth_utils import (
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_REFRESH_TOKEN_DAYS = settings.REFRESH_TOKEN_EXPIRE_DAYS
+REMEMBER_ME_REFRESH_TOKEN_DAYS = max(settings.REFRESH_TOKEN_EXPIRE_DAYS, 30)
+
 
 class AuthService:
     @staticmethod
@@ -150,14 +153,19 @@ class AuthService:
 
         return user
 
-    async def create_session(self, db: AsyncSession, user_id: int):
+    async def create_session(self, db: AsyncSession, user_id: int, remember_me: bool = False):
         # Create tokens
-        access_token = create_access_token(data={"user_id": user_id})
-        refresh_token_str = create_refresh_token(data={"user_id": user_id})
+        refresh_days = REMEMBER_ME_REFRESH_TOKEN_DAYS if remember_me else DEFAULT_REFRESH_TOKEN_DAYS
+        refresh_delta = timedelta(days=refresh_days)
+
+        access_token = create_access_token(data={"user_id": user_id, "remember_me": remember_me})
+        refresh_token_str = create_refresh_token(
+            data={"user_id": user_id, "remember_me": remember_me},
+            expires_delta=refresh_delta
+        )
 
         # Store refresh token hash in DB
-        # Default expiry 7 days
-        expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+        expires_at = datetime.now(timezone.utc) + refresh_delta
         refresh_token_hash = self._hash_refresh_token(refresh_token_str)
 
         db_token = RefreshToken(
@@ -168,13 +176,14 @@ class AuthService:
         db.add(db_token)
         await db.commit()
 
-        return access_token, refresh_token_str
+        return access_token, refresh_token_str, refresh_days
 
     async def refresh_session(self, db: AsyncSession, refresh_token: str):
         try:
             payload = decode_token(refresh_token)
             user_id = payload.get("user_id")
             token_type = payload.get("type")
+            remember_me = bool(payload.get("remember_me", False))
 
             if not user_id or token_type != "refresh":
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
@@ -200,7 +209,7 @@ class AuthService:
         db_token.is_revoked = True
         await db.commit()
 
-        return await self.create_session(db, user_id)
+        return await self.create_session(db, int(user_id), remember_me=remember_me)
 
     async def logout(self, db: AsyncSession, refresh_token: str):
         if not refresh_token:

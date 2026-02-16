@@ -4,71 +4,36 @@ import { realtimeClient } from '../services/realtime/socket-client';
 import { api } from '../services/api/client';
 import { useUserStore } from '../stores/useUserStore';
 
+export interface AIIntelligenceMetrics {
+    strategic_planning: number;
+    execution_intelligence: number;
+    ai_collaboration: number;
+    adaptive_capacity: number;
+    cognitive_consistency: number;
+    self_regulation: number;
+    big_five_modifier: number;
+}
+
 export interface AIIntelligenceData {
     ready?: boolean;
     status?: 'ready' | 'pending';
     message?: string;
-    score?: number;
+    score?: number | null;
     category?: string;
+    score_version?: string;
+    strengths?: string[];
+    growth_areas?: string[];
+    primary_insight?: string;
+    metrics?: AIIntelligenceMetrics;
+    weights?: Record<string, number>;
+    // Legacy fields kept for backward compat
     trend?: 'up' | 'down' | 'stable';
     trend_percent?: number;
-    metrics?: {
-        planning_quality: number;
-        execution_intelligence: number;
-        adaptation_reflection: number;
-        behavioral_stability: number;
-        learning_growth?: number;
-    };
     context_label?: string;
-    volatility?: number;
-    best_day_score?: number;
-    worst_day_score?: number;
-    last_updated?: string;
-    baseline?: {
-        label?: string;
-        score?: number;
-        delta?: number;
-        samples?: number;
-    } | null;
-    coverage?: {
-        level?: 'low' | 'medium' | 'high';
-        confidence?: number;
-        tasks_created?: number;
-        tasks_completed?: number;
-        plans_created?: number;
-        deep_work_sessions?: number;
-        chat_messages?: number;
-        insights_read?: number;
-        events?: number;
-        active_days?: number;
-    };
-    drivers?: Array<{
-        direction?: 'up' | 'down' | 'neutral';
-        label: string;
-        detail?: string;
-    }>;
-    next_actions?: Array<{
-        label: string;
-        detail?: string;
-        target?: string;
-    }>;
-    confidence?: number;
     sparkline_7d?: number[];
+    confidence?: number;
     error_fallback?: boolean;
-    requirements?: {
-        tasks_completed_min?: number;
-        habits_min?: number;
-        interactions_min?: number;
-    };
-    counts?: {
-        tasks_completed?: number;
-        habits_created?: number;
-        habits_completed?: number;
-        interactions?: number;
-        chat_messages?: number;
-        insights_read?: number;
-        deep_work_sessions?: number;
-    };
+    reason?: string;
 }
 
 export function useAIIntelligence(timeRange: 'daily' | 'weekly' | 'monthly' | 'yearly' = 'daily') {
@@ -77,37 +42,41 @@ export function useAIIntelligence(timeRange: 'daily' | 'weekly' | 'monthly' | 'y
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const normalizeData = useCallback((payload: AIIntelligenceData): AIIntelligenceData => {
-        const metricsRaw = (payload.metrics || {}) as any;
-        const normalizedMetrics = payload.metrics
-            ? {
-                planning_quality: Number(metricsRaw.planning_quality ?? 0),
-                execution_intelligence: Number(
-                    metricsRaw.execution_intelligence ??
-                    metricsRaw.execution_quality ??
-                    0
-                ),
-                adaptation_reflection: Number(
-                    metricsRaw.adaptation_reflection ??
-                    metricsRaw.adaptation_to_insights ??
-                    0
-                ),
-                behavioral_stability: Number(
-                    metricsRaw.behavioral_stability ??
-                    metricsRaw.consistency ??
-                    0
-                ),
-                learning_growth: Number(
-                    metricsRaw.learning_growth ??
-                    metricsRaw.cognitive_profile ??
-                    0
-                ),
-            }
-            : undefined;
+    const normalizeData = useCallback((payload: any): AIIntelligenceData => {
+        const metricsRaw = payload.metrics || {};
+
+        // V3 metrics with backward-compatible fallbacks for any in-flight V2 data
+        const normalizedMetrics: AIIntelligenceMetrics = {
+            strategic_planning: Number(
+                metricsRaw.strategic_planning ?? metricsRaw.planning_quality ?? 0
+            ),
+            execution_intelligence: Number(
+                metricsRaw.execution_intelligence ?? metricsRaw.execution_quality ?? 0
+            ),
+            ai_collaboration: Number(
+                metricsRaw.ai_collaboration ?? metricsRaw.adaptation_to_insights ?? 0
+            ),
+            adaptive_capacity: Number(
+                metricsRaw.adaptive_capacity ?? metricsRaw.adaptation_reflection ?? 0
+            ),
+            cognitive_consistency: Number(
+                metricsRaw.cognitive_consistency ?? metricsRaw.consistency ?? metricsRaw.behavioral_stability ?? 0
+            ),
+            self_regulation: Number(
+                metricsRaw.self_regulation ?? metricsRaw.cognitive_profile ?? 0
+            ),
+            big_five_modifier: Number(metricsRaw.big_five_modifier ?? 0),
+        };
 
         return {
             ...payload,
+            score: payload.score ?? null,
+            category: payload.category || 'Calibrating',
+            strengths: Array.isArray(payload.strengths) ? payload.strengths : [],
+            growth_areas: Array.isArray(payload.growth_areas) ? payload.growth_areas : [],
+            primary_insight: payload.primary_insight || '',
             metrics: normalizedMetrics,
+            weights: payload.weights || {},
         };
     }, []);
 
@@ -122,7 +91,6 @@ export function useAIIntelligence(timeRange: 'daily' | 'weekly' | 'monthly' | 'y
         setIsLoading(true);
         setError(null);
         try {
-            // yearly not really supported by backend AI score yet, default to monthly or handle in UI
             const queryRange = timeRange === 'yearly' ? 'monthly' : timeRange;
 
             const response = await api.get<AIIntelligenceData>(`/analytics/ai-intelligence?time_range=${queryRange}`);
@@ -145,7 +113,7 @@ export function useAIIntelligence(timeRange: 'daily' | 'weekly' | 'monthly' | 'y
     useEffect(() => {
         if (!isAuthenticated) return;
         fetchScore();
-    }, [fetchScore, isAuthenticated]); // Refetch when timeRange changes
+    }, [fetchScore, isAuthenticated]);
 
     useEffect(() => {
         if (!isAuthenticated) return;

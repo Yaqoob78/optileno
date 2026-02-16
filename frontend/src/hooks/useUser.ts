@@ -8,6 +8,7 @@ import type { UserProfile } from "../types/user.types";
 interface LoginCredentials {
   email: string;
   password: string;
+  remember_me?: boolean;
 }
 
 interface LoginResponse {

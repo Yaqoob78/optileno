@@ -1,6 +1,8 @@
-/* frontend/src/styles/components/analytics/BigFiveTestModal.css */
+/* ═══════════════════════════════════════════════════════════════
+   BigFiveTestModal.css — Assessment Modal
+   ═══════════════════════════════════════════════════════════════ */
 
-/* ===== OVERLAY ===== */
+/* ── Overlay ── */
 .bf-test-modal-overlay {
     position: fixed;
     top: 0;
@@ -14,12 +16,12 @@
     align-items: center;
     z-index: 9999;
     padding: 20px;
-    animation: fadeIn 0.3s ease;
+    animation: bfFadeIn 0.3s ease;
     overflow-y: auto;
     overscroll-behavior: contain;
 }
 
-@keyframes fadeIn {
+@keyframes bfFadeIn {
     from {
         opacity: 0;
     }
@@ -29,7 +31,7 @@
     }
 }
 
-/* ===== MODAL ===== */
+/* ── Modal Container ── */
 .bf-test-modal {
     position: relative;
     display: flex;
@@ -39,7 +41,6 @@
     max-height: calc(100dvh - 40px);
     box-sizing: border-box;
     overflow: hidden;
-    overflow-x: hidden;
     background: linear-gradient(145deg,
             rgba(30, 30, 40, 0.98) 0%,
             rgba(20, 20, 30, 0.98) 100%);
@@ -49,10 +50,10 @@
     box-shadow:
         0 25px 50px -12px rgba(0, 0, 0, 0.5),
         0 0 80px rgba(6, 182, 212, 0.12);
-    animation: slideUp 0.4s ease;
+    animation: bfSlideUp 0.4s ease;
 }
 
-@keyframes slideUp {
+@keyframes bfSlideUp {
     from {
         opacity: 0;
         transform: translateY(30px) scale(0.95);
@@ -68,7 +69,7 @@
     max-width: 480px;
 }
 
-/* ===== CLOSE BUTTON ===== */
+/* ── Close Button ── */
 .bf-close-btn {
     position: absolute;
     top: 16px;
@@ -80,6 +81,7 @@
     color: var(--text-secondary);
     cursor: pointer;
     transition: all 0.2s ease;
+    z-index: 2;
 }
 
 .bf-close-btn:hover {
@@ -87,18 +89,10 @@
     color: var(--text-primary);
 }
 
-/* ===== HEADER ===== */
-.bf-test-header {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    margin-bottom: 14px;
-}
-
+/* ── Scrollable Content ── */
 .bf-test-scroll {
     flex: 1 1 auto;
     min-height: 0;
-    max-height: none;
     overflow-y: auto;
     overflow-x: hidden;
     box-sizing: border-box;
@@ -126,15 +120,27 @@
     background: rgba(6, 182, 212, 0.55);
 }
 
+/* ── Header ── */
+.bf-test-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
 .bf-test-icon {
-    width: 56px;
-    height: 56px;
+    width: 52px;
+    height: 52px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(8, 145, 178, 0.15));
-    border-radius: 16px;
+    border-radius: 14px;
     color: #06b6d4;
+}
+
+.bf-test-title {
+    min-width: 0;
 }
 
 .bf-test-title h2 {
@@ -145,85 +151,44 @@
     overflow-wrap: anywhere;
 }
 
-.bf-test-title {
-    min-width: 0;
-}
-
 .question-counter {
     display: block;
     font-size: 13px;
     color: var(--text-tertiary);
 }
 
-/* ===== TOOLBAR ===== */
+/* ── Toolbar (source pill only, no refresh btn) ── */
 .bf-test-toolbar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 12px;
-    margin-bottom: 18px;
-    padding: 10px 12px;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    margin-bottom: 16px;
 }
 
 .bf-source-pill {
     display: inline-flex;
     align-items: center;
-    flex: 1 1 250px;
-    padding: 6px 10px;
+    padding: 5px 12px;
     border-radius: 999px;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    color: var(--text-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--text-tertiary);
     background: rgba(255, 255, 255, 0.04);
-    max-width: 100%;
-    overflow-wrap: anywhere;
 }
 
 .bf-source-pill.ai {
     color: #0ea5e9;
-    border-color: rgba(14, 165, 233, 0.35);
-    background: rgba(14, 165, 233, 0.1);
+    border-color: rgba(14, 165, 233, 0.3);
+    background: rgba(14, 165, 233, 0.08);
 }
 
 .bf-source-pill.fallback {
     color: #f59e0b;
-    border-color: rgba(245, 158, 11, 0.35);
-    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.3);
+    background: rgba(245, 158, 11, 0.08);
 }
 
-.bf-refresh-btn {
-    display: inline-flex;
-    align-items: center;
-    flex-shrink: 0;
-    gap: 8px;
-    padding: 9px 12px;
-    border-radius: 10px;
-    border: 1px solid rgba(6, 182, 212, 0.35);
-    background: rgba(6, 182, 212, 0.14);
-    color: #67e8f9;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: all 0.2s ease;
-}
-
-.bf-refresh-btn:hover:not(:disabled) {
-    background: rgba(6, 182, 212, 0.2);
-    transform: translateY(-1px);
-}
-
-.bf-refresh-btn:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-}
-
-/* ===== PROGRESS BAR ===== */
+/* ── Progress Bar ── */
 .bf-progress-container {
     display: flex;
     align-items: center;
@@ -254,7 +219,7 @@
     text-align: right;
 }
 
-/* ===== QUESTION ===== */
+/* ── Question ── */
 .bf-question-container {
     margin-bottom: 28px;
 }
@@ -268,15 +233,7 @@
     overflow-wrap: anywhere;
 }
 
-.bf-live-scores {
-    font-size: 12px;
-    color: #67e8f9;
-    line-height: 1.5;
-    margin: -14px 0 0 0;
-    overflow-wrap: anywhere;
-}
-
-/* ===== OPTIONS ===== */
+/* ── Options ── */
 .bf-options-container {
     display: flex;
     flex-direction: column;
@@ -328,10 +285,10 @@
     height: 10px;
     border-radius: 50%;
     background: #06b6d4;
-    animation: dotPop 0.2s ease;
+    animation: bfDotPop 0.2s ease;
 }
 
-@keyframes dotPop {
+@keyframes bfDotPop {
     from {
         transform: scale(0);
     }
@@ -351,7 +308,7 @@
     color: var(--text-primary);
 }
 
-/* ===== NAVIGATION ===== */
+/* ── Navigation ── */
 .bf-nav-container {
     display: flex;
     justify-content: space-between;
@@ -413,7 +370,7 @@
     transform: none;
 }
 
-/* ===== LOADING STATE ===== */
+/* ── Loading State ── */
 .bf-test-loading {
     display: flex;
     flex-direction: column;
@@ -433,7 +390,7 @@
     font-size: 15px;
 }
 
-/* ===== ERROR STATE ===== */
+/* ── Error State ── */
 .bf-test-error {
     display: flex;
     flex-direction: column;
@@ -498,7 +455,7 @@
     background: rgba(255, 255, 255, 0.1);
 }
 
-/* ===== COMPLETE STATE ===== */
+/* ── Complete State ── */
 .bf-test-complete {
     display: flex;
     flex-direction: column;
@@ -520,7 +477,7 @@
 .sparkle {
     position: absolute;
     color: #fbbf24;
-    animation: sparkle 1.5s ease-in-out infinite;
+    animation: bfSparkle 1.5s ease-in-out infinite;
 }
 
 .sparkle.s1 {
@@ -541,7 +498,7 @@
     animation-delay: 1s;
 }
 
-@keyframes sparkle {
+@keyframes bfSparkle {
 
     0%,
     100% {
@@ -586,7 +543,7 @@
     font-size: 12px;
     font-weight: 500;
     color: var(--text-secondary);
-    width: 110px;
+    width: 130px;
     text-align: left;
 }
 
@@ -648,12 +605,12 @@
     box-shadow: 0 6px 20px rgba(6, 182, 212, 0.4);
 }
 
-/* ===== SPIN ANIMATION ===== */
+/* ── Spin (local) ── */
 .spin {
-    animation: spin 1s linear infinite;
+    animation: bfModalSpin 1s linear infinite;
 }
 
-@keyframes spin {
+@keyframes bfModalSpin {
     from {
         transform: rotate(0deg);
     }
@@ -663,7 +620,7 @@
     }
 }
 
-/* ===== RESPONSIVE ===== */
+/* ── Responsive ── */
 @media (max-width: 540px) {
     .bf-test-modal-overlay {
         align-items: flex-start;
@@ -673,31 +630,15 @@
     .bf-test-modal {
         max-height: calc(100dvh - 24px);
         padding: 24px;
-        margin: 0;
-    }
-
-    .bf-test-scroll {
-        max-height: none;
-        padding-right: 2px;
     }
 
     .bf-test-icon {
-        width: 48px;
-        height: 48px;
+        width: 44px;
+        height: 44px;
     }
 
     .bf-test-title h2 {
         font-size: 18px;
-    }
-
-    .bf-test-toolbar {
-        flex-direction: column;
-        align-items: stretch;
-        padding: 10px;
-    }
-
-    .bf-refresh-btn {
-        justify-content: center;
     }
 
     .bf-question-text {
@@ -720,5 +661,9 @@
     .bf-next-btn {
         width: 100%;
         justify-content: center;
+    }
+
+    .score-item .trait-name {
+        width: 110px;
     }
 }

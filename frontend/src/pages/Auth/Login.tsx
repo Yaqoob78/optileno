@@ -16,6 +16,7 @@ export default function Login() {
     const [formData, setFormData] = useState({
         email: '',
         password: '',
+        remember_me: false,
     });
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -76,16 +77,23 @@ export default function Login() {
                         <div className="success-message">{routeMessage}</div>
                     )}
 
-                    <form className="auth-form" onSubmit={handleSubmit}>
+                    <form className="auth-form" onSubmit={handleSubmit} autoComplete="on">
                         <div className="form-group">
-                            <label className="form-label">Email Address</label>
+                            <label className="form-label" htmlFor="login-email">Email Address</label>
                             <div className={`input-wrapper ${formData.email ? 'has-value' : ''}`}>
                                 <input
+                                    id="login-email"
                                     type="email"
+                                    name="email"
                                     className="auth-input"
                                     placeholder="Enter your email"
                                     value={formData.email}
                                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                    autoComplete="email"
+                                    autoCapitalize="none"
+                                    autoCorrect="off"
+                                    spellCheck={false}
+                                    inputMode="email"
                                     required
                                 />
                                 <Mail className="input-icon" size={18} />
@@ -93,14 +101,17 @@ export default function Login() {
                         </div>
 
                         <div className="form-group">
-                            <label className="form-label">Password</label>
+                            <label className="form-label" htmlFor="login-password">Password</label>
                             <div className={`input-wrapper ${formData.password ? 'has-value' : ''}`}>
                                 <input
+                                    id="login-password"
                                     type={showPassword ? 'text' : 'password'}
+                                    name="password"
                                     className="auth-input has-toggle"
                                     placeholder="Enter your password"
                                     value={formData.password}
                                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                    autoComplete="current-password"
                                     required
                                 />
                                 <Lock className="input-icon" size={18} />
@@ -117,7 +128,14 @@ export default function Login() {
 
                         <div className="form-options">
                             <label className="remember-me">
-                                <input type="checkbox" />
+                                <input
+                                    type="checkbox"
+                                    name="remember_me"
+                                    checked={formData.remember_me}
+                                    onChange={(e) =>
+                                        setFormData({ ...formData, remember_me: e.target.checked })
+                                    }
+                                />
                                 <span>Remember me</span>
                             </label>
                             <Link to="/forgot-password" className="forgot-password">

@@ -5,12 +5,13 @@ import { api } from '../services/api/client';
 import { useUserStore } from '../stores/useUserStore';
 
 interface ProductivityBreakdown {
-    base_usage: number;
-    task_completion: number;
-    focus_quality: number;
-    habit_consistency: number;
-    planning_accuracy: number;
-    engagement_depth: number;
+    task_points: number;
+    habit_points: number;
+    deep_work_points: number;
+    goal_progress_block: number;
+    engagement_block: number;
+    burnout_cap: number;
+    weights: Record<string, number>;
 }
 
 interface ProductivityScore {
@@ -18,6 +19,9 @@ interface ProductivityScore {
     date: string;
     breakdown: ProductivityBreakdown;
     grade: string;
+    daily_intent: string;
+    baseline_state: string;
+    reason_codes: string[];
     next_update?: string;
 }
 
@@ -65,19 +69,26 @@ export function useProductivityScore(timeRange: 'daily' | 'weekly' | 'monthly' =
                 throw new Error(todayResponse.error?.message || 'Failed to fetch productivity score');
             }
             const todayPayload = todayResponse.data as any;
+
+            // V3 breakdown with backward-compatible fallbacks
             const normalizedBreakdown: ProductivityBreakdown = {
-                base_usage: Number(todayPayload.breakdown?.base_usage ?? todayPayload.breakdown?.execution_block ?? 0),
-                task_completion: Number(todayPayload.breakdown?.task_completion ?? todayPayload.breakdown?.task_component ?? 0),
-                focus_quality: Number(todayPayload.breakdown?.focus_quality ?? todayPayload.breakdown?.deep_work_component ?? 0),
-                habit_consistency: Number(todayPayload.breakdown?.habit_consistency ?? todayPayload.breakdown?.habit_component ?? 0),
-                planning_accuracy: Number(todayPayload.breakdown?.planning_accuracy ?? todayPayload.breakdown?.goal_progress_block ?? 0),
-                engagement_depth: Number(todayPayload.breakdown?.engagement_depth ?? todayPayload.breakdown?.engagement_block ?? 0),
+                task_points: Number(todayPayload.breakdown?.task_points ?? todayPayload.breakdown?.task_component ?? 0),
+                habit_points: Number(todayPayload.breakdown?.habit_points ?? todayPayload.breakdown?.habit_component ?? 0),
+                deep_work_points: Number(todayPayload.breakdown?.deep_work_points ?? todayPayload.breakdown?.deep_work_component ?? 0),
+                goal_progress_block: Number(todayPayload.breakdown?.goal_progress_block ?? 0),
+                engagement_block: Number(todayPayload.breakdown?.engagement_block ?? 0),
+                burnout_cap: Number(todayPayload.breakdown?.burnout_cap ?? 100),
+                weights: todayPayload.breakdown?.weights ?? {},
             };
+
             setScore({
                 score: Number(todayPayload.score ?? 0),
                 date: todayPayload.period_end || todayPayload.date || new Date().toISOString(),
                 breakdown: normalizedBreakdown,
-                grade: String(todayPayload.grade || todayPayload.goal_band || todayPayload.level || 'Live'),
+                grade: String(todayPayload.grade || todayPayload.goal_band || 'C'),
+                daily_intent: String(todayPayload.daily_intent || 'athlete'),
+                baseline_state: String(todayPayload.baseline_state || 'cold_start'),
+                reason_codes: Array.isArray(todayPayload.reason_codes) ? todayPayload.reason_codes : [],
                 next_update: todayPayload.generated_at || todayPayload.next_update,
             });
 

@@ -21,8 +21,9 @@ from .auth_utils import decode_token
 router = APIRouter()
 
 # --- Cookie Settings ---
-ACCESS_TOKEN_MAX_AGE = 30 * 60  # 30 minutes
-REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60  # 7 days
+ACCESS_TOKEN_MAX_AGE = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+DEFAULT_REFRESH_TOKEN_MAX_AGE = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
+REFRESH_TOKEN_COOKIE_PATH = "/api/v1/auth"
 
 
 def _cookie_kwargs(httponly: bool = True) -> dict:
@@ -36,34 +37,54 @@ def _cookie_kwargs(httponly: bool = True) -> dict:
     return kwargs
 
 
-def set_csrf_cookie(response: Response) -> str:
+def set_csrf_cookie(response: Response, max_age: int = DEFAULT_REFRESH_TOKEN_MAX_AGE) -> str:
     csrf_token = secrets.token_urlsafe(32)
     response.set_cookie(
         key="csrf_token",
         value=csrf_token,
-        max_age=REFRESH_TOKEN_MAX_AGE,
+        max_age=max_age,
         path="/",
         **_cookie_kwargs(httponly=False)
     )
     return csrf_token
 
 
-def set_auth_cookies(response: Response, access_token: str, refresh_token: str):
+def set_auth_cookies(
+    response: Response,
+    access_token: str,
+    refresh_token: str,
+    access_max_age: int = ACCESS_TOKEN_MAX_AGE,
+    refresh_max_age: int = DEFAULT_REFRESH_TOKEN_MAX_AGE,
+):
     response.set_cookie(
         key="access_token",
         value=access_token,
-        max_age=ACCESS_TOKEN_MAX_AGE,
+        max_age=access_max_age,
         path="/",
         **_cookie_kwargs(httponly=True)
     )
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
-        max_age=REFRESH_TOKEN_MAX_AGE,
-        path="/api/v1/auth/refresh",  # Only sent to refresh endpoint
+        max_age=refresh_max_age,
+        path=REFRESH_TOKEN_COOKIE_PATH,
         **_cookie_kwargs(httponly=True)
     )
-    set_csrf_cookie(response)
+    set_csrf_cookie(response, max_age=refresh_max_age)
+
+
+def _delete_cookie(response: Response, key: str, path: str) -> None:
+    kwargs = {"path": path}
+    if settings.COOKIE_DOMAIN:
+        kwargs["domain"] = settings.COOKIE_DOMAIN
+    response.delete_cookie(key, **kwargs)
+
+
+def clear_auth_cookies(response: Response) -> None:
+    _delete_cookie(response, "access_token", "/")
+    _delete_cookie(response, "refresh_token", REFRESH_TOKEN_COOKIE_PATH)
+    _delete_cookie(response, "refresh_token", "/api/v1/auth/refresh")  # Legacy path compatibility
+    _delete_cookie(response, "csrf_token", "/")
 
 
 @router.post("/register", response_model=UserResponse)
@@ -80,9 +101,14 @@ async def login(
 ):
     """Clean login: validates user and sets HttpOnly cookies."""
     user = await auth_service.authenticate(db, login_data)
-    access_token, refresh_token = await auth_service.create_session(db, user.id)
+    access_token, refresh_token, refresh_days = await auth_service.create_session(
+        db,
+        user.id,
+        remember_me=login_data.remember_me
+    )
+    refresh_max_age = refresh_days * 24 * 60 * 60
 
-    set_auth_cookies(response, access_token, refresh_token)
+    set_auth_cookies(response, access_token, refresh_token, refresh_max_age=refresh_max_age)
 
     payload = {
         "status": "success",
@@ -110,8 +136,9 @@ async def refresh(
             detail="Missing refresh token"
         )
 
-    access_token, new_refresh_token = await auth_service.refresh_session(db, refresh_token)
-    set_auth_cookies(response, access_token, new_refresh_token)
+    access_token, new_refresh_token, refresh_days = await auth_service.refresh_session(db, refresh_token)
+    refresh_max_age = refresh_days * 24 * 60 * 60
+    set_auth_cookies(response, access_token, new_refresh_token, refresh_max_age=refresh_max_age)
 
     payload = {"status": "success"}
     if settings.DEBUG or settings.ENVIRONMENT != "production":
@@ -157,9 +184,7 @@ async def reset_password(
     )
 
     # Clear local auth cookies for this browser session after password reset.
-    response.delete_cookie("access_token", path="/")
-    response.delete_cookie("refresh_token", path="/api/v1/auth/refresh")
-    response.delete_cookie("csrf_token", path="/")
+    clear_auth_cookies(response)
 
     return {"ok": True}
 
@@ -175,8 +200,7 @@ async def logout(
     if refresh_token:
         await auth_service.logout(db, refresh_token)
 
-    response.delete_cookie("access_token", path="/")
-    response.delete_cookie("refresh_token", path="/api/v1/auth/refresh")
+    clear_auth_cookies(response)
 
     return {"status": "success"}
 
@@ -226,27 +250,44 @@ async def validate_session(
     response: Response,
     db: AsyncSession = Depends(get_db)
 ):
-    """Validate current session without throwing on failure."""
+    """Validate current session and silently restore it via refresh token when possible."""
     token = request.cookies.get("access_token")
-    if not token:
+
+    if token:
+        try:
+            payload = decode_token(token)
+            user_id = payload.get("user_id")
+            token_type = payload.get("type")
+            if user_id and token_type == "access":
+                result = await db.execute(select(User).where(User.id == user_id))
+                user = result.scalar_one_or_none()
+                if user:
+                    if not request.cookies.get("csrf_token"):
+                        set_csrf_cookie(response)
+                    return {"valid": True, "user": build_user_profile(user)}
+        except JWTError:
+            # Access token expired/invalid; attempt refresh token fallback below.
+            pass
+
+    refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token:
         return {"valid": False}
 
     try:
-        payload = decode_token(token)
+        access_token, new_refresh_token, refresh_days = await auth_service.refresh_session(db, refresh_token)
+        refresh_max_age = refresh_days * 24 * 60 * 60
+        set_auth_cookies(response, access_token, new_refresh_token, refresh_max_age=refresh_max_age)
+
+        payload = decode_token(access_token)
         user_id = payload.get("user_id")
-        token_type = payload.get("type")
-        if not user_id or token_type != "access":
+        if not user_id:
             return {"valid": False}
-    except JWTError:
+
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        if not user:
+            return {"valid": False}
+
+        return {"valid": True, "user": build_user_profile(user)}
+    except Exception:
         return {"valid": False}
-
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-    if not user:
-        return {"valid": False}
-
-    # Ensure CSRF cookie exists
-    if not request.cookies.get("csrf_token"):
-        set_csrf_cookie(response)
-
-    return {"valid": True, "user": build_user_profile(user)}

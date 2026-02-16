@@ -222,7 +222,7 @@ class UserService {
   /**
    * Login user
    */
-  async login(credentials: any): Promise<ApiResponse<any>> {
+  async login(credentials: { email: string; password: string; remember_me?: boolean }): Promise<ApiResponse<any>> {
     return api.post('/auth/login', credentials);
   }
 

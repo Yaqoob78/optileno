@@ -1,24 +1,28 @@
 import React from 'react';
-import { Brain, Cpu, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Brain, TrendingUp, TrendingDown, Minus, Zap, Target, Lightbulb } from 'lucide-react';
 import { useAIIntelligence } from '../../hooks/useAIIntelligence';
 
 interface MetricBarProps {
     label: string;
     value: number;
     color: string;
+    weight?: number;
 }
 
-const MetricBar: React.FC<MetricBarProps> = ({ label, value, color }) => (
+const MetricBar: React.FC<MetricBarProps> = ({ label, value, color, weight }) => (
     <div className="metric-row" style={{ marginBottom: '8px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '2px', opacity: 0.8 }}>
             <span>{label}</span>
-            <span>{value}%</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                {weight && <span style={{ opacity: 0.4, fontSize: '9px' }}>{Math.round(weight * 100)}%</span>}
+                <span>{Math.round(value)}</span>
+            </span>
         </div>
         <div style={{ height: '3px', background: 'var(--bg-tertiary)', borderRadius: '2px', overflow: 'hidden' }}>
             <div
                 style={{
                     height: '100%',
-                    width: `${value}%`,
+                    width: `${Math.min(value, 100)}%`,
                     background: color,
                     boxShadow: `0 0 5px ${color}`,
                     transition: 'width 0.8s ease'
@@ -95,39 +99,28 @@ const CPUAnimation = () => (
             {/* Pins with sharper look */}
             {[...Array(6)].map((_, i) => (
                 <React.Fragment key={i}>
-                    {/* Top */}
                     <rect x={25 + i * 14} y="5" width="2" height="10" rx="0.5" className="cpu-pin-futuristic" style={{ animationDelay: `${i * 0.1}s` }} />
-                    {/* Bottom */}
                     <rect x={25 + i * 14} y="105" width="2" height="10" rx="0.5" className="cpu-pin-futuristic" style={{ animationDelay: `${0.5 + i * 0.1}s` }} />
-                    {/* Left */}
                     <rect x="5" y={25 + i * 14} width="10" height="2" rx="0.5" className="cpu-pin-futuristic" style={{ animationDelay: `${0.2 + i * 0.1}s` }} />
-                    {/* Right */}
                     <rect x="105" y={25 + i * 14} width="10" height="2" rx="0.5" className="cpu-pin-futuristic" style={{ animationDelay: `${0.7 + i * 0.1}s` }} />
                 </React.Fragment>
             ))}
 
-            {/* Main Plate */}
             <rect x="15" y="15" width="90" height="90" rx="4" className="cpu-plate-main" />
             <rect x="22" y="22" width="76" height="76" rx="2" className="cpu-plate-inner" />
 
-            {/* Corner Micro-chips */}
             <rect x="25" y="25" width="8" height="8" rx="1" className="cpu-micro-chip" />
             <rect x="87" y="25" width="8" height="8" rx="1" className="cpu-micro-chip" />
             <rect x="25" y="87" width="8" height="8" rx="1" className="cpu-micro-chip" />
             <rect x="87" y="87" width="8" height="8" rx="1" className="cpu-micro-chip" />
 
-            {/* Neural Core Layers */}
             <rect x="42" y="42" width="36" height="36" rx="4" className="cpu-core-base" />
             <circle cx="60" cy="60" r="12" className="cpu-core-center" filter="url(#glow)" />
 
-            {/* Pulsing Data Hexagon */}
             <path d="M 60 52 L 68 56 L 68 64 L 60 68 L 52 64 L 52 56 Z" className="cpu-hex-core" />
 
-            {/* Data Paths & Flowing Packets */}
             <g className="data-paths">
                 <path d="M 60 15 L 60 42 M 60 78 L 60 105 M 15 60 L 42 60 M 78 60 L 105 60" className="cpu-path-main" />
-
-                {/* Data Bits (Animated Circles) */}
                 <circle r="1.5" className="data-bit" fill="#fff">
                     <animateMotion dur="1.5s" repeatCount="indefinite" path="M 60 15 L 60 42" />
                 </circle>
@@ -142,11 +135,29 @@ const CPUAnimation = () => (
                 </circle>
             </g>
 
-            {/* Subtle Circuit Lines */}
             <path d="M 40 25 L 40 35 M 80 25 L 80 35 M 40 95 L 40 85 M 80 95 L 80 85" className="cpu-path-subtle" />
         </svg>
     </div>
 );
+
+/** Human-readable label for dimension keys */
+const dimensionLabels: Record<string, string> = {
+    strategic_planning: 'Strategy',
+    execution_intelligence: 'Execution',
+    ai_collaboration: 'AI Synergy',
+    adaptive_capacity: 'Adaptability',
+    cognitive_consistency: 'Consistency',
+    self_regulation: 'Self-Regulation',
+};
+
+const dimensionColors: Record<string, string> = {
+    strategic_planning: '#7c3aed',
+    execution_intelligence: '#06b6d4',
+    ai_collaboration: '#3b82f6',
+    adaptive_capacity: '#10b981',
+    cognitive_consistency: '#f59e0b',
+    self_regulation: '#ec4899',
+};
 
 const AIIntelligenceScore: React.FC<{ timeRange: string }> = ({ timeRange }) => {
     const { data, isLoading, error } = useAIIntelligence(timeRange as any);
@@ -186,15 +197,20 @@ const AIIntelligenceScore: React.FC<{ timeRange: string }> = ({ timeRange }) => 
     }
 
     const metrics = data.metrics;
+    const weights = data.weights || {};
     const trendPercent = typeof data.trend_percent === 'number' ? data.trend_percent : null;
     const trendText = trendPercent !== null
         ? `${trendPercent >= 0 ? '+' : ''}${trendPercent}%`
         : 'Live';
     const TrendIcon = trendPercent === null ? Minus : trendPercent >= 0 ? TrendingUp : TrendingDown;
     const trendClass = trendPercent === null ? 'neutral' : trendPercent >= 0 ? 'up' : 'down';
-    const scoreValue = typeof data.score === 'number' ? data.score : 0;
+    const scoreValue = typeof data.score === 'number' ? Math.round(data.score) : 0;
     const categoryLabel = data.category || 'Calibrating';
     const sparkline = data.sparkline_7d;
+
+    const strengths = data.strengths || [];
+    const growthAreas = data.growth_areas || [];
+    const primaryInsight = data.primary_insight || '';
 
     return (
         <div className="intelligence-card">
@@ -238,9 +254,8 @@ const AIIntelligenceScore: React.FC<{ timeRange: string }> = ({ timeRange }) => 
                 <div className="intelligence-category">
                     <div className="category-label">{categoryLabel}</div>
                     <div style={{ fontSize: '11px', opacity: 0.6, marginTop: '2px' }}>
-                        {data.context_label || "Implementation Quality"}
+                        {data.context_label || "Cognitive Performance"}
                     </div>
-                    {/* 7-day sparkline */}
                     {sparkline && sparkline.length >= 2 && (
                         <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <Sparkline data={sparkline} width={100} height={28} />
@@ -250,15 +265,45 @@ const AIIntelligenceScore: React.FC<{ timeRange: string }> = ({ timeRange }) => 
                 </div>
             </div>
 
+            {/* V3 Six-Dimension Metric Bars */}
             {metrics ? (
                 <div className="intelligence-metrics" style={{ marginTop: '1.5rem', padding: '0 10px' }}>
-                    <MetricBar label="Planning" value={metrics.planning_quality} color="#7c3aed" />
-                    <MetricBar label="Execution" value={metrics.execution_intelligence} color="#06b6d4" />
-                    <MetricBar label="Reflection" value={metrics.adaptation_reflection} color="#10b981" />
-                    <MetricBar label="Consistency" value={metrics.behavioral_stability} color="#f59e0b" />
-                    {typeof metrics.learning_growth === 'number' && (
-                        <MetricBar label="Growth" value={metrics.learning_growth} color="#3b82f6" />
-                    )}
+                    <MetricBar
+                        label="Strategy"
+                        value={metrics.strategic_planning}
+                        color={dimensionColors.strategic_planning}
+                        weight={weights.strategic_planning}
+                    />
+                    <MetricBar
+                        label="Execution"
+                        value={metrics.execution_intelligence}
+                        color={dimensionColors.execution_intelligence}
+                        weight={weights.execution_intelligence}
+                    />
+                    <MetricBar
+                        label="AI Synergy"
+                        value={metrics.ai_collaboration}
+                        color={dimensionColors.ai_collaboration}
+                        weight={weights.ai_collaboration}
+                    />
+                    <MetricBar
+                        label="Adaptability"
+                        value={metrics.adaptive_capacity}
+                        color={dimensionColors.adaptive_capacity}
+                        weight={weights.adaptive_capacity}
+                    />
+                    <MetricBar
+                        label="Consistency"
+                        value={metrics.cognitive_consistency}
+                        color={dimensionColors.cognitive_consistency}
+                        weight={weights.cognitive_consistency}
+                    />
+                    <MetricBar
+                        label="Self-Regulation"
+                        value={metrics.self_regulation}
+                        color={dimensionColors.self_regulation}
+                        weight={weights.self_regulation}
+                    />
                 </div>
             ) : (
                 <div className="intelligence-metrics" style={{ marginTop: '1.5rem', padding: '0 10px', opacity: 0.75, fontSize: '12px' }}>
@@ -266,10 +311,71 @@ const AIIntelligenceScore: React.FC<{ timeRange: string }> = ({ timeRange }) => 
                 </div>
             )}
 
+            {/* Strengths & Growth Areas */}
+            {(strengths.length > 0 || growthAreas.length > 0) && (
+                <div style={{ marginTop: '12px', padding: '0 10px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {strengths.map((s) => (
+                        <span
+                            key={s}
+                            style={{
+                                fontSize: '10px',
+                                padding: '2px 8px',
+                                borderRadius: '10px',
+                                background: 'rgba(16, 185, 129, 0.15)',
+                                color: '#10b981',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                            }}
+                        >
+                            <Zap size={9} />
+                            {dimensionLabels[s] || s}
+                        </span>
+                    ))}
+                    {growthAreas.map((g) => (
+                        <span
+                            key={g}
+                            style={{
+                                fontSize: '10px',
+                                padding: '2px 8px',
+                                borderRadius: '10px',
+                                background: 'rgba(245, 158, 11, 0.15)',
+                                color: '#f59e0b',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                            }}
+                        >
+                            <Target size={9} />
+                            {dimensionLabels[g] || g}
+                        </span>
+                    ))}
+                </div>
+            )}
+
+            {/* Primary Insight */}
+            {primaryInsight && (
+                <div style={{
+                    marginTop: '10px',
+                    padding: '8px 12px',
+                    fontSize: '11px',
+                    opacity: 0.75,
+                    borderLeft: '2px solid var(--primary)',
+                    marginLeft: '10px',
+                    marginRight: '10px',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '6px',
+                }}>
+                    <Lightbulb size={12} style={{ marginTop: '1px', flexShrink: 0, color: 'var(--primary)' }} />
+                    <span>{primaryInsight}</span>
+                </div>
+            )}
+
             <div className="intelligence-footer">
                 <div className="footer-note">
                     <Brain size={12} />
-                    <span>Score based on how you plan, execute, reflect, and stay consistent</span>
+                    <span>6 dimensions: Strategy · Execution · AI Synergy · Adaptability · Consistency · Self-Regulation</span>
                 </div>
             </div>
         </div>

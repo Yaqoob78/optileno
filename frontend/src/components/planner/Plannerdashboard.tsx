@@ -120,21 +120,18 @@ export default function PlannerDashboard({
 
       {/* Motivation Section */}
       <div className="motivation-section" style={{ marginTop: '1.5rem', padding: '1rem', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-        <div className="flex items-center gap-3 mb-2">
-          <Zap size={18} className="text-yellow-500 fill-yellow-500" />
-          <h4 className="font-semibold text-main">Keep the momentum!</h4>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+          <Zap size={18} style={{ color: '#eab308' }} />
+          <h4 style={{ fontWeight: 600, color: 'rgb(var(--color-text-primary))', margin: 0 }}>Keep the momentum!</h4>
         </div>
-        <p className="text-sm text-secondary leading-relaxed">
+        <p style={{ fontSize: '0.875rem', color: 'rgb(var(--color-text-secondary))', lineHeight: 1.6, margin: 0 }}>
           "Small steps every day add up to big results. Focus on one task at a time."
         </p>
-        <div className="flex items-center gap-2 mt-3 text-xs text-secondary opacity-80">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem', fontSize: '0.75rem', color: 'rgb(var(--color-text-secondary))', opacity: 0.8 }}>
           <TrendingUp size={12} />
           <span>You have {deepWorkSessions} deep work sessions today!</span>
         </div>
       </div>
     </div>
   );
-}// If you're using the PlannerDashboard in a parent component, wrap it like this:
-<div className="planner-dashboard-container" style={{ width: '450px', flexShrink: 0 }}>
-  <PlannerDashboard />
-</div>
+}

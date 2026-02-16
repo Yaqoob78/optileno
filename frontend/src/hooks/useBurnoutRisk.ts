@@ -5,11 +5,16 @@ import { api } from '../services/api/client';
 import { useUserStore } from '../stores/useUserStore';
 
 interface BurnoutBreakdown {
-    time_based: number;
-    workload: number;
-    chat_sentiment: number;
-    deep_work_intensity: number;
-    recovery_bonus: number;
+    workload_strain: number;
+    strain_velocity: number;
+    offline_gap_risk: number;
+    rest_day_violation: number;
+    recovery_deficit: number;
+    focus_volatility: number;
+    goal_progress_pressure: number;
+    deadline_compression: number;
+    engagement_extremes: number;
+    mood_modulation: number;
 }
 
 interface BurnoutRisk {
@@ -77,16 +82,23 @@ export function useBurnoutRisk(
                 throw new Error(todayResponse.error?.message || 'Failed to fetch burnout risk');
             }
             const todayPayload = todayResponse.data as any;
+
+            // V3 breakdown with backward-compatible fallbacks
             setRisk({
                 risk: Number(todayPayload.risk ?? 0),
                 date: todayPayload.period_end || todayPayload.date || new Date().toISOString(),
                 level: String(todayPayload.level || 'moderate'),
                 breakdown: {
-                    time_based: Number(todayPayload.breakdown?.time_based ?? todayPayload.breakdown?.recovery_deficit ?? 0),
-                    workload: Number(todayPayload.breakdown?.workload ?? todayPayload.breakdown?.workload_strain ?? 0),
-                    chat_sentiment: Number(todayPayload.breakdown?.chat_sentiment ?? todayPayload.breakdown?.mood_modulation ?? 0),
-                    deep_work_intensity: Number(todayPayload.breakdown?.deep_work_intensity ?? todayPayload.breakdown?.focus_volatility ?? 0),
-                    recovery_bonus: Number(todayPayload.breakdown?.recovery_bonus ?? 0),
+                    workload_strain: Number(todayPayload.breakdown?.workload_strain ?? 0),
+                    strain_velocity: Number(todayPayload.breakdown?.strain_velocity ?? 0),
+                    offline_gap_risk: Number(todayPayload.breakdown?.offline_gap_risk ?? 0),
+                    rest_day_violation: Number(todayPayload.breakdown?.rest_day_violation ?? 0),
+                    recovery_deficit: Number(todayPayload.breakdown?.recovery_deficit ?? 0),
+                    focus_volatility: Number(todayPayload.breakdown?.focus_volatility ?? 0),
+                    goal_progress_pressure: Number(todayPayload.breakdown?.goal_progress_pressure ?? 0),
+                    deadline_compression: Number(todayPayload.breakdown?.deadline_compression ?? 0),
+                    engagement_extremes: Number(todayPayload.breakdown?.engagement_extremes ?? 0),
+                    mood_modulation: Number(todayPayload.breakdown?.mood_modulation ?? 0),
                 },
                 ai_insights: Array.isArray(todayPayload.ai_insights)
                     ? todayPayload.ai_insights
