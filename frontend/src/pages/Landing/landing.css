@@ -522,23 +522,23 @@ html {
 
 /* States */
 .stickman-container.walking .stickman-wrapper {
-    animation: walkBounce 0.62s infinite alternate, bodyLean 1.3s infinite ease-in-out;
+    animation: walkBounce 0.56s infinite alternate, bodyLean 1s infinite ease-in-out;
 }
 
 .stickman-container.walking .leg.left {
-    animation: walkLeft 1.2s infinite linear;
+    animation: walkLeft 0.84s infinite linear;
 }
 
 .stickman-container.walking .leg.right {
-    animation: walkRight 1.2s infinite linear;
+    animation: walkRight 0.84s infinite linear;
 }
 
 .stickman-container.walking .arm.left {
-    animation: swingLeft 1.2s infinite linear;
+    animation: swingLeft 0.84s infinite linear;
 }
 
 .stickman-container.walking .arm.right {
-    animation: swingRight 1.2s infinite linear;
+    animation: swingRight 0.84s infinite linear;
 }
 
 /* Pointing state - arm points 35 degrees DOWN at button */
@@ -553,7 +553,7 @@ html {
 }
 
 .stickman-container.pointing .head {
-    transform: rotate(8deg);
+    transform: rotate(0deg);
     transition: transform 0.25s ease;
 }
 
@@ -567,14 +567,19 @@ html {
     position: absolute;
     top: -82px;
     left: 50%;
-    transform: translateX(-50%) rotate(-4deg);
+    transform: translateX(-50%) rotate(-7deg);
     width: 94px;
     height: 94px;
     z-index: 10;
 }
 
 .stickman-container.walking .stickman-umbrella {
-    animation: umbrellaSway 1.6s ease-in-out infinite;
+    animation: umbrellaRunMotion 0.9s ease-in-out infinite;
+}
+
+.stickman-container.pointing .stickman-umbrella {
+    transform: translateX(-50%) rotate(-4deg);
+    transition: transform 0.25s ease;
 }
 
 .umbrella-dome {
@@ -629,71 +634,71 @@ html {
 /* ── ANIMATIONS ────────────────────────────────────────────────────── */
 @keyframes walkLeft {
     0% {
-        transform: rotate(14deg);
+        transform: rotate(18deg);
     }
 
     50% {
-        transform: rotate(-14deg);
+        transform: rotate(-18deg);
     }
 
     100% {
-        transform: rotate(14deg);
+        transform: rotate(18deg);
     }
 }
 
 @keyframes walkRight {
     0% {
-        transform: rotate(-14deg);
+        transform: rotate(-18deg);
     }
 
     50% {
-        transform: rotate(14deg);
+        transform: rotate(18deg);
     }
 
     100% {
-        transform: rotate(-14deg);
+        transform: rotate(-18deg);
     }
 }
 
 @keyframes swingLeft {
     0% {
-        transform: rotate(-12deg);
+        transform: rotate(-16deg);
     }
 
     50% {
-        transform: rotate(12deg);
+        transform: rotate(16deg);
     }
 
     100% {
-        transform: rotate(-12deg);
+        transform: rotate(-16deg);
     }
 }
 
 @keyframes swingRight {
     0% {
-        transform: rotate(12deg);
+        transform: rotate(16deg);
     }
 
     50% {
-        transform: rotate(-12deg);
+        transform: rotate(-16deg);
     }
 
     100% {
-        transform: rotate(12deg);
+        transform: rotate(16deg);
     }
 }
 
 @keyframes bodyLean {
     0% {
-        transform: rotate(0deg);
+        transform: rotate(0.4deg);
     }
 
     50% {
-        transform: rotate(1deg);
+        transform: rotate(1.8deg);
     }
 
     100% {
-        transform: rotate(0deg);
+        transform: rotate(0.4deg);
     }
 }
 
@@ -809,20 +814,28 @@ html {
     }
 
     to {
-        transform: translateY(-2px);
+        transform: translateY(-3px);
     }
 }
 
-@keyframes umbrellaSway {
+@keyframes umbrellaRunMotion {
     0% {
-        transform: translateX(-50%) rotate(-5deg);
+        transform: translateX(-50%) rotate(-9deg) translateY(0);
+    }
+
+    25% {
+        transform: translateX(-50%) rotate(-6deg) translateY(-3px);
     }
 
     50% {
-        transform: translateX(-50%) rotate(-2deg);
+        transform: translateX(-50%) rotate(-10deg) translateY(1px);
+    }
+
+    75% {
+        transform: translateX(-50%) rotate(-6deg) translateY(-2px);
     }
 
     100% {
-        transform: translateX(-50%) rotate(-4deg);
+        transform: translateX(-50%) rotate(-9deg) translateY(0);
     }
 }

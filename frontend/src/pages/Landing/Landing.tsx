@@ -133,8 +133,8 @@ export default function Landing() {
   // State
   const [activeFeature, setActiveFeature] = useState(0);
   const [stickmanState, setStickmanState] = useState<'walking' | 'pointing' | 'hidden'>('walking');
-  const [stickmanPos, setStickmanPos] = useState({ x: -240, y: 0 });
-  const [stickmanPose, setStickmanPose] = useState({ scale: 0.68, opacity: 0.52 });
+  const [stickmanPos, setStickmanPos] = useState({ x: -280, y: 0 });
+  const [stickmanPose, setStickmanPose] = useState({ scale: 0.64, opacity: 0.48 });
   const [pointerLine, setPointerLine] = useState<PointerLine | null>(null);
   const [lightningActive, setLightningActive] = useState(false);
   const [btnHovered, setBtnHovered] = useState(false);
@@ -157,10 +157,10 @@ export default function Landing() {
   useEffect(() => {
     let animationId = 0;
     const timers: number[] = [];
-    const startX = -240;
+    const startX = -280;
     const startY = window.innerHeight * 0.76;
-    const walkDelayMs = 1200;
-    const walkDurationMs = 3400;
+    const walkDelayMs = 1500;
+    const walkDurationMs = 4300;
 
     const easeInOutCubic = (t: number) => (
       t < 0.5
@@ -172,7 +172,7 @@ export default function Landing() {
     setPointerLine(null);
     setLightningActive(false);
     setStickmanPos({ x: startX, y: startY });
-    setStickmanPose({ scale: 0.68, opacity: 0.52 });
+    setStickmanPose({ scale: 0.64, opacity: 0.48 });
 
     const startWalk = () => {
       if (!buttonRef.current) return;
@@ -192,8 +192,8 @@ export default function Landing() {
           y: startY + (targetY - startY) * eased
         });
         setStickmanPose({
-          scale: 0.68 + eased * 0.32,
-          opacity: 0.52 + eased * 0.48
+          scale: 0.64 + eased * 0.36,
+          opacity: 0.48 + eased * 0.52
         });
 
         if (t < 1) {
@@ -312,10 +312,7 @@ export default function Landing() {
       >
         <div className="stickman-wrapper">
           {/* Head */}
-          <div className="head">
-            <span className="eye eye-left"></span>
-            <span className="eye eye-right"></span>
-          </div>
+          <div className="head"></div>
           <div className="neck"></div>
           {/* Body */}
           <div className="torso">
