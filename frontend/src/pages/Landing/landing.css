@@ -400,89 +400,96 @@ html {
     z-index: 15;
     /* Between Background and CTA */
     pointer-events: none;
-    transition: transform 0.1s linear, opacity 0.5s ease-out;
+    transition: transform 0.12s linear, opacity 0.5s ease-out;
     /* Smooth follow mechanism */
-    filter: drop-shadow(0 0 12px rgba(147, 197, 253, 0.22)) drop-shadow(0 8px 14px rgba(15, 23, 42, 0.35));
+    filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.28)) drop-shadow(0 10px 20px rgba(15, 23, 42, 0.3));
 }
 
 .stickman-wrapper {
     position: relative;
-    width: 66px;
-    height: 170px;
+    width: 74px;
+    height: 184px;
 }
 
 .stickman-wrapper::after {
     content: '';
     position: absolute;
-    inset: 30px 10px 20px;
+    inset: 26px 8px 18px;
     border-radius: 999px;
-    background: radial-gradient(circle, rgba(147, 197, 253, 0.25) 0%, rgba(147, 197, 253, 0) 70%);
-    filter: blur(10px);
-    opacity: 0.4;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0) 72%);
+    filter: blur(12px);
+    opacity: 0.55;
     z-index: 0;
 }
 
 /* Styles */
 .head {
-    width: 28px;
-    height: 28px;
-    background: #cbd5e1;
+    width: 30px;
+    height: 30px;
+    background: #f8fafc;
     border-radius: 50%;
     position: absolute;
     top: 20px;
-    left: 20px;
-    box-shadow: inset -1px -1px 0 rgba(0, 0, 0, 0.18), 0 2px 5px rgba(15, 23, 42, 0.28);
+    left: 22px;
+    box-shadow: inset -1px -1px 0 rgba(148, 163, 184, 0.35), 0 2px 5px rgba(15, 23, 42, 0.22);
     border: 1px solid rgba(255, 255, 255, 0.4);
     z-index: 2;
 }
 
-.eye {
+.headband-knot {
     position: absolute;
-    top: 11px;
-    width: 3px;
-    height: 3px;
+    right: -2px;
+    top: 10px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
-    background: #0f172a;
+    background: #e2e8f0;
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.45);
 }
 
-.eye-left {
-    left: 8px;
-}
-
-.eye-right {
-    right: 8px;
+.headband-tail {
+    position: absolute;
+    right: -14px;
+    top: 14px;
+    width: 15px;
+    height: 2px;
+    border-radius: 999px;
+    background: #f8fafc;
+    transform: rotate(-16deg);
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.45);
 }
 
 .neck {
     position: absolute;
-    top: 46px;
-    left: 31px;
+    top: 48px;
+    left: 35px;
     width: 4px;
     height: 7px;
-    background: #64748b;
+    background: #f1f5f9;
     border-radius: 999px;
     z-index: 1;
 }
 
 .torso {
-    width: 8px;
-    height: 58px;
-    background: #94a3b8;
+    width: 9px;
+    height: 62px;
+    background: #f1f5f9;
     position: absolute;
-    top: 54px;
-    left: 29px;
+    top: 56px;
+    left: 33px;
     border-radius: 999px;
     z-index: 2;
 }
 
 .shoulder-line {
     position: absolute;
-    top: 1px;
-    left: -8px;
-    width: 24px;
+    top: 2px;
+    left: -10px;
+    width: 28px;
     height: 4px;
     border-radius: 999px;
-    background: #94a3b8;
+    background: #f1f5f9;
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.2);
 }
 
 /* Limbs */
@@ -490,7 +497,7 @@ html {
 .leg {
     position: absolute;
     width: 5px;
-    background: #94a3b8;
+    background: #f1f5f9;
     border-radius: 999px;
     transform-origin: top;
     box-shadow: 0 1px 1px rgba(15, 23, 42, 0.2);
@@ -498,9 +505,9 @@ html {
 }
 
 .arm {
-    height: 40px;
-    top: 58px;
-    left: 31px;
+    height: 44px;
+    top: 60px;
+    left: 35px;
 }
 
 .arm::after {
@@ -508,37 +515,37 @@ html {
     position: absolute;
     bottom: -3px;
     left: -1px;
-    width: 7px;
-    height: 7px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
-    background: #cbd5e1;
+    background: #f8fafc;
 }
 
 .leg {
-    height: 48px;
-    top: 108px;
-    left: 31px;
+    height: 52px;
+    top: 114px;
+    left: 35px;
 }
 
 /* States */
 .stickman-container.walking .stickman-wrapper {
-    animation: walkBounce 0.56s infinite alternate, bodyLean 1s infinite ease-in-out;
+    animation: walkBounce 0.74s infinite alternate, bodyLean 1.5s infinite ease-in-out;
 }
 
 .stickman-container.walking .leg.left {
-    animation: walkLeft 0.84s infinite linear;
+    animation: walkLeft 1.15s infinite linear;
 }
 
 .stickman-container.walking .leg.right {
-    animation: walkRight 0.84s infinite linear;
+    animation: walkRight 1.15s infinite linear;
 }
 
 .stickman-container.walking .arm.left {
-    animation: swingLeft 0.84s infinite linear;
+    animation: swingLeft 1.15s infinite linear;
 }
 
 .stickman-container.walking .arm.right {
-    animation: swingRight 0.84s infinite linear;
+    animation: swingRight 1.15s infinite linear;
 }
 
 /* Pointing state - arm points 35 degrees DOWN at button */
@@ -558,40 +565,41 @@ html {
 }
 
 .stickman-container.pointing .torso {
-    transform: rotate(3deg);
+    transform: rotate(2deg);
     transition: transform 0.25s ease;
 }
 
 /* Umbrella - positioned at top above head */
 .stickman-umbrella {
     position: absolute;
-    top: -82px;
+    top: -88px;
     left: 50%;
-    transform: translateX(-50%) rotate(-7deg);
-    width: 94px;
-    height: 94px;
+    transform: translateX(-50%) rotate(-9deg);
+    width: 110px;
+    height: 100px;
     z-index: 10;
 }
 
 .stickman-container.walking .stickman-umbrella {
-    animation: umbrellaRunMotion 0.9s ease-in-out infinite;
+    animation: umbrellaRunMotion 1.12s ease-in-out infinite;
 }
 
 .stickman-container.pointing .stickman-umbrella {
-    transform: translateX(-50%) rotate(-4deg);
+    transform: translateX(-50%) rotate(-5deg);
     transition: transform 0.25s ease;
 }
 
 .umbrella-dome {
     position: relative;
-    width: 76px;
-    height: 38px;
-    background: linear-gradient(180deg, #475569 0%, #1e293b 75%, #0f172a 100%);
-    border-top-left-radius: 40px;
-    border-top-right-radius: 40px;
-    border-bottom-left-radius: 6px;
-    border-bottom-right-radius: 6px;
-    box-shadow: 0 5px 10px rgba(15, 23, 42, 0.35);
+    width: 100px;
+    height: 52px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.1) 100%);
+    border: 2px solid rgba(255, 255, 255, 0.92);
+    border-top-left-radius: 54px;
+    border-top-right-radius: 54px;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.45), 0 6px 12px rgba(15, 23, 42, 0.25);
     overflow: hidden;
 }
 
@@ -599,28 +607,80 @@ html {
     position: absolute;
     bottom: 0;
     width: 2px;
-    height: 24px;
-    background: rgba(226, 232, 240, 0.25);
+    height: 34px;
+    background: rgba(255, 255, 255, 0.82);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.35);
 }
 
 .rib-1 {
-    left: 18px;
+    left: 24px;
 }
 
 .rib-2 {
-    left: 37px;
+    left: 48px;
 }
 
 .rib-3 {
-    left: 56px;
+    left: 72px;
 }
 
 .umbrella-handle {
-    width: 3px;
-    height: 58px;
-    background: #64748b;
+    width: 4px;
+    height: 62px;
+    background: #f8fafc;
     border-radius: 999px;
     margin: 0 auto;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.45);
+}
+
+/* Sword */
+.katana {
+    height: 3px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.98), rgba(226, 232, 240, 0.85));
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.45);
+    transform-origin: left center;
+}
+
+.katana.resting {
+    position: absolute;
+    left: -52px;
+    top: 136px;
+    width: 128px;
+    transform: rotate(157deg);
+    transition: opacity 0.2s ease;
+    z-index: 3;
+}
+
+.stickman-container.pointing .katana.resting {
+    opacity: 0;
+}
+
+.katana.pointing {
+    position: fixed;
+    z-index: 26;
+    animation: swordSettle 0.24s ease-out;
+}
+
+.katana-guard {
+    position: absolute;
+    left: -5px;
+    top: -4px;
+    width: 10px;
+    height: 11px;
+    border-radius: 3px;
+    background: #f8fafc;
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+}
+
+.katana-tip {
+    position: absolute;
+    right: -7px;
+    top: -3px;
+    width: 8px;
+    height: 8px;
+    transform: rotate(45deg);
+    background: #f8fafc;
 }
 
 /* Hidden State - fade out gracefully */
@@ -634,71 +694,71 @@ html {
 /* ── ANIMATIONS ────────────────────────────────────────────────────── */
 @keyframes walkLeft {
     0% {
-        transform: rotate(18deg);
+        transform: rotate(16deg);
     }
 
     50% {
-        transform: rotate(-18deg);
+        transform: rotate(-16deg);
     }
 
     100% {
-        transform: rotate(18deg);
+        transform: rotate(16deg);
     }
 }
 
 @keyframes walkRight {
     0% {
-        transform: rotate(-18deg);
+        transform: rotate(-16deg);
     }
 
     50% {
-        transform: rotate(18deg);
+        transform: rotate(16deg);
     }
 
     100% {
-        transform: rotate(-18deg);
+        transform: rotate(-16deg);
     }
 }
 
 @keyframes swingLeft {
     0% {
-        transform: rotate(-16deg);
+        transform: rotate(-14deg);
     }
 
     50% {
-        transform: rotate(16deg);
+        transform: rotate(14deg);
     }
 
     100% {
-        transform: rotate(-16deg);
+        transform: rotate(-14deg);
     }
 }
 
 @keyframes swingRight {
     0% {
-        transform: rotate(16deg);
+        transform: rotate(14deg);
     }
 
     50% {
-        transform: rotate(-16deg);
+        transform: rotate(-14deg);
     }
 
     100% {
-        transform: rotate(16deg);
+        transform: rotate(14deg);
     }
 }
 
 @keyframes bodyLean {
     0% {
-        transform: rotate(0.4deg);
+        transform: rotate(0.2deg);
     }
 
     50% {
-        transform: rotate(1.8deg);
+        transform: rotate(1.2deg);
     }
 
     100% {
-        transform: rotate(0.4deg);
+        transform: rotate(0.2deg);
     }
 }
 
@@ -798,16 +858,6 @@ html {
     }
 }
 
-/* Pointing Connector */
-.pointing-connector {
-    position: fixed;
-    height: 2px;
-    background: linear-gradient(90deg, rgba(250, 204, 21, 0.9), rgba(250, 204, 21, 0.16));
-    transform-origin: left center;
-    opacity: 0.85;
-    box-shadow: 0 0 6px rgba(250, 204, 21, 0.32);
-}
-
 @keyframes walkBounce {
     from {
         transform: translateY(0);
@@ -820,22 +870,34 @@ html {
 
 @keyframes umbrellaRunMotion {
     0% {
-        transform: translateX(-50%) rotate(-9deg) translateY(0);
+        transform: translateX(-50%) rotate(-12deg) translateY(0);
     }
 
     25% {
-        transform: translateX(-50%) rotate(-6deg) translateY(-3px);
+        transform: translateX(-50%) rotate(-8deg) translateY(-5px);
     }
 
     50% {
-        transform: translateX(-50%) rotate(-10deg) translateY(1px);
+        transform: translateX(-50%) rotate(-13deg) translateY(1px);
     }
 
     75% {
-        transform: translateX(-50%) rotate(-6deg) translateY(-2px);
+        transform: translateX(-50%) rotate(-8deg) translateY(-4px);
     }
 
     100% {
-        transform: translateX(-50%) rotate(-9deg) translateY(0);
+        transform: translateX(-50%) rotate(-12deg) translateY(0);
+    }
+}
+
+@keyframes swordSettle {
+    from {
+        opacity: 0;
+        filter: blur(1px);
+    }
+
+    to {
+        opacity: 1;
+        filter: blur(0);
     }
 }

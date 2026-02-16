@@ -133,8 +133,8 @@ export default function Landing() {
   // State
   const [activeFeature, setActiveFeature] = useState(0);
   const [stickmanState, setStickmanState] = useState<'walking' | 'pointing' | 'hidden'>('walking');
-  const [stickmanPos, setStickmanPos] = useState({ x: -280, y: 0 });
-  const [stickmanPose, setStickmanPose] = useState({ scale: 0.64, opacity: 0.48 });
+  const [stickmanPos, setStickmanPos] = useState({ x: -340, y: 0 });
+  const [stickmanPose, setStickmanPose] = useState({ scale: 0.58, opacity: 0.42 });
   const [pointerLine, setPointerLine] = useState<PointerLine | null>(null);
   const [lightningActive, setLightningActive] = useState(false);
   const [btnHovered, setBtnHovered] = useState(false);
@@ -153,47 +153,43 @@ export default function Landing() {
     return () => clearInterval(interval);
   }, []);
 
-  // Stickman walk logic - delayed cinematic entry, then precise pointing at CTA
+  // Stickman walk logic - slower cinematic run-in, then precise sword pointing at CTA
   useEffect(() => {
     let animationId = 0;
     const timers: number[] = [];
-    const startX = -280;
+    const startX = -340;
     const startY = window.innerHeight * 0.76;
-    const walkDelayMs = 1500;
-    const walkDurationMs = 4300;
+    const walkDelayMs = 1900;
+    const walkDurationMs = 6200;
 
-    const easeInOutCubic = (t: number) => (
-      t < 0.5
-        ? 4 * t * t * t
-        : 1 - Math.pow(-2 * t + 2, 3) / 2
-    );
+    const easeInOutSine = (t: number) => -(Math.cos(Math.PI * t) - 1) / 2;
 
     setStickmanState('walking');
     setPointerLine(null);
     setLightningActive(false);
     setStickmanPos({ x: startX, y: startY });
-    setStickmanPose({ scale: 0.64, opacity: 0.48 });
+    setStickmanPose({ scale: 0.58, opacity: 0.42 });
 
     const startWalk = () => {
       if (!buttonRef.current) return;
 
       const btnRect = buttonRef.current.getBoundingClientRect();
-      const targetX = btnRect.left - 98;
-      const targetY = btnRect.top + btnRect.height * 0.45 - 94;
+      const targetX = btnRect.left - 108;
+      const targetY = btnRect.top + btnRect.height * 0.46 - 96;
       const walkStartTime = performance.now();
 
       const animateWalk = (now: number) => {
         const elapsed = now - walkStartTime;
         const t = Math.min(elapsed / walkDurationMs, 1);
-        const eased = easeInOutCubic(t);
+        const eased = easeInOutSine(t);
 
         setStickmanPos({
           x: startX + (targetX - startX) * eased,
           y: startY + (targetY - startY) * eased
         });
         setStickmanPose({
-          scale: 0.64 + eased * 0.36,
-          opacity: 0.48 + eased * 0.52
+          scale: 0.58 + eased * 0.42,
+          opacity: 0.42 + eased * 0.58
         });
 
         if (t < 1) {
@@ -203,27 +199,27 @@ export default function Landing() {
 
         setStickmanState('pointing');
 
-        const armX = targetX + 56;
-        const armY = targetY + 90;
+        const swordBaseX = targetX + 34;
+        const swordBaseY = targetY + 112;
         const ctaX = btnRect.left + btnRect.width * 0.5;
         const ctaY = btnRect.top + btnRect.height * 0.55;
-        const lineDX = ctaX - armX;
-        const lineDY = ctaY - armY;
+        const lineDX = ctaX - swordBaseX;
+        const lineDY = ctaY - swordBaseY;
         setPointerLine({
-          left: armX,
-          top: armY,
+          left: swordBaseX,
+          top: swordBaseY,
           width: Math.hypot(lineDX, lineDY),
           angle: Math.atan2(lineDY, lineDX) * (180 / Math.PI)
         });
 
         timers.push(window.setTimeout(() => {
           setLightningActive(true);
-          timers.push(window.setTimeout(() => setLightningActive(false), 300));
+          timers.push(window.setTimeout(() => setLightningActive(false), 260));
           timers.push(window.setTimeout(() => {
             setStickmanState('hidden');
             setPointerLine(null);
           }, 2500));
-        }, 260));
+        }, 420));
       };
 
       animationId = requestAnimationFrame(animateWalk);
@@ -312,7 +308,10 @@ export default function Landing() {
       >
         <div className="stickman-wrapper">
           {/* Head */}
-          <div className="head"></div>
+          <div className="head">
+            <span className="headband-knot"></span>
+            <span className="headband-tail"></span>
+          </div>
           <div className="neck"></div>
           {/* Body */}
           <div className="torso">
@@ -324,6 +323,10 @@ export default function Landing() {
           {/* Legs */}
           <div className="leg left"></div>
           <div className="leg right"></div>
+          <div className="katana resting">
+            <span className="katana-guard"></span>
+            <span className="katana-tip"></span>
+          </div>
         </div>
 
         {/* Umbrella stays visible through pointing to keep rain scene coherent */}
@@ -347,14 +350,17 @@ export default function Landing() {
         </div>
       )}
 
-      {/* Helper Line (Pointing) */}
+      {/* Sword (Pointing) */}
       {stickmanState === 'pointing' && pointerLine && (
-        <div className="pointing-connector" style={{
+        <div className="katana pointing" style={{
           left: pointerLine.left,
           top: pointerLine.top,
           width: pointerLine.width,
           transform: `rotate(${pointerLine.angle}deg)`
-        }}></div>
+        }}>
+          <span className="katana-guard"></span>
+          <span className="katana-tip"></span>
+        </div>
       )}
 
       {/* Main Content Area */}
