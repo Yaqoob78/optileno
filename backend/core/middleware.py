@@ -21,8 +21,11 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from collections import defaultdict
 from datetime import datetime
+from jose import JWTError
 
 from backend.app.config import settings
+from backend.auth.auth_utils import decode_token
+from backend.core.redis_rate_limiter import redis_rate_limiter
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +94,50 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.request_counts: Dict[str, List[float]] = defaultdict(list)
         self.burst_counts: Dict[str, int] = defaultdict(int)
         self.last_cleanup = time.time()
+        self._last_distributed_limiter_warning = 0.0
+        self._warning_interval_seconds = 30
+    
+    @staticmethod
+    def _extract_client_ip(request: Request) -> str:
+        """Prefer forwarded headers when behind reverse proxy/load balancer."""
+        x_forwarded_for = request.headers.get("x-forwarded-for", "")
+        if x_forwarded_for:
+            first = x_forwarded_for.split(",")[0].strip()
+            if first:
+                return first
+
+        x_real_ip = request.headers.get("x-real-ip", "").strip()
+        if x_real_ip:
+            return x_real_ip
+
+        return request.client.host if request.client else "unknown"
+
+    @staticmethod
+    def _extract_user_id(request: Request) -> Optional[str]:
+        """
+        Best-effort user identification from JWT.
+        Used only for rate-limit bucketing; auth itself is still enforced elsewhere.
+        """
+        token: Optional[str] = None
+        auth_header = request.headers.get("authorization", "")
+        if auth_header.lower().startswith("bearer "):
+            token = auth_header.split(" ", 1)[1].strip()
+        else:
+            token = request.cookies.get("access_token")
+
+        if not token:
+            return None
+
+        try:
+            payload = decode_token(token)
+            if payload.get("type") != "access":
+                return None
+            user_id = payload.get("user_id")
+            return str(user_id) if user_id is not None else None
+        except JWTError:
+            return None
+        except Exception:
+            return None
     
     def _cleanup_old_requests(self, now: float):
         """Periodic cleanup of old request records."""
@@ -115,47 +162,94 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Apply adaptive rate limiting."""
-        
-        # Get client identifier
-        client_ip = request.client.host if request.client else "unknown"
-        identifier = client_ip
-        
-        # Check if user is authenticated (higher limit)
-        is_authenticated = hasattr(request.state, "user_id")
-        if is_authenticated:
-            identifier = f"user_{request.state.user_id}"
-            max_requests = settings.RATE_LIMIT_AUTH_REQUESTS_PER_MINUTE
-        else:
-            max_requests = settings.RATE_LIMIT_REQUESTS_PER_MINUTE
-        
+
+        # Avoid rate limiting health/metrics/docs noise.
+        if (
+            request.url.path in {"/health", "/metrics", "/docs", "/redoc", "/openapi.json"}
+            or request.url.path.startswith("/api/v1/health")
+            or request.url.path.startswith("/api/v1/system/")
+        ):
+            return await call_next(request)
+
+        user_id = self._extract_user_id(request)
+        client_ip = self._extract_client_ip(request)
+        identifier = f"user_{user_id}" if user_id else f"ip_{client_ip}"
+        max_requests = (
+            settings.RATE_LIMIT_AUTH_REQUESTS_PER_MINUTE
+            if user_id
+            else settings.RATE_LIMIT_REQUESTS_PER_MINUTE
+        )
+
         # Apply burst allowance
         burst_allowance = settings.RATE_LIMIT_BURST_ALLOWANCE
         effective_limit = max_requests + burst_allowance
-        
+
         now = time.time()
         window = settings.RATE_LIMIT_WINDOW_SECONDS
-        
+
+        # First try distributed Redis limiter so limits are consistent across workers/instances.
+        try:
+            await redis_rate_limiter.initialize()
+            if redis_rate_limiter.redis_client:
+                is_allowed = await redis_rate_limiter.check_rate_limit(
+                    user_id=identifier,
+                    max_requests=effective_limit,
+                    window_seconds=window,
+                    identifier="http",
+                )
+
+                if not is_allowed:
+                    middleware_metrics.rate_limited_requests += 1
+                    middleware_metrics.blocked_requests += 1
+                    logger.warning(
+                        f"Rate limit exceeded for {identifier} (distributed): "
+                        f"{effective_limit}/{window}s"
+                    )
+                    return Response(
+                        content='{"error": "Too many requests", "retry_after": ' + str(window) + '}',
+                        status_code=429,
+                        media_type="application/json",
+                        headers={
+                            "Retry-After": str(window),
+                            "X-RateLimit-Limit": str(max_requests),
+                            "X-RateLimit-Remaining": "0",
+                            "X-RateLimit-Reset": str(int(now + window))
+                        }
+                    )
+
+                response = await call_next(request)
+                response.headers["X-RateLimit-Limit"] = str(max_requests)
+                # Distributed limiter doesn't expose exact remaining cheaply in this path.
+                response.headers["X-RateLimit-Remaining"] = "-1"
+                response.headers["X-RateLimit-Reset"] = str(int(now + window))
+                return response
+        except Exception as e:
+            if now - self._last_distributed_limiter_warning > self._warning_interval_seconds:
+                logger.warning(f"Distributed rate limiter unavailable, falling back to local limiter: {e}")
+                self._last_distributed_limiter_warning = now
+
+        # Fallback: local in-memory limiter (single process scope).
         # Cleanup old requests periodically
         self._cleanup_old_requests(now)
-        
+
         # Clean old requests for this identifier
         self.request_counts[identifier] = [
             req_time for req_time in self.request_counts[identifier]
             if now - req_time < window
         ]
-        
+
         current_count = len(self.request_counts[identifier])
-        
+
         # Check rate limit
         if current_count >= effective_limit:
             middleware_metrics.rate_limited_requests += 1
             middleware_metrics.blocked_requests += 1
             logger.warning(f"Rate limit exceeded for {identifier}: {current_count}/{effective_limit}")
-            
+
             # Calculate retry-after
             oldest_request = min(self.request_counts[identifier]) if self.request_counts[identifier] else now
             retry_after = int(window - (now - oldest_request)) + 1
-            
+
             return Response(
                 content='{"error": "Too many requests", "retry_after": ' + str(retry_after) + '}',
                 status_code=429,
@@ -167,17 +261,17 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     "X-RateLimit-Reset": str(int(now + retry_after))
                 }
             )
-        
+
         # Record this request
         self.request_counts[identifier].append(now)
-        
+
         # Track burst usage
         if current_count > max_requests:
             self.burst_counts[identifier] = current_count - max_requests
-        
+
         # Process request
         response = await call_next(request)
-        
+
         # Add rate limit headers
         remaining = max(0, max_requests - current_count - 1)
         response.headers["X-RateLimit-Limit"] = str(max_requests)

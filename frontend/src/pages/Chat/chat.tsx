@@ -67,10 +67,8 @@ export default function Chat() {
 
   // Real-time integration
   const { onMessageReceived, onConversationUpdated } = useRealtime();
-  const _isUltra = useUserStore((state) => state.isUltra);
+  const isUltra = useUserStore((state) => state.isUltra);
   const userProfile = useUserStore((state) => state.profile);
-  const isOwner = userProfile?.email === 'khan011504@gmail.com';
-  const isUltra = _isUltra || isOwner;
 
   // Initialize Conversation if missing
   useEffect(() => {
@@ -106,15 +104,12 @@ export default function Chat() {
   };
 
   const getChatDailyLimit = (): number => {
-    if (isOwner) return Number.MAX_SAFE_INTEGER;
     const profileLimit = Number(userProfile?.limits?.chat_daily_limit);
     if (Number.isFinite(profileLimit) && profileLimit > 0) return profileLimit;
     return isUltra ? 150 : 15;
   };
 
   const checkDailyLimits = (): boolean => {
-    if (isOwner) return true;
-
     const key = getDailyUsageKey();
     const usage = JSON.parse(localStorage.getItem(key) || '{"conversations": 0, "tokens": 0}');
     const dailyLimit = getChatDailyLimit();
@@ -127,8 +122,6 @@ export default function Chat() {
   };
 
   const updateDailyUsage = (inputLength: number) => {
-    if (isOwner) return;
-
     const key = getDailyUsageKey();
     const usage = JSON.parse(localStorage.getItem(key) || '{"conversations": 0, "tokens": 0}');
 

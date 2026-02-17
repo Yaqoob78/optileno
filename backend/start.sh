@@ -62,5 +62,60 @@ if ! [[ "$PORT_VALUE" =~ ^[0-9]+$ ]]; then
   PORT_VALUE="8000"
 fi
 
-echo "Starting application with Uvicorn on port $PORT_VALUE..."
-exec python -m uvicorn backend.app.main:app --host 0.0.0.0 --port "$PORT_VALUE"
+# Worker/concurrency tuning for production scale.
+WORKERS_PER_CORE_VALUE="${WORKERS_PER_CORE:-2}"
+MAX_WORKERS_VALUE="${MAX_WORKERS:-8}"
+WEB_CONCURRENCY_VALUE="${WEB_CONCURRENCY:-}"
+UVICORN_BACKLOG_VALUE="${UVICORN_BACKLOG:-2048}"
+UVICORN_KEEP_ALIVE_VALUE="${UVICORN_TIMEOUT_KEEP_ALIVE:-10}"
+UVICORN_LIMIT_CONCURRENCY_VALUE="${UVICORN_LIMIT_CONCURRENCY:-}"
+UVICORN_LIMIT_MAX_REQUESTS_VALUE="${UVICORN_LIMIT_MAX_REQUESTS:-0}"
+
+if ! [[ "${WORKERS_PER_CORE_VALUE}" =~ ^[0-9]+$ ]]; then WORKERS_PER_CORE_VALUE=2; fi
+if ! [[ "${MAX_WORKERS_VALUE}" =~ ^[0-9]+$ ]]; then MAX_WORKERS_VALUE=8; fi
+if ! [[ "${UVICORN_BACKLOG_VALUE}" =~ ^[0-9]+$ ]]; then UVICORN_BACKLOG_VALUE=2048; fi
+if ! [[ "${UVICORN_KEEP_ALIVE_VALUE}" =~ ^[0-9]+$ ]]; then UVICORN_KEEP_ALIVE_VALUE=10; fi
+if ! [[ "${UVICORN_LIMIT_MAX_REQUESTS_VALUE}" =~ ^[0-9]+$ ]]; then UVICORN_LIMIT_MAX_REQUESTS_VALUE=0; fi
+
+if [ -n "${WEB_CONCURRENCY_VALUE}" ] && [[ "${WEB_CONCURRENCY_VALUE}" =~ ^[0-9]+$ ]]; then
+  WORKER_COUNT="${WEB_CONCURRENCY_VALUE}"
+else
+  CPU_CORES=$(python - <<'PY'
+import os
+print(os.cpu_count() or 1)
+PY
+)
+  if ! [[ "${CPU_CORES}" =~ ^[0-9]+$ ]]; then
+    CPU_CORES=1
+  fi
+  WORKER_COUNT=$((CPU_CORES * WORKERS_PER_CORE_VALUE))
+  if [ "${WORKER_COUNT}" -lt 1 ]; then WORKER_COUNT=1; fi
+  if [ "${WORKER_COUNT}" -gt "${MAX_WORKERS_VALUE}" ]; then WORKER_COUNT="${MAX_WORKERS_VALUE}"; fi
+fi
+
+if [ "${ENVIRONMENT:-development}" = "development" ]; then
+  WORKER_COUNT=1
+fi
+
+echo "Starting application with Uvicorn on port ${PORT_VALUE} (workers=${WORKER_COUNT}, backlog=${UVICORN_BACKLOG_VALUE})..."
+
+UVICORN_ARGS=(
+  backend.app.main:app
+  --host 0.0.0.0
+  --port "${PORT_VALUE}"
+  --workers "${WORKER_COUNT}"
+  --proxy-headers
+  --forwarded-allow-ips "*"
+  --backlog "${UVICORN_BACKLOG_VALUE}"
+  --timeout-keep-alive "${UVICORN_KEEP_ALIVE_VALUE}"
+)
+
+if [ -n "${UVICORN_LIMIT_CONCURRENCY_VALUE}" ] && [[ "${UVICORN_LIMIT_CONCURRENCY_VALUE}" =~ ^[0-9]+$ ]]; then
+  UVICORN_ARGS+=(--limit-concurrency "${UVICORN_LIMIT_CONCURRENCY_VALUE}")
+fi
+
+if [ "${UVICORN_LIMIT_MAX_REQUESTS_VALUE}" -gt 0 ]; then
+  UVICORN_ARGS+=(--limit-max-requests "${UVICORN_LIMIT_MAX_REQUESTS_VALUE}")
+fi
+
+exec python -m uvicorn "${UVICORN_ARGS[@]}"

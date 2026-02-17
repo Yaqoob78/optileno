@@ -1,14 +1,61 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { CreditCard, Zap, Check, ArrowRight, Loader2, ShieldCheck } from 'lucide-react';
 import { useUserStore } from '../../stores/useUserStore';
 import { paymentService } from '../../services/api/payment.service';
+import { userService } from '../../services/api/user.service';
+import { normalizePlanTierValue } from '../../utils/plan';
 
 export default function BillingSettings() {
-    const { profile, isUltra: storeIsUltra } = useUserStore();
+    const { profile, isUltra: storeIsUltra, setProfile } = useUserStore();
     const [loading, setLoading] = useState(false);
+    const [syncingPlan, setSyncingPlan] = useState(false);
+    const [serverPlanTier, setServerPlanTier] = useState<'explorer' | 'ultra' | null>(null);
     const [error, setError] = useState<string | null>(null);
 
-    const isUltra = storeIsUltra;
+    useEffect(() => {
+        let cancelled = false;
+
+        const syncPlanFromServer = async () => {
+            setSyncingPlan(true);
+            try {
+                const [profileRes, subscriptionRes] = await Promise.all([
+                    userService.getProfile(),
+                    userService.getSubscription(),
+                ]);
+
+                if (cancelled) return;
+
+                if (profileRes.success && profileRes.data) {
+                    setProfile(profileRes.data as any);
+                }
+
+                if (subscriptionRes.success && subscriptionRes.data?.currentPlan?.tier) {
+                    setServerPlanTier(normalizePlanTierValue(subscriptionRes.data.currentPlan.tier));
+                } else if (profileRes.success && profileRes.data) {
+                    const fallbackTier = normalizePlanTierValue(
+                        (profileRes.data as any).plan_tier ||
+                        (profileRes.data as any).subscription?.tier ||
+                        (profileRes.data as any).planType
+                    );
+                    setServerPlanTier(fallbackTier);
+                }
+            } catch {
+                // Ignore: fall back to current store values.
+            } finally {
+                if (!cancelled) {
+                    setSyncingPlan(false);
+                }
+            }
+        };
+
+        syncPlanFromServer();
+        return () => {
+            cancelled = true;
+        };
+    }, [setProfile]);
+
+    const effectiveTier = serverPlanTier || (storeIsUltra ? 'ultra' : 'explorer');
+    const isUltra = effectiveTier === 'ultra';
     const configuredLimit = Number(profile?.limits?.chat_daily_limit);
     const chatDailyLimit = Number.isFinite(configuredLimit) && configuredLimit > 0
         ? configuredLimit
@@ -82,6 +129,9 @@ export default function BillingSettings() {
                         {isUltra ? 'ULTRA' : 'EXPLORER'}
                     </div>
                 </div>
+                {syncingPlan && (
+                    <p style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>Syncing latest plan status...</p>
+                )}
 
                 <div className="billing-features">
                         {planFeatures.map((feat, i) => (

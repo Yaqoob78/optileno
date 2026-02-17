@@ -2,6 +2,7 @@ from fastapi import APIRouter
 from backend.auth import auth_router
 from backend.api.v1.endpoints import chat, plans, analytics, system as system_endpoint, advanced_features, goals, subscriptions, agentic, health
 from backend.payments.razorpay_routes import router as razorpay_router
+from backend.payments.stripe_routes import router as stripe_router
 from backend.payments.webhooks import router as webhook_router
 from backend.api.v1.endpoints import legal
 
@@ -10,6 +11,7 @@ api_router = APIRouter()
 # Include all endpoint routers
 api_router.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 api_router.include_router(razorpay_router, tags=["Payments"])  # Prefix is already /payments in the router
+api_router.include_router(stripe_router, prefix="/payments", tags=["Payments"])
 api_router.include_router(webhook_router, prefix="/webhooks", tags=["Webhooks"])
 api_router.include_router(legal.router, tags=["Legal"])  # Prefix is already /legal in the router
 api_router.include_router(chat.router, prefix="/chat", tags=["Chat"])

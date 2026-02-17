@@ -49,7 +49,7 @@ export default function Dashboard() {
   const location = useLocation();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  const { user, login, isPremium: _isPremium } = useUser();
+  const { user, login, isPremium } = useUser();
   const { getFocusMetrics, getRecentInsights } = useAnalytics();
 
   // Use Global Stores for Real-Time Sync
@@ -70,9 +70,6 @@ export default function Dashboard() {
 
   // Action to fetch analytics if stale
   const fetchAnalytics = useAnalyticsStore((state) => state.fetchAnalytics);
-
-  // Force Ultra for owner email
-  const isPremium = user?.email === 'khan011504@gmail.com' ? true : _isPremium;
 
   // Real-time integration
   const { onTaskCreated, onDeepWorkCompleted, onAnalyticsUpdate } = useRealtime();

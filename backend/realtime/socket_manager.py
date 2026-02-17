@@ -41,10 +41,12 @@ class WebSocketMetrics:
         self.total_connections = 0
         self.current_connections = 0
         self.peak_connections = 0
+        self.rejected_connections = 0
         self.total_messages_sent = 0
         self.total_messages_received = 0
         self.failed_broadcasts = 0
         self.reconnections = 0
+        self.queue_dropped_messages = 0
         self.avg_message_latency_ms = 0.0
         self._latencies: deque = deque(maxlen=1000)
         self.last_heartbeat = None
@@ -56,6 +58,9 @@ class WebSocketMetrics:
     
     def record_disconnection(self):
         self.current_connections = max(0, self.current_connections - 1)
+
+    def record_rejected_connection(self):
+        self.rejected_connections += 1
     
     def record_message_sent(self, latency_ms: float = 0):
         self.total_messages_sent += 1
@@ -68,16 +73,21 @@ class WebSocketMetrics:
     
     def record_failed_broadcast(self):
         self.failed_broadcasts += 1
+
+    def record_queue_drop(self):
+        self.queue_dropped_messages += 1
     
     def to_dict(self) -> Dict[str, Any]:
         return {
             "total_connections": self.total_connections,
             "current_connections": self.current_connections,
             "peak_connections": self.peak_connections,
+            "rejected_connections": self.rejected_connections,
             "total_messages_sent": self.total_messages_sent,
             "total_messages_received": self.total_messages_received,
             "failed_broadcasts": self.failed_broadcasts,
             "reconnections": self.reconnections,
+            "queue_dropped_messages": self.queue_dropped_messages,
             "avg_message_latency_ms": round(self.avg_message_latency_ms, 2),
             "last_heartbeat": self.last_heartbeat,
         }
@@ -100,6 +110,10 @@ class MessageQueue:
         self._processing = False
     
     def enqueue(self, event: str, data: Dict[str, Any], room: str):
+        if len(self.queue) >= self.max_size:
+            # Drop oldest and count it so queue pressure is observable.
+            self.queue.popleft()
+            ws_metrics.record_queue_drop()
         self.queue.append({
             "event": event,
             "data": data,
@@ -107,16 +121,18 @@ class MessageQueue:
             "timestamp": time.time()
         })
     
-    async def process_batch(self, sio_instance, batch_size: int = 50):
+    async def process_batch(self, sio_instance, batch_size: Optional[int] = None):
         """Process a batch of queued messages."""
         if self._processing:
-            return
+            return 0
+
+        effective_batch_size = batch_size or settings.WEBSOCKET_QUEUE_BATCH_SIZE
         
         self._processing = True
         processed = 0
         
         try:
-            while self.queue and processed < batch_size:
+            while self.queue and processed < effective_batch_size:
                 msg = self.queue.popleft()
                 try:
                     await sio_instance.emit(msg["event"], msg["data"], room=msg["room"])
@@ -131,6 +147,7 @@ class MessageQueue:
         return processed
 
 message_queue = MessageQueue()
+_queue_processor_started = False
 
 
 # ==================================================
@@ -177,6 +194,7 @@ sio = create_socket_server()
 connected_users: Dict[str, Set[str]] = {}  # user_id -> set of session_ids
 user_sessions: Dict[str, str] = {}  # session_id -> user_id
 session_metadata: Dict[str, Dict[str, Any]] = {}  # session_id -> metadata
+active_socket_sids: Set[str] = set()  # includes unauthenticated and authenticated sockets
 
 # Canonical event names plus one-release legacy aliases.
 EVENT_ALIASES: Dict[str, List[str]] = {
@@ -214,6 +232,22 @@ async def _get_user_from_token(token: str) -> Optional[User]:
         return user
 
 
+def _register_transport_connection(sid: str) -> None:
+    """Track raw socket connection count, including unauthenticated clients."""
+    if sid in active_socket_sids:
+        return
+    active_socket_sids.add(sid)
+    ws_metrics.record_connection()
+
+
+def _unregister_transport_connection(sid: str) -> None:
+    """Track raw socket disconnection count."""
+    if sid not in active_socket_sids:
+        return
+    active_socket_sids.discard(sid)
+    ws_metrics.record_disconnection()
+
+
 async def _register_session(sid: str, user_id: int, metadata: Dict[str, Any] = None) -> None:
     """Register a new user session with metadata."""
     user_sessions[sid] = str(user_id)
@@ -231,7 +265,6 @@ async def _register_session(sid: str, user_id: int, metadata: Dict[str, Any] = N
     }
     
     await sio.enter_room(sid, f'user_{user_id}')
-    ws_metrics.record_connection()
 
 
 async def _unregister_session(sid: str) -> Optional[str]:
@@ -244,7 +277,6 @@ async def _unregister_session(sid: str) -> Optional[str]:
         if not connected_users[user_id]:
             del connected_users[user_id]
     
-    ws_metrics.record_disconnection()
     return user_id
 
 
@@ -255,6 +287,15 @@ async def _unregister_session(sid: str) -> Optional[str]:
 @sio.event
 async def connect(sid: str, environ: dict):
     """Handle client connection with authentication."""
+    if len(active_socket_sids) >= settings.WEBSOCKET_MAX_CONNECTIONS:
+        logger.warning(
+            f"[WS] Max connections reached: {len(active_socket_sids)}/"
+            f"{settings.WEBSOCKET_MAX_CONNECTIONS}"
+        )
+        ws_metrics.record_rejected_connection()
+        return False
+
+    _register_transport_connection(sid)
     logger.info(f"Client {sid} connecting...")
     ws_metrics.record_message_received()
 
@@ -266,12 +307,17 @@ async def connect(sid: str, environ: dict):
             if user:
                 # Check concurrent session limit
                 current_sessions = len(connected_users.get(str(user.id), set()))
-                if current_sessions >= settings.MAX_CONCURRENT_SESSIONS:
+                if current_sessions >= settings.MAX_CONCURRENT_SESSIONS and current_sessions > 0:
                     logger.warning(f"[WS] User {user.id} exceeded max sessions ({settings.MAX_CONCURRENT_SESSIONS})")
-                    # Disconnect oldest session
-                    oldest_sid = list(connected_users[str(user.id)])[0]
-                    await sio.emit('session:expired', {'reason': 'new_session'}, to=oldest_sid)
-                    await _unregister_session(oldest_sid)
+                    # Disconnect oldest session (actual transport disconnect).
+                    user_session_sids = list(connected_users.get(str(user.id), set()))
+                    if user_session_sids:
+                        oldest_sid = min(
+                            user_session_sids,
+                            key=lambda session_id: session_metadata.get(session_id, {}).get("connected_at", ""),
+                        )
+                        await sio.emit('session:expired', {'reason': 'new_session'}, to=oldest_sid)
+                        await sio.disconnect(oldest_sid)
                 
                 await _register_session(sid, user.id, {
                     "user_agent": environ.get("HTTP_USER_AGENT", "unknown")
@@ -292,6 +338,7 @@ async def connect(sid: str, environ: dict):
 async def disconnect(sid: str):
     """Handle client disconnection."""
     user_id = await _unregister_session(sid)
+    _unregister_transport_connection(sid)
     if user_id:
         logger.info(f"User {user_id} disconnected (sid: {sid})")
     else:
@@ -375,9 +422,12 @@ async def _safe_emit(event: str, data: Dict[str, Any], room: str, use_queue: boo
     start_time = time.time()
     
     try:
-        if use_queue and ws_metrics.current_connections > 1000:
+        should_queue = use_queue or ws_metrics.current_connections > settings.WEBSOCKET_QUEUE_THRESHOLD_CONNECTIONS
+        if should_queue:
             # Queue for batch processing under heavy load
             message_queue.enqueue(event, data, room)
+            for alias in EVENT_ALIASES.get(event, []):
+                message_queue.enqueue(alias, data, room)
         else:
             await sio.emit(event, data, room=room)
             for alias in EVENT_ALIASES.get(event, []):
@@ -876,7 +926,7 @@ def get_connected_users_count() -> int:
 
 def get_connected_sessions_count() -> int:
     """Get total number of connected sessions"""
-    return len(user_sessions)
+    return len(active_socket_sids)
 
 
 async def get_user_connected_clients(user_id: int) -> List[str]:
@@ -894,13 +944,17 @@ def get_websocket_metrics() -> Dict[str, Any]:
     return {
         **ws_metrics.to_dict(),
         "connected_users": len(connected_users),
-        "active_sessions": len(user_sessions),
+        "active_sessions": len(active_socket_sids),
+        "authenticated_sessions": len(user_sessions),
         "queue_size": len(message_queue.queue),
         "config": {
             "ping_interval": settings.WEBSOCKET_PING_INTERVAL,
             "ping_timeout": settings.WEBSOCKET_PING_TIMEOUT,
             "max_connections": settings.WEBSOCKET_MAX_CONNECTIONS,
             "message_queue_size": settings.WEBSOCKET_MESSAGE_QUEUE_SIZE,
+            "queue_batch_size": settings.WEBSOCKET_QUEUE_BATCH_SIZE,
+            "queue_process_interval_ms": settings.WEBSOCKET_QUEUE_PROCESS_INTERVAL_MS,
+            "queue_threshold_connections": settings.WEBSOCKET_QUEUE_THRESHOLD_CONNECTIONS,
         }
     }
 
@@ -923,20 +977,35 @@ async def get_connection_health() -> Dict[str, Any]:
 
 async def process_message_queue():
     """Background task to process queued messages."""
+    sleep_seconds = max(0.01, settings.WEBSOCKET_QUEUE_PROCESS_INTERVAL_MS / 1000.0)
     while True:
         try:
             if message_queue.queue:
-                processed = await message_queue.process_batch(sio)
+                processed = 0
+                for _ in range(5):
+                    batch_processed = await message_queue.process_batch(
+                        sio,
+                        batch_size=settings.WEBSOCKET_QUEUE_BATCH_SIZE,
+                    )
+                    processed += batch_processed
+                    if batch_processed < settings.WEBSOCKET_QUEUE_BATCH_SIZE:
+                        break
                 if processed > 0:
                     logger.debug(f"[WS] Processed {processed} queued messages")
         except Exception as e:
             logger.error(f"[WS] Error processing message queue: {e}")
-        await asyncio.sleep(0.1)  # Process every 100ms
+        await asyncio.sleep(sleep_seconds)
 
 
 # Create ASGI app wrapper
 def create_socketio_app(app):
     """Create Socket.IO ASGI wrapper for FastAPI app"""
+    global _queue_processor_started
+    if not _queue_processor_started:
+        sio.start_background_task(process_message_queue)
+        _queue_processor_started = True
+        logger.info("[WS] Message queue processor started")
+
     return ASGIApp(
         sio, 
         app, 

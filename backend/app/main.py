@@ -26,6 +26,7 @@ from backend.auth import auth_router
 from backend.db.database import init_db, close_db
 from backend.realtime import create_socketio_app
 from backend.core.cache import cache_service
+from backend.core.redis_rate_limiter import redis_rate_limiter
 from backend.core.monitoring import monitoring_service
 from backend.core.middleware import (
     RateLimitMiddleware,
@@ -76,6 +77,13 @@ async def lifespan(app: FastAPI):
         await cache_service.initialize()
         logger.info("[CHECK] Cache service initialized with HA patterns")
 
+        # Initialize distributed rate limiter for cross-worker fairness.
+        try:
+            await redis_rate_limiter.initialize()
+            logger.info("[CHECK] Redis rate limiter initialized")
+        except Exception as e:
+            logger.warning(f"[WARN] Redis rate limiter init failed (fallback enabled): {e}")
+
         # Initialize monitoring service
         try:
             await monitoring_service.initialize()
@@ -108,6 +116,13 @@ async def lifespan(app: FastAPI):
             logger.info("[CHECK] Cache connections closed")
         except Exception as e:
             logger.warning(f"[WARN] Cache shutdown error: {e}")
+
+        # Close Redis rate limiter connection.
+        try:
+            await redis_rate_limiter.close()
+            logger.info("[CHECK] Redis rate limiter closed")
+        except Exception as e:
+            logger.warning(f"[WARN] Redis rate limiter shutdown error: {e}")
         
         # Close database connections
         try:

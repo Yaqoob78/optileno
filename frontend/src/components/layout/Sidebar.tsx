@@ -41,9 +41,7 @@ export default function Sidebar({
 }: SidebarProps) {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const { user, isUltra } = useUser();
-  const ownerEmail = 'khan011504@gmail.com';
-  const effectiveIsUltra = isUltra || (user.email || '').toLowerCase().trim() === ownerEmail;
-  const profile = { planType: effectiveIsUltra ? 'ULTRA' : 'EXPLORER' };
+  const profile = { planType: isUltra ? 'ULTRA' : 'EXPLORER' };
 
   return (
     <aside className="premium-sidebar">
@@ -132,7 +130,7 @@ export default function Sidebar({
               <div className="user-online-status" />
             </div>
             <div className={`user-info ${profile.planType === 'ULTRA' ? 'ultra-glow' : ''}`}>
-              <p className="user-name">{user.name || (user.email === 'khan011504@gmail.com' ? 'Owner' : 'User')}</p>
+              <p className="user-name">{user.name || 'User'}</p>
               <div className={`user-badge ${profile.planType === 'ULTRA' ? 'ultra' : ''}`}>
                 <Zap size={10} className={profile.planType === 'ULTRA' ? 'text-purple-400' : 'text-amber-400'} />
                 <span className="user-badge-text">{profile.planType === 'ULTRA' ? 'ULTRA' : 'EXPLORER'}</span>

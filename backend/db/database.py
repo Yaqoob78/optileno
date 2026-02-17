@@ -76,6 +76,16 @@ def create_database_engine() -> AsyncEngine:
     if "sqlite" not in settings.DATABASE_URL:
         engine_kwargs["pool_size"] = settings.DB_POOL_SIZE
         engine_kwargs["max_overflow"] = settings.DB_MAX_OVERFLOW
+        engine_kwargs["pool_timeout"] = settings.DB_POOL_TIMEOUT
+        engine_kwargs["pool_recycle"] = settings.DB_POOL_RECYCLE
+        engine_kwargs["pool_use_lifo"] = True
+        engine_kwargs["connect_args"] = {
+            "command_timeout": max(5, settings.DB_STATEMENT_TIMEOUT // 1000),
+            "server_settings": {
+                "statement_timeout": str(settings.DB_STATEMENT_TIMEOUT),
+                "application_name": "optileno-api",
+            },
+        }
 
     engine = create_async_engine(settings.DATABASE_URL, **engine_kwargs)
 
@@ -84,7 +94,9 @@ def create_database_engine() -> AsyncEngine:
     else:
         logger.info(
             f"[DB] Created engine with pool_size={settings.DB_POOL_SIZE}, "
-            f"max_overflow={settings.DB_MAX_OVERFLOW}"
+            f"max_overflow={settings.DB_MAX_OVERFLOW}, "
+            f"pool_timeout={settings.DB_POOL_TIMEOUT}s, "
+            f"pool_recycle={settings.DB_POOL_RECYCLE}s"
         )
 
     return engine

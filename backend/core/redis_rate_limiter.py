@@ -3,10 +3,12 @@ Redis-based rate limiting and AI quota management for production scalability.
 Replaces in-memory rate limiting with persistent Redis storage.
 """
 
+import asyncio
 import json
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
+from uuid import uuid4
 import redis.asyncio as redis
 from fastapi import HTTPException, status
 
@@ -20,37 +22,56 @@ class RedisRateLimiter:
     def __init__(self):
         self.redis_client: Optional[redis.Redis] = None
         self._initialized = False
+        self._init_lock = asyncio.Lock()
+        self._last_init_attempt: float = 0.0
+        self._retry_interval_seconds: int = 30
     
     async def initialize(self):
         """Initialize Redis connection"""
-        if self._initialized:
+        if self._initialized and self.redis_client:
             return
-        
-        try:
-            self.redis_client = redis.from_url(
-                settings.REDIS_URL,
-                encoding="utf-8",
-                decode_responses=True,
-                socket_connect_timeout=5,
-                socket_timeout=5,
-                retry_on_timeout=True,
-                health_check_interval=30
-            )
+
+        async with self._init_lock:
+            if self._initialized and self.redis_client:
+                return
+
+            now_ts = datetime.now(timezone.utc).timestamp()
+            if self._last_init_attempt and (now_ts - self._last_init_attempt) < self._retry_interval_seconds:
+                return
+            self._last_init_attempt = now_ts
             
-            # Test connection
-            await self.redis_client.ping()
-            self._initialized = True
-            logger.info("Redis rate limiter initialized successfully")
-            
-        except Exception as e:
-            logger.error(f"Failed to initialize Redis rate limiter: {e}")
-            # Fallback to in-memory if Redis is not available
-            self.redis_client = None
+            try:
+                self.redis_client = redis.from_url(
+                    settings.REDIS_URL,
+                    encoding="utf-8",
+                    decode_responses=True,
+                    socket_connect_timeout=settings.REDIS_SOCKET_CONNECT_TIMEOUT,
+                    socket_timeout=settings.REDIS_SOCKET_TIMEOUT,
+                    retry_on_timeout=settings.REDIS_RETRY_ON_TIMEOUT,
+                    health_check_interval=settings.REDIS_HEALTH_CHECK_INTERVAL,
+                    max_connections=settings.REDIS_MAX_CONNECTIONS,
+                )
+                
+                # Test connection
+                await self.redis_client.ping()
+                self._initialized = True
+                logger.info("Redis rate limiter initialized successfully")
+                
+            except Exception as e:
+                logger.error(f"Failed to initialize Redis rate limiter: {e}")
+                # Fallback to in-memory if Redis is not available
+                self.redis_client = None
+                self._initialized = False
     
     async def close(self):
         """Close Redis connection"""
-        if self.redis_client:
-            await self.redis_client.close()
+        async with self._init_lock:
+            if self.redis_client:
+                try:
+                    await self.redis_client.aclose()
+                except Exception as e:
+                    logger.warning(f"Error closing Redis rate limiter client: {e}")
+            self.redis_client = None
             self._initialized = False
     
     async def check_rate_limit(
@@ -78,27 +99,44 @@ class RedisRateLimiter:
         
         try:
             now = datetime.now(timezone.utc)
-            pipeline = self.redis_client.pipeline()
-            
+
             # Key for this user's rate limit
             key = f"rate_limit:{identifier}:{user_id}"
-            
-            # Remove old entries outside the window
-            pipeline.zremrangebyscore(key, 0, now.timestamp() - window_seconds)
-            
-            # Count current requests
-            pipeline.zcard(key)
-            
-            # Add current request
-            pipeline.zadd(key, {str(now.timestamp()): now.timestamp()})
-            
-            # Set expiration
-            pipeline.expire(key, window_seconds)
-            
-            results = await pipeline.execute()
-            current_requests = results[1]
-            
-            if current_requests >= max_requests:
+            member = f"{now.timestamp()}:{uuid4().hex}"
+
+            # Atomic check+set so denied requests do not consume additional quota.
+            results = await self.redis_client.eval(
+                """
+                local key = KEYS[1]
+                local now = tonumber(ARGV[1])
+                local window = tonumber(ARGV[2])
+                local max_requests = tonumber(ARGV[3])
+                local member = ARGV[4]
+
+                redis.call('ZREMRANGEBYSCORE', key, 0, now - window)
+                local current = redis.call('ZCARD', key)
+
+                if current >= max_requests then
+                    redis.call('EXPIRE', key, window)
+                    return {0, current}
+                end
+
+                redis.call('ZADD', key, now, member)
+                redis.call('EXPIRE', key, window)
+                return {1, current + 1}
+                """,
+                1,
+                key,
+                str(now.timestamp()),
+                str(window_seconds),
+                str(max_requests),
+                member,
+            )
+
+            is_allowed = bool(int(results[0]))
+            current_requests = int(results[1])
+
+            if not is_allowed:
                 logger.warning(f"Rate limit exceeded for user {user_id}: {current_requests}/{max_requests}")
                 return False
             
@@ -113,11 +151,12 @@ class RedisRateLimiter:
         self,
         user_id: str,
         window_seconds: int = 60,
-        identifier: str = "api"
+        identifier: str = "api",
+        max_requests: int = 30,
     ) -> Dict:
         """Get current rate limit status for user"""
         if not self.redis_client:
-            return {"remaining": 30, "reset_time": None, "limit": 30}
+            return {"remaining": max_requests, "reset_time": None, "limit": max_requests}
         
         try:
             key = f"rate_limit:{identifier}:{user_id}"
@@ -135,15 +174,15 @@ class RedisRateLimiter:
                 reset_time = now + timedelta(seconds=ttl)
             
             return {
-                "remaining": max(0, 30 - current_requests),
+                "remaining": max(0, max_requests - current_requests),
                 "reset_time": reset_time.isoformat() if reset_time else None,
-                "limit": 30,
+                "limit": max_requests,
                 "current": current_requests
             }
             
         except Exception as e:
             logger.error(f"Failed to get rate limit status: {e}")
-            return {"remaining": 30, "reset_time": None, "limit": 30}
+            return {"remaining": max_requests, "reset_time": None, "limit": max_requests}
 
 class RedisAIQuota:
     """AI quota management using Redis"""
@@ -245,7 +284,7 @@ class RedisAIQuota:
 redis_rate_limiter = RedisRateLimiter()
 redis_ai_quota: Optional[RedisAIQuota] = None
 
-async def get_redis_ai_quota() -> RedisAIQuota:
+async def get_redis_ai_quota() -> Optional[RedisAIQuota]:
     """Get AI quota manager instance"""
     global redis_ai_quota
     
@@ -275,6 +314,11 @@ async def check_api_rate_limit(user_id: str, max_requests: int = 30):
 async def check_ai_quota_limit(user_id: str, quota_type: str = "general"):
     """FastAPI dependency for AI quota checking"""
     quota_manager = await get_redis_ai_quota()
+
+    if quota_manager is None:
+        # Fail open if Redis is unavailable to avoid hard outages.
+        logger.debug("Redis AI quota manager unavailable; allowing request")
+        return
     
     if not await quota_manager.check_ai_quota(user_id, quota_type=quota_type):
         raise HTTPException(

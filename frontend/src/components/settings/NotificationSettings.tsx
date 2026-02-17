@@ -7,10 +7,7 @@ import { useUserStore } from '../../stores/useUserStore';
 const NotificationSettings: React.FC = () => {
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(true);
-  const _isUltra = useUserStore((state) => state.isUltra);
-  const user = useUserStore((state) => state.profile);
-  // Force Ultra for owner
-  const isUltra = user?.email === 'khan011504@gmail.com' ? true : _isUltra;
+  const isUltra = useUserStore((state) => state.isUltra);
 
   if (!isUltra) {
     return (

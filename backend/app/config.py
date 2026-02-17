@@ -142,6 +142,26 @@ def _pick_database_url_candidate() -> str:
     )
 
 
+def _build_redis_url_from_env() -> str:
+    """
+    Build REDIS_URL from REDIS_* variables when REDIS_URL is not explicitly set.
+    """
+    explicit_url = _strip_wrapping_quotes(os.getenv("REDIS_URL", ""))
+    if explicit_url:
+        return explicit_url
+
+    host = _strip_wrapping_quotes(os.getenv("REDIS_HOST", "localhost")) or "localhost"
+    port = (os.getenv("REDIS_PORT", "6379") or "6379").strip()
+    db = (os.getenv("REDIS_DB", "0") or "0").strip()
+    password = os.getenv("REDIS_PASSWORD", "")
+
+    if password:
+        encoded_password = urllib.parse.quote(password, safe="")
+        return f"redis://:{encoded_password}@{host}:{port}/{db}"
+
+    return f"redis://{host}:{port}/{db}"
+
+
 
 class Settings:
     """Clean, deterministic settings (no silent overrides)."""
@@ -344,7 +364,7 @@ class Settings:
     # =========================
     # Redis Cache - Enterprise HA
     # =========================
-    REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379")
+    REDIS_URL: str = _build_redis_url_from_env()
     REDIS_HOST: str = os.getenv("REDIS_HOST", "localhost")
     REDIS_PORT: int = int(os.getenv("REDIS_PORT", "6379"))
     REDIS_PASSWORD: str = os.getenv("REDIS_PASSWORD", "")
@@ -376,6 +396,9 @@ class Settings:
     WEBSOCKET_PING_TIMEOUT: int = _env_int("WEBSOCKET_PING_TIMEOUT", 60)
     WEBSOCKET_MAX_CONNECTIONS: int = _env_int("WEBSOCKET_MAX_CONNECTIONS", 10000)
     WEBSOCKET_MESSAGE_QUEUE_SIZE: int = _env_int("WEBSOCKET_MESSAGE_QUEUE_SIZE", 1000)
+    WEBSOCKET_QUEUE_BATCH_SIZE: int = _env_int("WEBSOCKET_QUEUE_BATCH_SIZE", 200)
+    WEBSOCKET_QUEUE_PROCESS_INTERVAL_MS: int = _env_int("WEBSOCKET_QUEUE_PROCESS_INTERVAL_MS", 25)
+    WEBSOCKET_QUEUE_THRESHOLD_CONNECTIONS: int = _env_int("WEBSOCKET_QUEUE_THRESHOLD_CONNECTIONS", 1000)
     WEBSOCKET_RECONNECT_DELAY_MIN: int = _env_int("WEBSOCKET_RECONNECT_DELAY_MIN", 1000)
     WEBSOCKET_RECONNECT_DELAY_MAX: int = _env_int("WEBSOCKET_RECONNECT_DELAY_MAX", 30000)
 
@@ -519,6 +542,13 @@ def log_startup_settings():
         print(f"[CORS] Origin Regex: {settings.CORS_ALLOW_ORIGIN_REGEX}")
     print(f"[CACHE] Redis Max Connections: {settings.REDIS_MAX_CONNECTIONS}")
     print(f"[WS] Max WebSocket Connections: {settings.WEBSOCKET_MAX_CONNECTIONS}")
+    print(
+        "[WS] Queue: "
+        f"size={settings.WEBSOCKET_MESSAGE_QUEUE_SIZE}, "
+        f"batch={settings.WEBSOCKET_QUEUE_BATCH_SIZE}, "
+        f"interval_ms={settings.WEBSOCKET_QUEUE_PROCESS_INTERVAL_MS}, "
+        f"threshold={settings.WEBSOCKET_QUEUE_THRESHOLD_CONNECTIONS}"
+    )
     print(f"[ROCKET] AI Provider: {settings.AI_PROVIDER if settings.AI_PROVIDER else 'Not configured'}")
     print(f"[BRAIN] AI Model: {settings.AI_MODEL if settings.AI_MODEL else 'Not configured'}")
 

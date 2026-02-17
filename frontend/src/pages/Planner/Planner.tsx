@@ -58,10 +58,8 @@ export default function PlannerPage() {
   useNavStatePreservation();
 
   const { theme } = useTheme();
-  const _isUltra = useUserStore((state) => state.isUltra);
+  const isUltra = useUserStore((state) => state.isUltra);
   const user = useUserStore((state) => state.profile);
-  // Force Ultra for owner
-  const isUltra = user?.email === 'khan011504@gmail.com' ? true : _isUltra;
 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [maximizedView, setMaximizedView] = useState(false);

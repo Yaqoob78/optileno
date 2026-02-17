@@ -1,5 +1,5 @@
 // pages/Settings/Settings.tsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Settings as SettingsIcon,
   Bell,
@@ -19,6 +19,7 @@ import AboutSettings from '../../components/settings/AboutSettings';
 import BillingSettings from '../../components/settings/BillingSettings';
 import { useUserStore } from '../../stores/useUserStore';
 import { useNavigate } from 'react-router-dom';
+import { userService } from '../../services/api/user.service';
 import '../../styles/pages/settings.css';
 
 interface Tab {
@@ -30,7 +31,28 @@ interface Tab {
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<string>('general');
   const logout = useUserStore((state) => state.logout);
+  const setProfile = useUserStore((state) => state.setProfile);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const syncProfile = async () => {
+      try {
+        const profileRes = await userService.getProfile();
+        if (!cancelled && profileRes.success && profileRes.data) {
+          setProfile(profileRes.data as any);
+        }
+      } catch {
+        // Ignore sync errors and continue with existing store data.
+      }
+    };
+
+    syncProfile();
+    return () => {
+      cancelled = true;
+    };
+  }, [setProfile]);
 
   const handleLogout = () => {
     logout();

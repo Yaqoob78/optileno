@@ -30,12 +30,11 @@ services:
 
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     environment:
       - DATABASE_URL=${DATABASE_URL}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - SECRET_KEY=${SECRET_KEY}
       - AI_PROVIDER=${AI_PROVIDER}
       - NVIDIA_API_KEY=${NVIDIA_API_KEY}
@@ -45,6 +44,24 @@ services:
       - CORS_ORIGINS=["https://${DOMAIN_NAME}"]
       - COOKIE_SECURE=true
       - COOKIE_SAMESITE=none
+      - WORKERS_PER_CORE=${WORKERS_PER_CORE:-2}
+      - MAX_WORKERS=${MAX_WORKERS:-8}
+      - WEB_CONCURRENCY=${WEB_CONCURRENCY:-8}
+      - UVICORN_BACKLOG=${UVICORN_BACKLOG:-4096}
+      - UVICORN_TIMEOUT_KEEP_ALIVE=${UVICORN_TIMEOUT_KEEP_ALIVE:-10}
+      - UVICORN_LIMIT_CONCURRENCY=${UVICORN_LIMIT_CONCURRENCY:-2500}
+      - UVICORN_LIMIT_MAX_REQUESTS=${UVICORN_LIMIT_MAX_REQUESTS:-20000}
+      - DB_POOL_SIZE=${DB_POOL_SIZE:-20}
+      - DB_MAX_OVERFLOW=${DB_MAX_OVERFLOW:-10}
+      - DB_POOL_TIMEOUT=${DB_POOL_TIMEOUT:-30}
+      - DB_POOL_RECYCLE=${DB_POOL_RECYCLE:-300}
+      - DB_STATEMENT_TIMEOUT=${DB_STATEMENT_TIMEOUT:-30000}
+      - REDIS_MAX_CONNECTIONS=${REDIS_MAX_CONNECTIONS:-500}
+      - WEBSOCKET_MAX_CONNECTIONS=${WEBSOCKET_MAX_CONNECTIONS:-10000}
+      - WEBSOCKET_MESSAGE_QUEUE_SIZE=${WEBSOCKET_MESSAGE_QUEUE_SIZE:-5000}
+      - WEBSOCKET_QUEUE_THRESHOLD_CONNECTIONS=${WEBSOCKET_QUEUE_THRESHOLD_CONNECTIONS:-1000}
+      - WEBSOCKET_QUEUE_BATCH_SIZE=${WEBSOCKET_QUEUE_BATCH_SIZE:-200}
+      - WEBSOCKET_QUEUE_PROCESS_INTERVAL_MS=${WEBSOCKET_QUEUE_PROCESS_INTERVAL_MS:-25}
     depends_on:
       db:
         condition: service_healthy
@@ -54,7 +71,7 @@ services:
       - app-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health/ready"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health/ready')"]
       interval: 30s
       timeout: 10s
       retries: 3

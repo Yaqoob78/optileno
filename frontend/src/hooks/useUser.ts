@@ -4,6 +4,7 @@ import { apiClient } from '../services/api/client';
 import { useUserStore } from "../stores/useUserStore";
 import { usePlannerStore } from "../stores/planner.store";
 import type { UserProfile } from "../types/user.types";
+import { canonicalPlanTypeForTier, resolvePlanTierFromProfile } from "../utils/plan";
 
 interface LoginCredentials {
   email: string;
@@ -41,21 +42,6 @@ interface LoginResponse {
   };
 }
 
-const normalizePlanTier = (user: LoginResponse["user"]): 'explorer' | 'ultra' => {
-  const direct = (user.plan_tier || '').toLowerCase().trim();
-  if (direct === 'ultra') return 'ultra';
-  if (direct === 'explorer') return 'explorer';
-
-  const planType = (user.planType || user.plan_type || '').toUpperCase().trim();
-  if (['ULTRA', 'PRO', 'PREMIUM', 'ENTERPRISE'].includes(planType)) return 'ultra';
-
-  const tier = (user.subscription?.tier || user.tier || '').toLowerCase().trim();
-  if (['ultra', 'pro', 'premium', 'enterprise', 'elite'].includes(tier)) return 'ultra';
-
-  if ((user.role || '').toLowerCase().trim() === 'admin') return 'ultra';
-  return 'explorer';
-};
-
 export const useUser = () => {
   const {
     profile,
@@ -79,8 +65,14 @@ export const useUser = () => {
         const { user } = response.data;
         apiClient.setAuthTokens();
 
-        const isOwner = user.email === 'khan011504@gmail.com';
-        const planTier = isOwner ? 'ultra' : normalizePlanTier(user);
+        const planTier = resolvePlanTierFromProfile({
+          role: user.role,
+          tier: user.tier,
+          plan_tier: user.plan_tier,
+          planType: user.planType,
+          plan_type: user.plan_type,
+          subscription: user.subscription,
+        });
         const shouldBeUltra = planTier === 'ultra';
 
         const profileData: UserProfile = {
@@ -89,7 +81,7 @@ export const useUser = () => {
           name: user.name,
           avatar: user.avatar || '',
           role: user.role === 'admin' ? 'admin' : 'user',
-          planType: shouldBeUltra ? 'ULTRA' : 'EXPLORER',
+          planType: canonicalPlanTypeForTier(planTier),
           plan_tier: planTier,
           subscription: {
             tier: planTier,

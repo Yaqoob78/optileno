@@ -51,9 +51,7 @@ export default function AnalyticsPage() {
   // Safe time range for hooks that don't support yearly yet
   const safeTimeRange = timeRange === 'yearly' ? 'monthly' : timeRange;
 
-  const { isUltra: storeIsUltra, user } = useUser();
-  const isOwner = user?.email?.toLowerCase().trim() === 'khan011504@gmail.com';
-  const isUltra = storeIsUltra || isOwner;
+  const { isUltra, user } = useUser();
   const bigFiveIntervalDays = Number((user as any)?.limits?.big_five_interval_days ?? (isUltra ? 7 : 14));
   const navigate = useNavigate();
 
