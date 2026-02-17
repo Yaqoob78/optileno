@@ -231,8 +231,8 @@ class Settings:
     COOKIE_DOMAIN: Optional[str] = _strip_wrapping_quotes(os.getenv("COOKIE_DOMAIN", "")) or None
 
     # Owner Account (Auto-provisioned)
-    OWNER_EMAIL: str = os.getenv("OWNER_EMAIL", "")
-    OWNER_PASSWORD_HASH: str = os.getenv("OWNER_PASSWORD_HASH", "")
+    OWNER_EMAIL: str = _strip_wrapping_quotes(os.getenv("OWNER_EMAIL", ""))
+    OWNER_PASSWORD_HASH: str = _strip_wrapping_quotes(os.getenv("OWNER_PASSWORD_HASH", ""))
 
     # =========================
     # CORS
