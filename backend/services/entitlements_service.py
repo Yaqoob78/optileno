@@ -4,6 +4,8 @@ from typing import Any, Dict
 
 from fastapi import HTTPException
 
+from backend.app.config import settings
+
 
 PLAN_EXPLORER = "explorer"
 PLAN_ULTRA = "ultra"
@@ -60,13 +62,23 @@ ULTRA_ENTITLEMENTS: Dict[str, Any] = {
 }
 
 
+def _is_owner_email(email: str | None) -> bool:
+    owner_email = (settings.OWNER_EMAIL or "").strip().lower()
+    user_email = (email or "").strip().lower()
+    return bool(owner_email and user_email and user_email == owner_email)
+
+
 def normalize_plan_tier(
     *,
     plan_tier: str | None = None,
     plan_type: str | None = None,
     tier: str | None = None,
     role: str | None = None,
+    email: str | None = None,
 ) -> str:
+    if _is_owner_email(email):
+        return PLAN_ULTRA
+
     role_value = (role or "").strip().lower()
     if role_value == "admin":
         return PLAN_ULTRA
@@ -108,6 +120,7 @@ def is_ultra_user(user: Any) -> bool:
         plan_type=getattr(user, "plan_type", None),
         tier=getattr(user, "tier", None),
         role=getattr(user, "role", None),
+        email=getattr(user, "email", None),
     )
     return plan_tier == PLAN_ULTRA
 

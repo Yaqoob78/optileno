@@ -124,6 +124,7 @@ class BigFiveTestService:
             plan_type=getattr(user, "plan_type", None),
             tier=getattr(user, "tier", None),
             role=getattr(user, "role", None),
+            email=getattr(user, "email", None),
         )
 
     async def _get_test_interval_days(self, db: Session, user_id: int) -> int:

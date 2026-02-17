@@ -22,7 +22,12 @@ class AnalyticsEventIn(BaseModel):
 
 
 def _plan_tier(user: Any) -> str:
-    return normalize_plan_tier(plan_type=getattr(user, "plan_type", None), tier=getattr(user, "tier", None), role=getattr(user, "role", None))
+    return normalize_plan_tier(
+        plan_type=getattr(user, "plan_type", None),
+        tier=getattr(user, "tier", None),
+        role=getattr(user, "role", None),
+        email=getattr(user, "email", None),
+    )
 
 
 def _require_ultra(user: Any, feature: str) -> None:

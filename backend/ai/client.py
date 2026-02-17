@@ -82,7 +82,9 @@ class DualAIClient:
         """Check which providers are available based on user plan and daily usage."""
         
         # 🛡️ ADMIN BYPASS: No limits for owner
-        if getattr(user, "email", None) == "khan011504@gmail.com":
+        owner_email = (settings.OWNER_EMAIL or "").strip().lower()
+        user_email = (getattr(user, "email", "") or "").strip().lower()
+        if owner_email and user_email == owner_email:
             return {
                 "primary_available": True,
                 "secondary_available": True,
@@ -101,6 +103,7 @@ class DualAIClient:
             plan_type=getattr(user, "plan_type", None),
             tier=getattr(user, "tier", None),
             role=getattr(user, "role", None),
+            email=getattr(user, "email", None),
         )
         limits = settings.get_plan_limits(plan_tier)
         limit_primary = limits["nvidia"]
