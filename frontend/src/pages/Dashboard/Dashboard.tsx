@@ -61,8 +61,9 @@ export default function Dashboard() {
   // Determine Productivity Score using the same hook as Analytics page for consistency
   const { score: productivityData } = useProductivityScore('daily');
 
-  // Real-time from hook > Store > 0
-  const productivityScore = productivityData?.score ?? (currentMetrics.productivityScore > 0 ? currentMetrics.productivityScore : 0);
+  // Real-time from hook > Store > null (explicit no-data state)
+  const productivityScore = productivityData?.score ?? (currentMetrics.productivityScore > 0 ? currentMetrics.productivityScore : null);
+  const productivityScoreValue = productivityScore ?? 0;
 
   // Determine Task Counts (Real-time from store)
   const totalTasks = plannerTasks.length;
@@ -282,7 +283,7 @@ export default function Dashboard() {
                 <Brain className="metric-icon" size={20} />
                 <span className="metric-label">Productivity Score</span>
               </div>
-              <div className="metric-value">{Math.round(productivityScore)}%</div>
+              <div className="metric-value">{productivityScore === null ? '--' : `${Math.round(productivityScore)}%`}</div>
               <div className="progress-ring">
                 <svg width="60" height="60" viewBox="0 0 60 60">
                   <circle className="progress-ring-background" cx="30" cy="30" r="26" />
@@ -290,10 +291,10 @@ export default function Dashboard() {
                     className="progress-ring-foreground"
                     cx="30" cy="30" r="26"
                     strokeDasharray="163.36"
-                    strokeDashoffset={163.36 * (1 - (productivityScore / 100))}
+                    strokeDashoffset={163.36 * (1 - (productivityScoreValue / 100))}
                   />
                 </svg>
-                <span className="ring-value">{Math.round(productivityScore)}%</span>
+                <span className="ring-value">{productivityScore === null ? '--' : `${Math.round(productivityScore)}%`}</span>
               </div>
             </div>
 

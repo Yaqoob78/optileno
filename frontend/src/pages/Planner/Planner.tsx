@@ -264,11 +264,22 @@ export default function PlannerPage() {
 
   const handleEditTask = (task: any) => {
     setIsEnergyTouched(true); // Don't auto-estimate for existing tasks
+    const dueDateVal = task.dueDate || task.due_date;
+    // Extract the  scheduled day from the existing dueDate
+    let scheduledDay: number | undefined = undefined;
+    if (dueDateVal) {
+      try {
+        const d = new Date(dueDateVal);
+        if (!isNaN(d.getTime())) {
+          scheduledDay = d.getDay(); // 0=Sun..6=Sat
+        }
+      } catch { /* ignore */ }
+    }
     setEditForm({
       id: task.id,
       title: task.title,
       description: task.description,
-      startTime: task.startTime || (task.dueDate ? new Date(task.dueDate).toTimeString().slice(0, 5) : undefined),
+      startTime: task.startTime || (dueDateVal ? new Date(dueDateVal).toTimeString().slice(0, 5) : undefined),
       duration: task.duration || task.estimatedDurationMinutes,
       energy: task.energy || 'medium',
       status: task.status,
@@ -276,8 +287,9 @@ export default function PlannerPage() {
       priority: task.priority,
       tags: task.tags,
       notes: task.notes,
-      dueDate: task.dueDate || task.due_date,
-      goalId: task.related_goal_id // Map backend field
+      dueDate: dueDateVal,
+      goalId: task.related_goal_id, // Map backend field
+      scheduledDay: scheduledDay,
     });
     setIsNewTask(false);
     setIsEditing(true);
@@ -295,8 +307,7 @@ export default function PlannerPage() {
     setSaveError(null);
 
     try {
-      // Format the due date correctly
-      // Handle startTime properly - Default to current time if missing
+      // Format the due date correctly using the scheduled day picker
       let finalDueDate;
       const now = new Date();
       const currentHours = now.getHours();
@@ -310,23 +321,28 @@ export default function PlannerPage() {
         return;
       }
 
-      if (editForm.dueDate) {
-        // Use the original date but update the time
+      // Use scheduledDay to compute the actual target date accurately
+      if (editForm.scheduledDay != null) {
+        const targetDate = getNextDay(editForm.scheduledDay);
+        targetDate.setHours(hours, minutes, 0, 0);
+        const year = targetDate.getFullYear();
+        const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+        const day = String(targetDate.getDate()).padStart(2, '0');
+        const hoursStr = String(hours).padStart(2, '0');
+        const minutesStr = String(minutes).padStart(2, '0');
+        finalDueDate = `${year}-${month}-${day}T${hoursStr}:${minutesStr}:00`;
+      } else if (editForm.dueDate) {
+        // Fallback: use existing dueDate but update time
         let d = new Date(editForm.dueDate);
         if (isNaN(d.getTime())) {
-          d = new Date(); // Fallback if invalid
+          d = new Date();
         }
-        // Create ISO string manually to avoid timezone conversion
         const year = d.getFullYear();
         const month = String(d.getMonth() + 1).padStart(2, '0');
         const day = String(d.getDate()).padStart(2, '0');
         const hoursStr = String(hours).padStart(2, '0');
         const minutesStr = String(minutes).padStart(2, '0');
-        // Preserve seconds if possible
-        const secondsStr = String(d.getSeconds()).padStart(2, '0');
-
-        // Use local timezone format instead of UTC
-        finalDueDate = `${year}-${month}-${day}T${hoursStr}:${minutesStr}:${secondsStr}`;
+        finalDueDate = `${year}-${month}-${day}T${hoursStr}:${minutesStr}:00`;
       } else {
         // Fallback to today
         const d = new Date();
@@ -335,9 +351,7 @@ export default function PlannerPage() {
         const day = String(d.getDate()).padStart(2, '0');
         const hoursStr = String(hours).padStart(2, '0');
         const minutesStr = String(minutes).padStart(2, '0');
-        const secondsStr = String(d.getSeconds()).padStart(2, '0');
-        // Use local timezone format instead of UTC
-        finalDueDate = `${year}-${month}-${day}T${hoursStr}:${minutesStr}:${secondsStr}`;
+        finalDueDate = `${year}-${month}-${day}T${hoursStr}:${minutesStr}:00`;
       }
 
       // Keep priority as-is — backend accepts 'urgent'
@@ -475,6 +489,7 @@ export default function PlannerPage() {
       originalId: String(task.id || task._id), // Keep original string ID for API calls
       title: task.title || 'New Task',
       startTime: startTime,
+      dueDate: dueDateVal || null, // Pass the actual scheduled date to TaskCard for accurate timing
       duration: durationVal,
       energy: (task.energy || 'medium') as 'low' | 'medium' | 'high',
       category: (task.category || 'work') as 'work' | 'meeting' | 'break' | 'health' | 'learning' | 'routine' | 'personal',
@@ -664,7 +679,21 @@ export default function PlannerPage() {
                       id="task-time"
                       type="time"
                       value={editForm.startTime || ''}
-                      onChange={(e) => setEditForm({ ...editForm, startTime: e.target.value })}
+                      onChange={(e) => {
+                        const newTime = e.target.value;
+                        setEditForm(prev => {
+                          if (!prev) return null;
+                          // Keep the dueDate in sync with the new time
+                          let updatedDueDate = prev.dueDate;
+                          if (newTime && prev.scheduledDay != null) {
+                            const target = getNextDay(prev.scheduledDay);
+                            const [h, m] = newTime.split(':').map(Number);
+                            target.setHours(h, m, 0, 0);
+                            updatedDueDate = target.toISOString();
+                          }
+                          return { ...prev, startTime: newTime, dueDate: updatedDueDate };
+                        });
+                      }}
                       className="task-input"
                       disabled={isSaving}
                     />

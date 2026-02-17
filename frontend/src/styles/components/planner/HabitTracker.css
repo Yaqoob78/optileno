@@ -1912,3 +1912,68 @@
   transform: translateY(-1px) !important;
   box-shadow: 0 4px 16px rgba(var(--color-primary), 0.35) !important;
 }
+
+/* ===== SMALL MOBILE ===== */
+@media (max-width: 480px) {
+  .habit-tracker {
+    padding: var(--space-3);
+    height: auto;
+    min-height: auto;
+    margin-left: 0;
+  }
+
+  .habit-card {
+    padding: 10px;
+    border-radius: var(--radius-md);
+  }
+
+  .habit-name {
+    font-size: 13px;
+  }
+
+  .habit-category {
+    font-size: 10px;
+  }
+
+  .streak-dots {
+    gap: 4px;
+  }
+
+  .streak-dot {
+    width: 18px;
+    height: 18px;
+  }
+
+  .control-btn {
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+
+  .modal-content.habit-modal {
+    max-width: 100%;
+    margin: var(--space-2);
+    border-radius: var(--radius-xl);
+  }
+
+  .modal-header {
+    padding: var(--space-3);
+  }
+
+  .modal-body {
+    padding: var(--space-2);
+  }
+
+  .modal-footer {
+    padding: var(--space-3);
+  }
+
+  .category-select {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  .consistency-display {
+    min-width: 100px;
+    padding: var(--space-2);
+  }
+}

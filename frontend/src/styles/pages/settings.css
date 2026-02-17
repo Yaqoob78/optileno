@@ -1047,3 +1047,102 @@
     flex-direction: column;
   }
 }
+
+/* ===== SMALL MOBILE ===== */
+@media (max-width: 480px) {
+  .settings-container {
+    padding: 0 16px;
+  }
+
+  .settings-header {
+    padding: 20px 0;
+    margin-bottom: 20px;
+  }
+
+  .settings-header h1 {
+    font-size: 20px;
+  }
+
+  .settings-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 2px;
+    padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .nav-item {
+    white-space: nowrap;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .nav-arrow {
+    display: none;
+  }
+
+  .setting-item {
+    padding: 10px 14px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .profile-header {
+    padding: 14px 16px;
+  }
+
+  .profile-avatar {
+    width: 48px;
+    height: 48px;
+  }
+
+  .profile-meta h3 {
+    font-size: 15px;
+  }
+
+  .profile-card {
+    padding: 14px 16px;
+  }
+
+  .profile-value {
+    font-size: 15px;
+  }
+
+  .profile-membership-card {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 14px 16px;
+  }
+
+  .membership-right {
+    align-items: flex-start;
+  }
+
+  .billing-card {
+    padding: 16px;
+  }
+
+  .billing-header {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .data-privacy-card {
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 16px;
+  }
+
+  .data-danger-card {
+    padding: 14px 16px;
+  }
+
+  .data-modal-card {
+    padding: 20px;
+    border-radius: 16px;
+  }
+
+  .data-modal {
+    padding: 16px;
+  }
+}

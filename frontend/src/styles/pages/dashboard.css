@@ -1022,3 +1022,95 @@
     text-align: center;
   }
 }
+
+@media (max-width: 480px) {
+  .dashboard-content {
+    padding: 1rem;
+  }
+
+  .greeting-line.emphasis {
+    font-size: 1.5rem;
+  }
+
+  .greeting-line {
+    font-size: 0.9375rem;
+  }
+
+  .avatar-circle {
+    width: 48px;
+    height: 48px;
+    font-size: 1.125rem;
+  }
+
+  .user-name {
+    font-size: 1.125rem;
+  }
+
+  .glass-card {
+    padding: 1.25rem;
+    border-radius: 14px;
+  }
+
+  .title-icon-wrapper {
+    width: 36px;
+    height: 36px;
+  }
+
+  .title-main {
+    font-size: 1rem;
+  }
+
+  .metric-value {
+    font-size: 1.375rem;
+  }
+
+  .action-icon-wrapper {
+    width: 40px;
+    height: 40px;
+  }
+
+  .message-content {
+    padding: 1.25rem;
+  }
+
+  .message-icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  .message-text {
+    font-size: 1rem;
+  }
+
+  .quote-text {
+    font-size: 1rem;
+  }
+
+  .quote-mark {
+    font-size: 2rem;
+  }
+
+  .quotes-container {
+    padding: 1.25rem;
+  }
+
+  .user-welcome-section {
+    margin-bottom: 2rem;
+  }
+
+  .user-analytics-box {
+    margin-bottom: 2rem;
+  }
+
+  .community-section {
+    margin-bottom: 2rem;
+  }
+
+  .quick-actions-section {
+    margin-bottom: 2rem;
+  }
+
+  .evolution-message {
+    margin-bottom: 2rem;
+  }
+}

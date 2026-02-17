@@ -15,6 +15,8 @@ import ResetPassword from "../pages/Auth/ResetPassword";
 import Landing from "../pages/Landing/Landing";
 import TermsOfService from "../pages/Legal/TermsOfService";
 import PrivacyPolicy from "../pages/Legal/PrivacyPolicy";
+import RefundPolicy from "../pages/Legal/RefundPolicy";
+import CookiesPolicy from "../pages/Legal/CookiesPolicy";
 
 export default function AppRoutes() {
   return (
@@ -27,6 +29,8 @@ export default function AppRoutes() {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/terms" element={<TermsOfService />} />
       <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/refund" element={<RefundPolicy />} />
+      <Route path="/cookies" element={<CookiesPolicy />} />
 
       {/* Protected routes wrapped in Layout */}
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>

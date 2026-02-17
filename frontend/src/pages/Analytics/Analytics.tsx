@@ -115,28 +115,29 @@ export default function AnalyticsPage() {
   } = useBurnoutRisk(safeTimeRange, isUltra);
 
   // Get real productivity score (not hardcoded)
-  const getRealProductivityScore = () => {
+  const getRealProductivityScore = (): number | null => {
     if (timeRange === 'monthly' && monthlyProductivityAvg !== null) {
       return Math.round(monthlyProductivityAvg);
-    } else if (timeRange === 'weekly' && weeklyProductivityAvg !== null) {
+    }
+    if (timeRange === 'weekly' && weeklyProductivityAvg !== null) {
       return Math.round(weeklyProductivityAvg);
-    } else if (productivityData) {
+    }
+    if (productivityData && productivityData.score !== null) {
       return Math.round(productivityData.score);
     }
-    // Fallback to persisted store metrics (prevents 0 flash on refresh)
+
     if (currentMetrics.productivityScore > 0) {
       return Math.round(currentMetrics.productivityScore);
     }
-    return 0; // Start from 0, not hardcoded value
+
+    return null;
   };
 
   const currentProductivityScore = getRealProductivityScore();
 
   // Get display score based on time range
-  const getDisplayScore = () => {
-    // Show persisted data while loading (Stale-while-revalidate)
-    // Only return 0 if we truly have no data and are loading
-    if (productivityLoading && currentProductivityScore === 0) return 0;
+  const getDisplayScore = (): number | null => {
+    if (productivityLoading && currentProductivityScore === null) return null;
     return currentProductivityScore;
   };
 
@@ -147,7 +148,8 @@ export default function AnalyticsPage() {
   };
 
   // Dynamic color based on score
-  const getProductivityColor = (score: number) => {
+  const getProductivityColor = (score: number | null) => {
+    if (score === null) return { bg: 'transparent', text: 'var(--text-muted)', glow: 'none' };
     if (score === 0) return { bg: '#1a0000', text: '#ff0000', glow: '0 0 20px rgba(255, 0, 0, 0.6)' }; // Extreme red with glow
     if (score <= 5) return { bg: '#2a0000', text: '#ff1a1a', glow: '0 0 15px rgba(255, 26, 26, 0.5)' }; // Very strong red
     if (score <= 15) return { bg: '#3a0a0a', text: '#ff3333', glow: '0 0 10px rgba(255, 51, 51, 0.4)' }; // Strong red
@@ -210,12 +212,29 @@ export default function AnalyticsPage() {
   const stats = [
     {
       label: 'Productivity Score',
-      value: productivityLoading && displayProductivityScore === 0 ? '...' : displayProductivityScore.toString(),
-      change: productivityData?.grade || getScoreLabel(),
-      trend: displayProductivityScore > 60 ? 'up' : displayProductivityScore > 40 ? 'neutral' : 'down',
+      value:
+        productivityLoading && displayProductivityScore === null
+          ? '...'
+          : displayProductivityScore === null
+            ? '--'
+            : displayProductivityScore.toString(),
+      change: displayProductivityScore === null ? 'No Data Yet' : (productivityData?.grade || getScoreLabel()),
+      trend:
+        displayProductivityScore === null
+          ? 'neutral'
+          : displayProductivityScore > 60
+            ? 'up'
+            : displayProductivityScore > 40
+              ? 'neutral'
+              : 'down',
       icon: TrendingUp,
-      progress: displayProductivityScore,
-      subtitle: productivityData?.next_update ? `Updates at ${productivityData.next_update}` : undefined,
+      progress: displayProductivityScore ?? 0,
+      subtitle:
+        displayProductivityScore === null
+          ? 'Complete a task, habit, chat, or deep work to generate a score.'
+          : productivityData?.next_update
+            ? `Updates at ${productivityData.next_update}`
+            : undefined,
       customColors: productivityColors
     },
     {

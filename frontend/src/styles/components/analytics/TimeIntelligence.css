@@ -470,3 +470,114 @@
     left: 100%;
   }
 }
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 768px) {
+  .ti-grid-layout {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+
+  .ti-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .reactor-ring-container {
+    width: 64px;
+    height: 64px;
+  }
+
+  .reactor-svg {
+    width: 64px;
+    height: 64px;
+  }
+
+  .reactor-value {
+    font-size: 0.8rem;
+  }
+
+  .sector-box {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .rhythm-visualizer {
+    height: 48px;
+  }
+
+  .scanner-radar {
+    width: 100px;
+    height: 100px;
+  }
+
+  .timeline-event {
+    height: auto;
+    min-height: 36px;
+  }
+}
+
+@media (max-width: 480px) {
+  .time-intelligence-container.futuristic-ui {
+    gap: 10px;
+  }
+
+  .ti-header {
+    padding-bottom: 8px;
+  }
+
+  .tech-icon-box {
+    width: 28px;
+    height: 28px;
+  }
+
+  .neon-text {
+    font-size: 0.75rem;
+  }
+
+  .mono-caption {
+    font-size: 0.55rem;
+  }
+
+  .sector-box {
+    padding: 8px;
+    border-radius: 6px;
+  }
+
+  .sector-header {
+    font-size: 0.6rem;
+  }
+
+  .reactor-grid {
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .reactor-ring-container {
+    width: 56px;
+    height: 56px;
+  }
+
+  .reactor-label {
+    font-size: 0.55rem;
+  }
+
+  .diag-label {
+    font-size: 0.6rem;
+  }
+
+  .diag-value {
+    font-size: 0.75rem;
+  }
+
+  .scanning-title {
+    font-size: 0.75rem;
+  }
+
+  .scanner-radar {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 12px;
+  }
+}

@@ -10,6 +10,7 @@ import { useSessionTracking } from "./hooks/useSessionTracking";
 import { useSessionBootstrap } from "./hooks/useSessionBootstrap";
 import { useStoreHydration, usePreserveState, useStateListener } from "./hooks/useStoreHydration";
 import { initializeStatePreservation } from "./utils/statePreservation";
+import CookieConsent from "./components/legal/CookieConsent";
 
 // Simple error boundary component
 class ErrorBoundary extends React.Component<
@@ -165,6 +166,7 @@ export default function App() {
     <ErrorBoundary>
       <AppInitializer>
         <AppRoutes />
+        <CookieConsent />
       </AppInitializer>
     </ErrorBoundary>
   );

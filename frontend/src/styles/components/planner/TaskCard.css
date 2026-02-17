@@ -742,3 +742,54 @@
   transform: translateY(-1px);
   box-shadow: 0 6px 16px rgba(var(--color-danger), 0.4);
 }
+
+/* ===== SMALL MOBILE ===== */
+@media (max-width: 480px) {
+  .task-card {
+    padding: var(--space-2);
+    border-radius: var(--radius-md);
+  }
+
+  .task-card-header {
+    margin-bottom: var(--space-2);
+    padding-bottom: var(--space-2);
+  }
+
+  .task-title {
+    font-size: 0.875rem;
+  }
+
+  .task-description {
+    font-size: 0.75rem;
+  }
+
+  .primary-action-btn {
+    padding: var(--space-1) var(--space-2);
+    font-size: 0.75rem;
+  }
+
+  .action-btn {
+    padding: var(--space-1);
+  }
+
+  .meta-item {
+    padding: var(--space-1);
+  }
+
+  .meta-label {
+    font-size: 0.625rem;
+  }
+
+  .task-footer {
+    padding-top: var(--space-2);
+  }
+
+  .retry-actions {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .task-retry-modal {
+    padding: var(--space-4);
+  }
+}

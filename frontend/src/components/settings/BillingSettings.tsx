@@ -134,44 +134,44 @@ export default function BillingSettings() {
                 )}
 
                 <div className="billing-features">
-                        {planFeatures.map((feat, i) => (
-                            <div key={i} className="billing-feature">
-                                <div className="billing-feature-icon">{feat.icon}</div>
-                                <div className="billing-feature-text">
-                                    <h4>{feat.title}</h4>
-                                    <span>{feat.sub}</span>
-                                </div>
+                    {planFeatures.map((feat, i) => (
+                        <div key={i} className="billing-feature">
+                            <div className="billing-feature-icon">{feat.icon}</div>
+                            <div className="billing-feature-text">
+                                <h4>{feat.title}</h4>
+                                <span>{feat.sub}</span>
                             </div>
-                        ))}
-                    </div>
+                        </div>
+                    ))}
+                </div>
 
-                    {!isUltra ? (
-                        <button
-                            className="billing-primary-btn"
-                            onClick={handleUpgrade}
-                            disabled={loading}
-                        >
-                            {loading ? <Loader2 className="animate-spin" size={16} /> : (
-                                <>
-                                    <span>Upgrade Now</span>
-                                    <ArrowRight size={14} />
-                                </>
-                            )}
-                        </button>
-                    ) : (
-                        <button
-                            className="billing-secondary-btn"
-                            onClick={handleManageBilling}
-                            disabled={loading}
-                        >
-                            {loading ? <Loader2 className="animate-spin" size={14} /> : (
-                                <>
-                                    <CreditCard size={14} />
-                                    <span>Manage Billing</span>
-                                </>
-                            )}
-                        </button>
-                    )}
+                {!isUltra ? (
+                    <button
+                        className="billing-primary-btn"
+                        onClick={handleUpgrade}
+                        disabled={loading}
+                    >
+                        {loading ? <Loader2 className="animate-spin" size={16} /> : (
+                            <>
+                                <span>Upgrade Now</span>
+                                <ArrowRight size={14} />
+                            </>
+                        )}
+                    </button>
+                ) : (
+                    <button
+                        className="billing-secondary-btn"
+                        onClick={handleManageBilling}
+                        disabled={loading}
+                    >
+                        {loading ? <Loader2 className="animate-spin" size={14} /> : (
+                            <>
+                                <CreditCard size={14} />
+                                <span>Manage Billing</span>
+                            </>
+                        )}
+                    </button>
+                )}
             </div>
 
             {error && (
@@ -184,7 +184,7 @@ export default function BillingSettings() {
             <div className="billing-note">
                 <ShieldCheck size={18} />
                 <p>
-                    Payments are handled securely via Stripe. We do not store your credit card information.
+                    Payments are handled securely via Razorpay. We do not store your credit card information.
                     Subscriptions can be cancelled at any time through the billing portal.
                 </p>
             </div>

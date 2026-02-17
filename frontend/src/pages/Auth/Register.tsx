@@ -203,15 +203,33 @@ export default function Register() {
                             </div>
                         </div>
 
-                        <div className="form-group" style={{ marginTop: '1rem' }}>
+                        {formData.plan_type === 'EXPLORER' && (
+                            <div style={{
+                                padding: '0.5rem 0.75rem',
+                                borderRadius: '8px',
+                                background: 'rgba(59, 130, 246, 0.08)',
+                                border: '1px solid rgba(59, 130, 246, 0.2)',
+                                fontSize: '0.75rem',
+                                color: 'rgba(147, 197, 253, 0.9)',
+                                textAlign: 'center',
+                                lineHeight: '1.4'
+                            }}>
+                                🎉 3-day free trial included. Billing starts automatically after trial ends unless cancelled.
+                            </div>
+                        )}
+
+                        <div className="form-group" style={{ marginTop: '0.5rem' }}>
                             <label className="remember-me" style={{ alignItems: 'flex-start' }}>
                                 <input
                                     type="checkbox"
                                     required
                                     style={{ marginTop: '4px' }}
                                 />
-                                <span style={{ fontSize: '0.85rem', lineHeight: '1.4', color: 'var(--text-secondary)' }}>
-                                    I agree to the <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)' }}>Terms of Service</a> and <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)' }}>Privacy Policy</a>
+                                <span style={{ fontSize: '0.8rem', lineHeight: '1.5', color: 'var(--text-secondary)' }}>
+                                    I agree to the <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)' }}>Terms & Conditions</a>,{' '}
+                                    <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)' }}>Privacy Policy</a>,{' '}
+                                    <a href="/refund" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)' }}>Refund Policy</a>, and{' '}
+                                    <a href="/cookies" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)' }}>Cookies Policy</a>
                                 </span>
                             </label>
                         </div>

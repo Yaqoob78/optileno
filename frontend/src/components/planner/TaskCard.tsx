@@ -4,7 +4,7 @@ import {
   CheckCircle, Clock, Zap, Tag, Edit3, Trash2, MoreVertical,
   ChevronDown, ChevronRight, Copy, AlertCircle, Briefcase,
   Users, Coffee, Dumbbell, BookOpen, Home, Target,
-  Play, Pause, Timer, FileText, Hash, X
+  Play, Pause, Timer, FileText, Hash, X, Calendar as CalendarIcon
 } from 'lucide-react';
 import '../../styles/components/planner/TaskCard.css';
 
@@ -29,6 +29,7 @@ interface Task {
   subtasks?: Subtask[];
   notes?: string;
   goalTitle?: string;
+  dueDate?: string | Date | null;  // The actual scheduled date/time
   meta?: {
     started_at?: string;
     last_started_at?: string;
@@ -135,6 +136,27 @@ export default function TaskCard({
     };
   }, [showActions]);
 
+  // Helper: Get the actual Date object for this task's scheduled day.
+  //   If task has a dueDate, use that day. Otherwise fall back to today.
+  const getTaskDate = (): Date => {
+    if (task.dueDate) {
+      try {
+        const d = new Date(task.dueDate);
+        if (!isNaN(d.getTime())) return d;
+      } catch { /* fall through */ }
+    }
+    return new Date();
+  };
+
+  // Check if the task is scheduled for today
+  const isToday = (() => {
+    const taskDate = getTaskDate();
+    const now = new Date();
+    return taskDate.getFullYear() === now.getFullYear()
+      && taskDate.getMonth() === now.getMonth()
+      && taskDate.getDate() === now.getDate();
+  })();
+
   // Determine if it's a retry (started significantly after original schedule)
   const isRetry = (() => {
     if (!task.meta?.last_started_at && !localStartTime) return false;
@@ -146,7 +168,7 @@ export default function TaskCard({
     let startTimeMs = 0;
     if (task.startTime) {
       const [h, m] = task.startTime.split(':').map(Number);
-      const d = new Date();
+      const d = getTaskDate();
       d.setHours(h, m, 0, 0);
       startTimeMs = d.getTime();
     } else {
@@ -169,15 +191,25 @@ export default function TaskCard({
 
     let startTimeMs: number = 0;
 
-    // Parse Scheduled Start Time
+    // Parse Scheduled Start Time using the task's actual date, not today
     if (task.startTime) {
       const [h, m] = task.startTime.split(':').map(Number);
-      const d = new Date();
+      const d = getTaskDate();
       d.setHours(h, m, 0, 0);
       startTimeMs = d.getTime();
+    } else if (task.dueDate) {
+      // If no explicit startTime but we have a dueDate, use the dueDate time
+      try {
+        const d = new Date(task.dueDate);
+        if (!isNaN(d.getTime())) {
+          startTimeMs = d.getTime();
+        } else {
+          startTimeMs = currentTimeMs;
+        }
+      } catch {
+        startTimeMs = currentTimeMs;
+      }
     } else {
-      // If no start time, assume now? Or handle as Todo?
-      // User implied strict scheduling. If no time, treat as "Start Now" or "Todo".
       startTimeMs = currentTimeMs;
     }
 
@@ -193,7 +225,7 @@ export default function TaskCard({
       window2EndMs = retryEndTimeMs + (10 * 60 * 1000); // 10 min completion window for retry
     }
 
-    // ─── STATE MACHINE ─────────────────────────────
+    // ─── STATE MACHINE ─────────────────────────────────
 
     // 1. FAILED
     if (currentStatus === 'failed') {
@@ -249,9 +281,16 @@ export default function TaskCard({
     // A. Scheduled (Future)
     if (currentTimeMs < startTimeMs) {
       const diffMs = startTimeMs - currentTimeMs;
-      const h = Math.floor(diffMs / (1000 * 60 * 60));
-      const m = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-      setTimeRemaining(`Starts in ${h}h ${m}m`);
+      // If more than 24 hours away, show date label instead of countdown
+      if (diffMs > 24 * 60 * 60 * 1000) {
+        const taskDate = getTaskDate();
+        const dayName = taskDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+        setTimeRemaining(`Scheduled: ${dayName}`);
+      } else {
+        const h = Math.floor(diffMs / (1000 * 60 * 60));
+        const m = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        setTimeRemaining(`Starts in ${h}h ${m}m`);
+      }
       setShowMarkComplete(false);
       if (currentStatus !== 'scheduled' && currentStatus !== 'planned') {
         // Just visual update, don't force backend sync to avoid loops if backend disagrees
@@ -300,7 +339,7 @@ export default function TaskCard({
     calculateTimes();
     const interval = setInterval(calculateTimes, 1000); // 1-second update for strict timer
     return () => clearInterval(interval);
-  }, [task.startTime, task.duration, currentStatus, task.meta, localStartTime]);
+  }, [task.startTime, task.duration, task.dueDate, currentStatus, task.meta, localStartTime]);
 
   const formatTime = (startTime?: string, duration?: number) => {
     if (!startTime || duration === undefined) return '';
@@ -500,6 +539,23 @@ export default function TaskCard({
       </div>
 
       <div className="task-meta-grid">
+        {/* Date indicator */}
+        {task.dueDate && (
+          <div className="meta-item">
+            <CalendarIcon size={14} />
+            <span className="meta-label">Day</span>
+            <span className="meta-value">{(() => {
+              const taskDate = getTaskDate();
+              const now = new Date();
+              const tomorrow = new Date(now);
+              tomorrow.setDate(now.getDate() + 1);
+              if (taskDate.toDateString() === now.toDateString()) return 'Today';
+              if (taskDate.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
+              return taskDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+            })()}</span>
+          </div>
+        )}
+
         <div className="meta-item">
           <Clock size={14} />
           <span className="meta-label">Time</span>

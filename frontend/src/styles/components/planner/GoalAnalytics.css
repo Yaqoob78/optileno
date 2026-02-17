@@ -200,3 +200,58 @@
     padding: 2px 6px;
     border-radius: 4px;
 }
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 768px) {
+    .goal-analytics-container {
+        padding: 12px;
+        border-radius: 10px;
+    }
+
+    .analytics-actions {
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .action-btn {
+        width: 100%;
+    }
+
+    .probability-value {
+        font-size: 16px;
+    }
+
+    .suggestions-badges {
+        flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 480px) {
+    .goal-analytics-container {
+        padding: 8px;
+        margin-top: 8px;
+        border-radius: 8px;
+    }
+
+    .analytics-header h4 {
+        font-size: 12px;
+    }
+
+    .probability-card {
+        padding: 8px;
+        margin-bottom: 10px;
+    }
+
+    .probability-label {
+        font-size: 11px;
+    }
+
+    .probability-value {
+        font-size: 14px;
+    }
+
+    .action-btn {
+        padding: 6px;
+        font-size: 11px;
+    }
+}

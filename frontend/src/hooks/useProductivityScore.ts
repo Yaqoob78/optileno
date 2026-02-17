@@ -15,13 +15,14 @@ interface ProductivityBreakdown {
 }
 
 interface ProductivityScore {
-    score: number;
+    score: number | null;
     date: string;
     breakdown: ProductivityBreakdown;
     grade: string;
     daily_intent: string;
     baseline_state: string;
     reason_codes: string[];
+    reason?: string | null;
     next_update?: string;
 }
 
@@ -69,6 +70,10 @@ export function useProductivityScore(timeRange: 'daily' | 'weekly' | 'monthly' =
                 throw new Error(todayResponse.error?.message || 'Failed to fetch productivity score');
             }
             const todayPayload = todayResponse.data as any;
+            const parsedScore =
+                todayPayload.score === null || todayPayload.score === undefined || Number.isNaN(Number(todayPayload.score))
+                    ? null
+                    : Number(todayPayload.score);
 
             // V3 breakdown with backward-compatible fallbacks
             const normalizedBreakdown: ProductivityBreakdown = {
@@ -82,13 +87,14 @@ export function useProductivityScore(timeRange: 'daily' | 'weekly' | 'monthly' =
             };
 
             setScore({
-                score: Number(todayPayload.score ?? 0),
+                score: parsedScore,
                 date: todayPayload.period_end || todayPayload.date || new Date().toISOString(),
                 breakdown: normalizedBreakdown,
-                grade: String(todayPayload.grade || todayPayload.goal_band || 'C'),
+                grade: String(todayPayload.grade || todayPayload.goal_band || (parsedScore === null ? 'No Data' : 'C')),
                 daily_intent: String(todayPayload.daily_intent || 'athlete'),
                 baseline_state: String(todayPayload.baseline_state || 'cold_start'),
                 reason_codes: Array.isArray(todayPayload.reason_codes) ? todayPayload.reason_codes : [],
+                reason: typeof todayPayload.reason === 'string' ? todayPayload.reason : null,
                 next_update: todayPayload.generated_at || todayPayload.next_update,
             });
 
@@ -97,7 +103,12 @@ export function useProductivityScore(timeRange: 'daily' | 'weekly' | 'monthly' =
                 const weeklyResponse = await api.get<{ average?: number; score?: number | null }>('/analytics/productivity/score/weekly');
                 if (weeklyResponse.success && weeklyResponse.data) {
                     const weeklyData = weeklyResponse.data;
-                    setWeeklyAverage(weeklyData.average ?? weeklyData.score ?? null);
+                    const weeklyRaw = weeklyData.average ?? weeklyData.score ?? null;
+                    setWeeklyAverage(
+                        weeklyRaw === null || weeklyRaw === undefined || Number.isNaN(Number(weeklyRaw))
+                            ? null
+                            : Number(weeklyRaw)
+                    );
                 } else if (weeklyResponse.error?.code === 'HTTP_401') {
                     setWeeklyAverage(null);
                 }
@@ -108,7 +119,12 @@ export function useProductivityScore(timeRange: 'daily' | 'weekly' | 'monthly' =
                 const monthlyResponse = await api.get<{ average?: number; score?: number | null }>('/analytics/productivity/score/monthly');
                 if (monthlyResponse.success && monthlyResponse.data) {
                     const monthlyData = monthlyResponse.data;
-                    setMonthlyAverage(monthlyData.average ?? monthlyData.score ?? null);
+                    const monthlyRaw = monthlyData.average ?? monthlyData.score ?? null;
+                    setMonthlyAverage(
+                        monthlyRaw === null || monthlyRaw === undefined || Number.isNaN(Number(monthlyRaw))
+                            ? null
+                            : Number(monthlyRaw)
+                    );
                 } else if (monthlyResponse.error?.code === 'HTTP_401') {
                     setMonthlyAverage(null);
                 }
