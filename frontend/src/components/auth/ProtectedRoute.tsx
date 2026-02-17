@@ -23,11 +23,20 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
             // Already checked on this mount
             if (hasChecked.current) return;
 
-            // If store already says authenticated, stop checking
+            // If store already says authenticated, allow access immediately
+            // and refresh profile in background to avoid stale persisted plan tier.
             if (isAuthenticated) {
-                console.log('[ProtectedRoute] User is already authenticated in store.');
+                console.log('[ProtectedRoute] User is already authenticated in store. Refreshing profile in background.');
                 setChecking(false);
                 hasChecked.current = true;
+                try {
+                    const response = await userService.getProfile();
+                    if (response.success && response.data) {
+                        login(response.data as any, response.data.preferences as any);
+                    }
+                } catch (err) {
+                    // Ignore transient profile refresh errors for already-authenticated users.
+                }
                 return;
             }
 
