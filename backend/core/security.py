@@ -64,6 +64,24 @@ async def get_current_user(
     if not user or not user.is_active:
         raise credentials_exception
 
+    # Ensure configured owner account always has full privileges, even on old sessions.
+    owner_email = (settings.OWNER_EMAIL or "").strip().lower()
+    user_email = (getattr(user, "email", "") or "").strip().lower()
+    if owner_email and user_email == owner_email:
+        needs_owner_sync = (
+            (getattr(user, "role", "") or "").strip().lower() != "admin"
+            or (getattr(user, "tier", "") or "").strip().lower() != "ultra"
+            or (getattr(user, "plan_type", "") or "").strip().upper() != "ULTRA"
+            or not bool(getattr(user, "is_superuser", False))
+        )
+        if needs_owner_sync:
+            user.role = "admin"
+            user.tier = "ultra"
+            user.plan_type = "ULTRA"
+            user.is_superuser = True
+            await db.commit()
+            await db.refresh(user)
+
     return user
 
 
