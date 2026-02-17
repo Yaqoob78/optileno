@@ -483,7 +483,7 @@ export default function Landing() {
             </button>
             <p className="cta-subtext">
               Join today for launch pricing. First 100 users get a limited discount.
-              <br />Get 3 days free trial. <span className="secure-badge"><Lock size={12} style={{ display: 'inline', verticalAlign: 'middle' }} /> Secure payments with Razorpay</span>
+              <br />Get 3 days free trial. <span className="secure-badge"><Lock size={12} style={{ display: 'inline', verticalAlign: 'middle' }} /> Secure payments with Cashfree</span>
             </p>
           </div>
         </div>
