@@ -13,7 +13,7 @@ import logging
 from backend.db.session import get_db
 from backend.db.models import (
     UserAnalytics, AnalyticsEvent, UserInsight, 
-    BehavioralPattern, RealTimeMetrics, AIAnalysis
+    BehavioralPattern, RealTimeMetrics, AIAnalysis, FocusScore
 )
 from backend.analytics.processors.even_normalizer import normalize_event
 
@@ -166,6 +166,7 @@ class AnalyticsService:
     
     async def get_recent_events(self, user_id: int, limit: int = 50) -> List[Dict[str, Any]]:
         """Get recent events for a user"""
+        user_id = _coerce_user_id(user_id)
         async for db in get_db():
             events = await db.execute(
                 select(AnalyticsEvent)
@@ -191,6 +192,7 @@ class AnalyticsService:
     
     async def get_realtime_metrics(self, user_id: int) -> Optional[RealTimeMetrics]:
         """Get current real-time metrics"""
+        user_id = _coerce_user_id(user_id)
         async for db in get_db():
             metrics = await db.execute(
                 select(RealTimeMetrics)
@@ -372,6 +374,7 @@ class AnalyticsService:
     
     async def save_insight(self, user_id: int, insight_data: Dict[str, Any]):
         """Save an insight"""
+        user_id = _coerce_user_id(user_id)
         async for db in get_db():
             insight = UserInsight(
                 user_id=user_id,
@@ -390,6 +393,7 @@ class AnalyticsService:
     
     async def save_ai_analysis(self, user_id: int, event: Dict[str, Any], analysis: Dict[str, Any]):
         """Save AI analysis result"""
+        user_id = _coerce_user_id(user_id)
         async for db in get_db():
             ai_analysis = AIAnalysis(
                 user_id=user_id,
@@ -404,6 +408,7 @@ class AnalyticsService:
     
     async def save_patterns(self, user_id: int, patterns: List[Dict[str, Any]]):
         """Save detected patterns"""
+        user_id = _coerce_user_id(user_id)
         async for db in get_db():
             for pattern_data in patterns:
                 pattern = BehavioralPattern(
@@ -421,6 +426,7 @@ class AnalyticsService:
     
     async def get_user_insights(self, user_id: int, limit: int = 10) -> List[Dict[str, Any]]:
         """Get recent insights for a user"""
+        user_id = _coerce_user_id(user_id)
         async for db in get_db():
             insights = await db.execute(
                 select(UserInsight)
@@ -448,6 +454,7 @@ class AnalyticsService:
     async def get_comprehensive_analytics(self, user_id: int) -> Dict[str, Any]:
         """Get complete analytics dashboard data"""
         try:
+            user_id = _coerce_user_id(user_id)
             # Get metrics
             metrics = await self.get_realtime_metrics(user_id)
             if not metrics:
@@ -554,6 +561,7 @@ class AnalyticsService:
     async def _get_historical_data(self, user_id: int) -> Dict[str, Any]:
         """Get historical analytics data for different time ranges"""
         try:
+            user_id = _coerce_user_id(user_id)
             async for db in get_db():
                 # Get focus scores for the last 30 days
                 focus_scores = await db.execute(
@@ -655,6 +663,7 @@ class AnalyticsService:
     async def _get_recent_habit_data(self, user_id: int) -> List[Dict[str, Any]]:
         """Get recent habit tracking data"""
         try:
+            user_id = _coerce_user_id(user_id)
             async for db in get_db():
                 habit_events = await db.execute(
                     select(AnalyticsEvent)
@@ -681,6 +690,7 @@ class AnalyticsService:
     async def initialize_user_analytics(self, user_id: int):
         """Initialize analytics data for a new user"""
         try:
+            user_id = _coerce_user_id(user_id)
             async for db in get_db():
                 # Check if user already has metrics
                 existing_metrics = await self.get_realtime_metrics(user_id)

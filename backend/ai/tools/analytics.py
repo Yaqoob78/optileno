@@ -214,11 +214,10 @@ async def predict_user_trajectory(
     Predict user's productivity trajectory using AI.
     """
     try:
+        numeric_user_id = int(user_id)
         # Get historical data
-        events = await analytics_service.get_recent_events(user_id, limit=200)
-        analytics_data = await analytics_service.get_comprehensive_analytics(user_id)
-        
-        analytics_data = await analytics_service.get_comprehensive_analytics(user_id)
+        events = await analytics_service.get_recent_events(numeric_user_id, limit=200)
+        analytics_data = await analytics_service.get_comprehensive_analytics(numeric_user_id)
         
         # Get AI client
         from backend.ai.client import get_ai_client
