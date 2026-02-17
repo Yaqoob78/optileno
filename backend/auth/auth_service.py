@@ -12,6 +12,7 @@ from backend.db.models import User, RefreshToken, PasswordResetToken
 from backend.schemas.auth import UserRegister, UserLogin
 from backend.services.email_service import email_service
 from backend.services.entitlements_service import normalize_plan_tier, canonical_plan_type
+from backend.utils.owner import is_owner_email
 from .auth_utils import (
     get_password_hash,
     verify_password,
@@ -51,9 +52,8 @@ class AuthService:
                 detail="Email already registered"
             )
 
-        # Check if this is the first user (make them admin/owner-like if so, optional logic)
-        # But we strictly follow settings.OWNER_EMAIL for the real owner.
-        is_owner = (user_in.email.lower().strip() == settings.OWNER_EMAIL.lower().strip()) if settings.OWNER_EMAIL else False
+        # Owner account always gets full privileges.
+        is_owner = is_owner_email(user_in.email)
         
         # Determine plan
         if is_owner:
@@ -90,11 +90,11 @@ class AuthService:
         user = result.scalar_one_or_none()
 
         # Check if this is the owner trying to log in
-        is_owner_email = (settings.OWNER_EMAIL and login_data.email.lower().strip() == settings.OWNER_EMAIL.lower().strip())
+        is_owner_login = is_owner_email(login_data.email)
 
         if not user:
             # If owner email but no account, auto-provision
-            if is_owner_email and settings.OWNER_PASSWORD_HASH:
+            if is_owner_login and settings.OWNER_PASSWORD_HASH:
                 if verify_password(login_data.password, settings.OWNER_PASSWORD_HASH):
                     # Create owner account with full privileges
                     new_user = User(
@@ -121,13 +121,22 @@ class AuthService:
             )
 
         # For owner, verify against env hash; for others, verify stored hash
-        if is_owner_email:
-            if not verify_password(login_data.password, settings.OWNER_PASSWORD_HASH):
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Incorrect email or password",
-                    headers={"WWW-Authenticate": "Bearer"},
-                )
+        if is_owner_login:
+            if settings.OWNER_PASSWORD_HASH:
+                if not verify_password(login_data.password, settings.OWNER_PASSWORD_HASH):
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Incorrect email or password",
+                        headers={"WWW-Authenticate": "Bearer"},
+                    )
+            else:
+                # Fallback for environments where OWNER_PASSWORD_HASH is missing.
+                if not verify_password(login_data.password, user.hashed_password):
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Incorrect email or password",
+                        headers={"WWW-Authenticate": "Bearer"},
+                    )
             # Ensure owner always has full privileges
             # Force update if permissions are missing or outdated
             if user.tier != "ultra" or user.role != "admin" or user.plan_type != "ULTRA" or not user.is_superuser:

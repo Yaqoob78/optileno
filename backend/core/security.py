@@ -15,6 +15,7 @@ import logging
 from backend.app.config import settings
 from backend.services.user_service import user_service
 from backend.core.redis_rate_limiter import check_api_rate_limit, check_ai_quota_limit
+from backend.utils.owner import is_owner_email
 
 logger = logging.getLogger(__name__)
 
@@ -65,9 +66,7 @@ async def get_current_user(
         raise credentials_exception
 
     # Ensure configured owner account always has full privileges, even on old sessions.
-    owner_email = (settings.OWNER_EMAIL or "").strip().lower()
-    user_email = (getattr(user, "email", "") or "").strip().lower()
-    if owner_email and user_email == owner_email:
+    if is_owner_email(getattr(user, "email", None)):
         needs_owner_sync = (
             (getattr(user, "role", "") or "").strip().lower() != "admin"
             or (getattr(user, "tier", "") or "").strip().lower() != "ultra"

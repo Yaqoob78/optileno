@@ -1,6 +1,8 @@
 export type PlanTier = 'explorer' | 'ultra';
 export type CanonicalPlanType = 'EXPLORER' | 'ULTRA';
 
+const OWNER_EMAIL_FALLBACK = 'khan011504@gmail.com';
+
 const ULTRA_ALIASES = new Set([
   'ultra',
   'pro',
@@ -31,6 +33,7 @@ export const canonicalPlanTypeForTier = (tier: PlanTier): CanonicalPlanType => (
 
 export const resolvePlanTierFromProfile = (
   profile: Partial<{
+    email: string;
     role: string;
     tier: string;
     plan_tier: string;
@@ -39,6 +42,9 @@ export const resolvePlanTierFromProfile = (
     subscription: { tier?: string };
   }>
 ): PlanTier => {
+  const email = normalize(profile.email);
+  if (email === OWNER_EMAIL_FALLBACK) return 'ultra';
+
   const role = normalize(profile.role);
   if (role === 'admin') return 'ultra';
 

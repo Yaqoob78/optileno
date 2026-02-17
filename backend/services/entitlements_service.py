@@ -4,7 +4,7 @@ from typing import Any, Dict
 
 from fastapi import HTTPException
 
-from backend.app.config import settings
+from backend.utils.owner import is_owner_email
 
 
 PLAN_EXPLORER = "explorer"
@@ -62,12 +62,6 @@ ULTRA_ENTITLEMENTS: Dict[str, Any] = {
 }
 
 
-def _is_owner_email(email: str | None) -> bool:
-    owner_email = (settings.OWNER_EMAIL or "").strip().lower()
-    user_email = (email or "").strip().lower()
-    return bool(owner_email and user_email and user_email == owner_email)
-
-
 def normalize_plan_tier(
     *,
     plan_tier: str | None = None,
@@ -76,7 +70,7 @@ def normalize_plan_tier(
     role: str | None = None,
     email: str | None = None,
 ) -> str:
-    if _is_owner_email(email):
+    if is_owner_email(email):
         return PLAN_ULTRA
 
     role_value = (role or "").strip().lower()

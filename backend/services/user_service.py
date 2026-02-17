@@ -7,10 +7,10 @@ import logging
 from datetime import datetime, timezone
 from sqlalchemy import select, update
 
-from backend.app.config import settings
 from backend.db.models import User
 from backend.db.database import get_db
 from backend.services.entitlements_service import PLAN_EXPLORER, PLAN_ULTRA, canonical_plan_type
+from backend.utils.owner import is_owner_email
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ class UserService:
         from backend.auth.auth_utils import get_password_hash
 
         async for db in get_db():
-            is_owner = bool(settings.OWNER_EMAIL) and email.lower().strip() == settings.OWNER_EMAIL.lower().strip()
+            is_owner = is_owner_email(email)
 
             hashed_pw = get_password_hash(password)
 

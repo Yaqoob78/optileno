@@ -11,6 +11,7 @@ from groq import AsyncGroq
 from backend.app.config import settings
 from backend.services.user_service import user_service
 from backend.services.entitlements_service import get_limits, normalize_plan_tier
+from backend.utils.owner import is_owner_email
 from backend.ai.response_formatter import response_formatter
 from backend.analytics.insights.insight_engine import generate_insights
 
@@ -82,9 +83,7 @@ class DualAIClient:
         """Check which providers are available based on user plan and daily usage."""
         
         # 🛡️ ADMIN BYPASS: No limits for owner
-        owner_email = (settings.OWNER_EMAIL or "").strip().lower()
-        user_email = (getattr(user, "email", "") or "").strip().lower()
-        if owner_email and user_email == owner_email:
+        if is_owner_email(getattr(user, "email", None)):
             return {
                 "primary_available": True,
                 "secondary_available": True,

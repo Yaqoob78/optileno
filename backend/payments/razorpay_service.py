@@ -23,6 +23,7 @@ from sqlalchemy import select, update
 
 from backend.app.config import settings
 from backend.db.models import User
+from backend.utils.owner import is_owner_email
 
 logger = logging.getLogger(__name__)
 
@@ -195,10 +196,7 @@ class RazorpayService:
     
     def _is_owner(self, user: User) -> bool:
         """Check if user is the owner."""
-        return (
-            settings.OWNER_EMAIL and 
-            user.email.lower().strip() == settings.OWNER_EMAIL.lower().strip()
-        )
+        return is_owner_email(getattr(user, "email", None))
     
     def verify_payment_signature(
         self,
