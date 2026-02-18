@@ -3,7 +3,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select, update, func
 from fastapi import HTTPException, status
 from jose import JWTError
 
@@ -44,8 +44,10 @@ class AuthService:
         return canonical_plan_type(normalized), normalized
 
     async def register(self, db: AsyncSession, user_in: UserRegister):
+        normalized_email = str(user_in.email).strip().lower()
+
         # Check if email exists
-        result = await db.execute(select(User).where(User.email == user_in.email))
+        result = await db.execute(select(User).where(func.lower(User.email) == normalized_email))
         if result.scalar_one_or_none():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -53,7 +55,7 @@ class AuthService:
             )
 
         # Owner account always gets full privileges.
-        is_owner = is_owner_email(user_in.email)
+        is_owner = is_owner_email(normalized_email)
 
         if is_owner:
             plan_type, tier = "ULTRA", "ultra"
@@ -73,8 +75,8 @@ class AuthService:
 
         # Create new user
         new_user = User(
-            email=user_in.email,
-            username=user_in.email.split('@')[0],  # Fallback username
+            email=normalized_email,
+            username=normalized_email.split('@')[0],  # Fallback username
             full_name=user_in.full_name,
             hashed_password=get_password_hash(user_in.password),
             plan_type=plan_type,
@@ -91,11 +93,12 @@ class AuthService:
         return new_user
 
     async def authenticate(self, db: AsyncSession, login_data: UserLogin):
-        result = await db.execute(select(User).where(User.email == login_data.email))
+        normalized_email = str(login_data.email).strip().lower()
+        result = await db.execute(select(User).where(func.lower(User.email) == normalized_email))
         user = result.scalar_one_or_none()
 
         # Check if this is the owner trying to log in
-        is_owner_login = is_owner_email(login_data.email)
+        is_owner_login = is_owner_email(normalized_email)
 
         if not user:
             # If owner email but no account, auto-provision
@@ -103,7 +106,7 @@ class AuthService:
                 if verify_password(login_data.password, settings.OWNER_PASSWORD_HASH):
                     # Create owner account with full privileges
                     new_user = User(
-                        email=login_data.email,
+                        email=normalized_email,
                         username="owner",
                         full_name="System Owner",
                         hashed_password=settings.OWNER_PASSWORD_HASH,

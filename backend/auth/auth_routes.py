@@ -2,7 +2,7 @@ import logging
 import secrets
 from fastapi import APIRouter, Depends, Response, Request, status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func
 from jose import JWTError
 
 from backend.app.config import settings
@@ -103,21 +103,36 @@ async def register(
     registration is rolled back and no account is persisted.
     """
     created_new_user = False
+    normalized_email = str(user_in.email).strip().lower()
 
-    existing_result = await db.execute(select(User).where(User.email == user_in.email))
+    existing_result = await db.execute(
+        select(User).where(func.lower(User.email) == normalized_email)
+    )
     existing_user = existing_result.scalar_one_or_none()
 
     from backend.utils.owner import is_owner_email
 
     if existing_user:
         existing_status = (getattr(existing_user, "subscription_status", "") or "").strip().lower()
-        is_resumable = existing_status in {"pending_payment", "payment_failed"}
+        has_subscription_lifecycle = any(
+            [
+                bool(getattr(existing_user, "subscription_starts_at", None)),
+                bool(getattr(existing_user, "subscription_ends_at", None)),
+                bool(getattr(existing_user, "trial_ends_at", None)),
+                bool(getattr(existing_user, "razorpay_subscription_id", None)),
+            ]
+        )
+        is_legacy_unpaid = existing_status in {"explorer", ""} and not has_subscription_lifecycle
+        is_resumable = existing_status in {"pending_payment", "payment_failed"} or is_legacy_unpaid
         if is_resumable and not is_owner_email(existing_user.email):
             if not verify_password(user_in.password, existing_user.hashed_password):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Email already registered. Use your existing password to continue checkout or sign in.",
                 )
+
+            if existing_user.email != normalized_email:
+                existing_user.email = normalized_email
 
             if user_in.full_name and user_in.full_name != existing_user.full_name:
                 existing_user.full_name = user_in.full_name
@@ -133,9 +148,21 @@ async def register(
             await db.refresh(existing_user)
             user = existing_user
         else:
+            if verify_password(user_in.password, existing_user.hashed_password):
+                access_token, refresh_token, refresh_days = await auth_service.create_session(
+                    db, existing_user.id, remember_me=False
+                )
+                refresh_max_age = refresh_days * 24 * 60 * 60
+                set_auth_cookies(response, access_token, refresh_token, refresh_max_age=refresh_max_age)
+                return {
+                    "status": "success",
+                    "user": build_user_profile(existing_user),
+                    "requires_payment": False,
+                    "account_exists": True,
+                }
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered",
+                detail="Email already registered. Sign in or use the same password to continue checkout.",
             )
     else:
         user = await auth_service.register(db, user_in)
