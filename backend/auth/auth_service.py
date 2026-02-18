@@ -1,9 +1,12 @@
 import hashlib
 import logging
 from datetime import datetime, timezone, timedelta
+import re
+import secrets
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func
+from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException, status
 from jose import JWTError
 
@@ -43,6 +46,20 @@ class AuthService:
         normalized = normalize_plan_tier(plan_type=plan_type)
         return canonical_plan_type(normalized), normalized
 
+    @staticmethod
+    def _username_seed(email: str) -> str:
+        local = (email.split("@")[0] if "@" in email else email).strip().lower()
+        cleaned = re.sub(r"[^a-z0-9._-]+", "_", local).strip("._-")
+        if not cleaned:
+            cleaned = "user"
+        return cleaned[:20]
+
+    def _build_username(self, email: str, nonce: str | None = None) -> str:
+        seed = self._username_seed(email)
+        fingerprint_source = f"{email}|{nonce or ''}"
+        suffix = hashlib.sha1(fingerprint_source.encode("utf-8")).hexdigest()[:8]
+        return f"{seed}_{suffix}"
+
     async def register(self, db: AsyncSession, user_in: UserRegister):
         normalized_email = str(user_in.email).strip().lower()
 
@@ -73,24 +90,48 @@ class AuthService:
             is_superuser = False
             subscription_status = "pending_payment"
 
-        # Create new user
-        new_user = User(
-            email=normalized_email,
-            username=normalized_email.split('@')[0],  # Fallback username
-            full_name=user_in.full_name,
-            hashed_password=get_password_hash(user_in.password),
-            plan_type=plan_type,
-            tier=tier,
-            role=role,
-            is_active=True,
-            is_verified=is_verified,
-            is_superuser=is_superuser,
-            subscription_status=subscription_status,
+        # Create new user with collision-safe username and graceful integrity retries.
+        for attempt in range(2):
+            nonce = None if attempt == 0 else secrets.token_hex(4)
+            new_user = User(
+                email=normalized_email,
+                username=self._build_username(normalized_email, nonce=nonce),
+                full_name=user_in.full_name,
+                hashed_password=get_password_hash(user_in.password),
+                plan_type=plan_type,
+                tier=tier,
+                role=role,
+                is_active=True,
+                is_verified=is_verified,
+                is_superuser=is_superuser,
+                subscription_status=subscription_status,
+            )
+            db.add(new_user)
+            try:
+                await db.commit()
+                await db.refresh(new_user)
+                return new_user
+            except IntegrityError as exc:
+                await db.rollback()
+                logger.warning("Registration integrity conflict for %s: %s", normalized_email, exc)
+                existing_result = await db.execute(
+                    select(User).where(func.lower(User.email) == normalized_email)
+                )
+                if existing_result.scalar_one_or_none():
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Email already registered",
+                    )
+                if attempt == 1:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="Account creation conflict. Please retry registration.",
+                    )
+
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Account creation conflict. Please retry registration.",
         )
-        db.add(new_user)
-        await db.commit()
-        await db.refresh(new_user)
-        return new_user
 
     async def authenticate(self, db: AsyncSession, login_data: UserLogin):
         normalized_email = str(login_data.email).strip().lower()
