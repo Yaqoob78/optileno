@@ -6,6 +6,7 @@ from backend.services.analytics_service import analytics_service
 from backend.services.goal_analytics_service import goal_analytics_service
 from backend.services.analytics_v2_service import analytics_v2_service
 from backend.services.entitlements_service import normalize_plan_tier, require_ultra_feature
+from backend.app.config import settings
 from pydantic import BaseModel
 from backend.types.events import AppEvent, UserMetrics, AnalyticsEvent
 from backend.realtime.socket_manager import (
@@ -637,7 +638,7 @@ async def get_time_intelligence(
 @router.get("/ai-intelligence", response_model=Dict[str, Any])
 async def get_ai_intelligence(
     current_user = Depends(get_current_user),
-    time_range: str = Query("daily", regex="^(daily|weekly|monthly)$")
+    time_range: str = Query("daily", pattern="^(daily|weekly|monthly)$")
 ):
     """
     Get real-time cognitive analytic score.
