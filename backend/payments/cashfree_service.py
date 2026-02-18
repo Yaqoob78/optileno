@@ -169,6 +169,8 @@ class CashfreeService:
             settings.CASHFREE_FALLBACK_CURRENCY,
             default="",
         )
+        if not fallback_currency:
+            fallback_currency = "INR" if current_currency != "INR" else "USD"
         if not fallback_currency or fallback_currency == current_currency:
             return None
 
@@ -193,6 +195,12 @@ class CashfreeService:
 
     def _billing_cycle_days(self, billing_cycle: str) -> int:
         return 365 if (billing_cycle or "").strip().lower() == "annual" else 30
+
+    def _billing_interval(self, billing_cycle: str) -> Tuple[int, str]:
+        normalized_cycle = (billing_cycle or "").strip().lower()
+        if normalized_cycle == "annual":
+            return 1, "YEAR"
+        return 1, "MONTH"
 
     def _build_customer_details(self, user: User) -> Dict[str, str]:
         phone = str(getattr(user, "phone", "") or "").strip()
@@ -377,7 +385,7 @@ class CashfreeService:
         subscription_id = (
             f"optileno_sub_{user.id}_{normalized_plan}_{int(now.timestamp() * 1000)}_{subscription_nonce}"
         )
-        recurring_period = self._billing_cycle_days(normalized_cycle)
+        interval_count, interval_type = self._billing_interval(normalized_cycle)
         max_cycles = 120 if normalized_cycle == "annual" else 1200
 
         payload = {
@@ -386,12 +394,14 @@ class CashfreeService:
             "plan_details": {
                 "plan_name": f"Optileno {plan['name']} {normalized_cycle.capitalize()}",
                 "plan_type": "PERIODIC",
+                "plan_amount": amount,
                 "plan_max_amount": amount,
                 "plan_max_cycles": max_cycles,
                 "plan_recurring_amount": amount,
-                "plan_recurring_period": recurring_period,
+                "plan_intervals": interval_count,
+                "plan_interval_type": interval_type,
                 "plan_currency": plan_currency,
-                "plan_notes": f"{plan['name']} recurring billing",
+                "plan_note": f"{plan['name']} recurring billing",
             },
             "subscription_meta": {
                 "return_url": f"{settings.APP_URL}/dashboard?payment=success&subscription_id={{subscription_id}}",
