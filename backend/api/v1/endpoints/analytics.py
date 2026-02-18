@@ -212,17 +212,32 @@ async def sync_analytics(
 @router.get("/predictions")
 async def get_predictions(user = Depends(get_current_user)):
     """Get AI performance predictions"""
-    # Wrapper for trajectory
-    from backend.ai.tools.analytics import predict_user_trajectory
-    trajectory = await predict_user_trajectory(str(user.id), "weekly")
-    return [
-        {
-            "type": "productivity",
-            "confidence": 0.85,
-            "description": f"Predicted trajectory: {trajectory.get('summary', 'Stable')}",
-            "timeframe": "weekly"
-        }
-    ]
+    try:
+        # Wrapper for trajectory
+        from backend.ai.tools.analytics import predict_user_trajectory
+        trajectory = await predict_user_trajectory(str(user.id), "weekly")
+        summary = "Stable"
+        if isinstance(trajectory, dict):
+            summary = str(trajectory.get("summary") or "Stable")
+        return [
+            {
+                "type": "productivity",
+                "confidence": 0.85,
+                "description": f"Predicted trajectory: {summary}",
+                "timeframe": "weekly"
+            }
+        ]
+    except Exception as e:
+        logger.error("Predictions failed for user %s: %s", user.id, e, exc_info=True)
+        return [
+            {
+                "type": "productivity",
+                "confidence": 0.2,
+                "description": "Prediction is temporarily unavailable. Keep using planner data for accurate forecasts.",
+                "timeframe": "weekly",
+                "error_fallback": True,
+            }
+        ]
 
 @router.get("/ai/insight")
 async def get_ai_insight(

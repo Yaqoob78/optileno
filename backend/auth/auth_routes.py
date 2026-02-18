@@ -226,19 +226,42 @@ async def register(
         if plan_name not in ("explorer", "ultra"):
             plan_name = "explorer"
 
-        payment_data = await cashfree_service.create_subscription_checkout(
-            db=db,
-            user=user,
-            plan_name=plan_name,
-            billing_cycle="monthly",  # Registration always starts on monthly flow.
-        )
+        payment_data = None
+        primary_checkout_error: Exception | None = None
+
+        # Primary flow: recurring subscription checkout.
+        try:
+            payment_data = await cashfree_service.create_subscription_checkout(
+                db=db,
+                user=user,
+                plan_name=plan_name,
+                billing_cycle="monthly",  # Registration always starts on monthly flow.
+            )
+        except Exception as sub_exc:
+            primary_checkout_error = sub_exc
+            logger.error(
+                "Subscription checkout initialization failed for %s: %s. Trying order fallback.",
+                user.email,
+                sub_exc,
+            )
+
+        # Fallback flow: one-time order checkout so registration doesn't hard-fail.
+        if not payment_data:
+            payment_data = await cashfree_service.create_order(
+                db=db,
+                user=user,
+                plan_name=plan_name,
+                billing_cycle="monthly",
+            )
+            if primary_checkout_error is not None:
+                payment_data["checkout_fallback"] = "order"
 
         checkout_session_id = (
             (payment_data or {}).get("subscription_session_id")
             or (payment_data or {}).get("payment_session_id")
         )
         if not payment_data or not checkout_session_id:
-            raise ValueError("Missing subscription_session_id from subscription checkout")
+            raise ValueError("Missing checkout session ID from payment initialization")
     except Exception as exc:
         logger.error("Registration payment initialization failed for %s: %s", user.email, exc)
         await db.rollback()
