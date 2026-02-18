@@ -137,7 +137,19 @@ class CashfreeService:
             return {}
 
     def _normalize_plan_and_cycle(self, plan_name: str, billing_cycle: str) -> Tuple[str, str, Dict[str, Any]]:
-        normalized_plan, normalized_cycle, plan = self._normalize_plan_and_cycle(plan_name, billing_cycle)
+        normalized_plan = (plan_name or "").strip().lower()
+        plan = self.get_plan(normalized_plan)
+        if not plan:
+            raise ValueError(f"Invalid plan: {plan_name}")
+
+        normalized_cycle = (billing_cycle or "monthly").strip().lower()
+        if normalized_cycle in {"yearly", "year"}:
+            normalized_cycle = "annual"
+        if normalized_cycle not in {"monthly", "annual"}:
+            raise ValueError("Invalid billing cycle")
+
+        if normalized_plan == "explorer" and normalized_cycle != "monthly":
+            raise ValueError("Explorer plan supports monthly billing only")
 
         return normalized_plan, normalized_cycle, plan
 
@@ -196,16 +208,7 @@ class CashfreeService:
         if not self.is_configured():
             raise ValueError("Cashfree is not configured")
 
-        normalized_plan = (plan_name or "").strip().lower()
-        plan = self.get_plan(normalized_plan)
-        if not plan:
-            raise ValueError(f"Invalid plan: {plan_name}")
-
-        normalized_cycle = (billing_cycle or "monthly").strip().lower()
-        if normalized_cycle not in {"monthly", "annual"}:
-            raise ValueError("Invalid billing cycle")
-        if normalized_plan == "explorer" and normalized_cycle != "monthly":
-            raise ValueError("Explorer plan supports monthly billing only")
+        normalized_plan, normalized_cycle, plan = self._normalize_plan_and_cycle(plan_name, billing_cycle)
 
         # Calculate amount (convert cents to dollars for Cashfree)
         if normalized_cycle == "annual":

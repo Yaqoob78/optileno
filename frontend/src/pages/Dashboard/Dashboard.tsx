@@ -53,7 +53,6 @@ export default function Dashboard() {
   const { getFocusMetrics, getRecentInsights } = useAnalytics();
 
   // Use Global Stores for Real-Time Sync
-  const currentMetrics = useAnalyticsStore((state) => state.currentMetrics);
   const plannerTasks = usePlannerStore((state) => state.tasks);
   const activeConversation = useChatStore((state) => state.activeConversation);
   const userStats = useUserStore((state) => state.profile.stats);
@@ -62,7 +61,7 @@ export default function Dashboard() {
   const { score: productivityData } = useProductivityScore('daily');
 
   // Real-time from hook > Store > null (explicit no-data state)
-  const productivityScore = productivityData?.score ?? (currentMetrics.productivityScore > 0 ? currentMetrics.productivityScore : null);
+  const productivityScore = productivityData?.score ?? null;
   const productivityScoreValue = productivityScore ?? 0;
 
   // Determine Task Counts (Real-time from store)

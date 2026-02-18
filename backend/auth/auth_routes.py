@@ -17,7 +17,7 @@ from backend.schemas.auth import (
 from backend.db.models import User
 from backend.utils.user_profile import build_user_profile
 from .auth_service import auth_service
-from .auth_utils import decode_token
+from .auth_utils import decode_token, verify_password
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -102,9 +102,44 @@ async def register(
     Non-owner registrations require payment setup to succeed, otherwise
     registration is rolled back and no account is persisted.
     """
-    user = await auth_service.register(db, user_in)
+    created_new_user = False
+
+    existing_result = await db.execute(select(User).where(User.email == user_in.email))
+    existing_user = existing_result.scalar_one_or_none()
 
     from backend.utils.owner import is_owner_email
+
+    if existing_user:
+        existing_status = (getattr(existing_user, "subscription_status", "") or "").strip().lower()
+        is_resumable = existing_status in {"pending_payment", "payment_failed"}
+        if is_resumable and not is_owner_email(existing_user.email):
+            if not verify_password(user_in.password, existing_user.hashed_password):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Email already registered. Use your existing password to continue checkout or sign in.",
+                )
+
+            if user_in.full_name and user_in.full_name != existing_user.full_name:
+                existing_user.full_name = user_in.full_name
+
+            requested_plan = (user_in.plan_type or existing_user.plan_type or "EXPLORER").strip().upper()
+            if requested_plan not in {"EXPLORER", "ULTRA"}:
+                requested_plan = "EXPLORER"
+            existing_user.plan_type = requested_plan
+            existing_user.tier = requested_plan.lower()
+            existing_user.subscription_status = "pending_payment"
+
+            await db.commit()
+            await db.refresh(existing_user)
+            user = existing_user
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered",
+            )
+    else:
+        user = await auth_service.register(db, user_in)
+        created_new_user = True
 
     # Owner account doesn't need payment
     if is_owner_email(user.email):
@@ -123,15 +158,16 @@ async def register(
     from backend.payments.cashfree_service import cashfree_service
 
     if not cashfree_service.is_configured():
-        await db.delete(user)
-        await db.commit()
+        if created_new_user:
+            await db.delete(user)
+            await db.commit()
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Payment service unavailable. Please try again shortly.",
         )
 
     try:
-        plan_name = (user_in.plan_type or "EXPLORER").lower()
+        plan_name = (user.plan_type or user_in.plan_type or "EXPLORER").lower()
         if plan_name not in ("explorer", "ultra"):
             plan_name = "explorer"
 
@@ -147,12 +183,13 @@ async def register(
     except Exception as exc:
         logger.error("Registration payment initialization failed for %s: %s", user.email, exc)
         await db.rollback()
-        try:
-            await db.execute(delete(User).where(User.id == user.id))
-            await db.commit()
-        except Exception as rollback_exc:
-            logger.error("Failed to rollback user registration for %s: %s", user.email, rollback_exc)
-            await db.rollback()
+        if created_new_user:
+            try:
+                await db.execute(delete(User).where(User.id == user.id))
+                await db.commit()
+            except Exception as rollback_exc:
+                logger.error("Failed to rollback user registration for %s: %s", user.email, rollback_exc)
+                await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Unable to initialize secure checkout. Please retry registration.",

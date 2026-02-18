@@ -119,8 +119,8 @@ interface AnalyticsState {
 // Initial Metrics
 const initialMetrics: UserMetrics = {
   // Focus & Productivity
-  focusScore: 50,
-  productivityScore: 50, // Initial default
+  focusScore: 0,
+  productivityScore: 0,
   focusDecayRate: 15,
   deepWorkRatio: 20,
   averageFocusDuration: 25,

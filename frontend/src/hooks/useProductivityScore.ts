@@ -131,6 +131,9 @@ export function useProductivityScore(timeRange: 'daily' | 'weekly' | 'monthly' =
             }
         } catch (err: any) {
             console.error('Error fetching productivity score:', err);
+            setScore(null);
+            setWeeklyAverage(null);
+            setMonthlyAverage(null);
             setError(err.message);
         } finally {
             setIsLoading(false);
