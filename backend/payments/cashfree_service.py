@@ -15,6 +15,7 @@ import hmac
 import hashlib
 import logging
 import httpx
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -223,7 +224,8 @@ class CashfreeService:
         trial_days = plan["trial_days"] if is_trial_eligible else 0
 
         # Generate unique order ID
-        order_id = f"optileno_{user.id}_{normalized_plan}_{int(datetime.now().timestamp())}"
+        order_nonce = uuid.uuid4().hex[:6]
+        order_id = f"optileno_{user.id}_{normalized_plan}_{int(datetime.now().timestamp() * 1000)}_{order_nonce}"
 
         # Create Cashfree order via API
         order_payload = {
@@ -314,7 +316,10 @@ class CashfreeService:
         now = datetime.now(timezone.utc)
         first_charge_at = now + timedelta(days=trial_days) if (normalized_plan == "explorer" and trial_days > 0) else now
 
-        subscription_id = f"optileno_sub_{user.id}_{normalized_plan}_{int(now.timestamp())}"
+        subscription_nonce = uuid.uuid4().hex[:6]
+        subscription_id = (
+            f"optileno_sub_{user.id}_{normalized_plan}_{int(now.timestamp() * 1000)}_{subscription_nonce}"
+        )
         recurring_period = self._billing_cycle_days(normalized_cycle)
         max_cycles = 120 if normalized_cycle == "annual" else 1200
 
@@ -368,10 +373,17 @@ class CashfreeService:
             subscription_data = self._safe_json(response)
             logger.info("Cashfree subscription created: %s", subscription_data.get("subscription_id"))
 
+            session_id = (
+                subscription_data.get("subscription_session_id")
+                or subscription_data.get("payment_session_id")
+                or subscription_data.get("session_id")
+            )
+
             return {
                 "subscription_id": subscription_data.get("subscription_id") or subscription_id,
                 "cf_subscription_id": subscription_data.get("cf_subscription_id"),
-                "subscription_session_id": subscription_data.get("subscription_session_id"),
+                "subscription_session_id": session_id,
+                "payment_session_id": session_id,
                 "subscription_status": subscription_data.get("subscription_status"),
                 "plan": normalized_plan,
                 "plan_details": plan,

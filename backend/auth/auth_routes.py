@@ -233,7 +233,11 @@ async def register(
             billing_cycle="monthly",  # Registration always starts on monthly flow.
         )
 
-        if not payment_data or not payment_data.get("subscription_session_id"):
+        checkout_session_id = (
+            (payment_data or {}).get("subscription_session_id")
+            or (payment_data or {}).get("payment_session_id")
+        )
+        if not payment_data or not checkout_session_id:
             raise ValueError("Missing subscription_session_id from subscription checkout")
     except Exception as exc:
         logger.error("Registration payment initialization failed for %s: %s", user.email, exc)
