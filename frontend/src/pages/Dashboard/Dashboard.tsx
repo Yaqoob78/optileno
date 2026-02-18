@@ -51,6 +51,11 @@ export default function Dashboard() {
 
   const { user, login, isPremium } = useUser();
   const { getFocusMetrics, getRecentInsights } = useAnalytics();
+  const [verifyingPayment, setVerifyingPayment] = useState(() => {
+    // Check if we're returning from a payment redirect
+    const params = new URLSearchParams(window.location.search);
+    return params.get('payment') === 'success' && !!params.get('order_id');
+  });
 
   // Use Global Stores for Real-Time Sync
   const currentMetrics = useAnalyticsStore((state) => state.currentMetrics);
@@ -112,10 +117,10 @@ export default function Dashboard() {
     const orderId = params.get('order_id');
 
     if (paymentStatus === 'success' && orderId) {
+      setVerifyingPayment(true);
       const verifyAndRefresh = async () => {
         try {
           // Verify payment on backend to ensure DB is updated
-          // Import dynamically to avoid circular deps if any, or just direct import
           const { paymentService } = await import('../../services/api/payment.service');
           await paymentService.verifyPayment(orderId);
 
@@ -129,6 +134,7 @@ export default function Dashboard() {
         } catch (error) {
           console.error("Payment verification failed", error);
         } finally {
+          setVerifyingPayment(false);
           // Clean up URL
           navigate('/dashboard', { replace: true });
         }
@@ -137,6 +143,7 @@ export default function Dashboard() {
       verifyAndRefresh();
     } else if (paymentStatus === 'success') {
       // Legacy fallback or if order_id missing
+      setVerifyingPayment(false);
       setShowSuccessModal(true);
       navigate('/dashboard', { replace: true });
     }
@@ -162,6 +169,60 @@ export default function Dashboard() {
     const mins = minutes % 60;
     return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
   };
+  // Check if user has pending payment - block dashboard access
+  const subscriptionStatus = (user as any)?.subscription?.status;
+  const isPendingPayment = subscriptionStatus === 'pending_payment';
+
+  if (isPendingPayment && !verifyingPayment) {
+    return (
+      <div className={`dashboard-container theme-${theme}`} style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        minHeight: '100vh', padding: '2rem',
+      }}>
+        <div style={{
+          background: 'rgba(10, 15, 30, 0.8)',
+          backdropFilter: 'blur(40px)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: '24px',
+          padding: '3rem',
+          maxWidth: '500px',
+          textAlign: 'center',
+        }}>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>💳</div>
+          <h2 style={{ color: '#fff', marginBottom: '0.75rem', fontSize: '1.5rem' }}>
+            Complete Your Payment
+          </h2>
+          <p style={{ color: '#94a3b8', marginBottom: '1.5rem', lineHeight: '1.6' }}>
+            Your account has been created but payment is pending.
+            Please complete your payment to start using Optileno.
+          </p>
+          <button
+            onClick={() => navigate('/settings', { state: { tab: 'billing' } })}
+            style={{
+              background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '12px',
+              padding: '0.875rem 2rem',
+              fontSize: '1rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              boxShadow: '0 4px 20px rgba(34, 197, 94, 0.3)',
+            }}
+          >
+            <Zap size={18} />
+            Complete Payment
+          </button>
+          <p style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '1rem' }}>
+            🔒 Secure payment via Cashfree
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`dashboard-container theme-${theme}`}>

@@ -320,6 +320,15 @@
   margin-bottom: 1.5rem;
 }
 
+.payment-loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  gap: 0.25rem;
+}
+
 @keyframes slideUp {
   from {
     opacity: 0;

@@ -54,23 +54,27 @@ class AuthService:
 
         # Owner account always gets full privileges.
         is_owner = is_owner_email(user_in.email)
-        
-        # Determine plan
+
         if is_owner:
             plan_type, tier = "ULTRA", "ultra"
             role = "admin"
             is_verified = True
             is_superuser = True
+            subscription_status = "active"
         else:
+            # Store the user's SELECTED plan but mark as pending_payment.
+            # They must complete Cashfree payment to activate their plan.
+            # Trial starts AFTER payment, not before.
             plan_type, tier = self._normalize_plan(user_in.plan_type)
             role = "user"
-            is_verified = False 
+            is_verified = False
             is_superuser = False
+            subscription_status = "pending_payment"
 
         # Create new user
         new_user = User(
             email=user_in.email,
-            username=user_in.email.split('@')[0], # Fallback username
+            username=user_in.email.split('@')[0],  # Fallback username
             full_name=user_in.full_name,
             hashed_password=get_password_hash(user_in.password),
             plan_type=plan_type,
@@ -79,6 +83,7 @@ class AuthService:
             is_active=True,
             is_verified=is_verified,
             is_superuser=is_superuser,
+            subscription_status=subscription_status,
         )
         db.add(new_user)
         await db.commit()
@@ -145,12 +150,12 @@ class AuthService:
                 user.plan_type = "ULTRA"
                 user.is_superuser = True
                 await db.commit()
-                await db.refresh(user) # Refresh to get updated fields
+                await db.refresh(user)  # Refresh to get updated fields
         else:
             if not verify_password(login_data.password, user.hashed_password):
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Incorrect request", # Generic error for security
+                    detail="Incorrect request",  # Generic error for security
                     headers={"WWW-Authenticate": "Bearer"},
                 )
 

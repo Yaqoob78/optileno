@@ -87,10 +87,64 @@ def clear_auth_cookies(response: Response) -> None:
     _delete_cookie(response, "csrf_token", "/")
 
 
-@router.post("/register", response_model=UserResponse)
-async def register(user_in: UserRegister, db: AsyncSession = Depends(get_db)):
-    """Register a new user account."""
-    return await auth_service.register(db, user_in)
+@router.post("/register")
+async def register(
+    user_in: UserRegister,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Register a new user account.
+
+    Creates account, auto-logs in (sets cookies), and creates a Cashfree
+    payment order so the frontend can immediately open checkout.
+    """
+    user = await auth_service.register(db, user_in)
+
+    # Auto-login: create session and set auth cookies
+    access_token, refresh_token, refresh_days = await auth_service.create_session(
+        db, user.id, remember_me=False
+    )
+    refresh_max_age = refresh_days * 24 * 60 * 60
+    set_auth_cookies(response, access_token, refresh_token, refresh_max_age=refresh_max_age)
+
+    from backend.utils.owner import is_owner_email
+
+    # Owner account doesn't need payment
+    if is_owner_email(user.email):
+        return {
+            "status": "success",
+            "user": build_user_profile(user),
+            "requires_payment": False,
+        }
+
+    # Create Cashfree payment order for the selected plan
+    from backend.payments.cashfree_service import cashfree_service
+
+    payment_data = None
+    if cashfree_service.is_configured():
+        try:
+            plan_name = user_in.plan_type.lower()  # explorer or ultra
+            if plan_name not in ("explorer", "ultra"):
+                plan_name = "explorer"
+
+            order = await cashfree_service.create_order(
+                db=db,
+                user=user,
+                plan_name=plan_name,
+                billing_cycle="monthly",  # Default to monthly on registration
+            )
+            payment_data = order
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Failed to create payment order during registration: {e}")
+
+    return {
+        "status": "success",
+        "user": build_user_profile(user),
+        "requires_payment": True,
+        "payment": payment_data,
+    }
 
 
 @router.post("/login")

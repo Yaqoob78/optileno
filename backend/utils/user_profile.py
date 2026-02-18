@@ -176,6 +176,7 @@ def build_user_profile(user: User) -> Dict[str, Any]:
         "plan_tier": plan_tier,
         "subscription": {
             "tier": plan_tier,
+            "status": getattr(user, "subscription_status", None) or "explorer",
             "expiresAt": None,
             "features": ["all-features"] if plan_tier == PLAN_ULTRA else ["basic-chat", "basic-analytics"],
         },
