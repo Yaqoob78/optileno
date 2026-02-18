@@ -421,9 +421,9 @@ class Settings:
     RAZORPAY_ULTRA_PLAN_ID: str = os.getenv("RAZORPAY_ULTRA_PLAN_ID", "")
     
     # Plan Configuration
-    # Explorer: 7 days free trial, then paid
+    # Explorer: 3 days free trial, then paid
     # Ultra: No free trial, premium features, YEARLY ONLY
-    EXPLORER_TRIAL_DAYS: int = _env_int("EXPLORER_TRIAL_DAYS", 7)
+    EXPLORER_TRIAL_DAYS: int = _env_int("EXPLORER_TRIAL_DAYS", 3)
     ULTRA_TRIAL_DAYS: int = _env_int("ULTRA_TRIAL_DAYS", 0)  # No free trial
     
     # Plan Pricing (in USD cents, 100 = $1)
@@ -431,14 +431,21 @@ class Settings:
     # Ultra: $10.00/month or $80.00/year (Discounted)
     
     EXPLORER_MONTHLY_PRICE: int = _env_int("EXPLORER_MONTHLY_PRICE", 200)   # $2.00
-    EXPLORER_ANNUAL_PRICE: int = _env_int("EXPLORER_ANNUAL_PRICE", 2000)    # $20.00 (Optional, can be removed)
+    EXPLORER_ANNUAL_PRICE: int = _env_int("EXPLORER_ANNUAL_PRICE", 2000)    # $20.00
     
     ULTRA_MONTHLY_PRICE: int = _env_int("ULTRA_MONTHLY_PRICE", 1000)        # $10.00
-    ULTRA_ANNUAL_PRICE: int = _env_int("ULTRA_ANNUAL_PRICE", 8000)          # $80.00 (Yearly Offer)
+    ULTRA_ANNUAL_PRICE: int = _env_int("ULTRA_ANNUAL_PRICE", 8000)          # $80.00
     
     # Grace Period for Failed Payments
     PAYMENT_GRACE_PERIOD_DAYS: int = _env_int("PAYMENT_GRACE_PERIOD_DAYS", 7)
     PAYMENT_RETRY_ATTEMPTS: int = _env_int("PAYMENT_RETRY_ATTEMPTS", 3)
+
+    # =========================
+    # Payments (Cashfree) - Primary PG
+    # =========================
+    CASHFREE_APP_ID: str = os.getenv("CASHFREE_APP_ID", "")
+    CASHFREE_SECRET_KEY: str = os.getenv("CASHFREE_SECRET_KEY", "")
+    CASHFREE_WEBHOOK_SECRET: str = os.getenv("CASHFREE_WEBHOOK_SECRET", "")
 
     # =========================
     # Agentic (Private OpenClaw)

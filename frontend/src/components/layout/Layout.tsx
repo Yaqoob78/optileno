@@ -109,17 +109,25 @@ export default function Layout() {
       {/* Luxury Background Texture */}
       <div className="layout-background" />
 
+      {/* Mobile sidebar overlay */}
+      {isMobile && sidebarOpen && (
+        <div
+          className="mobile-sidebar-overlay"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       <div className="layout-content-wrapper">
         {/* Sidebar */}
         <motion.div
-          className="layout-sidebar-wrapper"
+          className={`layout-sidebar-wrapper ${isMobile && sidebarOpen ? 'mobile-open' : ''}`}
           animate={{
-            width: sidebarOpen ? 260 : 70
+            width: isMobile ? 260 : (sidebarOpen ? 260 : 70)
           }}
           transition={{ duration: 0.3 }}
         >
           <Sidebar
-            isOpen={sidebarOpen}
+            isOpen={isMobile ? true : sidebarOpen}
             menuItems={menuItems}
             currentPage={currentPage}
             onPageChange={handlePageChange}
@@ -136,7 +144,7 @@ export default function Layout() {
           transition={{ duration: 0.3 }}
         >
           {/* Header */}
-          <Header page={currentPage} />
+          <Header page={currentPage} onMenuToggle={toggleSidebar} isMobile={isMobile} />
 
           {/* Main Content */}
           <main className="main-content-area">

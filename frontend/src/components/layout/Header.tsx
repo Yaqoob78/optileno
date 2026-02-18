@@ -1,13 +1,15 @@
 
 import React, { useState } from "react";
-import { Search, Bell } from "lucide-react";
+import { Search, Bell, Menu } from "lucide-react";
 import "../../styles/layout/header.css"; // CSS CONNECTION
 
 interface HeaderProps {
   page: string;
+  onMenuToggle?: () => void;
+  isMobile?: boolean;
 }
 
-export default function Header({ page }: HeaderProps) {
+export default function Header({ page, onMenuToggle, isMobile }: HeaderProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -30,6 +32,17 @@ export default function Header({ page }: HeaderProps) {
     <header className="premium-header">
       <div className="header-container">
         <div className="header-content">
+          {/* Mobile Menu Button */}
+          {isMobile && (
+            <button
+              className="mobile-menu-btn"
+              onClick={onMenuToggle}
+              aria-label="Open menu"
+            >
+              <Menu size={22} />
+            </button>
+          )}
+
           {/* Left Section - Page Title */}
           <div className="header-title-section">
             <h1 className="header-title">

@@ -108,20 +108,37 @@ export default function Dashboard() {
   useEffect(() => {
     // Check for payment success
     const params = new URLSearchParams(location.search);
-    if (params.get('payment') === 'success') {
-      setShowSuccessModal(true);
-      // Clean up URL
-      navigate('/dashboard', { replace: true });
+    const paymentStatus = params.get('payment');
+    const orderId = params.get('order_id');
 
-      // Refresh user profile to get latest plan tier
-      const refreshUser = async () => {
-        const profileRes = await userService.getProfile();
-        if (profileRes.success && profileRes.data) {
-          // Use store directly to update profile
-          useUserStore.getState().setProfile(profileRes.data as any);
+    if (paymentStatus === 'success' && orderId) {
+      const verifyAndRefresh = async () => {
+        try {
+          // Verify payment on backend to ensure DB is updated
+          // Import dynamically to avoid circular deps if any, or just direct import
+          const { paymentService } = await import('../../services/api/payment.service');
+          await paymentService.verifyPayment(orderId);
+
+          // Refresh user profile
+          const profileRes = await userService.getProfile();
+          if (profileRes.success && profileRes.data) {
+            useUserStore.getState().setProfile(profileRes.data as any);
+          }
+
+          setShowSuccessModal(true);
+        } catch (error) {
+          console.error("Payment verification failed", error);
+        } finally {
+          // Clean up URL
+          navigate('/dashboard', { replace: true });
         }
       };
-      refreshUser();
+
+      verifyAndRefresh();
+    } else if (paymentStatus === 'success') {
+      // Legacy fallback or if order_id missing
+      setShowSuccessModal(true);
+      navigate('/dashboard', { replace: true });
     }
   }, [location, login, navigate]);
 

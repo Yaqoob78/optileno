@@ -38,6 +38,7 @@ const normalizeProfileForStore = (baseProfile: any, incoming: any) => {
 
 const resolvePlanTier = (
   profile: Partial<{
+    email: string;
     role: string;
     tier: string;
     plan_tier: string;
@@ -47,40 +48,48 @@ const resolvePlanTier = (
   }>
 ): 'explorer' | 'ultra' => resolvePlanTierFromProfile(profile);
 
+const deriveUserFlags = (profile: any) => {
+  const tier = resolvePlanTier(profile || {});
+  const joinedAtRaw = profile?.stats?.joinedAt;
+  const joinedAt = joinedAtRaw ? new Date(joinedAtRaw) : new Date();
+  const now = new Date();
+  const ageDays = Math.max(
+    0,
+    Math.floor((now.getTime() - joinedAt.getTime()) / (1000 * 60 * 60 * 24))
+  );
+
+  return {
+    isPremium: tier === 'ultra',
+    isUltra: tier === 'ultra',
+    accountAge: ageDays,
+  };
+};
+
+const withDerived = (profile: any) => ({
+  profile,
+  ...deriveUserFlags(profile),
+});
+
 
 export const useUserStore = create<UserState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       // Initial state
       profile: defaultProfile,
       preferences: defaultPreferences,
       isAuthenticated: false,
-
-      // Derived state
-      get isPremium() {
-        const { profile } = get();
-        return resolvePlanTier(profile) === 'ultra';
-      },
-
-      get isUltra() {
-        const { profile } = get();
-        return resolvePlanTier(profile) === 'ultra';
-      },
-
-      get accountAge() {
-        const joined = new Date(get().profile.stats.joinedAt);
-        const now = new Date();
-        return Math.floor((now.getTime() - joined.getTime()) / (1000 * 60 * 60 * 24));
-      },
+      ...deriveUserFlags(defaultProfile),
 
       // Profile actions
-      setProfile: (profile) => set((state) => ({
-        profile: normalizeProfileForStore(state.profile, profile),
-      })),
+      setProfile: (profile) => set((state) => {
+        const nextProfile = normalizeProfileForStore(state.profile, profile);
+        return withDerived(nextProfile);
+      }),
 
-      updateProfile: (updates) => set((state) => ({
-        profile: normalizeProfileForStore(state.profile, updates),
-      })),
+      updateProfile: (updates) => set((state) => {
+        const nextProfile = normalizeProfileForStore(state.profile, updates);
+        return withDerived(nextProfile);
+      }),
 
       // Preferences actions
       setPreferences: (preferences) => set((state) => ({
@@ -117,21 +126,21 @@ export const useUserStore = create<UserState>()(
       login: (profile, preferences) => {
         const finalProfile = normalizeProfileForStore(defaultProfile, profile);
         return set({
-          profile: finalProfile,
+          ...withDerived(finalProfile),
           preferences: preferences || defaultPreferences,
           isAuthenticated: true,
         });
       },
 
       logout: () => set({
-        profile: defaultProfile,
+        ...withDerived(defaultProfile),
         preferences: defaultPreferences,
         isAuthenticated: false,
       }),
 
       // Stats actions
-      incrementStats: (stats) => set((state) => ({
-        profile: {
+      incrementStats: (stats) => set((state) => {
+        const nextProfile = {
           ...state.profile,
           stats: {
             ...state.profile.stats,
@@ -141,12 +150,22 @@ export const useUserStore = create<UserState>()(
               ? (state.profile.stats.avgRating + stats.avgRating) / 2
               : state.profile.stats.avgRating,
           },
-        },
-      })),
+        };
+        return withDerived(nextProfile);
+      }),
 
       // Generic update for AI context
       updateUserContext: (payload) => {
-        set((state) => ({ ...state, ...payload }));
+        set((state) => {
+          const profilePatch = (payload as any)?.profile;
+          const nextProfile = profilePatch
+            ? normalizeProfileForStore(state.profile, profilePatch)
+            : state.profile;
+          return {
+            ...(payload as any),
+            ...withDerived(nextProfile),
+          };
+        });
       },
     }),
     {
@@ -156,6 +175,18 @@ export const useUserStore = create<UserState>()(
         preferences: state.preferences,
         isAuthenticated: state.isAuthenticated,
       }),
+      merge: (persistedState, currentState) => {
+        const typedPersisted = (persistedState as Partial<UserState>) || {};
+        const mergedProfile = normalizeProfileForStore(
+          defaultProfile,
+          typedPersisted.profile || currentState.profile
+        );
+        return {
+          ...currentState,
+          ...typedPersisted,
+          ...withDerived(mergedProfile),
+        } as UserState;
+      },
     }
   )
 );
