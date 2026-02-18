@@ -446,6 +446,8 @@ class Settings:
     CASHFREE_APP_ID: str = os.getenv("CASHFREE_APP_ID", "")
     CASHFREE_SECRET_KEY: str = os.getenv("CASHFREE_SECRET_KEY", "")
     CASHFREE_WEBHOOK_SECRET: str = os.getenv("CASHFREE_WEBHOOK_SECRET", "")
+    CASHFREE_CURRENCY: str = _strip_wrapping_quotes(os.getenv("CASHFREE_CURRENCY", "USD")).upper()
+    CASHFREE_FALLBACK_CURRENCY: str = _strip_wrapping_quotes(os.getenv("CASHFREE_FALLBACK_CURRENCY", "")).upper()
 
     # =========================
     # Agentic (Private OpenClaw)

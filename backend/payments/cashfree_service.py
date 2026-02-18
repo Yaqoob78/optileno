@@ -31,6 +31,9 @@ logger = logging.getLogger(__name__)
 CASHFREE_SANDBOX_URL = "https://sandbox.cashfree.com/pg"
 CASHFREE_PRODUCTION_URL = "https://api.cashfree.com/pg"
 CASHFREE_API_VERSION = "2025-01-01"
+DEFAULT_CASHFREE_CURRENCY = (
+    (settings.CASHFREE_CURRENCY or "USD").strip().upper() or "USD"
+)
 
 
 # ==================================================
@@ -44,7 +47,7 @@ SUBSCRIPTION_PLANS = {
         "trial_days": settings.EXPLORER_TRIAL_DAYS,
         "monthly_price": settings.EXPLORER_MONTHLY_PRICE,  # in cents: 200 = $2.00
         "annual_price": settings.EXPLORER_ANNUAL_PRICE,
-        "currency": "USD",
+        "currency": DEFAULT_CASHFREE_CURRENCY,
         "features": [
             "AI chat up to 15 requests/day",
             "Manual planner: tasks, habits, deep work, goals",
@@ -66,7 +69,7 @@ SUBSCRIPTION_PLANS = {
         "trial_days": settings.ULTRA_TRIAL_DAYS,
         "monthly_price": settings.ULTRA_MONTHLY_PRICE,  # in cents: 1000 = $10.00
         "annual_price": settings.ULTRA_ANNUAL_PRICE,
-        "currency": "USD",
+        "currency": DEFAULT_CASHFREE_CURRENCY,
         "features": [
             "AI chat up to 150 requests/day",
             "Agentic planner automation",
@@ -136,6 +139,40 @@ class CashfreeService:
             return payload if isinstance(payload, dict) else {}
         except Exception:
             return {}
+
+    @staticmethod
+    def _normalize_currency(value: Optional[str], default: str = "USD") -> str:
+        currency = (value or "").strip().upper()
+        if len(currency) == 3 and currency.isalpha():
+            return currency
+        return default
+
+    def _resolve_plan_currency(self, plan: Dict[str, Any]) -> str:
+        return self._normalize_currency(
+            plan.get("currency"),
+            default=self._normalize_currency(settings.CASHFREE_CURRENCY, default="USD"),
+        )
+
+    def _currency_retry_candidate(self, error_data: Dict[str, Any], current_currency: str) -> Optional[str]:
+        message = str(error_data.get("message") or "").lower()
+        code = str(error_data.get("code") or "").lower()
+
+        is_currency_error = (
+            "currency not enabled" in message
+            or ("currency" in message and "enabled" in message)
+            or ("currency" in code and "invalid" in code)
+        )
+        if not is_currency_error:
+            return None
+
+        fallback_currency = self._normalize_currency(
+            settings.CASHFREE_FALLBACK_CURRENCY,
+            default="",
+        )
+        if not fallback_currency or fallback_currency == current_currency:
+            return None
+
+        return fallback_currency
 
     def _normalize_plan_and_cycle(self, plan_name: str, billing_cycle: str) -> Tuple[str, str, Dict[str, Any]]:
         normalized_plan = (plan_name or "").strip().lower()
@@ -218,6 +255,7 @@ class CashfreeService:
             amount_cents = plan["monthly_price"]
 
         amount = round(amount_cents / 100, 2)  # Cashfree expects decimal amount (e.g., 2.00)
+        order_currency = self._resolve_plan_currency(plan)
 
         # Check for trial eligibility
         is_trial_eligible = await self._is_trial_eligible(db, user, normalized_plan)
@@ -231,7 +269,7 @@ class CashfreeService:
         order_payload = {
             "order_id": order_id,
             "order_amount": amount,
-            "order_currency": plan.get("currency", "USD"),
+            "order_currency": order_currency,
             "customer_details": self._build_customer_details(user),
             "order_meta": {
                 "return_url": f"{settings.APP_URL}/dashboard?payment=success&order_id={order_id}&cf_id={{order_id}}",
@@ -247,12 +285,30 @@ class CashfreeService:
         }
 
         try:
+            used_currency = order_currency
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
                     f"{self.base_url}/orders",
                     json=order_payload,
                     headers=self._get_headers(),
                 )
+
+                if response.status_code not in (200, 201):
+                    error_data = self._safe_json(response)
+                    retry_currency = self._currency_retry_candidate(error_data, used_currency)
+                    if retry_currency:
+                        logger.warning(
+                            "Cashfree order rejected currency %s. Retrying with fallback %s.",
+                            used_currency,
+                            retry_currency,
+                        )
+                        order_payload["order_currency"] = retry_currency
+                        used_currency = retry_currency
+                        response = await client.post(
+                            f"{self.base_url}/orders",
+                            json=order_payload,
+                            headers=self._get_headers(),
+                        )
 
             if response.status_code not in (200, 201):
                 error_data = self._safe_json(response)
@@ -272,9 +328,9 @@ class CashfreeService:
                 "payment_session_id": order_data.get("payment_session_id"),
                 "order_status": order_data.get("order_status"),
                 "order_amount": amount,
-                "order_currency": plan.get("currency", "USD"),
+                "order_currency": used_currency,
                 "plan": normalized_plan,
-                "plan_details": plan,
+                "plan_details": {**plan, "currency": used_currency},
                 "billing_cycle": normalized_cycle,
                 "trial_days": trial_days,
                 "environment": self._environment_label(),
@@ -309,6 +365,7 @@ class CashfreeService:
         normalized_plan, normalized_cycle, plan = self._normalize_plan_and_cycle(plan_name, billing_cycle)
         amount_cents = plan["annual_price"] if normalized_cycle == "annual" else plan["monthly_price"]
         amount = round(amount_cents / 100, 2)
+        plan_currency = self._resolve_plan_currency(plan)
 
         is_trial_eligible = await self._is_trial_eligible(db, user, normalized_plan)
         trial_days = plan["trial_days"] if is_trial_eligible else 0
@@ -333,13 +390,13 @@ class CashfreeService:
                 "plan_max_cycles": max_cycles,
                 "plan_recurring_amount": amount,
                 "plan_recurring_period": recurring_period,
-                "plan_currency": plan.get("currency", "USD"),
+                "plan_currency": plan_currency,
                 "plan_notes": f"{plan['name']} recurring billing",
             },
             "subscription_meta": {
                 "return_url": f"{settings.APP_URL}/dashboard?payment=success&subscription_id={{subscription_id}}",
                 "notify_url": f"{settings.BASE_URL}/api/v1/payments/webhook",
-                "notification_channel": "EMAIL",
+                "notification_channel": ["EMAIL"],
             },
             "subscription_first_charge_time": self._format_datetime(first_charge_at),
             "subscription_expiry_time": self._format_datetime(now + timedelta(days=3650)),
@@ -352,12 +409,30 @@ class CashfreeService:
         }
 
         try:
+            used_currency = plan_currency
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
                     f"{self.base_url}/subscriptions",
                     json=payload,
                     headers=self._get_headers(),
                 )
+
+                if response.status_code not in (200, 201):
+                    error_data = self._safe_json(response)
+                    retry_currency = self._currency_retry_candidate(error_data, used_currency)
+                    if retry_currency:
+                        logger.warning(
+                            "Cashfree subscription rejected currency %s. Retrying with fallback %s.",
+                            used_currency,
+                            retry_currency,
+                        )
+                        payload["plan_details"]["plan_currency"] = retry_currency
+                        used_currency = retry_currency
+                        response = await client.post(
+                            f"{self.base_url}/subscriptions",
+                            json=payload,
+                            headers=self._get_headers(),
+                        )
 
             if response.status_code not in (200, 201):
                 error_data = self._safe_json(response)
@@ -386,7 +461,7 @@ class CashfreeService:
                 "payment_session_id": session_id,
                 "subscription_status": subscription_data.get("subscription_status"),
                 "plan": normalized_plan,
-                "plan_details": plan,
+                "plan_details": {**plan, "currency": used_currency},
                 "billing_cycle": normalized_cycle,
                 "trial_days": trial_days,
                 "first_charge_at": self._format_datetime(first_charge_at),
