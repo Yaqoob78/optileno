@@ -89,6 +89,17 @@ def clear_auth_cookies(response: Response) -> None:
     _delete_cookie(response, "csrf_token", "/")
 
 
+def _password_matches(user: User, plain_password: str) -> bool:
+    try:
+        hashed = getattr(user, "hashed_password", None)
+        if not hashed:
+            return False
+        return verify_password(plain_password, hashed)
+    except Exception as exc:
+        logger.warning("Password verify fallback for user %s: %s", getattr(user, "id", "unknown"), exc)
+        return False
+
+
 @router.post("/register")
 async def register(
     user_in: UserRegister,
@@ -125,14 +136,14 @@ async def register(
         is_legacy_unpaid = existing_status in {"explorer", ""} and not has_subscription_lifecycle
         is_resumable = existing_status in {"pending_payment", "payment_failed"} or is_legacy_unpaid
         if is_resumable and not is_owner_email(existing_user.email):
-            if not verify_password(user_in.password, existing_user.hashed_password):
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Email already registered. Use your existing password to continue checkout or sign in.",
-                )
-
-            if existing_user.email != normalized_email:
-                existing_user.email = normalized_email
+            if not _password_matches(existing_user, user_in.password):
+                return {
+                    "status": "exists",
+                    "requires_payment": False,
+                    "account_exists": True,
+                    "authenticated": False,
+                    "message": "Account already exists. Please sign in instead.",
+                }
 
             if user_in.full_name and user_in.full_name != existing_user.full_name:
                 existing_user.full_name = user_in.full_name
@@ -148,7 +159,7 @@ async def register(
             await db.refresh(existing_user)
             user = existing_user
         else:
-            if verify_password(user_in.password, existing_user.hashed_password):
+            if _password_matches(existing_user, user_in.password):
                 access_token, refresh_token, refresh_days = await auth_service.create_session(
                     db, existing_user.id, remember_me=False
                 )

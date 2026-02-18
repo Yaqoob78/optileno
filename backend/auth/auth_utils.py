@@ -14,12 +14,14 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     # bcrypt has a 72 byte limit. Truncate to 72 bytes to avoid ValueError.
     # This handles legacy passlib behavior where truncation might have been automatic.
     try:
+        if not plain_password or not hashed_password:
+            return False
         password_bytes = plain_password.encode('utf-8')
         if len(password_bytes) > 72:
             plain_password = password_bytes[:72]  # passlib accepts bytes or str
         return pwd_context.verify(plain_password, hashed_password)
-    except ValueError:
-        # Fallback if other validation errors occur
+    except Exception:
+        # Fallback if validation/hash errors occur
         return False
 
 def get_password_hash(password: str) -> str:
