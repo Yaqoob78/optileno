@@ -101,6 +101,17 @@ export default function Register() {
             if (response.success && response.data) {
                 const data = response.data;
 
+                // Existing account path: move user to login instead of failing registration repeatedly.
+                if (data.account_exists === true && data.authenticated === false) {
+                    navigate('/login', {
+                        replace: true,
+                        state: {
+                            message: data.message || 'Account already exists. Please sign in to continue.',
+                        },
+                    });
+                    return;
+                }
+
                 // Owner account - no payment needed, go directly to dashboard
                 if (data.requires_payment === false) {
                     navigate('/dashboard');

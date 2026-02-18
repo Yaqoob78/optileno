@@ -159,14 +159,30 @@ async def register(
                     "user": build_user_profile(existing_user),
                     "requires_payment": False,
                     "account_exists": True,
+                    "authenticated": True,
                 }
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered. Sign in or use the same password to continue checkout.",
-            )
+            return {
+                "status": "exists",
+                "requires_payment": False,
+                "account_exists": True,
+                "authenticated": False,
+                "message": "Account already exists. Please sign in instead.",
+            }
     else:
-        user = await auth_service.register(db, user_in)
-        created_new_user = True
+        try:
+            user = await auth_service.register(db, user_in)
+            created_new_user = True
+        except HTTPException as exc:
+            detail_text = str(getattr(exc, "detail", "") or "")
+            if exc.status_code == status.HTTP_400_BAD_REQUEST and "Email already registered" in detail_text:
+                return {
+                    "status": "exists",
+                    "requires_payment": False,
+                    "account_exists": True,
+                    "authenticated": False,
+                    "message": "Account already exists. Please sign in instead.",
+                }
+            raise
 
     # Owner account doesn't need payment
     if is_owner_email(user.email):
@@ -179,6 +195,7 @@ async def register(
             "status": "success",
             "user": build_user_profile(user),
             "requires_payment": False,
+            "authenticated": True,
         }
 
     # Create Cashfree recurring subscription checkout for the selected plan.
@@ -234,6 +251,7 @@ async def register(
         "user": build_user_profile(user),
         "requires_payment": True,
         "payment": payment_data,
+        "authenticated": True,
     }
 
 
