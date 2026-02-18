@@ -113,8 +113,8 @@ export default function Landing() {
     const timers: number[] = [];
 
     // Character walks HORIZONTALLY at a fixed Y near the CTA button
-    const walkDelayMs = 2000;
-    const walkDurationMs = 13000; // Very slow, elegant
+    const walkDelayMs = 1000;
+    const walkDurationMs = 8000; // Slightly quicker, still elegant
 
     const easeInOutQuart = (t: number) => t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2;
 

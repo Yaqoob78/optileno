@@ -105,7 +105,6 @@ export default function Register() {
                             <div
                                 className={`pricing-card ${formData.plan_type === 'ULTRA' ? 'selected' : ''}`}
                                 onClick={() => setFormData({ ...formData, plan_type: 'ULTRA' })}
-                                style={{ borderColor: formData.plan_type === 'ULTRA' ? 'var(--primary-color)' : '' }}
                             >
                                 <div className="plan-badge">LIMITED DEAL</div>
                                 <div className="pricing-header">
