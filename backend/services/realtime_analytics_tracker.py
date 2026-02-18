@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 class RealTimeAnalyticsTracker:
     """Tracks user events and updates analytics in real-time."""
-    
+
     async def track_event(
         self,
         user_id: int,
@@ -28,14 +28,14 @@ class RealTimeAnalyticsTracker:
     ):
         """
         Track a user event and update analytics.
-        
+
         Args:
             user_id: ID of the user
             event_type: Type of event ('task_completed', 'goal_milestone', etc.)
             metadata: Additional event metadata
         """
         try:
-            async with get_db() as db:
+            async for db in get_db():
                 # 1. Create analytics event record
                 event = AnalyticsEvent(
                     user_id=user_id,
@@ -46,15 +46,15 @@ class RealTimeAnalyticsTracker:
                     category=self._get_category(event_type)
                 )
                 db.add(event)
-                
+
                 # 2. Update today's daily snapshot
                 await self._update_daily_snapshot(db, user_id, event_type, metadata)
-                
+
                 # 3. Recalculate scores
                 new_scores = await self._recalculate_scores(db, user_id)
-                
+
                 await db.commit()
-                
+
                 # 4. Emit WebSocket event for real-time UI update
                 try:
                     from backend.realtime.socket_manager import broadcast_analytics_update
@@ -69,14 +69,14 @@ class RealTimeAnalyticsTracker:
                     )
                 except Exception as e:
                     logger.error(f"Failed to broadcast analytics update: {e}")
-                
+
                 logger.info(f"Tracked event {event_type} for user {user_id}")
                 return event
-                
+
         except Exception as e:
             logger.error(f"Error tracking event: {str(e)}")
             raise
-    
+
     def _get_category(self, event_type: str) -> str:
         """Categorize event type."""
         if event_type in ['task_completed', 'task_created', 'task_started']:
@@ -89,7 +89,7 @@ class RealTimeAnalyticsTracker:
             return 'focus'
         else:
             return 'other'
-    
+
     async def _update_daily_snapshot(
         self,
         db: AsyncSession,
@@ -99,7 +99,7 @@ class RealTimeAnalyticsTracker:
     ):
         """Update today's daily analytics snapshot."""
         today = date.today()
-        
+
         # Get or create today's snapshot
         result = await db.execute(
             select(DailyAnalytics).where(
@@ -108,7 +108,7 @@ class RealTimeAnalyticsTracker:
             )
         )
         snapshot = result.scalar_one_or_none()
-        
+
         if not snapshot:
             snapshot = DailyAnalytics(
                 user_id=user_id,
@@ -116,7 +116,7 @@ class RealTimeAnalyticsTracker:
             )
             db.add(snapshot)
             await db.flush()  # Get ID
-        
+
         # Update counts based on event type
         if event_type == 'task_completed':
             snapshot.tasks_completed += 1
@@ -128,17 +128,17 @@ class RealTimeAnalyticsTracker:
             snapshot.goals_progressed += 1
         elif event_type == 'habit_completed':
             snapshot.habits_completed += 1
-        elif event_type == 'focus_session' or event_type == 'deep_work_session':
+        elif event_type in ('focus_session', 'deep_work_session'):
             duration = metadata.get('duration', 0) if metadata else 0
             snapshot.total_focus_minutes += duration
             if event_type == 'deep_work_session':
                 snapshot.deep_work_minutes += duration
-            
+
             interruptions = metadata.get('interruptions', 0) if metadata else 0
             snapshot.interruptions += interruptions
-        
+
         snapshot.updated_at = datetime.now()
-    
+
     async def _recalculate_scores(
         self,
         db: AsyncSession,
@@ -146,7 +146,7 @@ class RealTimeAnalyticsTracker:
     ) -> Dict[str, int]:
         """Recalculate all scores based on today's data."""
         today = date.today()
-        
+
         # Get today's snapshot
         result = await db.execute(
             select(DailyAnalytics).where(
@@ -155,10 +155,10 @@ class RealTimeAnalyticsTracker:
             )
         )
         snapshot = result.scalar_one_or_none()
-        
+
         if not snapshot:
             return {'productivity': 0, 'focus': 0, 'burnout': 0}
-        
+
         # Calculate productivity score (0-100)
         productivity = min(100, (
             snapshot.tasks_completed * 10 +
@@ -166,46 +166,46 @@ class RealTimeAnalyticsTracker:
             snapshot.habits_completed * 8 +
             (snapshot.total_focus_minutes // 10) * 3
         ))
-        
+
         # Calculate focus score (0-100)
         if snapshot.total_focus_minutes > 0:
             # Base score from duration (2 points per minute, capped at 90)
             focus = min(90, snapshot.total_focus_minutes // 2)
-            
+
             # Penalty for interruptions (-5 per interruption, max -30)
             interruption_penalty = min(30, snapshot.interruptions * 5)
             focus = max(0, focus - interruption_penalty)
-            
+
             # Bonus for deep work (+10%)
             if snapshot.deep_work_minutes > 60:
                 focus = min(100, int(focus * 1.1))
         else:
             focus = 0
-        
+
         # Calculate burnout risk (0-100, lower is better)
         work_hours = snapshot.total_focus_minutes / 60
         burnout = min(100, int(
-            (work_hours / 8) * 50 +  # > 8 hours = higher risk
+            (work_hours / 8) * 50 +          # > 8 hours = higher risk
             (snapshot.interruptions / 10) * 30 +  # High interruptions = stress
             (snapshot.tasks_created - snapshot.tasks_completed) * 2  # Backlog = pressure
         ))
-        
+
         # Update snapshot with calculated scores
         snapshot.productivity_score = productivity
         snapshot.focus_score = focus
         snapshot.burnout_risk = burnout
-        
+
         return {
             'productivity': productivity,
             'focus': focus,
             'burnout': burnout
         }
-    
+
     async def get_today_scores(self, user_id: int) -> Dict[str, Any]:
         """Get today's real-time scores."""
-        async with get_db() as db:
+        async for db in get_db():
             today = date.today()
-            
+
             result = await db.execute(
                 select(DailyAnalytics).where(
                     DailyAnalytics.user_id == user_id,
@@ -213,7 +213,7 @@ class RealTimeAnalyticsTracker:
                 )
             )
             snapshot = result.scalar_one_or_none()
-            
+
             if not snapshot:
                 # Create empty snapshot
                 snapshot = DailyAnalytics(
@@ -222,7 +222,7 @@ class RealTimeAnalyticsTracker:
                 )
                 db.add(snapshot)
                 await db.commit()
-            
+
             return {
                 'productivity_score': snapshot.productivity_score,
                 'focus_score': snapshot.focus_score,
@@ -233,7 +233,7 @@ class RealTimeAnalyticsTracker:
                 'focus_minutes': snapshot.total_focus_minutes,
                 'last_updated': snapshot.updated_at.isoformat() if snapshot.updated_at else None
             }
-    
+
     async def get_historical_data(
         self,
         user_id: int,
@@ -241,36 +241,33 @@ class RealTimeAnalyticsTracker:
     ) -> list:
         """
         Get historical analytics data.
-        
+
         Args:
             user_id: User ID
             time_range: 'daily', 'weekly', or 'monthly'
-        
+
         Returns:
             List of daily analytics data
         """
-        async with get_db() as db:
+        async for db in get_db():
             if time_range == 'daily':
-                # Last 30 days
                 start_date = date.today() - timedelta(days=30)
             elif time_range == 'weekly':
-                # Last 12 weeks
                 start_date = date.today() - timedelta(weeks=12)
             elif time_range == 'monthly':
-                # Last 12 months
                 start_date = date.today() - timedelta(days=365)
             else:
                 start_date = date.today() - timedelta(days=30)
-            
+
             result = await db.execute(
                 select(DailyAnalytics).where(
                     DailyAnalytics.user_id == user_id,
                     func.date(DailyAnalytics.date) >= start_date
                 ).order_by(DailyAnalytics.date)
             )
-            
+
             daily_data = result.scalars().all()
-            
+
             return [
                 {
                     'date': d.date.isoformat(),

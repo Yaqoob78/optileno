@@ -371,7 +371,7 @@ class PlannerService:
                     return False
                 
                 old_progress = goal.current_progress or 0
-                new_progress = min(100, max(0, progress))
+                new_progress = min(100, max(0, new_progress))
                 
                 await db.execute(
                     update(Goal)

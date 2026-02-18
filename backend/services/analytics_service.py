@@ -463,9 +463,7 @@ class AnalyticsService:
                 metrics = RealTimeMetrics(
                     user_id=int(user_id),
                     focus_score=50,
-                    productivity_score=50,
                     planning_accuracy=60,
-                    habit_consistency=70,  # Fixed field name if typo exists in model
                     burnout_risk=25,
                     engagement_score=50,
                     current_habit_streak=0,
@@ -680,7 +678,10 @@ class AnalyticsService:
                     {
                         "date": event.timestamp.date().isoformat(),
                         "event": event.event_type,
-                        "details": json.loads(event.meta) if event.meta else {}
+                        "details": (
+                            event.meta if isinstance(event.meta, dict)
+                            else (json.loads(event.meta) if event.meta else {})
+                        )
                     }
                     for event in habit_events
                 ]
@@ -702,9 +703,7 @@ class AnalyticsService:
                 metrics = RealTimeMetrics(
                     user_id=int(user_id),
                     focus_score=50,
-                    productivity_score=50,
                     planning_accuracy=60,
-                    # habit_consistency removed as it is not in the model
                     burnout_risk=25,
                     engagement_score=50,
                     current_habit_streak=0,
