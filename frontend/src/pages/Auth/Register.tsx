@@ -2,13 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, User, Eye, EyeOff, Loader2, AlertCircle, ArrowRight, CreditCard } from 'lucide-react';
 import { userService } from '../../services/api/user.service';
+import { CashfreeMode, loadCashfreeSdk, openCashfreeCheckout } from '../../utils/cashfree';
 import '../../styles/pages/auth.css';
-
-declare global {
-    interface Window {
-        Cashfree: any;
-    }
-}
 
 export default function Register() {
     const navigate = useNavigate();
@@ -24,46 +19,47 @@ export default function Register() {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [cashfree, setCashfree] = useState<any>(null);
     const [paymentStep, setPaymentStep] = useState(false); // true = waiting for checkout
+    const [pendingCheckout, setPendingCheckout] = useState<{ sessionId: string; mode: CashfreeMode } | null>(null);
+    const [retryingCheckout, setRetryingCheckout] = useState(false);
 
-    // Load Cashfree SDK
+    // Warm up Cashfree SDK early for faster checkout open.
     useEffect(() => {
-        const loadCashfreeSDK = () => {
-            if (window.Cashfree) {
-                const isProduction = import.meta.env.PROD;
-                setCashfree(new window.Cashfree({ mode: isProduction ? "production" : "sandbox" }));
-                return;
-            }
-
-            // Load SDK script if not already available
-            const existingScript = document.querySelector('script[src*="cashfree"]');
-            if (!existingScript) {
-                const script = document.createElement('script');
-                script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
-                script.async = true;
-                script.onload = () => {
-                    if (window.Cashfree) {
-                        const isProduction = import.meta.env.PROD;
-                        setCashfree(new window.Cashfree({ mode: isProduction ? "production" : "sandbox" }));
-                    }
-                };
-                document.head.appendChild(script);
-            } else {
-                // Script exists but Cashfree not ready - wait for it
-                const check = setInterval(() => {
-                    if (window.Cashfree) {
-                        const isProduction = import.meta.env.PROD;
-                        setCashfree(new window.Cashfree({ mode: isProduction ? "production" : "sandbox" }));
-                        clearInterval(check);
-                    }
-                }, 200);
-                setTimeout(() => clearInterval(check), 10000);
-            }
-        };
-
-        loadCashfreeSDK();
+        loadCashfreeSdk().catch(() => {
+            // Non-blocking warmup; retry occurs on submit/checkout click.
+        });
     }, []);
+
+    const resolveCashfreeMode = (environment?: string): CashfreeMode =>
+        environment === 'production' ? 'production' : 'sandbox';
+
+    const launchCheckout = async (sessionId: string, mode: CashfreeMode) => {
+        setPaymentStep(true);
+        setPendingCheckout({ sessionId, mode });
+        setError(null);
+
+        try {
+            await openCashfreeCheckout(sessionId, mode);
+        } catch {
+            setError('Unable to open secure checkout. Please click "Continue to Payment" to retry.');
+        }
+    };
+
+    const handleRetryCheckout = async () => {
+        if (!pendingCheckout) {
+            return;
+        }
+
+        setRetryingCheckout(true);
+        setError(null);
+        try {
+            await openCashfreeCheckout(pendingCheckout.sessionId, pendingCheckout.mode);
+        } catch {
+            setError('Checkout still could not be opened. Refresh and try again.');
+        } finally {
+            setRetryingCheckout(false);
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -96,23 +92,11 @@ export default function Register() {
 
                 // Payment required - open Cashfree checkout
                 if (data.payment && data.payment.payment_session_id) {
-                    setPaymentStep(true);
-
-                    if (cashfree) {
-                        const checkoutOptions = {
-                            paymentSessionId: data.payment.payment_session_id,
-                            redirectTarget: "_self",
-                        };
-                        cashfree.checkout(checkoutOptions);
-                    } else {
-                        // SDK not loaded yet, fallback
-                        setError('Payment system is loading. Please try again in a moment.');
-                        setPaymentStep(false);
-                    }
+                    const mode = resolveCashfreeMode(data.payment.environment);
+                    await launchCheckout(data.payment.payment_session_id, mode);
                 } else {
-                    // Payment order creation failed, redirect to dashboard to try from billing
-                    setError('Account created but payment setup failed. You can complete payment from Settings > Billing.');
-                    setTimeout(() => navigate('/dashboard'), 3000);
+                    setError('Could not start secure payment. Please try registering again.');
+                    setPaymentStep(false);
                 }
             } else {
                 setError(response.error?.message || 'Registration failed. Please try again.');
@@ -158,6 +142,23 @@ export default function Register() {
                                 Your account has been created. You'll be redirected to complete payment securely via Cashfree.
                             </p>
                             <Loader2 className="animate-spin" size={24} style={{ color: 'var(--primary)', marginTop: '1rem' }} />
+                            <button
+                                type="button"
+                                className="auth-button"
+                                style={{ marginTop: '1rem' }}
+                                onClick={handleRetryCheckout}
+                                disabled={retryingCheckout || !pendingCheckout}
+                            >
+                                {retryingCheckout ? (
+                                    <Loader2 className="animate-spin" size={20} />
+                                ) : (
+                                    <>
+                                        <CreditCard size={18} />
+                                        <span>Continue to Payment</span>
+                                        <ArrowRight size={20} />
+                                    </>
+                                )}
+                            </button>
                         </div>
                     ) : (
                         <form className="auth-form" onSubmit={handleSubmit}>
@@ -297,7 +298,7 @@ export default function Register() {
                                     textAlign: 'center',
                                     lineHeight: '1.4'
                                 }}>
-                                    🎉 Includes 3-day free trial. Billing starts automatically after trial ends unless cancelled.
+                                    Includes a 3-day free trial. Billing starts automatically after trial ends unless cancelled.
                                 </div>
                             )}
 
@@ -336,7 +337,7 @@ export default function Register() {
                                 margin: '-0.5rem 0 0',
                                 lineHeight: '1.4',
                             }}>
-                                🔒 Secure payment via Cashfree. You'll be redirected to complete payment after account creation.
+                                Secure payment via Cashfree. You will be redirected to complete payment after account creation.
                             </p>
                         </form>
                     )}

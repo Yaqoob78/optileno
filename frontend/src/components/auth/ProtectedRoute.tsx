@@ -1,14 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Loader2, CreditCard, Zap } from 'lucide-react';
 import { useUserStore } from '../../stores/useUserStore';
 import { userService } from '../../services/api/user.service';
-import { Loader2, CreditCard, Zap } from 'lucide-react';
-
-declare global {
-    interface Window {
-        Cashfree: any;
-    }
-}
+import { openCashfreeCheckout } from '../../utils/cashfree';
 
 interface ProtectedRouteProps {
     children: React.ReactNode;
@@ -19,55 +14,50 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     const profile = useUserStore((state) => state.profile);
     const login = useUserStore((state) => state.login);
     const logout = useUserStore((state) => state.logout);
+
     const location = useLocation();
     const navigate = useNavigate();
-    const [checking, setChecking] = useState(true);
-    const hasChecked = React.useRef(false);
-    const [initiatingPayment, setInitiatingPayment] = useState(false);
 
-    // Check if returning from Cashfree payment
+    const [checking, setChecking] = useState(true);
+    const [initiatingPayment, setInitiatingPayment] = useState(false);
+    const [paymentError, setPaymentError] = useState<string | null>(null);
+    const [verifyingReturnPayment, setVerifyingReturnPayment] = useState(false);
+    const hasChecked = useRef(false);
+
     const params = new URLSearchParams(location.search);
-    const isPaymentReturn = params.get('payment') === 'success' && !!params.get('order_id');
+    const paymentReturnOrderId = params.get('order_id');
+    const isPaymentReturn = params.get('payment') === 'success' && !!paymentReturnOrderId;
 
     useEffect(() => {
         const checkAuth = async () => {
-            console.log('[ProtectedRoute] checkAuth running. isAuthenticated:', isAuthenticated, 'hasChecked:', hasChecked.current);
+            if (hasChecked.current) {
+                return;
+            }
 
-            // Already checked on this mount
-            if (hasChecked.current) return;
+            hasChecked.current = true;
 
-            // If store already says authenticated, allow access immediately
-            // and refresh profile in background to avoid stale persisted plan tier.
             if (isAuthenticated) {
-                console.log('[ProtectedRoute] User is already authenticated in store. Refreshing profile in background.');
-                setChecking(false);
-                hasChecked.current = true;
                 try {
                     const response = await userService.getProfile();
                     if (response.success && response.data) {
                         login(response.data as any, response.data.preferences as any);
                     }
-                } catch (err) {
-                    // Ignore transient profile refresh errors for already-authenticated users.
+                } catch {
+                    // Keep existing session state and continue.
+                } finally {
+                    setChecking(false);
                 }
                 return;
             }
 
-            console.log('[ProtectedRoute] Validating session with backend...');
-            hasChecked.current = true;
             try {
                 const response = await userService.getProfile();
-                console.log('[ProtectedRoute] Session check response:', response.success ? 'SUCCESS' : 'FAILED');
-
                 if (response.success && response.data) {
-                    console.log('[ProtectedRoute] Backend session valid. Logging in user.');
                     login(response.data as any, response.data.preferences as any);
                 } else {
-                    console.log('[ProtectedRoute] Backend session invalid or no data. Logging out user.');
                     logout();
                 }
-            } catch (err) {
-                console.error('[ProtectedRoute] Session check error:', err);
+            } catch {
                 logout();
             } finally {
                 setChecking(false);
@@ -77,54 +67,73 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
         checkAuth();
     }, [isAuthenticated, login, logout]);
 
-    // Handle payment initiation from the paywall
+    useEffect(() => {
+        if (!isAuthenticated || !isPaymentReturn || !paymentReturnOrderId) {
+            return;
+        }
+
+        const subscriptionStatus = ((profile as any)?.subscription?.status || '').toLowerCase();
+        if (subscriptionStatus !== 'pending_payment' && subscriptionStatus !== 'payment_failed') {
+            navigate(location.pathname, { replace: true });
+            return;
+        }
+
+        let cancelled = false;
+
+        const verifyPaymentReturn = async () => {
+            setVerifyingReturnPayment(true);
+            setPaymentError(null);
+
+            try {
+                const { paymentService } = await import('../../services/api/payment.service');
+                const verifyRes = await paymentService.verifyPayment(paymentReturnOrderId);
+
+                if (!verifyRes.success || !verifyRes.data?.success) {
+                    throw new Error(verifyRes.data?.message || 'Payment verification is still pending.');
+                }
+
+                const profileRes = await userService.getProfile();
+                if (!cancelled && profileRes.success && profileRes.data) {
+                    login(profileRes.data as any, profileRes.data.preferences as any);
+                }
+            } catch (err: any) {
+                if (!cancelled) {
+                    setPaymentError(err?.message || 'Payment could not be confirmed yet. Please try again.');
+                }
+            } finally {
+                if (!cancelled) {
+                    setVerifyingReturnPayment(false);
+                }
+                navigate(location.pathname, { replace: true });
+            }
+        };
+
+        verifyPaymentReturn();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isAuthenticated, isPaymentReturn, paymentReturnOrderId, profile, login, navigate, location.pathname]);
+
     const handleInitiatePayment = async () => {
         setInitiatingPayment(true);
+        setPaymentError(null);
+
         try {
             const { paymentService } = await import('../../services/api/payment.service');
-
-            // Determine plan from user profile
             const planType = (profile as any)?.planType || (profile as any)?.plan_type || 'EXPLORER';
-            const planName = planType.toLowerCase();
+            const planName = String(planType).toLowerCase() === 'ultra' ? 'ultra' : 'explorer';
 
-            const orderRes = await paymentService.createOrder(
-                planName === 'ultra' ? 'ultra' : 'explorer',
-                'monthly'
-            );
-
-            if (orderRes.success && orderRes.data?.payment_session_id) {
-                // Load Cashfree SDK and open checkout
-                if (window.Cashfree) {
-                    const isProduction = import.meta.env.PROD;
-                    const cf = new window.Cashfree({ mode: isProduction ? "production" : "sandbox" });
-                    cf.checkout({
-                        paymentSessionId: orderRes.data.payment_session_id,
-                        redirectTarget: "_self",
-                    });
-                } else {
-                    // Try loading the SDK
-                    const script = document.createElement('script');
-                    script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
-                    script.async = true;
-                    script.onload = () => {
-                        if (window.Cashfree) {
-                            const isProduction = import.meta.env.PROD;
-                            const cf = new window.Cashfree({ mode: isProduction ? "production" : "sandbox" });
-                            cf.checkout({
-                                paymentSessionId: orderRes.data.payment_session_id,
-                                redirectTarget: "_self",
-                            });
-                        }
-                    };
-                    document.head.appendChild(script);
-                }
-            } else {
-                alert('Failed to create payment order. Please try again.');
-                setInitiatingPayment(false);
+            const orderRes = await paymentService.createOrder(planName, 'monthly');
+            if (!orderRes.success || !orderRes.data?.payment_session_id) {
+                throw new Error(orderRes.error?.message || 'Failed to create payment order. Please try again.');
             }
-        } catch (err) {
-            console.error('Payment initiation failed:', err);
-            alert('Payment initiation failed. Please try again.');
+
+            const mode = orderRes.data.environment === 'production' ? 'production' : 'sandbox';
+            await openCashfreeCheckout(orderRes.data.payment_session_id, mode);
+        } catch (err: any) {
+            setPaymentError(err?.message || 'Payment initiation failed. Please try again.');
+        } finally {
             setInitiatingPayment(false);
         }
     };
@@ -132,8 +141,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     if (checking) {
         return (
             <div style={{
-                display: 'flex', height: '100vh', width: '100vw',
-                alignItems: 'center', justifyContent: 'center',
+                display: 'flex',
+                height: '100vh',
+                width: '100vw',
+                alignItems: 'center',
+                justifyContent: 'center',
                 background: '#020617',
             }}>
                 <Loader2 className="animate-spin" style={{ height: '2rem', width: '2rem', color: '#3b82f6' }} />
@@ -142,28 +154,60 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     }
 
     if (!isAuthenticated) {
-        // PREVENT LOOP: If we are already on a public route, do NOT redirect to /
         const publicPaths = ['/', '/login', '/register'];
         if (publicPaths.includes(location.pathname)) {
-            console.log('[ProtectedRoute] Already on public path. Not redirecting.');
             return <>{children}</>;
         }
-
-        console.log('[ProtectedRoute] Not authenticated. Path:', location.pathname, 'Redirecting to /');
         return <Navigate to="/" state={{ from: location }} replace />;
     }
 
-    // ── PAYMENT WALL ──────────────────────────────────────────────
-    // Block ALL protected routes if subscription_status is "pending_payment"
-    // EXCEPT when returning from Cashfree payment (payment=success in URL)
-    const subscriptionStatus = (profile as any)?.subscription?.status;
-    const isPendingPayment = subscriptionStatus === 'pending_payment';
+    const subscriptionStatus = String((profile as any)?.subscription?.status || '').toLowerCase();
+    const isPendingPayment = subscriptionStatus === 'pending_payment' || subscriptionStatus === 'payment_failed';
 
-    if (isPendingPayment && !isPaymentReturn) {
+    if (isPendingPayment && verifyingReturnPayment) {
         return (
             <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                minHeight: '100vh', width: '100vw', padding: '2rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: '100vh',
+                width: '100vw',
+                padding: '2rem',
+                background: 'linear-gradient(135deg, #020617 0%, #0f172a 50%, #020617 100%)',
+            }}>
+                <div style={{
+                    background: 'rgba(10, 15, 30, 0.85)',
+                    backdropFilter: 'blur(40px)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: '24px',
+                    padding: '2rem',
+                    maxWidth: '460px',
+                    width: '100%',
+                    textAlign: 'center',
+                }}>
+                    <Loader2 className="animate-spin" size={28} style={{ color: '#60a5fa', marginBottom: '1rem' }} />
+                    <h2 style={{ color: '#fff', fontSize: '1.2rem', marginBottom: '0.5rem' }}>
+                        Verifying Payment
+                    </h2>
+                    <p style={{ color: '#94a3b8', fontSize: '0.9rem', lineHeight: '1.6' }}>
+                        Please wait while we confirm your payment securely with Cashfree.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    if (isPendingPayment) {
+        const isUltraPlan = ((profile as any)?.planType || '').toUpperCase() === 'ULTRA';
+
+        return (
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: '100vh',
+                width: '100vw',
+                padding: '2rem',
                 background: 'linear-gradient(135deg, #020617 0%, #0f172a 50%, #020617 100%)',
             }}>
                 <div style={{
@@ -178,9 +222,13 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
                     boxShadow: '0 25px 50px rgba(0,0,0,0.5)',
                 }}>
                     <div style={{
-                        width: '80px', height: '80px', borderRadius: '50%',
+                        width: '80px',
+                        height: '80px',
+                        borderRadius: '50%',
                         background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.15))',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                         margin: '0 auto 1.5rem',
                         border: '1px solid rgba(59, 130, 246, 0.2)',
                     }}>
@@ -188,30 +236,44 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
                     </div>
 
                     <h2 style={{
-                        color: '#fff', fontSize: '1.5rem', fontWeight: 700,
+                        color: '#fff',
+                        fontSize: '1.5rem',
+                        fontWeight: 700,
                         marginBottom: '0.75rem',
                     }}>
                         Complete Your Payment
                     </h2>
 
                     <p style={{
-                        color: '#94a3b8', fontSize: '0.95rem', marginBottom: '0.5rem',
+                        color: '#94a3b8',
+                        fontSize: '0.95rem',
+                        marginBottom: '0.5rem',
                         lineHeight: '1.6',
                     }}>
-                        Your account has been created successfully! To start using Optileno,
-                        please complete your subscription payment.
+                        Your account has been created successfully. Please complete payment to continue.
                     </p>
 
                     <p style={{
-                        color: '#64748b', fontSize: '0.8rem', marginBottom: '2rem',
+                        color: '#64748b',
+                        fontSize: '0.8rem',
+                        marginBottom: '2rem',
                         lineHeight: '1.5',
                     }}>
-                        {(profile as any)?.planType === 'ULTRA' ? (
-                            <>Ultra Plan — $10/month</>
-                        ) : (
-                            <>Explorer Plan — $2/month (includes 3-day free trial)</>
-                        )}
+                        {isUltraPlan
+                            ? 'Ultra Plan - $10/month'
+                            : 'Explorer Plan - $2/month (includes 3-day free trial)'}
                     </p>
+
+                    {paymentError && (
+                        <p style={{
+                            color: '#fca5a5',
+                            fontSize: '0.8rem',
+                            marginBottom: '1rem',
+                            lineHeight: '1.5',
+                        }}>
+                            {paymentError}
+                        </p>
+                    )}
 
                     <button
                         onClick={handleInitiatePayment}
@@ -243,16 +305,18 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
                         ) : (
                             <>
                                 <Zap size={20} />
-                                <span>Pay & Get Started</span>
+                                <span>Pay and Get Started</span>
                             </>
                         )}
                     </button>
 
                     <p style={{
-                        color: '#475569', fontSize: '0.7rem', marginTop: '1.25rem',
+                        color: '#475569',
+                        fontSize: '0.7rem',
+                        marginTop: '1.25rem',
                         lineHeight: '1.4',
                     }}>
-                        🔒 Secure payment powered by Cashfree. Your payment details are encrypted and safe.
+                        Secure payment powered by Cashfree. Your payment details are encrypted and safe.
                     </p>
 
                     <button
@@ -270,7 +334,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
                             textDecoration: 'underline',
                         }}
                     >
-                        Log out & go back
+                        Log out and go back
                     </button>
                 </div>
             </div>

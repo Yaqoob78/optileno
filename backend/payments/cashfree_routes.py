@@ -99,16 +99,25 @@ async def create_order(
             }
         )
 
-    if request.plan.lower() not in ["explorer", "ultra"]:
+    normalized_plan = (request.plan or "").strip().lower()
+    normalized_cycle = (request.billing_cycle or "monthly").strip().lower()
+
+    if normalized_plan not in ["explorer", "ultra"]:
         raise HTTPException(
             status_code=400,
             detail="Invalid plan. Choose 'explorer' or 'ultra'."
         )
 
-    if request.billing_cycle not in ["monthly", "annual"]:
+    if normalized_cycle not in ["monthly", "annual"]:
         raise HTTPException(
             status_code=400,
             detail="Invalid billing cycle. Choose 'monthly' or 'annual'."
+        )
+
+    if normalized_plan == "explorer" and normalized_cycle != "monthly":
+        raise HTTPException(
+            status_code=400,
+            detail="Explorer plan supports monthly billing only.",
         )
 
     if not cashfree_service.is_configured():
@@ -121,8 +130,8 @@ async def create_order(
         order = await cashfree_service.create_order(
             db=db,
             user=current_user,
-            plan_name=request.plan,
-            billing_cycle=request.billing_cycle
+            plan_name=normalized_plan,
+            billing_cycle=normalized_cycle
         )
         return order
     except Exception as e:
@@ -153,9 +162,25 @@ async def verify_payment(
         if not order_data:
             raise HTTPException(status_code=404, detail="Order not found")
 
-        order_status = order_data.get("order_status", "")
+        tags = order_data.get("order_tags", {}) or {}
+        order_user_id = str(tags.get("user_id") or "").strip()
+        if not order_user_id:
+            raise HTTPException(status_code=400, detail="Order metadata is incomplete")
+        if order_user_id != str(current_user.id):
+            raise HTTPException(status_code=403, detail="Order does not belong to current user")
 
-        if order_status == "PAID":
+        order_status = (order_data.get("order_status") or "").strip().upper()
+        payment_success = order_status == "PAID"
+
+        # Fallback to payment attempts list for eventual consistency cases.
+        if not payment_success:
+            payments = await cashfree_service.get_payments_for_order(request.order_id)
+            payment_success = any(
+                (payment.get("payment_status") or "").strip().upper() in {"SUCCESS", "PAID"}
+                for payment in payments
+            )
+
+        if payment_success:
             # Activate subscription
             user = await cashfree_service.handle_payment_success(db, order_data)
 

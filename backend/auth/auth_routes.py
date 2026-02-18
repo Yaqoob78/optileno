@@ -1,7 +1,8 @@
+import logging
 import secrets
 from fastapi import APIRouter, Depends, Response, Request, status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from jose import JWTError
 
 from backend.app.config import settings
@@ -19,6 +20,7 @@ from .auth_service import auth_service
 from .auth_utils import decode_token
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 # --- Cookie Settings ---
 ACCESS_TOKEN_MAX_AGE = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
@@ -96,22 +98,21 @@ async def register(
     """
     Register a new user account.
 
-    Creates account, auto-logs in (sets cookies), and creates a Cashfree
-    payment order so the frontend can immediately open checkout.
+    Creates account and immediately initializes Cashfree checkout.
+    Non-owner registrations require payment setup to succeed, otherwise
+    registration is rolled back and no account is persisted.
     """
     user = await auth_service.register(db, user_in)
-
-    # Auto-login: create session and set auth cookies
-    access_token, refresh_token, refresh_days = await auth_service.create_session(
-        db, user.id, remember_me=False
-    )
-    refresh_max_age = refresh_days * 24 * 60 * 60
-    set_auth_cookies(response, access_token, refresh_token, refresh_max_age=refresh_max_age)
 
     from backend.utils.owner import is_owner_email
 
     # Owner account doesn't need payment
     if is_owner_email(user.email):
+        access_token, refresh_token, refresh_days = await auth_service.create_session(
+            db, user.id, remember_me=False
+        )
+        refresh_max_age = refresh_days * 24 * 60 * 60
+        set_auth_cookies(response, access_token, refresh_token, refresh_max_age=refresh_max_age)
         return {
             "status": "success",
             "user": build_user_profile(user),
@@ -121,23 +122,48 @@ async def register(
     # Create Cashfree payment order for the selected plan
     from backend.payments.cashfree_service import cashfree_service
 
-    payment_data = None
-    if cashfree_service.is_configured():
-        try:
-            plan_name = user_in.plan_type.lower()  # explorer or ultra
-            if plan_name not in ("explorer", "ultra"):
-                plan_name = "explorer"
+    if not cashfree_service.is_configured():
+        await db.delete(user)
+        await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Payment service unavailable. Please try again shortly.",
+        )
 
-            order = await cashfree_service.create_order(
-                db=db,
-                user=user,
-                plan_name=plan_name,
-                billing_cycle="monthly",  # Default to monthly on registration
-            )
-            payment_data = order
-        except Exception as e:
-            import logging
-            logging.getLogger(__name__).error(f"Failed to create payment order during registration: {e}")
+    try:
+        plan_name = (user_in.plan_type or "EXPLORER").lower()
+        if plan_name not in ("explorer", "ultra"):
+            plan_name = "explorer"
+
+        payment_data = await cashfree_service.create_order(
+            db=db,
+            user=user,
+            plan_name=plan_name,
+            billing_cycle="monthly",  # Registration always starts on monthly flow.
+        )
+
+        if not payment_data or not payment_data.get("payment_session_id"):
+            raise ValueError("Missing payment_session_id from payment order")
+    except Exception as exc:
+        logger.error("Registration payment initialization failed for %s: %s", user.email, exc)
+        await db.rollback()
+        try:
+            await db.execute(delete(User).where(User.id == user.id))
+            await db.commit()
+        except Exception as rollback_exc:
+            logger.error("Failed to rollback user registration for %s: %s", user.email, rollback_exc)
+            await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Unable to initialize secure checkout. Please retry registration.",
+        )
+
+    # Auto-login only after payment setup is ready so users are forced through checkout.
+    access_token, refresh_token, refresh_days = await auth_service.create_session(
+        db, user.id, remember_me=False
+    )
+    refresh_max_age = refresh_days * 24 * 60 * 60
+    set_auth_cookies(response, access_token, refresh_token, refresh_max_age=refresh_max_age)
 
     return {
         "status": "success",

@@ -146,12 +146,19 @@ class CashfreeService:
         if not self.is_configured():
             raise ValueError("Cashfree is not configured")
 
-        plan = self.get_plan(plan_name)
+        normalized_plan = (plan_name or "").strip().lower()
+        plan = self.get_plan(normalized_plan)
         if not plan:
             raise ValueError(f"Invalid plan: {plan_name}")
 
+        normalized_cycle = (billing_cycle or "monthly").strip().lower()
+        if normalized_cycle not in {"monthly", "annual"}:
+            raise ValueError("Invalid billing cycle")
+        if normalized_plan == "explorer" and normalized_cycle != "monthly":
+            raise ValueError("Explorer plan supports monthly billing only")
+
         # Calculate amount (convert cents to dollars for Cashfree)
-        if billing_cycle == "annual":
+        if normalized_cycle == "annual":
             amount_cents = plan["annual_price"]
         else:
             amount_cents = plan["monthly_price"]
@@ -159,11 +166,11 @@ class CashfreeService:
         amount = amount_cents / 100  # Cashfree expects float amount (e.g., 2.00)
 
         # Check for trial eligibility
-        is_trial_eligible = await self._is_trial_eligible(db, user, plan_name)
+        is_trial_eligible = await self._is_trial_eligible(db, user, normalized_plan)
         trial_days = plan["trial_days"] if is_trial_eligible else 0
 
         # Generate unique order ID
-        order_id = f"optileno_{user.id}_{plan_name}_{int(datetime.now().timestamp())}"
+        order_id = f"optileno_{user.id}_{normalized_plan}_{int(datetime.now().timestamp())}"
 
         # Build return URL
         return_url = f"{settings.APP_URL}/dashboard?payment=success&order_id={order_id}"
@@ -183,11 +190,11 @@ class CashfreeService:
                 "return_url": return_url + "&cf_id={order_id}",
                 "notify_url": f"{settings.BASE_URL}/api/v1/payments/webhook",
             },
-            "order_note": f"Optileno {plan['name']} Plan - {billing_cycle.capitalize()}",
+            "order_note": f"Optileno {plan['name']} Plan - {normalized_cycle.capitalize()}",
             "order_tags": {
                 "user_id": str(user.id),
-                "plan": plan_name,
-                "billing_cycle": billing_cycle,
+                "plan": normalized_plan,
+                "billing_cycle": normalized_cycle,
                 "trial_days": str(trial_days),
             },
         }
@@ -219,9 +226,9 @@ class CashfreeService:
                 "order_status": order_data.get("order_status"),
                 "order_amount": amount,
                 "order_currency": "USD",
-                "plan": plan_name,
+                "plan": normalized_plan,
                 "plan_details": plan,
-                "billing_cycle": billing_cycle,
+                "billing_cycle": normalized_cycle,
                 "trial_days": trial_days,
                 "environment": "sandbox" if "sandbox" in self.base_url else "production",
                 "user": {
@@ -246,12 +253,22 @@ class CashfreeService:
         if self._is_owner(user):
             return False
 
-        # User who previously had a paid subscription is not eligible
-        if user.razorpay_subscription_id:  # Reusing existing field for backward compat
-            return False
-
         # Only explorer plan has trial
         if plan_name.lower() != "explorer":
+            return False
+
+        # Prevent repeat trial access for any user with prior subscription lifecycle data.
+        if user.razorpay_subscription_id:
+            return False
+        if getattr(user, "trial_ends_at", None) is not None:
+            return False
+        if getattr(user, "subscription_starts_at", None) is not None:
+            return False
+        if getattr(user, "subscription_ends_at", None) is not None:
+            return False
+
+        prior_status = (getattr(user, "subscription_status", "") or "").strip().lower()
+        if prior_status in {"trialing", "active", "canceled", "payment_failed"}:
             return False
 
         return True
@@ -272,15 +289,16 @@ class CashfreeService:
         Cashfree signs webhooks using HMAC-SHA256:
         signature = HMAC_SHA256(timestamp + raw_body, secret_key)
         """
-        if not self.secret_key:
-            logger.warning("Cashfree secret key not configured for webhook verification")
+        signing_secret = settings.CASHFREE_WEBHOOK_SECRET or self.secret_key
+        if not signing_secret:
+            logger.warning("Cashfree signing secret not configured for webhook verification")
             return False
 
         try:
             # Cashfree webhook signature: HMAC-SHA256 of timestamp+body
             sign_data = timestamp.encode() + body
             expected = hmac.new(
-                self.secret_key.encode(),
+                signing_secret.encode(),
                 sign_data,
                 hashlib.sha256
             ).hexdigest()
@@ -339,11 +357,20 @@ class CashfreeService:
         Returns:
             Updated user object
         """
-        tags = order_data.get("order_tags", {})
+        tags = order_data.get("order_tags", {}) or {}
+        order_id = order_data.get("order_id")
         user_id = tags.get("user_id")
-        plan_name = tags.get("plan")
-        billing_cycle = tags.get("billing_cycle", "monthly")
-        trial_days = int(tags.get("trial_days", 0))
+        plan_name = (tags.get("plan") or "").strip().lower()
+        billing_cycle = (tags.get("billing_cycle") or "monthly").strip().lower()
+        if billing_cycle not in {"monthly", "annual"}:
+            billing_cycle = "monthly"
+        if plan_name == "explorer":
+            billing_cycle = "monthly"
+
+        try:
+            trial_days = int(tags.get("trial_days", 0))
+        except (TypeError, ValueError):
+            trial_days = 0
 
         if not user_id or not plan_name:
             logger.error("Missing user_id or plan in order tags")
@@ -354,10 +381,26 @@ class CashfreeService:
             logger.error(f"Invalid plan: {plan_name}")
             return None
 
+        # Load user first for idempotency checks.
+        result = await db.execute(select(User).where(User.id == int(user_id)))
+        user = result.scalar_one_or_none()
+        if not user:
+            logger.error(f"User not found for payment success: {user_id}")
+            return None
+
+        current_status = (getattr(user, "subscription_status", "") or "").strip().lower()
+        if (
+            order_id
+            and str(getattr(user, "razorpay_subscription_id", "") or "") == str(order_id)
+            and current_status in {"trialing", "active"}
+        ):
+            logger.info(f"Ignoring duplicate payment success event for order {order_id}")
+            return user
+
         # Calculate subscription dates
         now = datetime.now(timezone.utc)
-
-        if trial_days > 0:
+        trial_end = None
+        if plan_name == "explorer" and trial_days > 0:
             trial_end = now + timedelta(days=trial_days)
             subscription_start = trial_end
         else:
@@ -370,25 +413,16 @@ class CashfreeService:
 
         # Update user subscription
         try:
-            await db.execute(
-                update(User)
-                .where(User.id == int(user_id))
-                .values(
-                    tier=plan["tier"],
-                    plan_type=plan["plan_type"],
-                    razorpay_customer_id=order_data.get("cf_order_id"),  # store CF order ID
-                    razorpay_subscription_id=order_data.get("order_id"),  # store order ID
-                    subscription_status="active" if trial_days == 0 else "trialing",
-                    trial_ends_at=trial_end if trial_days > 0 else None,
-                    subscription_starts_at=subscription_start,
-                    subscription_ends_at=subscription_end,
-                )
-            )
+            user.tier = plan["tier"]
+            user.plan_type = plan["plan_type"]
+            user.razorpay_customer_id = order_data.get("cf_order_id")
+            user.razorpay_subscription_id = order_id
+            user.subscription_status = "trialing" if trial_end else "active"
+            user.trial_ends_at = trial_end
+            user.subscription_starts_at = subscription_start
+            user.subscription_ends_at = subscription_end
             await db.commit()
-
-            # Fetch and return updated user
-            result = await db.execute(select(User).where(User.id == int(user_id)))
-            user = result.scalar_one_or_none()
+            await db.refresh(user)
 
             if user:
                 logger.info(
@@ -462,6 +496,18 @@ class CashfreeService:
             }
 
         now = datetime.now(timezone.utc)
+
+        # Auto-transition trial users once trial window has elapsed.
+        status_value = (getattr(user, "subscription_status", "") or "").strip().lower()
+        trial_ends_at = getattr(user, "trial_ends_at", None)
+        if status_value == "trialing" and trial_ends_at and trial_ends_at <= now:
+            await db.execute(
+                update(User)
+                .where(User.id == user.id)
+                .values(subscription_status="active")
+            )
+            await db.commit()
+            await db.refresh(user)
 
         return {
             "plan": user.plan_type.lower() if user.plan_type else "explorer",

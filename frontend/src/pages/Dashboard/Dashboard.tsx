@@ -183,8 +183,8 @@ export default function Dashboard() {
                 <Award size={20} />
               </div>
               <div>
-                <h4 className="font-bold text-main">Welcome to Ultra!</h4>
-                <p className="text-secondary text-sm">Your subscription has been activated successfully.</p>
+                <h4 className="font-bold text-main">Payment Confirmed</h4>
+                <p className="text-secondary text-sm">Your subscription is now active.</p>
               </div>
             </div>
             <button onClick={() => setShowSuccessModal(false)} className="text-muted hover:text-main">

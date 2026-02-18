@@ -19,6 +19,38 @@ from backend.utils.owner import is_owner_email
 
 logger = logging.getLogger(__name__)
 
+PAYMENT_GATED_STATUSES = {"pending_payment", "payment_failed"}
+PAYMENT_GATE_ALLOWED_PREFIXES = (
+    "/api/v1/payments",
+    "/api/v1/subscriptions",
+    "/payments",
+    "/subscriptions",
+)
+PAYMENT_GATE_ALLOWED_ROUTES = {
+    ("GET", "/api/v1/users/me"),
+    ("GET", "/api/v1/users/me/subscription"),
+    ("POST", "/api/v1/auth/logout"),
+    ("POST", "/api/v1/auth/refresh"),
+    ("GET", "/api/v1/auth/validate"),
+    ("GET", "/api/v1/auth/me"),
+    ("POST", "/auth/logout"),
+    ("POST", "/auth/refresh"),
+    ("GET", "/auth/validate"),
+    ("GET", "/auth/me"),
+    ("GET", "/users/me"),
+    ("GET", "/users/me/subscription"),
+}
+
+
+def _is_payment_gate_exempt(request: Request) -> bool:
+    path = (request.url.path or "").rstrip("/") or "/"
+    method = (request.method or "GET").upper()
+
+    if any(path.startswith(prefix) for prefix in PAYMENT_GATE_ALLOWED_PREFIXES):
+        return True
+
+    return (method, path) in PAYMENT_GATE_ALLOWED_ROUTES
+
 
 # =========================
 # Auth
@@ -80,6 +112,18 @@ async def get_current_user(
             user.is_superuser = True
             await db.commit()
             await db.refresh(user)
+
+    # Enforce payment completion server-side to prevent API-level bypasses.
+    subscription_status = (getattr(user, "subscription_status", "") or "").strip().lower()
+    if (
+        not is_owner_email(getattr(user, "email", None))
+        and subscription_status in PAYMENT_GATED_STATUSES
+        and not _is_payment_gate_exempt(request)
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Complete subscription payment to access this resource.",
+        )
 
     return user
 
