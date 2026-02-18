@@ -14,7 +14,7 @@ import {
 import { useUserStore } from '../../stores/useUserStore';
 import { paymentService, SubscriptionStatus } from '../../services/api/payment.service';
 import { userService } from '../../services/api/user.service';
-import { loadCashfreeSdk, openCashfreeCheckout } from '../../utils/cashfree';
+import { loadCashfreeSdk, openCashfreeCheckout, openCashfreeSubscriptionCheckout } from '../../utils/cashfree';
 
 type PlanId = 'explorer' | 'ultra';
 type BillingCycle = 'monthly' | 'annual';
@@ -117,14 +117,21 @@ export default function BillingSettings() {
         const urlParams = new URLSearchParams(window.location.search);
         const paymentStatus = urlParams.get('payment');
         const orderId = urlParams.get('order_id');
+        const subscriptionId = urlParams.get('subscription_id');
+
+        if (paymentStatus === 'success' && subscriptionId) {
+            void verifySubscription(subscriptionId);
+            window.history.replaceState({}, document.title, window.location.pathname);
+            return;
+        }
 
         if (paymentStatus === 'success' && orderId) {
-            void verifyPayment(orderId);
+            void verifyOrderPayment(orderId);
             window.history.replaceState({}, document.title, window.location.pathname);
         }
     }, []);
 
-    const verifyPayment = async (orderId: string) => {
+    const verifyOrderPayment = async (orderId: string) => {
         setLoading(true);
         setError(null);
         try {
@@ -142,29 +149,62 @@ export default function BillingSettings() {
         }
     };
 
+    const verifySubscription = async (subscriptionId: string) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const result = await paymentService.verifySubscription(subscriptionId);
+            if (result.success && result.data?.success) {
+                setSuccessMsg(`Subscription activated. You are now on the ${result.data.plan} plan.`);
+                await fetchSubscriptionStatus();
+                return;
+            }
+            setError(result.data?.message || 'Subscription verification is still pending. Please retry shortly.');
+        } catch {
+            setError('Could not verify subscription right now. If authorization succeeded, state will sync shortly.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleSubscribe = async (plan: PlanId) => {
         setLoading(true);
         setError(null);
         setSuccessMsg(null);
         try {
             const effectiveCycle: BillingCycle = plan === 'explorer' ? 'monthly' : billingCycle;
-            const response = await paymentService.createOrder(plan, effectiveCycle);
+            const subscriptionRes = await paymentService.createSubscription(plan, effectiveCycle);
+            if (subscriptionRes.success && subscriptionRes.data) {
+                if ((subscriptionRes.data as any).is_owner) {
+                    setSuccessMsg('Owner account detected. Full access already granted.');
+                    return;
+                }
 
-            if (!response.success || !response.data) {
-                throw new Error(response.error?.message || 'Failed to initiate payment.');
+                if (subscriptionRes.data.subscription_session_id) {
+                    const mode = subscriptionRes.data.environment === 'production' ? 'production' : 'sandbox';
+                    await openCashfreeSubscriptionCheckout(subscriptionRes.data.subscription_session_id, mode);
+                    return;
+                }
             }
 
-            if ((response.data as any).is_owner) {
+            // Backward-compatible fallback (legacy order flow).
+            const orderRes = await paymentService.createOrder(plan, effectiveCycle);
+
+            if (!orderRes.success || !orderRes.data) {
+                throw new Error(orderRes.error?.message || subscriptionRes.error?.message || 'Failed to initiate payment.');
+            }
+
+            if ((orderRes.data as any).is_owner) {
                 setSuccessMsg('Owner account detected. Full access already granted.');
                 return;
             }
 
-            if (!response.data.payment_session_id) {
+            if (!orderRes.data.payment_session_id) {
                 throw new Error('Payment session could not be created.');
             }
 
-            const mode = response.data.environment === 'production' ? 'production' : 'sandbox';
-            await openCashfreeCheckout(response.data.payment_session_id, mode);
+            const mode = orderRes.data.environment === 'production' ? 'production' : 'sandbox';
+            await openCashfreeCheckout(orderRes.data.payment_session_id, mode);
         } catch (err: any) {
             setError(err?.message || 'Unable to start checkout.');
         } finally {

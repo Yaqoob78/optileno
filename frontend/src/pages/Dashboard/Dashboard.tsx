@@ -110,13 +110,18 @@ export default function Dashboard() {
     const params = new URLSearchParams(location.search);
     const paymentStatus = params.get('payment');
     const orderId = params.get('order_id');
+    const subscriptionId = params.get('subscription_id');
 
-    if (paymentStatus === 'success' && orderId) {
+    if (paymentStatus === 'success' && (orderId || subscriptionId)) {
       const verifyAndRefresh = async () => {
         try {
           // Verify payment on backend to ensure DB is updated
           const { paymentService } = await import('../../services/api/payment.service');
-          await paymentService.verifyPayment(orderId);
+          if (subscriptionId) {
+            await paymentService.verifySubscription(subscriptionId);
+          } else if (orderId) {
+            await paymentService.verifyPayment(orderId);
+          }
 
           // Refresh user profile so ProtectedRoute updates subscription_status
           const profileRes = await userService.getProfile();

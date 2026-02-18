@@ -119,7 +119,7 @@ async def register(
             "requires_payment": False,
         }
 
-    # Create Cashfree payment order for the selected plan
+    # Create Cashfree recurring subscription checkout for the selected plan.
     from backend.payments.cashfree_service import cashfree_service
 
     if not cashfree_service.is_configured():
@@ -135,15 +135,15 @@ async def register(
         if plan_name not in ("explorer", "ultra"):
             plan_name = "explorer"
 
-        payment_data = await cashfree_service.create_order(
+        payment_data = await cashfree_service.create_subscription_checkout(
             db=db,
             user=user,
             plan_name=plan_name,
             billing_cycle="monthly",  # Registration always starts on monthly flow.
         )
 
-        if not payment_data or not payment_data.get("payment_session_id"):
-            raise ValueError("Missing payment_session_id from payment order")
+        if not payment_data or not payment_data.get("subscription_session_id"):
+            raise ValueError("Missing subscription_session_id from subscription checkout")
     except Exception as exc:
         logger.error("Registration payment initialization failed for %s: %s", user.email, exc)
         await db.rollback()

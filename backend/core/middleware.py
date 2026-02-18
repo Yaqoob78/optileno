@@ -18,6 +18,7 @@ import hmac
 import re
 from typing import Callable, Dict, List, Optional
 from fastapi import Request, Response
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from collections import defaultdict
 from datetime import datetime
@@ -470,8 +471,11 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         try:
             response = await call_next(request)
         except Exception as e:
-            logger.error(f"[{request_id}] Error handling request: {e}")
-            raise
+            logger.error(f"[{request_id}] Error handling request: {e}", exc_info=True)
+            return JSONResponse(
+                status_code=500,
+                content={"detail": "Internal Server Error", "request_id": request_id}
+            )
 
         # Calculate response time
         process_time = time.time() - start_time

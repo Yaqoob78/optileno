@@ -98,3 +98,28 @@ export async function openCashfreeCheckout(
     redirectTarget: "_self",
   });
 }
+
+export async function openCashfreeSubscriptionCheckout(
+  subscriptionSessionId: string,
+  mode: CashfreeMode = "sandbox"
+): Promise<void> {
+  if (!subscriptionSessionId) {
+    throw new Error("Missing subscription session ID.");
+  }
+
+  await loadCashfreeSdk();
+
+  if (!window.Cashfree) {
+    throw new Error("Cashfree SDK unavailable after load.");
+  }
+
+  const cashfree = new window.Cashfree({ mode });
+  if (typeof cashfree.subscriptionsCheckout !== "function") {
+    throw new Error("Cashfree subscription checkout is unavailable in the loaded SDK.");
+  }
+
+  await cashfree.subscriptionsCheckout({
+    subsSessionId: subscriptionSessionId,
+    redirectTarget: "_self",
+  });
+}

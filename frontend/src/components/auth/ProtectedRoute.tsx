@@ -3,7 +3,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Loader2, CreditCard, Zap } from 'lucide-react';
 import { useUserStore } from '../../stores/useUserStore';
 import { userService } from '../../services/api/user.service';
-import { openCashfreeCheckout } from '../../utils/cashfree';
+import { openCashfreeCheckout, openCashfreeSubscriptionCheckout } from '../../utils/cashfree';
 
 interface ProtectedRouteProps {
     children: React.ReactNode;
@@ -26,7 +26,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 
     const params = new URLSearchParams(location.search);
     const paymentReturnOrderId = params.get('order_id');
-    const isPaymentReturn = params.get('payment') === 'success' && !!paymentReturnOrderId;
+    const paymentReturnSubscriptionId = params.get('subscription_id');
+    const isPaymentReturn = params.get('payment') === 'success' && (!!paymentReturnOrderId || !!paymentReturnSubscriptionId);
 
     useEffect(() => {
         const checkAuth = async () => {
@@ -68,7 +69,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     }, [isAuthenticated, login, logout]);
 
     useEffect(() => {
-        if (!isAuthenticated || !isPaymentReturn || !paymentReturnOrderId) {
+        if (!isAuthenticated || !isPaymentReturn) {
             return;
         }
 
@@ -86,7 +87,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 
             try {
                 const { paymentService } = await import('../../services/api/payment.service');
-                const verifyRes = await paymentService.verifyPayment(paymentReturnOrderId);
+                const verifyRes = paymentReturnSubscriptionId
+                    ? await paymentService.verifySubscription(paymentReturnSubscriptionId)
+                    : await paymentService.verifyPayment(paymentReturnOrderId as string);
 
                 if (!verifyRes.success || !verifyRes.data?.success) {
                     throw new Error(verifyRes.data?.message || 'Payment verification is still pending.');
@@ -113,7 +116,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
         return () => {
             cancelled = true;
         };
-    }, [isAuthenticated, isPaymentReturn, paymentReturnOrderId, profile, login, navigate, location.pathname]);
+    }, [isAuthenticated, isPaymentReturn, paymentReturnOrderId, paymentReturnSubscriptionId, profile, login, navigate, location.pathname]);
 
     const handleInitiatePayment = async () => {
         setInitiatingPayment(true);
@@ -124,9 +127,17 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
             const planType = (profile as any)?.planType || (profile as any)?.plan_type || 'EXPLORER';
             const planName = String(planType).toLowerCase() === 'ultra' ? 'ultra' : 'explorer';
 
+            const subscriptionRes = await paymentService.createSubscription(planName, 'monthly');
+            if (subscriptionRes.success && subscriptionRes.data?.subscription_session_id) {
+                const mode = subscriptionRes.data.environment === 'production' ? 'production' : 'sandbox';
+                await openCashfreeSubscriptionCheckout(subscriptionRes.data.subscription_session_id, mode);
+                return;
+            }
+
+            // Backward-compatible fallback (legacy order flow).
             const orderRes = await paymentService.createOrder(planName, 'monthly');
             if (!orderRes.success || !orderRes.data?.payment_session_id) {
-                throw new Error(orderRes.error?.message || 'Failed to create payment order. Please try again.');
+                throw new Error(orderRes.error?.message || subscriptionRes.error?.message || 'Failed to create payment order. Please try again.');
             }
 
             const mode = orderRes.data.environment === 'production' ? 'production' : 'sandbox';

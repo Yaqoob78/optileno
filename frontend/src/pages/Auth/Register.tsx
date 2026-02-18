@@ -2,7 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, User, Eye, EyeOff, Loader2, AlertCircle, ArrowRight, CreditCard } from 'lucide-react';
 import { userService } from '../../services/api/user.service';
-import { CashfreeMode, loadCashfreeSdk, openCashfreeCheckout } from '../../utils/cashfree';
+import {
+    CashfreeMode,
+    loadCashfreeSdk,
+    openCashfreeCheckout,
+    openCashfreeSubscriptionCheckout,
+} from '../../utils/cashfree';
 import '../../styles/pages/auth.css';
 
 export default function Register() {
@@ -20,7 +25,11 @@ export default function Register() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [paymentStep, setPaymentStep] = useState(false); // true = waiting for checkout
-    const [pendingCheckout, setPendingCheckout] = useState<{ sessionId: string; mode: CashfreeMode } | null>(null);
+    const [pendingCheckout, setPendingCheckout] = useState<{
+        sessionId: string;
+        mode: CashfreeMode;
+        flow: 'order' | 'subscription';
+    } | null>(null);
     const [retryingCheckout, setRetryingCheckout] = useState(false);
 
     // Warm up Cashfree SDK early for faster checkout open.
@@ -33,13 +42,17 @@ export default function Register() {
     const resolveCashfreeMode = (environment?: string): CashfreeMode =>
         environment === 'production' ? 'production' : 'sandbox';
 
-    const launchCheckout = async (sessionId: string, mode: CashfreeMode) => {
+    const launchCheckout = async (sessionId: string, mode: CashfreeMode, flow: 'order' | 'subscription') => {
         setPaymentStep(true);
-        setPendingCheckout({ sessionId, mode });
+        setPendingCheckout({ sessionId, mode, flow });
         setError(null);
 
         try {
-            await openCashfreeCheckout(sessionId, mode);
+            if (flow === 'subscription') {
+                await openCashfreeSubscriptionCheckout(sessionId, mode);
+            } else {
+                await openCashfreeCheckout(sessionId, mode);
+            }
         } catch {
             setError('Unable to open secure checkout. Please click "Continue to Payment" to retry.');
         }
@@ -53,7 +66,11 @@ export default function Register() {
         setRetryingCheckout(true);
         setError(null);
         try {
-            await openCashfreeCheckout(pendingCheckout.sessionId, pendingCheckout.mode);
+            if (pendingCheckout.flow === 'subscription') {
+                await openCashfreeSubscriptionCheckout(pendingCheckout.sessionId, pendingCheckout.mode);
+            } else {
+                await openCashfreeCheckout(pendingCheckout.sessionId, pendingCheckout.mode);
+            }
         } catch {
             setError('Checkout still could not be opened. Refresh and try again.');
         } finally {
@@ -90,10 +107,14 @@ export default function Register() {
                     return;
                 }
 
-                // Payment required - open Cashfree checkout
-                if (data.payment && data.payment.payment_session_id) {
+                // Payment required - open recurring subscription checkout
+                if (data.payment && data.payment.subscription_session_id) {
                     const mode = resolveCashfreeMode(data.payment.environment);
-                    await launchCheckout(data.payment.payment_session_id, mode);
+                    await launchCheckout(data.payment.subscription_session_id, mode, 'subscription');
+                } else if (data.payment && data.payment.payment_session_id) {
+                    // Backward-compatible fallback (legacy order flow)
+                    const mode = resolveCashfreeMode(data.payment.environment);
+                    await launchCheckout(data.payment.payment_session_id, mode, 'order');
                 } else {
                     setError('Could not start secure payment. Please try registering again.');
                     setPaymentStep(false);

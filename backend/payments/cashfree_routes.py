@@ -5,7 +5,9 @@ Cashfree Payment Gateway API Routes for Optileno SaaS.
 Endpoints:
 - GET  /payments/plans           - Get available subscription plans
 - POST /payments/create-order    - Create payment order (returns payment_session_id)
+- POST /payments/create-subscription - Create recurring subscription checkout (returns subscription_session_id)
 - POST /payments/verify          - Verify payment after checkout
+- POST /payments/verify-subscription - Verify recurring subscription mandate setup
 - GET  /payments/subscription    - Get subscription status
 - POST /payments/cancel          - Cancel subscription
 - POST /payments/webhook         - Cashfree webhook handler
@@ -40,6 +42,10 @@ class CreateOrderRequest(BaseModel):
 
 class VerifyPaymentRequest(BaseModel):
     order_id: str
+
+
+class VerifySubscriptionRequest(BaseModel):
+    subscription_id: str
 
 
 class CancelSubscriptionRequest(BaseModel):
@@ -222,6 +228,135 @@ async def verify_payment(
         )
 
 
+@router.post("/create-subscription")
+async def create_subscription(
+    request: CreateOrderRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Create a recurring Cashfree subscription checkout session.
+    """
+    if cashfree_service._is_owner(current_user):
+        return JSONResponse(
+            status_code=200,
+            content={
+                "message": "Owner account - full access already granted",
+                "is_owner": True,
+                "plan": "ultra",
+            }
+        )
+
+    normalized_plan = (request.plan or "").strip().lower()
+    normalized_cycle = (request.billing_cycle or "monthly").strip().lower()
+
+    if normalized_plan not in ["explorer", "ultra"]:
+        raise HTTPException(status_code=400, detail="Invalid plan. Choose 'explorer' or 'ultra'.")
+
+    if normalized_cycle not in ["monthly", "annual"]:
+        raise HTTPException(status_code=400, detail="Invalid billing cycle. Choose 'monthly' or 'annual'.")
+
+    if normalized_plan == "explorer" and normalized_cycle != "monthly":
+        raise HTTPException(status_code=400, detail="Explorer plan supports monthly billing only.")
+
+    if not cashfree_service.is_configured():
+        raise HTTPException(
+            status_code=503,
+            detail="Payment service not configured. Please contact support."
+        )
+
+    try:
+        subscription = await cashfree_service.create_subscription_checkout(
+            db=db,
+            user=current_user,
+            plan_name=normalized_plan,
+            billing_cycle=normalized_cycle
+        )
+        return subscription
+    except Exception as e:
+        logger.error(f"Failed to create subscription checkout: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to create subscription checkout"
+        )
+
+
+@router.post("/verify-subscription")
+async def verify_subscription(
+    request: VerifySubscriptionRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Verify recurring subscription mandate setup after checkout return.
+    """
+    subscription_id = str(request.subscription_id or "").strip()
+    if not subscription_id:
+        raise HTTPException(status_code=400, detail="subscription_id is required")
+
+    try:
+        subscription_data = await cashfree_service.get_subscription(subscription_id)
+        if not subscription_data:
+            raise HTTPException(status_code=404, detail="Subscription not found")
+
+        tags = subscription_data.get("subscription_tags", {}) or {}
+        subscription_user_id = str(tags.get("user_id") or "").strip()
+        if not subscription_user_id:
+            raise HTTPException(status_code=400, detail="Subscription metadata is incomplete")
+        if subscription_user_id != str(current_user.id):
+            raise HTTPException(status_code=403, detail="Subscription does not belong to current user")
+
+        status_value = str(subscription_data.get("subscription_status") or "").strip().upper()
+        authorization = subscription_data.get("authorization_details", {}) or {}
+        authorization_status = str(authorization.get("authorization_status") or "").strip().upper()
+
+        success_states = {"ACTIVE", "BANK_APPROVAL_PENDING"}
+        auth_success_states = {"SUCCESS", "ACTIVE"}
+        verified_success = status_value in success_states or authorization_status in auth_success_states
+
+        if not verified_success:
+            payments = await cashfree_service.get_payments_for_subscription(subscription_id)
+            verified_success = any(
+                str(payment.get("payment_status") or "").strip().upper() in {"SUCCESS", "PAID"}
+                for payment in payments
+            )
+
+        if verified_success:
+            user = await cashfree_service.handle_subscription_success(db, subscription_data)
+            if not user:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Subscription verified but failed to activate account state"
+                )
+
+            return {
+                "success": True,
+                "message": "Subscription mandate verified successfully",
+                "plan": user.plan_type,
+                "tier": user.tier,
+                "subscription_status": status_value or "ACTIVE",
+            }
+
+        pending_states = {"INITIALIZED", "PENDING", "AUTHORIZATION_PENDING"}
+        if status_value in pending_states:
+            return {
+                "success": False,
+                "message": "Subscription verification is still pending",
+                "subscription_status": status_value,
+            }
+
+        return {
+            "success": False,
+            "message": f"Subscription status: {status_value or 'UNKNOWN'}",
+            "subscription_status": status_value or "UNKNOWN",
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to verify subscription: {e}")
+        raise HTTPException(status_code=500, detail="Failed to verify subscription")
+
+
 @router.post("/cancel")
 async def cancel_subscription(
     request: CancelSubscriptionRequest,
@@ -265,6 +400,10 @@ async def cashfree_webhook(request: Request, db: AsyncSession = Depends(get_db))
     - PAYMENT_SUCCESS_WEBHOOK: Payment successful
     - PAYMENT_FAILED_WEBHOOK: Payment failed
     - PAYMENT_USER_DROPPED_WEBHOOK: User dropped off
+    - SUBSCRIPTION_AUTH_STATUS: Mandate authorization status update
+    - SUBSCRIPTION_PAYMENT_SUCCESS: Recurring charge succeeded
+    - SUBSCRIPTION_PAYMENT_FAILED: Recurring charge failed
+    - SUBSCRIPTION_STATUS_CHANGED: Subscription lifecycle status changed
     """
     body = await request.body()
 
@@ -286,10 +425,21 @@ async def cashfree_webhook(request: Request, db: AsyncSession = Depends(get_db))
 
     event_type = event.get("type", "")
     event_data = event.get("data", {})
-    order_data = event_data.get("order", {})
-    payment_data = event_data.get("payment", {})
+    order_data = event_data.get("order", {}) or {}
+    payment_data = event_data.get("payment", {}) or {}
+    subscription_data = event_data.get("subscription", {}) or {}
+    subscription_id = (
+        str(subscription_data.get("subscription_id") or "").strip()
+        or str(payment_data.get("subscription_id") or "").strip()
+        or str(event_data.get("subscription_id") or "").strip()
+    )
 
-    logger.info(f"Cashfree webhook: {event_type} | Order: {order_data.get('order_id')}")
+    logger.info(
+        "Cashfree webhook: %s | Order: %s | Subscription: %s",
+        event_type,
+        order_data.get("order_id"),
+        subscription_id or subscription_data.get("subscription_id"),
+    )
 
     try:
         if event_type == "PAYMENT_SUCCESS_WEBHOOK":
@@ -302,6 +452,38 @@ async def cashfree_webhook(request: Request, db: AsyncSession = Depends(get_db))
 
         elif event_type == "PAYMENT_USER_DROPPED_WEBHOOK":
             logger.info(f"User dropped off for order {order_data.get('order_id')}")
+
+        elif event_type == "SUBSCRIPTION_AUTH_STATUS":
+            if not subscription_data and subscription_id:
+                subscription_data = await cashfree_service.get_subscription(subscription_id)
+            await cashfree_service.handle_subscription_success(db, subscription_data)
+            logger.info("Subscription auth synced for %s", subscription_id)
+
+        elif event_type == "SUBSCRIPTION_PAYMENT_SUCCESS":
+            if not subscription_data and subscription_id:
+                subscription_data = await cashfree_service.get_subscription(subscription_id)
+            await cashfree_service.handle_subscription_payment_success(
+                db,
+                subscription_id=subscription_id,
+                subscription_data=subscription_data,
+            )
+            logger.info("Subscription payment success synced for %s", subscription_id)
+
+        elif event_type == "SUBSCRIPTION_PAYMENT_FAILED":
+            if not subscription_data and subscription_id:
+                subscription_data = await cashfree_service.get_subscription(subscription_id)
+            await cashfree_service.handle_subscription_payment_failure(
+                db,
+                subscription_id=subscription_id,
+                subscription_data=subscription_data,
+            )
+            logger.warning("Subscription payment failure synced for %s", subscription_id)
+
+        elif event_type == "SUBSCRIPTION_STATUS_CHANGED":
+            if not subscription_data and subscription_id:
+                subscription_data = await cashfree_service.get_subscription(subscription_id)
+            await cashfree_service.handle_subscription_status_change(db, subscription_data)
+            logger.info("Subscription status change synced for %s", subscription_id)
 
     except Exception as e:
         logger.error(f"Webhook processing error: {e}")
