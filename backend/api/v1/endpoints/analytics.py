@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query, HTTPException, status, Body
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+import logging
 from backend.core.security import get_current_user
 from backend.services.analytics_service import analytics_service
 from backend.services.goal_analytics_service import goal_analytics_service
@@ -15,6 +16,7 @@ from backend.realtime.socket_manager import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 class AnalyticsEventIn(BaseModel):
     event: str
@@ -33,6 +35,15 @@ def _plan_tier(user: Any) -> str:
 
 def _require_ultra(user: Any, feature: str) -> None:
     require_ultra_feature(user, feature)
+
+
+def _fallback_payload(message: str, **extra: Any) -> Dict[str, Any]:
+    return {
+        "error_fallback": True,
+        "message": message,
+        "generated_at": datetime.utcnow().isoformat(),
+        **extra,
+    }
 
 @router.get("/metrics")
 async def get_realtime_metrics(user = Depends(get_current_user)):
@@ -271,23 +282,34 @@ async def get_focus_heatmap(
 ):
     """Get monthly focus heatmap (calendar grid)"""
     _require_ultra(user, "focus_heatmap")
-    from backend.services.attention_integrity_service import attention_integrity_service
-    
-    heatmap_data = await attention_integrity_service.get_monthly_heatmap(user.id, year, month)
-    window = await analytics_v2_service.resolve_window(user, time_range)
-    if isinstance(heatmap_data, dict):
-        heatmap_data.update(
-            {
-                "time_range": window.time_range,
-                "period_start": window.period_start.isoformat(),
-                "period_end": window.period_end.isoformat(),
-                "score_version": analytics_v2_service.SCORE_VERSION,
-                "source": "heatmap",
-                "confidence": 0.8,
-                "generated_at": datetime.utcnow().isoformat(),
-            }
+    try:
+        from backend.services.attention_integrity_service import attention_integrity_service
+
+        heatmap_data = await attention_integrity_service.get_monthly_heatmap(user.id, year, month)
+        window = await analytics_v2_service.resolve_window(user, time_range)
+        if isinstance(heatmap_data, dict):
+            heatmap_data.update(
+                {
+                    "time_range": window.time_range,
+                    "period_start": window.period_start.isoformat(),
+                    "period_end": window.period_end.isoformat(),
+                    "score_version": analytics_v2_service.SCORE_VERSION,
+                    "source": "heatmap",
+                    "confidence": 0.8,
+                    "generated_at": datetime.utcnow().isoformat(),
+                }
+            )
+        return heatmap_data
+    except Exception as e:
+        logger.error("Focus heatmap failed for user %s: %s", user.id, e, exc_info=True)
+        return _fallback_payload(
+            "Focus heatmap is temporarily unavailable.",
+            heatmap=[],
+            time_range=time_range,
+            score_version=analytics_v2_service.SCORE_VERSION,
+            source="fallback",
+            confidence=0.2,
         )
-    return heatmap_data
 
 
 @router.get("/focus/stats")
@@ -297,23 +319,36 @@ async def get_focus_stats(
 ):
     """Get comprehensive focus statistics for the stats panel"""
     _require_ultra(user, "focus_heatmap")
-    from backend.services.attention_integrity_service import attention_integrity_service
-    
-    stats = await attention_integrity_service.get_focus_stats(user.id)
-    window = await analytics_v2_service.resolve_window(user, time_range)
-    if isinstance(stats, dict):
-        stats.update(
-            {
-                "time_range": window.time_range,
-                "period_start": window.period_start.isoformat(),
-                "period_end": window.period_end.isoformat(),
-                "score_version": analytics_v2_service.SCORE_VERSION,
-                "source": "heatmap",
-                "confidence": 0.75,
-                "generated_at": datetime.utcnow().isoformat(),
-            }
+    try:
+        from backend.services.attention_integrity_service import attention_integrity_service
+
+        stats = await attention_integrity_service.get_focus_stats(user.id)
+        window = await analytics_v2_service.resolve_window(user, time_range)
+        if isinstance(stats, dict):
+            stats.update(
+                {
+                    "time_range": window.time_range,
+                    "period_start": window.period_start.isoformat(),
+                    "period_end": window.period_end.isoformat(),
+                    "score_version": analytics_v2_service.SCORE_VERSION,
+                    "source": "heatmap",
+                    "confidence": 0.75,
+                    "generated_at": datetime.utcnow().isoformat(),
+                }
+            )
+        return stats
+    except Exception as e:
+        logger.error("Focus stats failed for user %s: %s", user.id, e, exc_info=True)
+        return _fallback_payload(
+            "Focus stats are temporarily unavailable.",
+            score=None,
+            reason="TEMPORARILY_UNAVAILABLE",
+            breakdown={},
+            time_range=time_range,
+            score_version=analytics_v2_service.SCORE_VERSION,
+            source="fallback",
+            confidence=0.2,
         )
-    return stats
 
 
 @router.post("/focus/recalculate")
@@ -351,9 +386,15 @@ async def get_current_mood(
         mood_data = await mood_service.calculate_current_mood(current_user.id)
         return mood_data
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to calculate mood: {str(e)}"
+        logger.error("Mood calculation failed for user %s: %s", current_user.id, e, exc_info=True)
+        return _fallback_payload(
+            "Mood insights are temporarily unavailable.",
+            score=50,
+            category="NEUTRAL",
+            label="Neutral",
+            emoji="🙂",
+            hint="Keep going. Your latest mood insight will appear shortly.",
+            breakdown={},
         )
 
 
@@ -415,7 +456,20 @@ async def get_productivity_score_today(
     current_user = Depends(get_current_user)
 ):
     """Get today's productivity score with V3 context-aware breakdown."""
-    return await analytics_v2_service.productivity_score(current_user, "daily")
+    try:
+        return await analytics_v2_service.productivity_score(current_user, "daily")
+    except Exception as e:
+        logger.error("Productivity score (daily) failed for user %s: %s", current_user.id, e, exc_info=True)
+        return _fallback_payload(
+            "Productivity score is temporarily unavailable.",
+            score=None,
+            reason="TEMPORARILY_UNAVAILABLE",
+            breakdown={},
+            score_version=analytics_v2_service.SCORE_VERSION,
+            source="fallback",
+            confidence=0.2,
+            time_range="daily",
+        )
 
 
 @router.get("/productivity/score/weekly", response_model=Dict[str, Any])
@@ -423,14 +477,30 @@ async def get_productivity_score_weekly(
     current_user = Depends(get_current_user)
 ):
     """Get weekly average productivity score."""
-    result = await analytics_v2_service.productivity_score(current_user, "weekly")
-    score = result.get("score")
-    return {
-        **result,
-        "average": score,
-        "period": "weekly",
-        "days": 7,
-    }
+    try:
+        result = await analytics_v2_service.productivity_score(current_user, "weekly")
+        score = result.get("score")
+        return {
+            **result,
+            "average": score,
+            "period": "weekly",
+            "days": 7,
+        }
+    except Exception as e:
+        logger.error("Productivity score (weekly) failed for user %s: %s", current_user.id, e, exc_info=True)
+        return _fallback_payload(
+            "Weekly productivity score is temporarily unavailable.",
+            score=None,
+            average=None,
+            period="weekly",
+            days=7,
+            reason="TEMPORARILY_UNAVAILABLE",
+            breakdown={},
+            score_version=analytics_v2_service.SCORE_VERSION,
+            source="fallback",
+            confidence=0.2,
+            time_range="weekly",
+        )
 
 
 @router.get("/productivity/score/monthly", response_model=Dict[str, Any])
@@ -438,14 +508,30 @@ async def get_productivity_score_monthly(
     current_user = Depends(get_current_user)
 ):
     """Get monthly average productivity score."""
-    result = await analytics_v2_service.productivity_score(current_user, "monthly")
-    score = result.get("score")
-    return {
-        **result,
-        "average": score,
-        "period": "monthly",
-        "days": 30,
-    }
+    try:
+        result = await analytics_v2_service.productivity_score(current_user, "monthly")
+        score = result.get("score")
+        return {
+            **result,
+            "average": score,
+            "period": "monthly",
+            "days": 30,
+        }
+    except Exception as e:
+        logger.error("Productivity score (monthly) failed for user %s: %s", current_user.id, e, exc_info=True)
+        return _fallback_payload(
+            "Monthly productivity score is temporarily unavailable.",
+            score=None,
+            average=None,
+            period="monthly",
+            days=30,
+            reason="TEMPORARILY_UNAVAILABLE",
+            breakdown={},
+            score_version=analytics_v2_service.SCORE_VERSION,
+            source="fallback",
+            confidence=0.2,
+            time_range="monthly",
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -457,7 +543,20 @@ async def get_focus_score_today(
     current_user = Depends(get_current_user)
 ):
     """Get today's focus score with detailed breakdown from heatmap data."""
-    return await analytics_v2_service.focus_score(current_user, _plan_tier(current_user), "daily")
+    try:
+        return await analytics_v2_service.focus_score(current_user, _plan_tier(current_user), "daily")
+    except Exception as e:
+        logger.error("Focus score (daily) failed for user %s: %s", current_user.id, e, exc_info=True)
+        return _fallback_payload(
+            "Focus score is temporarily unavailable.",
+            score=None,
+            reason="TEMPORARILY_UNAVAILABLE",
+            breakdown={},
+            score_version=analytics_v2_service.SCORE_VERSION,
+            source="fallback",
+            confidence=0.2,
+            time_range="daily",
+        )
 
 
 @router.get("/focus/score/weekly", response_model=Dict[str, Any])
@@ -465,15 +564,32 @@ async def get_focus_score_weekly(
     current_user = Depends(get_current_user)
 ):
     """Get weekly average focus score."""
-    result = await analytics_v2_service.focus_score(current_user, _plan_tier(current_user), "weekly")
-    score = result.get("score")
-    return {
-        **result,
-        "average_score": score,
-        "average_minutes": None,
-        "period": "weekly",
-        "days": 7,
-    }
+    try:
+        result = await analytics_v2_service.focus_score(current_user, _plan_tier(current_user), "weekly")
+        score = result.get("score")
+        return {
+            **result,
+            "average_score": score,
+            "average_minutes": None,
+            "period": "weekly",
+            "days": 7,
+        }
+    except Exception as e:
+        logger.error("Focus score (weekly) failed for user %s: %s", current_user.id, e, exc_info=True)
+        return _fallback_payload(
+            "Weekly focus score is temporarily unavailable.",
+            score=None,
+            average_score=None,
+            average_minutes=None,
+            period="weekly",
+            days=7,
+            reason="TEMPORARILY_UNAVAILABLE",
+            breakdown={},
+            score_version=analytics_v2_service.SCORE_VERSION,
+            source="fallback",
+            confidence=0.2,
+            time_range="weekly",
+        )
 
 
 @router.get("/focus/score/monthly", response_model=Dict[str, Any])
@@ -481,15 +597,32 @@ async def get_focus_score_monthly(
     current_user = Depends(get_current_user)
 ):
     """Get monthly average focus score."""
-    result = await analytics_v2_service.focus_score(current_user, _plan_tier(current_user), "monthly")
-    score = result.get("score")
-    return {
-        **result,
-        "average_score": score,
-        "average_minutes": None,
-        "period": "monthly",
-        "days": 30,
-    }
+    try:
+        result = await analytics_v2_service.focus_score(current_user, _plan_tier(current_user), "monthly")
+        score = result.get("score")
+        return {
+            **result,
+            "average_score": score,
+            "average_minutes": None,
+            "period": "monthly",
+            "days": 30,
+        }
+    except Exception as e:
+        logger.error("Focus score (monthly) failed for user %s: %s", current_user.id, e, exc_info=True)
+        return _fallback_payload(
+            "Monthly focus score is temporarily unavailable.",
+            score=None,
+            average_score=None,
+            average_minutes=None,
+            period="monthly",
+            days=30,
+            reason="TEMPORARILY_UNAVAILABLE",
+            breakdown={},
+            score_version=analytics_v2_service.SCORE_VERSION,
+            source="fallback",
+            confidence=0.2,
+            time_range="monthly",
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -502,7 +635,20 @@ async def get_burnout_risk_today(
 ):
     """Get today's burnout risk with V3 strain velocity and offline gap analysis."""
     _require_ultra(current_user, "burnout_risk")
-    return await analytics_v2_service.burnout_risk(current_user, "daily")
+    try:
+        return await analytics_v2_service.burnout_risk(current_user, "daily")
+    except Exception as e:
+        logger.error("Burnout risk (daily) failed for user %s: %s", current_user.id, e, exc_info=True)
+        return _fallback_payload(
+            "Burnout risk is temporarily unavailable.",
+            risk=35.0,
+            level="low",
+            reason_codes=["TEMPORARILY_UNAVAILABLE"],
+            score_version=analytics_v2_service.SCORE_VERSION,
+            source="fallback",
+            confidence=0.2,
+            time_range="daily",
+        )
 
 
 @router.get("/burnout/risk/weekly", response_model=Dict[str, Any])
@@ -511,13 +657,29 @@ async def get_burnout_risk_weekly(
 ):
     """Get weekly average burnout risk."""
     _require_ultra(current_user, "burnout_risk")
-    result = await analytics_v2_service.burnout_risk(current_user, "weekly")
-    return {
-        **result,
-        "average_risk": result.get("risk"),
-        "period": "weekly",
-        "days": 7,
-    }
+    try:
+        result = await analytics_v2_service.burnout_risk(current_user, "weekly")
+        return {
+            **result,
+            "average_risk": result.get("risk"),
+            "period": "weekly",
+            "days": 7,
+        }
+    except Exception as e:
+        logger.error("Burnout risk (weekly) failed for user %s: %s", current_user.id, e, exc_info=True)
+        return _fallback_payload(
+            "Weekly burnout risk is temporarily unavailable.",
+            risk=35.0,
+            average_risk=35.0,
+            level="low",
+            period="weekly",
+            days=7,
+            reason_codes=["TEMPORARILY_UNAVAILABLE"],
+            score_version=analytics_v2_service.SCORE_VERSION,
+            source="fallback",
+            confidence=0.2,
+            time_range="weekly",
+        )
 
 
 @router.get("/burnout/risk/monthly", response_model=Dict[str, Any])
@@ -526,13 +688,29 @@ async def get_burnout_risk_monthly(
 ):
     """Get monthly burnout risk."""
     _require_ultra(current_user, "burnout_risk")
-    result = await analytics_v2_service.burnout_risk(current_user, "monthly")
-    return {
-        **result,
-        "average_risk": result.get("risk"),
-        "period": "monthly",
-        "days": 30,
-    }
+    try:
+        result = await analytics_v2_service.burnout_risk(current_user, "monthly")
+        return {
+            **result,
+            "average_risk": result.get("risk"),
+            "period": "monthly",
+            "days": 30,
+        }
+    except Exception as e:
+        logger.error("Burnout risk (monthly) failed for user %s: %s", current_user.id, e, exc_info=True)
+        return _fallback_payload(
+            "Monthly burnout risk is temporarily unavailable.",
+            risk=35.0,
+            average_risk=35.0,
+            level="low",
+            period="monthly",
+            days=30,
+            reason_codes=["TEMPORARILY_UNAVAILABLE"],
+            score_version=analytics_v2_service.SCORE_VERSION,
+            source="fallback",
+            confidence=0.2,
+            time_range="monthly",
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -744,19 +922,33 @@ async def get_goal_progress_report(
     - Habit contribution scores
     """
     _require_ultra(current_user, "goal_progress_detailed")
-    if settings.ANALYTICS_V2_ENABLED:
-        return await analytics_v2_service.goal_progress(current_user, time_range, goal_id=goal_id)
     try:
+        if settings.ANALYTICS_V2_ENABLED:
+            return await analytics_v2_service.goal_progress(current_user, time_range, goal_id=goal_id)
+
         from backend.services.enhanced_goal_analytics_service import enhanced_goal_analytics_service
         report = await enhanced_goal_analytics_service.get_goal_progress_report(
             str(current_user.id),
             str(goal_id) if goal_id else None
         )
         return report
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get goal progress: {str(e)}"
+        logger.error("Goal progress failed for user %s: %s", current_user.id, e, exc_info=True)
+        return _fallback_payload(
+            "Goal progress is temporarily unavailable.",
+            goals=[],
+            summary={
+                "total_goals": 0,
+                "completed_goals": 0,
+                "overall_progress": 0,
+                "avg_confidence": 0,
+            },
+            score_version=analytics_v2_service.SCORE_VERSION,
+            source="fallback",
+            confidence=0.2,
+            time_range=time_range,
         )
 
 
