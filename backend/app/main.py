@@ -347,5 +347,6 @@ if __name__ == "__main__":
         port=settings.PORT,
         reload=settings.ENVIRONMENT == "development",
         log_level="debug" if settings.DEBUG else "info",
+        access_log=(settings.DEBUG or settings.ENVIRONMENT != "production"),
         workers=1 if settings.ENVIRONMENT == "development" else settings.MAX_WORKERS,
     )

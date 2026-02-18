@@ -70,12 +70,20 @@ UVICORN_BACKLOG_VALUE="${UVICORN_BACKLOG:-2048}"
 UVICORN_KEEP_ALIVE_VALUE="${UVICORN_TIMEOUT_KEEP_ALIVE:-10}"
 UVICORN_LIMIT_CONCURRENCY_VALUE="${UVICORN_LIMIT_CONCURRENCY:-}"
 UVICORN_LIMIT_MAX_REQUESTS_VALUE="${UVICORN_LIMIT_MAX_REQUESTS:-0}"
+UVICORN_ACCESS_LOG_VALUE="${UVICORN_ACCESS_LOG:-}"
 
 if ! [[ "${WORKERS_PER_CORE_VALUE}" =~ ^[0-9]+$ ]]; then WORKERS_PER_CORE_VALUE=2; fi
 if ! [[ "${MAX_WORKERS_VALUE}" =~ ^[0-9]+$ ]]; then MAX_WORKERS_VALUE=8; fi
 if ! [[ "${UVICORN_BACKLOG_VALUE}" =~ ^[0-9]+$ ]]; then UVICORN_BACKLOG_VALUE=2048; fi
 if ! [[ "${UVICORN_KEEP_ALIVE_VALUE}" =~ ^[0-9]+$ ]]; then UVICORN_KEEP_ALIVE_VALUE=10; fi
 if ! [[ "${UVICORN_LIMIT_MAX_REQUESTS_VALUE}" =~ ^[0-9]+$ ]]; then UVICORN_LIMIT_MAX_REQUESTS_VALUE=0; fi
+if [ -z "${UVICORN_ACCESS_LOG_VALUE}" ]; then
+  if [ "${ENVIRONMENT:-development}" = "production" ]; then
+    UVICORN_ACCESS_LOG_VALUE="false"
+  else
+    UVICORN_ACCESS_LOG_VALUE="true"
+  fi
+fi
 
 if [ -n "${WEB_CONCURRENCY_VALUE}" ] && [[ "${WEB_CONCURRENCY_VALUE}" =~ ^[0-9]+$ ]]; then
   WORKER_COUNT="${WEB_CONCURRENCY_VALUE}"
@@ -117,5 +125,11 @@ fi
 if [ "${UVICORN_LIMIT_MAX_REQUESTS_VALUE}" -gt 0 ]; then
   UVICORN_ARGS+=(--limit-max-requests "${UVICORN_LIMIT_MAX_REQUESTS_VALUE}")
 fi
+
+case "$(echo "${UVICORN_ACCESS_LOG_VALUE}" | tr '[:upper:]' '[:lower:]')" in
+  0|false|no|off)
+    UVICORN_ARGS+=(--no-access-log)
+    ;;
+esac
 
 exec python -m uvicorn "${UVICORN_ARGS[@]}"

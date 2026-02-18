@@ -451,7 +451,35 @@ class LoggingMiddleware(BaseHTTPMiddleware):
     """
 
     # Paths to exclude from verbose logging
-    QUIET_PATHS = {"/health", "/metrics", "/favicon.ico"}
+    QUIET_PATHS = {"/health", "/metrics", "/favicon.ico", "/docs", "/redoc", "/openapi.json"}
+    QUIET_PREFIXES = ("/api/v1/health", "/api/v1/system/", "/socket.io")
+
+    @classmethod
+    def _is_quiet_path(cls, path: str) -> bool:
+        if path in cls.QUIET_PATHS:
+            return True
+        return any(path.startswith(prefix) for prefix in cls.QUIET_PREFIXES)
+
+    def _should_log_request_start(self, request: Request) -> bool:
+        if request.method == "OPTIONS":
+            return False
+        if self._is_quiet_path(request.url.path):
+            return False
+        # In production, reduce log volume by default.
+        if settings.ENVIRONMENT == "production" and not settings.DEBUG:
+            return False
+        return True
+
+    def _should_log_response(self, request: Request, status_code: int, process_time_ms: float) -> bool:
+        if request.method == "OPTIONS":
+            return False
+        if self._is_quiet_path(request.url.path):
+            return False
+
+        if settings.ENVIRONMENT == "production" and not settings.DEBUG:
+            # Keep production logs focused on actionable issues only.
+            return status_code >= 500 or process_time_ms > settings.PERF_RESPONSE_TIME_THRESHOLD_MS
+        return True
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         start_time = time.time()
@@ -461,7 +489,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         request.state.request_id = request_id
 
         # Log request (skip quiet paths)
-        if request.url.path not in self.QUIET_PATHS:
+        if self._should_log_request_start(request):
             logger.info(
                 f"[{request_id}] {request.method} {request.url.path} | "
                 f"Client: {request.client.host if request.client else 'unknown'}"
@@ -470,7 +498,10 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         try:
             response = await call_next(request)
         except Exception as e:
-            logger.error(f"[{request_id}] Error handling request: {e}", exc_info=True)
+            if settings.DEBUG:
+                logger.error(f"[{request_id}] Error handling request: {e}", exc_info=True)
+            else:
+                logger.error(f"[{request_id}] Error handling request: {e}")
             raise
 
         # Calculate response time
@@ -481,8 +512,13 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         middleware_metrics.record_request(process_time_ms, response.status_code)
 
         # Log response (skip quiet paths)
-        if request.url.path not in self.QUIET_PATHS:
-            log_level = logging.WARNING if process_time_ms > settings.PERF_RESPONSE_TIME_THRESHOLD_MS else logging.INFO
+        if self._should_log_response(request, response.status_code, process_time_ms):
+            if response.status_code >= 500:
+                log_level = logging.ERROR
+            elif process_time_ms > settings.PERF_RESPONSE_TIME_THRESHOLD_MS:
+                log_level = logging.WARNING
+            else:
+                log_level = logging.INFO
             logger.log(
                 log_level,
                 f"[{request_id}] {request.method} {request.url.path} | "

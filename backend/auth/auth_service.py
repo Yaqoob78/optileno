@@ -6,7 +6,7 @@ import secrets
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from fastapi import HTTPException, status
 from jose import JWTError
 
@@ -64,7 +64,14 @@ class AuthService:
         normalized_email = str(user_in.email).strip().lower()
 
         # Check if email exists
-        result = await db.execute(select(User).where(func.lower(User.email) == normalized_email))
+        try:
+            result = await db.execute(select(User).where(func.lower(User.email) == normalized_email))
+        except SQLAlchemyError as exc:
+            logger.error("Registration query failed for %s: %s", normalized_email, exc)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database temporarily unavailable. Please retry registration.",
+            )
         if result.scalar_one_or_none():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -127,6 +134,13 @@ class AuthService:
                         status_code=status.HTTP_409_CONFLICT,
                         detail="Account creation conflict. Please retry registration.",
                     )
+            except SQLAlchemyError as exc:
+                await db.rollback()
+                logger.error("Registration DB failure for %s: %s", normalized_email, exc)
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Database temporarily unavailable. Please retry registration.",
+                )
 
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

@@ -61,6 +61,7 @@ class DatabaseMetrics:
         }
 
 db_metrics = DatabaseMetrics()
+_last_session_error_log_ts: float = 0.0
 
 
 # ==================================================
@@ -69,9 +70,11 @@ db_metrics = DatabaseMetrics()
 def create_database_engine() -> AsyncEngine:
     """Create database engine with enterprise configuration."""
 
+    sql_echo = bool(settings.DEBUG and settings.ENVIRONMENT != "production")
     engine_kwargs = {
-        "echo": settings.DEBUG,
+        "echo": sql_echo,
         "pool_pre_ping": True,
+        "pool_reset_on_return": "rollback",
     }
     if "sqlite" not in settings.DATABASE_URL:
         engine_kwargs["pool_size"] = settings.DB_POOL_SIZE
@@ -80,6 +83,7 @@ def create_database_engine() -> AsyncEngine:
         engine_kwargs["pool_recycle"] = settings.DB_POOL_RECYCLE
         engine_kwargs["pool_use_lifo"] = True
         engine_kwargs["connect_args"] = {
+            "timeout": max(5, min(30, settings.DB_POOL_TIMEOUT)),
             "command_timeout": max(5, settings.DB_STATEMENT_TIMEOUT // 1000),
             "server_settings": {
                 "statement_timeout": str(settings.DB_STATEMENT_TIMEOUT),
@@ -141,12 +145,17 @@ async def get_db():
     Provide a database session.
     Transaction control is handled by services.
     """
+    global _last_session_error_log_ts
+
     async with AsyncSessionLocal() as session:
         try:
             yield session
         except Exception as e:
             db_metrics.failed_queries += 1
-            logger.error(f"[DB] Session error: {e}")
+            now_ts = time.time()
+            if now_ts - _last_session_error_log_ts >= 5:
+                logger.error(f"[DB] Session error: {e}")
+                _last_session_error_log_ts = now_ts
             raise
 
 
