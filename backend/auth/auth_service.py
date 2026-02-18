@@ -112,7 +112,8 @@ class AuthService:
                         role="admin",
                         is_active=True,
                         is_verified=True,
-                        is_superuser=True
+                        is_superuser=True,
+                        subscription_status="active",
                     )
                     db.add(new_user)
                     await db.commit()
