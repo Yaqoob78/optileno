@@ -448,6 +448,8 @@ class Settings:
     CASHFREE_WEBHOOK_SECRET: str = os.getenv("CASHFREE_WEBHOOK_SECRET", "")
     CASHFREE_CURRENCY: str = _strip_wrapping_quotes(os.getenv("CASHFREE_CURRENCY", "USD")).upper()
     CASHFREE_FALLBACK_CURRENCY: str = _strip_wrapping_quotes(os.getenv("CASHFREE_FALLBACK_CURRENCY", "")).upper()
+    CASHFREE_FX_CACHE_MINUTES: int = _env_int("CASHFREE_FX_CACHE_MINUTES", 60)
+    CASHFREE_USD_INR_FALLBACK_RATE: float = _env_float("CASHFREE_USD_INR_FALLBACK_RATE", 90.0)
 
     # =========================
     # Agentic (Private OpenClaw)

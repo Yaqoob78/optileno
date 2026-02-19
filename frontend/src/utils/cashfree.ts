@@ -5,10 +5,36 @@ declare global {
 }
 
 export type CashfreeMode = "sandbox" | "production";
+type CashfreeRedirectTarget = "_self" | "_blank" | "_modal";
 
 let sdkPromise: Promise<void> | null = null;
 
 const SDK_SRC = "https://sdk.cashfree.com/js/v3/cashfree.js";
+
+const MOBILE_USER_AGENT_REGEX =
+  /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i;
+
+function isMobileContext(): boolean {
+  if (typeof window === "undefined" || typeof navigator === "undefined") {
+    return false;
+  }
+
+  const userAgent = navigator.userAgent || "";
+  const isMobileUserAgent = MOBILE_USER_AGENT_REGEX.test(userAgent);
+  const isNarrowViewport =
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(max-width: 768px)").matches;
+
+  return isMobileUserAgent || isNarrowViewport;
+}
+
+function resolveRedirectTarget(flow: "order" | "subscription"): CashfreeRedirectTarget {
+  if (isMobileContext()) {
+    return "_self";
+  }
+
+  return flow === "order" ? "_modal" : "_blank";
+}
 
 export async function loadCashfreeSdk(timeoutMs = 12000): Promise<void> {
   if (typeof window === "undefined") {
@@ -93,10 +119,23 @@ export async function openCashfreeCheckout(
   }
 
   const cashfree = new window.Cashfree({ mode });
-  cashfree.checkout({
-    paymentSessionId,
-    redirectTarget: "_self",
-  });
+  const redirectTarget = resolveRedirectTarget("order");
+
+  try {
+    cashfree.checkout({
+      paymentSessionId,
+      redirectTarget,
+    });
+  } catch (error) {
+    if (redirectTarget !== "_self") {
+      cashfree.checkout({
+        paymentSessionId,
+        redirectTarget: "_self",
+      });
+      return;
+    }
+    throw error;
+  }
 }
 
 export async function openCashfreeSubscriptionCheckout(
@@ -118,8 +157,23 @@ export async function openCashfreeSubscriptionCheckout(
     throw new Error("Cashfree subscription checkout is unavailable in the loaded SDK.");
   }
 
-  await cashfree.subscriptionsCheckout({
+  const redirectTarget = resolveRedirectTarget("subscription");
+  const payload = {
     subsSessionId: subscriptionSessionId,
-    redirectTarget: "_self",
-  });
+    redirectTarget,
+  };
+
+  try {
+    await cashfree.subscriptionsCheckout(payload);
+  } catch (error) {
+    if (redirectTarget !== "_self") {
+      await cashfree.subscriptionsCheckout({
+        ...payload,
+        redirectTarget: "_self",
+      });
+      return;
+    }
+    throw error;
+  }
+
 }

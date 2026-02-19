@@ -62,10 +62,11 @@ async def get_plans():
 
     Returns Explorer and Ultra plan details with pricing and features.
     """
+    checkout_currency = (settings.CASHFREE_CURRENCY or "USD").strip().upper() or "USD"
     return {
         "plans": SUBSCRIPTION_PLANS,
-        "currency": "USD",
-        "message": "Explorer starts at $2/month (3-day free trial). Ultra is $10/month or $80/year.",
+        "currency": checkout_currency,
+        "message": "Explorer starts at $2/month (3-day free trial). Ultra is $10/month or $80/year. Checkout converts from USD when needed.",
     }
 
 

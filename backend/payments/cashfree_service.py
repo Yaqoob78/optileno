@@ -31,9 +31,7 @@ logger = logging.getLogger(__name__)
 CASHFREE_SANDBOX_URL = "https://sandbox.cashfree.com/pg"
 CASHFREE_PRODUCTION_URL = "https://api.cashfree.com/pg"
 CASHFREE_API_VERSION = "2025-01-01"
-DEFAULT_CASHFREE_CURRENCY = (
-    (settings.CASHFREE_CURRENCY or "USD").strip().upper() or "USD"
-)
+PLAN_PRICE_CURRENCY = "USD"
 
 
 # ==================================================
@@ -47,7 +45,7 @@ SUBSCRIPTION_PLANS = {
         "trial_days": settings.EXPLORER_TRIAL_DAYS,
         "monthly_price": settings.EXPLORER_MONTHLY_PRICE,  # in cents: 200 = $2.00
         "annual_price": settings.EXPLORER_ANNUAL_PRICE,
-        "currency": DEFAULT_CASHFREE_CURRENCY,
+        "currency": PLAN_PRICE_CURRENCY,
         "features": [
             "AI chat up to 15 requests/day",
             "Manual planner: tasks, habits, deep work, goals",
@@ -69,7 +67,7 @@ SUBSCRIPTION_PLANS = {
         "trial_days": settings.ULTRA_TRIAL_DAYS,
         "monthly_price": settings.ULTRA_MONTHLY_PRICE,  # in cents: 1000 = $10.00
         "annual_price": settings.ULTRA_ANNUAL_PRICE,
-        "currency": DEFAULT_CASHFREE_CURRENCY,
+        "currency": PLAN_PRICE_CURRENCY,
         "features": [
             "AI chat up to 150 requests/day",
             "Agentic planner automation",
@@ -96,6 +94,8 @@ class CashfreeService:
     def __init__(self):
         self.app_id = settings.CASHFREE_APP_ID
         self.secret_key = settings.CASHFREE_SECRET_KEY
+        self.fx_cache_ttl = timedelta(minutes=max(1, int(settings.CASHFREE_FX_CACHE_MINUTES or 60)))
+        self._fx_cache: dict[tuple[str, str], tuple[float, datetime]] = {}
         
         # Auto-detect environment from key prefix
         if self.app_id and self.app_id.startswith("TEST"):
@@ -148,10 +148,13 @@ class CashfreeService:
         return default
 
     def _resolve_plan_currency(self, plan: Dict[str, Any]) -> str:
-        return self._normalize_currency(
-            plan.get("currency"),
-            default=self._normalize_currency(settings.CASHFREE_CURRENCY, default="USD"),
+        configured_currency = self._normalize_currency(
+            settings.CASHFREE_CURRENCY,
+            default="",
         )
+        if configured_currency:
+            return configured_currency
+        return self._normalize_currency(plan.get("currency"), default=PLAN_PRICE_CURRENCY)
 
     def _currency_retry_candidate(self, error_data: Dict[str, Any], current_currency: str) -> Optional[str]:
         message = str(error_data.get("message") or "").lower()
@@ -175,6 +178,113 @@ class CashfreeService:
             return None
 
         return fallback_currency
+
+    def _fx_cache_get(self, base_currency: str, quote_currency: str) -> Optional[float]:
+        cache_key = (base_currency, quote_currency)
+        cached = self._fx_cache.get(cache_key)
+        if not cached:
+            return None
+        rate, expires_at = cached
+        if datetime.now(timezone.utc) >= expires_at:
+            self._fx_cache.pop(cache_key, None)
+            return None
+        return rate
+
+    def _fx_cache_set(self, base_currency: str, quote_currency: str, rate: float) -> None:
+        if rate <= 0:
+            return
+        self._fx_cache[(base_currency, quote_currency)] = (
+            rate,
+            datetime.now(timezone.utc) + self.fx_cache_ttl,
+        )
+
+    async def _fetch_exchange_rate(self, base_currency: str, quote_currency: str) -> Optional[float]:
+        providers = [
+            {
+                "url": f"https://open.er-api.com/v6/latest/{base_currency}",
+                "params": None,
+            },
+            {
+                "url": "https://api.frankfurter.app/latest",
+                "params": {"from": base_currency, "to": quote_currency},
+            },
+        ]
+
+        for provider in providers:
+            try:
+                async with httpx.AsyncClient(timeout=4.0) as client:
+                    response = await client.get(
+                        provider["url"],
+                        params=provider["params"],
+                    )
+                if response.status_code != 200:
+                    continue
+                payload = self._safe_json(response)
+                rates = payload.get("rates") if isinstance(payload, dict) else None
+                raw_rate = (rates or {}).get(quote_currency)
+                rate = float(raw_rate or 0)
+                if rate > 0:
+                    return rate
+            except Exception:
+                continue
+        return None
+
+    def _fallback_exchange_rate(self, base_currency: str, quote_currency: str) -> Optional[float]:
+        usd_inr = float(settings.CASHFREE_USD_INR_FALLBACK_RATE or 0)
+        if usd_inr <= 0:
+            usd_inr = 90.0
+        if base_currency == "USD" and quote_currency == "INR":
+            return usd_inr
+        if base_currency == "INR" and quote_currency == "USD":
+            return round(1 / usd_inr, 8)
+        return None
+
+    async def _resolve_exchange_rate(self, base_currency: str, quote_currency: str) -> float:
+        if base_currency == quote_currency:
+            return 1.0
+
+        cached_rate = self._fx_cache_get(base_currency, quote_currency)
+        if cached_rate and cached_rate > 0:
+            return cached_rate
+
+        live_rate = await self._fetch_exchange_rate(base_currency, quote_currency)
+        if live_rate and live_rate > 0:
+            self._fx_cache_set(base_currency, quote_currency, live_rate)
+            return live_rate
+
+        fallback_rate = self._fallback_exchange_rate(base_currency, quote_currency)
+        if fallback_rate and fallback_rate > 0:
+            self._fx_cache_set(base_currency, quote_currency, fallback_rate)
+            logger.warning(
+                "Using fallback FX rate for %s/%s: %s",
+                base_currency,
+                quote_currency,
+                fallback_rate,
+            )
+            return fallback_rate
+
+        raise ValueError(
+            f"Unable to resolve exchange rate from {base_currency} to {quote_currency}"
+        )
+
+    async def _convert_amount(
+        self,
+        amount: float,
+        base_currency: str,
+        quote_currency: str,
+    ) -> float:
+        normalized_base = self._normalize_currency(base_currency, default=PLAN_PRICE_CURRENCY)
+        normalized_quote = self._normalize_currency(quote_currency, default=normalized_base)
+        if normalized_base == normalized_quote:
+            return round(amount, 2)
+
+        rate = await self._resolve_exchange_rate(normalized_base, normalized_quote)
+        converted = round(amount * rate, 2)
+        if converted <= 0:
+            raise ValueError(
+                f"Converted amount is invalid ({converted}) for {normalized_base}->{normalized_quote}"
+            )
+        return converted
 
     def _normalize_plan_and_cycle(self, plan_name: str, billing_cycle: str) -> Tuple[str, str, Dict[str, Any]]:
         normalized_plan = (plan_name or "").strip().lower()
@@ -256,14 +366,16 @@ class CashfreeService:
 
         normalized_plan, normalized_cycle, plan = self._normalize_plan_and_cycle(plan_name, billing_cycle)
 
-        # Calculate amount (convert cents to dollars for Cashfree)
+        # Plan prices are defined in USD cents and converted to checkout currency when needed.
         if normalized_cycle == "annual":
             amount_cents = plan["annual_price"]
         else:
             amount_cents = plan["monthly_price"]
 
-        amount = round(amount_cents / 100, 2)  # Cashfree expects decimal amount (e.g., 2.00)
+        base_currency = self._normalize_currency(plan.get("currency"), default=PLAN_PRICE_CURRENCY)
+        base_amount = round(amount_cents / 100, 2)
         order_currency = self._resolve_plan_currency(plan)
+        amount = await self._convert_amount(base_amount, base_currency, order_currency)
 
         # Check for trial eligibility
         is_trial_eligible = await self._is_trial_eligible(db, user, normalized_plan)
@@ -294,6 +406,7 @@ class CashfreeService:
 
         try:
             used_currency = order_currency
+            used_amount = amount
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
                     f"{self.base_url}/orders",
@@ -310,8 +423,15 @@ class CashfreeService:
                             used_currency,
                             retry_currency,
                         )
+                        retry_amount = await self._convert_amount(
+                            base_amount,
+                            base_currency,
+                            retry_currency,
+                        )
                         order_payload["order_currency"] = retry_currency
+                        order_payload["order_amount"] = retry_amount
                         used_currency = retry_currency
+                        used_amount = retry_amount
                         response = await client.post(
                             f"{self.base_url}/orders",
                             json=order_payload,
@@ -335,10 +455,14 @@ class CashfreeService:
                 "cf_order_id": order_data.get("cf_order_id"),
                 "payment_session_id": order_data.get("payment_session_id"),
                 "order_status": order_data.get("order_status"),
-                "order_amount": amount,
+                "order_amount": used_amount,
                 "order_currency": used_currency,
                 "plan": normalized_plan,
-                "plan_details": {**plan, "currency": used_currency},
+                "plan_details": {
+                    **plan,
+                    "currency": used_currency,
+                    "checkout_amount": used_amount,
+                },
                 "billing_cycle": normalized_cycle,
                 "trial_days": trial_days,
                 "environment": self._environment_label(),
@@ -372,8 +496,10 @@ class CashfreeService:
 
         normalized_plan, normalized_cycle, plan = self._normalize_plan_and_cycle(plan_name, billing_cycle)
         amount_cents = plan["annual_price"] if normalized_cycle == "annual" else plan["monthly_price"]
-        amount = round(amount_cents / 100, 2)
+        base_currency = self._normalize_currency(plan.get("currency"), default=PLAN_PRICE_CURRENCY)
+        base_amount = round(amount_cents / 100, 2)
         plan_currency = self._resolve_plan_currency(plan)
+        amount = await self._convert_amount(base_amount, base_currency, plan_currency)
 
         is_trial_eligible = await self._is_trial_eligible(db, user, normalized_plan)
         trial_days = plan["trial_days"] if is_trial_eligible else 0
@@ -420,6 +546,7 @@ class CashfreeService:
 
         try:
             used_currency = plan_currency
+            used_amount = amount
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
                     f"{self.base_url}/subscriptions",
@@ -436,8 +563,17 @@ class CashfreeService:
                             used_currency,
                             retry_currency,
                         )
+                        retry_amount = await self._convert_amount(
+                            base_amount,
+                            base_currency,
+                            retry_currency,
+                        )
                         payload["plan_details"]["plan_currency"] = retry_currency
+                        payload["plan_details"]["plan_amount"] = retry_amount
+                        payload["plan_details"]["plan_max_amount"] = retry_amount
+                        payload["plan_details"]["plan_recurring_amount"] = retry_amount
                         used_currency = retry_currency
+                        used_amount = retry_amount
                         response = await client.post(
                             f"{self.base_url}/subscriptions",
                             json=payload,
@@ -471,7 +607,11 @@ class CashfreeService:
                 "payment_session_id": session_id,
                 "subscription_status": subscription_data.get("subscription_status"),
                 "plan": normalized_plan,
-                "plan_details": {**plan, "currency": used_currency},
+                "plan_details": {
+                    **plan,
+                    "currency": used_currency,
+                    "checkout_amount": used_amount,
+                },
                 "billing_cycle": normalized_cycle,
                 "trial_days": trial_days,
                 "first_charge_at": self._format_datetime(first_charge_at),
