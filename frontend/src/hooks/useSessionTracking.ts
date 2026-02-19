@@ -35,8 +35,8 @@ const writeStoredMinutes = (key: string, minutes: number) => {
   localStorage.setItem(key, JSON.stringify({ minutes, updatedAt: new Date().toISOString() }));
 };
 
-export const useSessionTracking = () => {
-  const { profile, updateProfile } = useUserStore();
+export const useSessionTracking = (enabled = true) => {
+  const { profile, updateProfile, isAuthenticated } = useUserStore();
   const sessionStartRef = useRef<Date>(new Date());
   const updateIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const currentDayRef = useRef<string>(getDateKey());
@@ -50,7 +50,7 @@ export const useSessionTracking = () => {
   }, [profile.stats]);
 
   useEffect(() => {
-    if (!profile.id) {
+    if (!enabled || !profile.id || !isAuthenticated) {
       return undefined;
     }
 
@@ -211,7 +211,7 @@ export const useSessionTracking = () => {
       }
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [profile.id, updateProfile]);
+  }, [enabled, isAuthenticated, profile.id, updateProfile]);
 
   return {
     sessionStart: sessionStartRef.current,

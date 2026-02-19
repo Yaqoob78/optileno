@@ -85,10 +85,20 @@ class APIClient {
         return response;
       },
       async (error: AxiosError) => {
-        const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+        const originalRequest = (error.config || {}) as InternalAxiosRequestConfig & { _retry?: boolean };
+        const requestUrl = (originalRequest.url || '').toLowerCase();
+        const isAuthEndpoint =
+          requestUrl.includes('/auth/login') ||
+          requestUrl.includes('/auth/register') ||
+          requestUrl.includes('/auth/validate') ||
+          requestUrl.includes('/auth/refresh') ||
+          requestUrl.includes('/auth/logout') ||
+          requestUrl.includes('/auth/forgot-password') ||
+          requestUrl.includes('/auth/reset-password');
 
-        // Handle 401 Unauthorized - try to refresh session
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        // Handle 401 Unauthorized - try to refresh session.
+        // Skip auth endpoints to avoid refresh loops/races during bootstrap.
+        if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
           originalRequest._retry = true;
 
           try {

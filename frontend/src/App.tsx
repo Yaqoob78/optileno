@@ -67,6 +67,7 @@ function StoreInitializer({ children }: { children: React.ReactNode }) {
   const { checked: sessionChecked } = useSessionBootstrap();
   const theme = useSettingsStore((state) => state.theme);
   const profile = useUserStore((state) => state.profile);
+  const isAuthenticated = useUserStore((state) => state.isAuthenticated);
   const initPlannerSockets = usePlannerStore((state) => state.initSocketListeners);
 
   // Initialize state preservation system (CRITICAL FOR DATA PERSISTENCE)
@@ -77,7 +78,7 @@ function StoreInitializer({ children }: { children: React.ReactNode }) {
 
   // Initialize auto-save, session tracking, and state preservation
   useAutoSaveChat(5000);
-  useSessionTracking();
+  useSessionTracking(sessionChecked);
   usePreserveState();
 
   // Enable debug logging for state changes (set to true for debugging)
@@ -85,7 +86,7 @@ function StoreInitializer({ children }: { children: React.ReactNode }) {
 
   // Real-time connection management
   useEffect(() => {
-    if (profile?.id) {
+    if (sessionChecked && isAuthenticated && profile?.id) {
       console.log('🔄 Initializing Realtime Connection for user:', profile.id);
       realtimeClient.connect(profile.id)
         .then(() => {
@@ -99,7 +100,7 @@ function StoreInitializer({ children }: { children: React.ReactNode }) {
         realtimeClient.disconnect();
       };
     }
-  }, [profile?.id, initPlannerSockets]);
+  }, [sessionChecked, isAuthenticated, profile?.id, initPlannerSockets]);
 
   // Force theme application on mount
   useEffect(() => {
