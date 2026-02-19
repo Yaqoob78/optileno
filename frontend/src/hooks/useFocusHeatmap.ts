@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { realtimeClient } from '../services/realtime/socket-client';
 import { api } from '../services/api/client';
+import { useUserStore } from '../stores/useUserStore';
 
 interface FocusBreakdown {
     task_points: number;
@@ -93,6 +94,7 @@ interface UseFocusHeatmapReturn {
  * Automatically refreshes when productivity events occur via WebSocket.
  */
 export function useFocusHeatmap(): UseFocusHeatmapReturn {
+    const isAuthenticated = useUserStore((state) => state.isAuthenticated);
     const [todayScore, setTodayScore] = useState<DailyScore | null>(null);
     const [weeklyData, setWeeklyData] = useState<WeeklyData | null>(null);
     const [heatmapData, setHeatmapData] = useState<HeatmapData | null>(null);
@@ -102,9 +104,18 @@ export function useFocusHeatmap(): UseFocusHeatmapReturn {
 
     // Fetch today's score
     const fetchToday = useCallback(async () => {
+        if (!isAuthenticated) {
+            setTodayScore(null);
+            return;
+        }
+
         try {
             const response = await api.get<DailyScore>('/analytics/focus/today');
             if (!response.success || !response.data) {
+                if (response.error?.code === 'HTTP_401' || response.error?.code === 'HTTP_403') {
+                    setTodayScore(null);
+                    return;
+                }
                 throw new Error(response.error?.message || "Failed to fetch today's focus score");
             }
             setTodayScore(response.data);
@@ -112,13 +123,22 @@ export function useFocusHeatmap(): UseFocusHeatmapReturn {
             console.error('Error fetching today\'s focus:', err);
             setError(err.message);
         }
-    }, []);
+    }, [isAuthenticated]);
 
     // Fetch weekly data
     const fetchWeekly = useCallback(async () => {
+        if (!isAuthenticated) {
+            setWeeklyData(null);
+            return;
+        }
+
         try {
             const response = await api.get<WeeklyData>('/analytics/focus/weekly');
             if (!response.success || !response.data) {
+                if (response.error?.code === 'HTTP_401' || response.error?.code === 'HTTP_403') {
+                    setWeeklyData(null);
+                    return;
+                }
                 throw new Error(response.error?.message || 'Failed to fetch weekly focus data');
             }
             setWeeklyData(response.data);
@@ -126,10 +146,15 @@ export function useFocusHeatmap(): UseFocusHeatmapReturn {
             console.error('Error fetching weekly focus:', err);
             setError(err.message);
         }
-    }, []);
+    }, [isAuthenticated]);
 
     // Fetch monthly heatmap
     const fetchHeatmap = useCallback(async (year?: number, month?: number) => {
+        if (!isAuthenticated) {
+            setHeatmapData(null);
+            return;
+        }
+
         try {
             let url = '/analytics/focus/heatmap';
             if (year && month) {
@@ -138,6 +163,10 @@ export function useFocusHeatmap(): UseFocusHeatmapReturn {
 
             const response = await api.get<HeatmapData>(url);
             if (!response.success || !response.data) {
+                if (response.error?.code === 'HTTP_401' || response.error?.code === 'HTTP_403') {
+                    setHeatmapData(null);
+                    return;
+                }
                 throw new Error(response.error?.message || 'Failed to fetch focus heatmap');
             }
             setHeatmapData(response.data);
@@ -145,13 +174,22 @@ export function useFocusHeatmap(): UseFocusHeatmapReturn {
             console.error('Error fetching heatmap:', err);
             setError(err.message);
         }
-    }, []);
+    }, [isAuthenticated]);
 
     // Fetch comprehensive stats
     const fetchStats = useCallback(async () => {
+        if (!isAuthenticated) {
+            setStats(null);
+            return;
+        }
+
         try {
             const response = await api.get<FocusStats>('/analytics/focus/stats');
             if (!response.success || !response.data) {
+                if (response.error?.code === 'HTTP_401' || response.error?.code === 'HTTP_403') {
+                    setStats(null);
+                    return;
+                }
                 throw new Error(response.error?.message || 'Failed to fetch focus stats');
             }
             setStats(response.data);
@@ -159,10 +197,20 @@ export function useFocusHeatmap(): UseFocusHeatmapReturn {
             console.error('Error fetching focus stats:', err);
             setError(err.message);
         }
-    }, []);
+    }, [isAuthenticated]);
 
     // Refresh all data
     const refresh = useCallback(async () => {
+        if (!isAuthenticated) {
+            setTodayScore(null);
+            setWeeklyData(null);
+            setHeatmapData(null);
+            setStats(null);
+            setError(null);
+            setIsLoading(false);
+            return;
+        }
+
         setIsLoading(true);
         setError(null);
 
@@ -178,15 +226,17 @@ export function useFocusHeatmap(): UseFocusHeatmapReturn {
         } finally {
             setIsLoading(false);
         }
-    }, [fetchToday, fetchWeekly, fetchHeatmap, fetchStats]);
+    }, [fetchToday, fetchWeekly, fetchHeatmap, fetchStats, isAuthenticated]);
 
     // Initial load
     useEffect(() => {
+        if (!isAuthenticated) return;
         refresh();
-    }, [refresh]);
+    }, [refresh, isAuthenticated]);
 
     // Listen for real-time focus score updates via WebSocket
     useEffect(() => {
+        if (!isAuthenticated) return;
         if (!realtimeClient.isConnected()) return;
 
         const handleFocusUpdate = (data: any) => {
@@ -234,7 +284,7 @@ export function useFocusHeatmap(): UseFocusHeatmapReturn {
             realtimeClient.off('planner:habit:completed', handleRefreshToday);
             realtimeClient.off('planner:deepwork:completed', handleRefreshToday);
         };
-    }, [fetchToday]);
+    }, [fetchToday, isAuthenticated]);
 
     return {
         todayScore,

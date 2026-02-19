@@ -3,6 +3,7 @@ from typing import List, Optional, Any, Dict
 from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
+import logging
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func
@@ -21,6 +22,7 @@ from backend.utils.user_profile import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 MEDIA_ROOT = Path("data/media")
 AVATAR_DIR = MEDIA_ROOT / "avatars"
@@ -65,7 +67,49 @@ class NotificationResponse(BaseModel):
 @router.get("/me")
 async def get_user_me(current_user: User = Depends(get_current_user)):
     """Get current user (safe profile response)."""
-    return build_user_profile(current_user)
+    try:
+        return build_user_profile(current_user)
+    except Exception as exc:
+        logger.error("Failed to build user profile for user %s: %s", getattr(current_user, "id", "unknown"), exc, exc_info=True)
+        fallback_name = current_user.full_name or (current_user.email.split("@")[0] if current_user.email else "User")
+        fallback_tier = (getattr(current_user, "tier", "") or "explorer").strip().lower()
+        fallback_plan_type = (getattr(current_user, "plan_type", "") or "EXPLORER").strip().upper()
+        now_iso = datetime.utcnow().isoformat()
+        return {
+            "id": str(current_user.id),
+            "email": current_user.email,
+            "name": fallback_name,
+            "avatar": "",
+            "role": "admin" if bool(getattr(current_user, "is_superuser", False)) else "user",
+            "planType": fallback_plan_type,
+            "plan_tier": fallback_tier,
+            "subscription": {
+                "tier": fallback_tier,
+                "status": getattr(current_user, "subscription_status", None) or "explorer",
+                "expiresAt": None,
+                "features": [],
+            },
+            "entitlements": {},
+            "limits": {},
+            "stats": {
+                "totalSessions": 0,
+                "totalTokens": 0,
+                "avgRating": 0,
+                "joinedAt": (getattr(current_user, "created_at", None) or datetime.utcnow()).isoformat(),
+                "lastActiveAt": (getattr(current_user, "updated_at", None) or datetime.utcnow()).isoformat(),
+                "timeSpentToday": 0,
+                "totalTimeSpent": 0,
+                "lastActivityAt": now_iso,
+            },
+            "metadata": {
+                "emailVerified": bool(getattr(current_user, "is_verified", False)),
+                "twoFactorEnabled": False,
+                "accountStatus": "active" if bool(getattr(current_user, "is_active", True)) else "suspended",
+                "timezone": "UTC",
+                "language": "en",
+            },
+            "preferences": merge_preferences({}),
+        }
 
 
 @router.patch("/me")

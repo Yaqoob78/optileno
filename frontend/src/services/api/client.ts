@@ -107,10 +107,11 @@ class APIClient {
             return this.axiosInstance(originalRequest);
           } catch (refreshError) {
             this.handleAuthFailure();
+            return Promise.reject(error);
           }
         }
 
-        return Promise.reject(this.normalizeError(error));
+        return Promise.reject(error);
       }
     );
   }
@@ -207,6 +208,33 @@ class APIClient {
     }
   }
 
+  private passthroughApiError<T = any>(error: unknown): ApiResponse<T> | null {
+    if (
+      error &&
+      typeof error === 'object' &&
+      'success' in (error as Record<string, unknown>) &&
+      (error as Record<string, unknown>).success === false
+    ) {
+      return error as ApiResponse<T>;
+    }
+
+    return null;
+  }
+
+  private unknownErrorResponse<T = any>(error: unknown): ApiResponse<T> {
+    return {
+      success: false,
+      error: {
+        code: 'CLIENT_ERROR',
+        message: error instanceof Error ? error.message : 'Unexpected client error',
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: 'unknown',
+      },
+    };
+  }
+
   // Public API methods
   public get = async <T = any>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> => {
     try {
@@ -230,10 +258,14 @@ class APIClient {
 
       return response.data;
     } catch (error) {
+      const passthrough = this.passthroughApiError<T>(error);
+      if (passthrough) {
+        return passthrough;
+      }
       if (axios.isAxiosError(error)) {
         return this.normalizeError(error);
       }
-      throw error;
+      return this.unknownErrorResponse<T>(error);
     }
   }
 
@@ -261,10 +293,14 @@ class APIClient {
 
       return response.data;
     } catch (error) {
+      const passthrough = this.passthroughApiError<T>(error);
+      if (passthrough) {
+        return passthrough;
+      }
       if (axios.isAxiosError(error)) {
         return this.normalizeError(error);
       }
-      throw error;
+      return this.unknownErrorResponse<T>(error);
     }
   }
 
@@ -273,10 +309,14 @@ class APIClient {
       const response = await this.axiosInstance.put<ApiResponse<T>>(url, data, config);
       return response.data;
     } catch (error) {
+      const passthrough = this.passthroughApiError<T>(error);
+      if (passthrough) {
+        return passthrough;
+      }
       if (axios.isAxiosError(error)) {
         return this.normalizeError(error);
       }
-      throw error;
+      return this.unknownErrorResponse<T>(error);
     }
   }
 
@@ -304,10 +344,14 @@ class APIClient {
 
       return response.data;
     } catch (error) {
+      const passthrough = this.passthroughApiError<T>(error);
+      if (passthrough) {
+        return passthrough;
+      }
       if (axios.isAxiosError(error)) {
         return this.normalizeError(error);
       }
-      throw error;
+      return this.unknownErrorResponse<T>(error);
     }
   }
 
@@ -324,10 +368,14 @@ class APIClient {
       // For other successful responses, parse the body
       return response.data || { success: true, data: undefined as any };
     } catch (error) {
+      const passthrough = this.passthroughApiError<T>(error);
+      if (passthrough) {
+        return passthrough;
+      }
       if (axios.isAxiosError(error)) {
         return this.normalizeError(error);
       }
-      throw error;
+      return this.unknownErrorResponse<T>(error);
     }
   }
 
@@ -343,10 +391,14 @@ class APIClient {
       });
       return response.data;
     } catch (error) {
+      const passthrough = this.passthroughApiError<T>(error);
+      if (passthrough) {
+        return passthrough;
+      }
       if (axios.isAxiosError(error)) {
         return this.normalizeError(error);
       }
-      throw error;
+      return this.unknownErrorResponse<T>(error);
     }
   }
 

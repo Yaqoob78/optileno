@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import List, Optional, Dict, Any
 from datetime import date
 from pydantic import BaseModel, Field
+import logging
 
 from backend.core.security import get_current_user
 from backend.services.entitlements_service import require_ultra_feature
@@ -24,6 +25,7 @@ from backend.realtime.socket_manager import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 # ── Tasks ──────────────────────────────────────────────────────────────
@@ -186,7 +188,11 @@ async def get_active_deep_work(
     current_user: User = Depends(get_current_user)
 ):
     """Get currently active deep work session if any"""
-    return await planner_service.get_active_deep_work(str(current_user.id))
+    try:
+        return await planner_service.get_active_deep_work(str(current_user.id))
+    except Exception as e:
+        logger.error("Failed to fetch active deep work for user %s: %s", current_user.id, e, exc_info=True)
+        return None
 
 
 # ── Habits ───────────────────────────────────────────────────────────────

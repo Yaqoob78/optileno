@@ -110,8 +110,17 @@ async def get_current_user(
             user.tier = "ultra"
             user.plan_type = "ULTRA"
             user.is_superuser = True
-            await db.commit()
-            await db.refresh(user)
+            try:
+                await db.commit()
+                await db.refresh(user)
+            except Exception as exc:
+                logger.warning("Owner privilege sync commit failed for user %s: %s", getattr(user, "id", "unknown"), exc)
+                await db.rollback()
+                # Keep in-memory privileges for the current request even if persistence fails.
+                user.role = "admin"
+                user.tier = "ultra"
+                user.plan_type = "ULTRA"
+                user.is_superuser = True
 
     # Enforce payment completion server-side to prevent API-level bypasses.
     subscription_status = (getattr(user, "subscription_status", "") or "").strip().lower()

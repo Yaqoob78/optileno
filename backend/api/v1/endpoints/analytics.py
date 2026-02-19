@@ -927,10 +927,26 @@ async def get_strategic_insight(
         from backend.services.strategic_insight_service import strategic_insight_service
         return await strategic_insight_service.get_active_insight(current_user.id)
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch strategic insight: {str(e)}"
-        )
+        logger.error("Strategic insight failed for user %s: %s", current_user.id, e, exc_info=True)
+        return {
+            "insights": [
+                {
+                    "id": 0,
+                    "title": "Strategic insights are calibrating",
+                    "description": "Keep using planner and chat activity. Your next high-impact insight will appear shortly.",
+                    "confidence": 0,
+                    "applied_at": None,
+                    "type": "awaiting_data",
+                    "severity": "info",
+                    "category": "planning",
+                    "generated_at": datetime.utcnow().isoformat(),
+                    "evidence": [],
+                    "data_points": 0,
+                }
+            ],
+            "count": 1,
+            "error_fallback": True,
+        }
 
 @router.post("/strategic-insight/apply", response_model=Dict[str, Any])
 async def apply_strategic_insight(
@@ -1150,10 +1166,16 @@ async def get_big_five_test_status(current_user = Depends(get_current_user)):
         from backend.services.big_five_test_service import big_five_test_service
         return await big_five_test_service.get_test_status(current_user.id)
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get test status: {str(e)}"
-        )
+        logger.error("Big Five status failed for user %s: %s", current_user.id, e, exc_info=True)
+        return {
+            "has_completed_test": False,
+            "test_in_progress": False,
+            "current_scores": None,
+            "days_until_next_test": 0,
+            "next_test_available": True,
+            "can_take_test": True,
+            "error_fallback": True,
+        }
 
 
 @router.post("/big-five-test/start", response_model=Dict[str, Any])

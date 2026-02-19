@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import datetime, timezone
+import json
 from typing import Any, Dict
 from zoneinfo import ZoneInfo
 
@@ -121,24 +122,47 @@ def _deep_merge(base: Dict[str, Any], overrides: Dict[str, Any]) -> Dict[str, An
     return result
 
 
+def _normalize_mapping(value: Any) -> Dict[str, Any]:
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception:
+            return {}
+    return {}
+
+
 def merge_preferences(current: Dict[str, Any] | None, updates: Dict[str, Any] | None = None) -> Dict[str, Any]:
-    merged = _deep_merge(DEFAULT_PREFERENCES, current or {})
-    if updates:
-        merged = _deep_merge(merged, updates)
-    if "security" in (current or {}):
-        merged["security"] = _deep_merge(DEFAULT_SECURITY, (current or {}).get("security", {}))
+    current_dict = _normalize_mapping(current)
+    updates_dict = _normalize_mapping(updates)
+
+    merged = _deep_merge(DEFAULT_PREFERENCES, current_dict)
+    if updates_dict:
+        merged = _deep_merge(merged, updates_dict)
+
+    if "security" in current_dict:
+        merged["security"] = _deep_merge(
+            DEFAULT_SECURITY,
+            _normalize_mapping(current_dict.get("security")),
+        )
     return merged
 
 
 def get_security_settings(prefs: Dict[str, Any]) -> Dict[str, Any]:
-    security = prefs.get("security") if isinstance(prefs, dict) else None
-    return _deep_merge(DEFAULT_SECURITY, security or {})
+    prefs_dict = _normalize_mapping(prefs)
+    return _deep_merge(DEFAULT_SECURITY, _normalize_mapping(prefs_dict.get("security")))
 
 
 def set_security_settings(prefs: Dict[str, Any], updates: Dict[str, Any]) -> Dict[str, Any]:
-    prefs = deepcopy(prefs or {})
-    prefs["security"] = _deep_merge(get_security_settings(prefs), updates or {})
-    return prefs
+    prefs_dict = deepcopy(_normalize_mapping(prefs))
+    prefs_dict["security"] = _deep_merge(
+        get_security_settings(prefs_dict),
+        _normalize_mapping(updates),
+    )
+    return prefs_dict
 
 
 def build_user_profile(user: User) -> Dict[str, Any]:

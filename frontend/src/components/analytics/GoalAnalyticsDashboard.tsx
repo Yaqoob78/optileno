@@ -172,17 +172,30 @@ export default function GoalAnalyticsDashboard({
     const fetchGoalProgress = async () => {
       setIsLoading(true);
       setError(null);
-      const response = await api.get<GoalProgressV3Response>(
-        `/analytics/goals/progress?time_range=${timeRange}`
-      );
-      if (cancelled) return;
-      if (!response.success || !response.data) {
-        setError(response.error?.message || 'Failed to load goal analytics');
-        setIsLoading(false);
-        return;
+      try {
+        const response = await api.get<GoalProgressV3Response>(
+          `/analytics/goals/progress?time_range=${timeRange}`
+        );
+        if (cancelled) return;
+        if (!response.success || !response.data) {
+          if (response.error?.code === 'HTTP_401' || response.error?.code === 'HTTP_403') {
+            setData(null);
+            setError(null);
+            return;
+          }
+          setError(response.error?.message || 'Failed to load goal analytics');
+          return;
+        }
+        setData(response.data);
+      } catch (err: any) {
+        if (!cancelled) {
+          setError(err?.message || 'Failed to load goal analytics');
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
       }
-      setData(response.data);
-      setIsLoading(false);
     };
 
     fetchGoalProgress();

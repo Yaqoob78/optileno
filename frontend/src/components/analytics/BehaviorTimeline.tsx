@@ -1,6 +1,7 @@
 // frontend/src/components/analytics/BehaviorTimeline.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../../services/api/client';
+import { useUserStore } from '../../stores/useUserStore';
 import {
   Activity,
   Zap,
@@ -130,6 +131,7 @@ const RESISTANCE_LABELS: Record<string, string> = {
 };
 
 export default function BehaviorTimeline() {
+  const isAuthenticated = useUserStore((state) => state.isAuthenticated);
   const [days, setDays] = useState<number>(30);
   const [data, setData] = useState<TimelineResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -139,11 +141,23 @@ export default function BehaviorTimeline() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const fetchTimeline = async () => {
+    if (!isAuthenticated) {
+      setData(null);
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setIsLoading(true);
       setError(null);
       const response = await api.get<TimelineResponse>(`/analytics/behavior-timeline?days=${days}`);
       if (!response.success) {
+        if (response.error?.code === 'HTTP_401' || response.error?.code === 'HTTP_403') {
+          setData(null);
+          setError(null);
+          return;
+        }
         throw new Error(response.error?.message || 'Failed to fetch timeline');
       }
       setData(response.data as TimelineResponse);
@@ -156,8 +170,9 @@ export default function BehaviorTimeline() {
   };
 
   useEffect(() => {
+    if (!isAuthenticated) return;
     fetchTimeline();
-  }, [days]);
+  }, [days, isAuthenticated]);
 
   // Auto-scroll to today (rightmost) on data load
   useEffect(() => {

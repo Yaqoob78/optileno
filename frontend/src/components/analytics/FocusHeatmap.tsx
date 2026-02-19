@@ -101,21 +101,33 @@ export default function FocusHeatmap({ timeRange = 'monthly' }: FocusHeatmapProp
   }, [getLabelForScore]);
 
   const normalizeHeatmap = useCallback((raw: any) => {
-    if (!raw || !Array.isArray(raw.weeks)) return null;
+    if (!raw) return null;
 
+    const mapWeek = (week: any[]) => (
+      Array.isArray(week)
+        ? week.map((cell: any) => {
+          if (!cell) return null;
+          return {
+            ...cell,
+            color: normalizeColor(cell.color, cell.score),
+          };
+        })
+        : []
+    );
+
+    if (Array.isArray(raw.weeks)) {
+      return {
+        ...raw,
+        weeks: raw.weeks.map(mapWeek),
+      };
+    }
+
+    // Fallback shape from backend error payloads
     return {
       ...raw,
-      weeks: raw.weeks.map((week: any[]) => (
-        Array.isArray(week)
-          ? week.map((cell: any) => {
-            if (!cell) return null;
-            return {
-              ...cell,
-              color: normalizeColor(cell.color, cell.score),
-            };
-          })
-          : []
-      )),
+      year: Number(raw.year) || new Date().getFullYear(),
+      month: Number(raw.month) || (new Date().getMonth() + 1),
+      weeks: [],
     };
   }, [normalizeColor]);
 
