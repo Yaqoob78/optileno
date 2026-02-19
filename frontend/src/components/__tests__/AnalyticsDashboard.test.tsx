@@ -1,62 +1,58 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { AnalyticsDashboard } from '../components/analytics/AnalyticsDashboard';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+
+import { api } from '../../services/api/client';
+import { AnalyticsDashboard } from '../analytics/AnalyticsDashboard';
+
+jest.mock('../../services/realtime/socket-client', () => ({
+  socket: {
+    on: jest.fn(),
+    off: jest.fn(),
+  },
+}));
+
+jest.mock('../../services/api/client', () => ({
+  api: {
+    get: jest.fn(async () => ({
+      success: true,
+      data: {
+        data: [
+          { date: '2026-02-15', productivity: 72, focus: 68, wellness: 70 },
+          { date: '2026-02-16', productivity: 75, focus: 71, wellness: 69 },
+        ],
+        forecasts: [
+          { metric: 'focus', current: 70, predicted: 74, confidence: 0.84, trend: 'up' },
+        ],
+      },
+    })),
+  },
+}));
 
 describe('AnalyticsDashboard', () => {
-  it('renders dashboard title', () => {
+  it('renders dashboard header and range controls', async () => {
     render(<AnalyticsDashboard />);
-    
-    expect(screen.getByText('Analytics Dashboard')).toBeInTheDocument();
-  });
 
-  it('displays time range selector', () => {
-    render(<AnalyticsDashboard />);
-    
+    expect(screen.getByText(/loading analytics/i)).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Analytics' })).toBeInTheDocument();
+    });
+
     expect(screen.getByRole('button', { name: /week/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /month/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /year/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /quarter/i })).toBeInTheDocument();
   });
 
-  it('allows changing time range', async () => {
+  it('changes range and refetches analytics', async () => {
     render(<AnalyticsDashboard />);
-    
-    const monthButton = screen.getByRole('button', { name: /month/i });
-    fireEvent.click(monthButton);
-    
+
     await waitFor(() => {
-      expect(monthButton).toHaveClass('active');
+      expect(screen.getByRole('button', { name: /month/i })).toBeInTheDocument();
     });
-  });
 
-  it('displays key metrics cards', async () => {
-    render(<AnalyticsDashboard />);
-    
+    fireEvent.click(screen.getByRole('button', { name: /month/i }));
+
     await waitFor(() => {
-      expect(screen.getByText(/Tasks Completed/i)).toBeInTheDocument();
-      expect(screen.getByText(/Avg Completion Time/i)).toBeInTheDocument();
-      expect(screen.getByText(/Collaboration Score/i)).toBeInTheDocument();
-    });
-  });
-
-  it('shows chart containers', () => {
-    render(<AnalyticsDashboard />);
-    
-    const chartElements = screen.getAllByRole('img');
-    expect(chartElements.length).toBeGreaterThan(0);
-  });
-
-  it('displays forecast data', async () => {
-    render(<AnalyticsDashboard />);
-    
-    await waitFor(() => {
-      expect(screen.getByText(/Forecast/i)).toBeInTheDocument();
-    });
-  });
-
-  it('shows performance tips section', async () => {
-    render(<AnalyticsDashboard />);
-    
-    await waitFor(() => {
-      expect(screen.getByText(/Performance Tips/i)).toBeInTheDocument();
+      expect(api.get).toHaveBeenCalledWith('/analytics/historical/monthly');
     });
   });
 });

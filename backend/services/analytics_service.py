@@ -209,8 +209,30 @@ class AnalyticsService:
             # Get current metrics or create new
             metrics = await self.get_realtime_metrics(user_id)
             if not metrics:
-                metrics = RealTimeMetrics(user_id=user_id)
+                metrics = RealTimeMetrics(
+                    user_id=user_id,
+                    focus_score=50,
+                    focus_sessions_today=0,
+                    total_focus_minutes=0,
+                    planning_accuracy=0.0,
+                    tasks_completed_today=0,
+                    current_habit_streak=0,
+                    habits_completed_today=0,
+                    burnout_risk=0,
+                    engagement_score=0,
+                )
                 db.add(metrics)
+            else:
+                # Backfill nullable legacy rows before arithmetic updates.
+                metrics.focus_score = 50 if metrics.focus_score is None else int(metrics.focus_score)
+                metrics.focus_sessions_today = int(metrics.focus_sessions_today or 0)
+                metrics.total_focus_minutes = int(metrics.total_focus_minutes or 0)
+                metrics.planning_accuracy = float(metrics.planning_accuracy or 0.0)
+                metrics.tasks_completed_today = int(metrics.tasks_completed_today or 0)
+                metrics.current_habit_streak = int(metrics.current_habit_streak or 0)
+                metrics.habits_completed_today = int(metrics.habits_completed_today or 0)
+                metrics.burnout_risk = int(metrics.burnout_risk or 0)
+                metrics.engagement_score = int(metrics.engagement_score or 0)
 
             # Check for daily reset
             now = datetime.utcnow()

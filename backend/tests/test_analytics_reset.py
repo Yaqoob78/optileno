@@ -1,76 +1,66 @@
-
 import pytest
-import asyncio
 from datetime import datetime, timedelta
-from backend.services.analytics_service import analytics_service
+from unittest.mock import AsyncMock, patch
+
 from backend.db.models import RealTimeMetrics
-from backend.db.session import get_db
+from backend.services.analytics_service import analytics_service
+
+
+class MockDbGen:
+    """Async generator wrapper for analytics_service.get_db()."""
+
+    def __init__(self, session):
+        self.session = session
+        self._done = False
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        if self._done:
+            raise StopAsyncIteration
+        self._done = True
+        return self.session
+
 
 @pytest.mark.asyncio
-async def test_daily_metrics_reset(db_session):
-    """
-    Test that daily metrics are reset when a new event occurs on a new day.
-    """
-    # 1. Setup: Create a user and metrics for "Yesterday"
+async def test_daily_metrics_reset():
+    """Daily metrics reset when the latest row is from a previous day."""
     user_id = 999
-    
-    # Create fake existing metrics
-    # Note: We need to use raw SQL or ensure the session commits properly
-    # Using the service's get_db logic via db_session fixture if available, 
-    # but let's try to inject directly if possible or use service to init.
-    
-    # Just insert a dummy metric row directly
     yesterday = datetime.utcnow() - timedelta(days=1)
-    
-    metric = RealTimeMetrics(
+
+    saved_metric = RealTimeMetrics(
         user_id=user_id,
-        focus_score=80, # Should persist
-        focus_sessions_today=5, # Should reset
-        tasks_completed_today=10, # Should reset
-        habits_completed_today=3, # Should reset
-        current_habit_streak=5, # Should persist
-        planning_accuracy=90.0, # Should reset
-        updated_at=yesterday # Key factor
+        focus_score=80,
+        focus_sessions_today=5,
+        tasks_completed_today=10,
+        habits_completed_today=3,
+        current_habit_streak=5,
+        planning_accuracy=90.0,
+        updated_at=yesterday,
     )
-    db_session.add(metric)
-    db_session.commit()
-    
-    # Verify setup
-    saved_metric = db_session.query(RealTimeMetrics).filter_by(user_id=user_id).first()
-    assert saved_metric.focus_sessions_today == 5
-    assert saved_metric.updated_at.date() < datetime.utcnow().date()
-    
-    # 2. Action: Trigger an event "Today"
-    # This calls update_realtime_metrics internally
+
+    mock_db = AsyncMock()
     event_data = {
         "user_id": user_id,
         "event": "task_completed",
-        "metadata": {
-            "task_name": "Test Task"
-        }
+        "metadata": {"task_name": "Test Task"},
     }
-    
-    await analytics_service.update_realtime_metrics(user_id, event_data)
-    
-    # 3. Verification: Check metrics again
-    # Use a new session or refresh
-    db_session.refresh(saved_metric)
-    
-    # Daily counters should be reset (and then incremented by the event)
-    # tasks_completed_today was 10. Reset to 0. Plus 1 for this event. Result: 1.
-    assert saved_metric.tasks_completed_today == 1 
-    
-    # Other daily counters should be 0 since this event didn't touch them
+
+    with patch("backend.services.analytics_service.get_db", return_value=MockDbGen(mock_db)):
+        with patch.object(analytics_service, "get_realtime_metrics", new=AsyncMock(return_value=saved_metric)):
+            with patch(
+                "backend.services.enhanced_ai_intelligence_service.enhanced_ai_intelligence_service.update_score_realtime",
+                new=AsyncMock(),
+            ):
+                with patch("backend.realtime.socket_manager.broadcast_analytics_update", new=AsyncMock()):
+                    await analytics_service.update_realtime_metrics(user_id, event_data)
+
+    # Daily counters are reset first, then the task_completed event increments tasks by 1.
+    assert saved_metric.tasks_completed_today == 1
     assert saved_metric.focus_sessions_today == 0
     assert saved_metric.habits_completed_today == 0
-    
-    # Persistent counters should remain
-    assert saved_metric.focus_score == 80 # Event didn't change it (or maybe small bump?)
-    # task_completed does not bump focus score in current logic? 
-    # Let's check logic: 
-    # elif event_type == "task_completed": ... logic ...
-    # It does NOT update focus_score. So it should be stable.
-    assert saved_metric.current_habit_streak == 5
-    
-    print("\n✅ Daily reset test passed!")
 
+    # Long-term counters remain unchanged for this event type.
+    assert saved_metric.focus_score == 80
+    assert saved_metric.current_habit_streak == 5

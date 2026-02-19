@@ -1,21 +1,43 @@
-import pytest
 import os
+from pathlib import Path
+from typing import Generator
+
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from typing import Generator
+
+
+def _to_async_database_url(url: str) -> str:
+    """Convert sync SQLite URL to async SQLAlchemy URL for app imports."""
+    if url.startswith("sqlite+aiosqlite://"):
+        return url
+    if url.startswith("sqlite:///"):
+        return url.replace("sqlite:///", "sqlite+aiosqlite:///", 1)
+    return url
+
+
+def _to_sync_database_url(url: str) -> str:
+    """Convert async SQLite URL to sync SQLAlchemy URL for test fixtures."""
+    if url.startswith("sqlite+aiosqlite:///"):
+        return url.replace("sqlite+aiosqlite:///", "sqlite:///", 1)
+    return url
 
 
 # Test database configuration
-TEST_DATABASE_URL = os.getenv(
-    "TEST_DATABASE_URL",
-    "sqlite:///./test.db"
-)
+DEFAULT_TEST_DB_PATH = (Path(__file__).resolve().parent / "test.db").as_posix()
+TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", f"sqlite:///{DEFAULT_TEST_DB_PATH}")
+ASYNC_TEST_DATABASE_URL = _to_async_database_url(TEST_DATABASE_URL)
+SYNC_TEST_DATABASE_URL = _to_sync_database_url(TEST_DATABASE_URL)
+
+# Ensure backend settings resolve an async DB URL during imports.
+os.environ["TESTING"] = "true"
+os.environ["DATABASE_URL"] = ASYNC_TEST_DATABASE_URL
 
 # Create test engine
 test_engine = create_engine(
-    TEST_DATABASE_URL,
-    connect_args={"check_same_thread": False} if "sqlite" in TEST_DATABASE_URL else {}
+    SYNC_TEST_DATABASE_URL,
+    connect_args={"check_same_thread": False} if "sqlite" in SYNC_TEST_DATABASE_URL else {},
 )
 
 TestingSessionLocal = sessionmaker(
@@ -28,8 +50,9 @@ TestingSessionLocal = sessionmaker(
 @pytest.fixture(scope="session")
 def db_setup():
     """Setup and teardown test database"""
-    # Create all tables
+    # Recreate schema to avoid stale rows between runs.
     from backend.db.models import Base
+    Base.metadata.drop_all(bind=test_engine)
     Base.metadata.create_all(bind=test_engine)
     
     yield
@@ -267,4 +290,4 @@ def pytest_configure(config):
 
 # Test environment setup
 os.environ["TESTING"] = "true"
-os.environ["DATABASE_URL"] = TEST_DATABASE_URL
+os.environ["DATABASE_URL"] = ASYNC_TEST_DATABASE_URL

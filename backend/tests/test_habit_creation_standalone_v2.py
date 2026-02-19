@@ -23,15 +23,17 @@ async def test_get_user_habits(mock_db_session):
     
     # Mock habit data
     created_at = datetime.utcnow()
-    # Row structure matches what planner_service expects from raw SQL
-    mock_habit_row = (
-        1, "Test Habit", "Description", 
-        {"streak": 5, "frequency": "daily", "lastCompleted": "2024-01-01"}, 
-        created_at
-    )
+    mock_plan = MagicMock()
+    mock_plan.id = 1
+    mock_plan.name = "Test Habit"
+    mock_plan.description = "Description"
+    mock_plan.schedule = {"streak": 5, "frequency": "daily", "lastCompleted": "2024-01-01"}
+    mock_plan.created_at = created_at
     
     mock_result = MagicMock()
-    mock_result.fetchall.return_value = [mock_habit_row]
+    mock_scalars = MagicMock()
+    mock_scalars.all.return_value = [mock_plan]
+    mock_result.scalars.return_value = mock_scalars
     
     # Setup the mock session to return our result
     mock_db_session.execute.return_value = mock_result

@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import datetime, timezone
 from backend.services.planner_service import PlannerService
 
 @pytest.mark.asyncio
@@ -20,11 +21,15 @@ async def test_manual_goal_creation_no_cascade():
     
     # Mock DB
     mock_db = AsyncMock()
-    mock_goal = MagicMock()
-    mock_goal.id = 123
-    mock_goal.title = goal_data["title"]
-    mock_goal.target_date = None # simplified
-    mock_goal.created_at = None
+    mock_db.add = MagicMock()
+
+    async def _refresh_side_effect(goal):
+        goal.id = 123
+        goal.title = goal_data["title"]
+        goal.target_date = datetime(2023, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
+        goal.created_at = datetime.now(timezone.utc)
+
+    mock_db.refresh.side_effect = _refresh_side_effect
     
     # Mock get_db
     with patch("backend.services.planner_service.get_db") as mock_get_db:

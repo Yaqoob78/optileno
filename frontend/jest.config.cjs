@@ -9,7 +9,12 @@ module.exports = {
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
   },
   transform: {
-    '^.+\\.tsx?$': 'ts-jest',
+    '^.+\\.tsx?$': ['ts-jest', {
+      tsconfig: {
+        jsx: 'react-jsx',
+        esModuleInterop: true,
+      },
+    }],
   },
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
   collectCoverageFrom: [
@@ -28,12 +33,4 @@ module.exports = {
   },
   testPathIgnorePatterns: ['/node_modules/', '/dist/'],
   moduleDirectories: ['node_modules', '<rootDir>/src'],
-  globals: {
-    'ts-jest': {
-      tsconfig: {
-        jsx: 'react-jsx',
-        esModuleInterop: true,
-      },
-    },
-  },
 };

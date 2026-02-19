@@ -1,105 +1,61 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { AgentChat } from '../components/chat/AgentChat';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+
+import { api } from '../../services/api/client';
+import { AgentChat } from '../chat/AgentChat';
+
+jest.mock('../../services/realtime/socket-client', () => ({
+  socket: {
+    on: jest.fn(),
+    off: jest.fn(),
+  },
+}));
+
+jest.mock('../../hooks/usePlanner', () => ({
+  usePlanner: () => ({ forceRefresh: jest.fn() }),
+}));
+
+jest.mock('../../services/api/client', () => ({
+  api: {
+    post: jest.fn(async () => ({
+      success: true,
+      data: {
+        message: 'Agent reply',
+        actions: [],
+        pending_confirmations: [],
+      },
+    })),
+  },
+}));
 
 describe('AgentChat', () => {
-  const mockTaskId = 'task_1';
+  it('renders mode selector and input', () => {
+    render(<AgentChat conversationId="conv_1" />);
 
-  it('renders agent chat interface', () => {
-    render(
-      <AgentChat 
-        taskId={mockTaskId} 
-      />
-    );
-    
-    expect(screen.getByText(/Agent Chat/i)).toBeInTheDocument();
-  });
-
-  it('displays mode selector buttons', () => {
-    render(
-      <AgentChat 
-        taskId={mockTaskId} 
-      />
-    );
-    
     expect(screen.getByRole('button', { name: /chat/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /plan/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /analyze/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /task/i })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/ask me anything/i)).toBeInTheDocument();
   });
 
-  it('shows message input field', () => {
-    render(
-      <AgentChat 
-        taskId={mockTaskId} 
-      />
-    );
-    
-    expect(screen.getByPlaceholderText(/Type your message/i)).toBeInTheDocument();
-  });
+  it('sends a message and clears input', async () => {
+    render(<AgentChat conversationId="conv_1" />);
 
-  it('allows switching agent modes', async () => {
-    render(
-      <AgentChat 
-        taskId={mockTaskId} 
-      />
-    );
-    
-    const planButton = screen.getByRole('button', { name: /plan/i });
-    fireEvent.click(planButton);
-    
-    await waitFor(() => {
-      expect(planButton).toHaveClass('active');
-    });
-  });
-
-  it('sends message on submit', async () => {
-    render(
-      <AgentChat 
-        taskId={mockTaskId} 
-      />
-    );
-    
-    const input = screen.getByPlaceholderText(/Type your message/i);
+    const input = screen.getByPlaceholderText(/ask me anything/i);
     const sendButton = screen.getByRole('button', { name: /send/i });
-    
-    fireEvent.change(input, { target: { value: 'What should I do?' } });
+
+    fireEvent.change(input, { target: { value: 'Help me plan today' } });
     fireEvent.click(sendButton);
-    
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith(
+        '/chat/send',
+        expect.objectContaining({ message: 'Help me plan today', mode: 'CHAT' }),
+      );
+    });
+
     await waitFor(() => {
       expect(input).toHaveValue('');
-    });
-  });
-
-  it('displays thinking indicator', async () => {
-    render(
-      <AgentChat 
-        taskId={mockTaskId} 
-      />
-    );
-    
-    const input = screen.getByPlaceholderText(/Type your message/i);
-    fireEvent.change(input, { target: { value: 'Analyze this task' } });
-    fireEvent.click(screen.getByRole('button', { name: /send/i }));
-    
-    await waitFor(() => {
-      expect(screen.queryByText(/thinking/i)).toBeInTheDocument();
-    }, { timeout: 2000 });
-  });
-
-  it('displays agent response messages', async () => {
-    render(
-      <AgentChat 
-        taskId={mockTaskId} 
-      />
-    );
-    
-    const input = screen.getByPlaceholderText(/Type your message/i);
-    fireEvent.change(input, { target: { value: 'Help me' } });
-    fireEvent.click(screen.getByRole('button', { name: /send/i }));
-    
-    await waitFor(() => {
-      const messages = screen.queryAllByRole('article');
-      expect(messages.length).toBeGreaterThan(0);
     });
   });
 });

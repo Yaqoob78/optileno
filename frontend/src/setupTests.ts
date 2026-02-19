@@ -1,4 +1,8 @@
 import '@testing-library/jest-dom';
+import { TextDecoder, TextEncoder } from 'util';
+
+(global as any).TextEncoder = TextEncoder;
+(global as any).TextDecoder = TextDecoder;
 
 // Mock Socket.IO
 jest.mock('socket.io-client', () => {
@@ -29,6 +33,11 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 // Mock IntersectionObserver
+Object.defineProperty(window.HTMLElement.prototype, 'scrollIntoView', {
+  writable: true,
+  value: jest.fn(),
+});
+
 global.IntersectionObserver = class IntersectionObserver {
   constructor() {}
   disconnect() {}
