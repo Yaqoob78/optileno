@@ -272,20 +272,41 @@ async def get_ai_trajectory(
 @router.get("/focus/today")
 async def get_focus_today(user = Depends(get_current_user)):
     """Get today's focus score with breakdown"""
-    from backend.services.attention_integrity_service import attention_integrity_service
-    from datetime import date
-    
-    score_data = await attention_integrity_service.calculate_attention_integrity(user.id, date.today())
-    return score_data
+    try:
+        from backend.services.attention_integrity_service import attention_integrity_service
+        from datetime import date
+
+        score_data = await attention_integrity_service.calculate_attention_integrity(user.id, date.today())
+        return score_data
+    except Exception as e:
+        logger.error("Focus today failed for user %s: %s", user.id, e, exc_info=True)
+        return _fallback_payload(
+            "Focus score is temporarily unavailable.",
+            date=datetime.utcnow().date().isoformat(),
+            score=0,
+            breakdown={},
+            activities=[],
+            color={"color": "#2a2a2a", "label": "Inactive"},
+        )
 
 
 @router.get("/focus/weekly")
 async def get_focus_weekly(user = Depends(get_current_user)):
     """Get weekly focus scores (last 7 days)"""
-    from backend.services.attention_integrity_service import attention_integrity_service
-    
-    weekly_data = await attention_integrity_service.get_weekly_average(user.id)
-    return weekly_data
+    try:
+        from backend.services.attention_integrity_service import attention_integrity_service
+
+        weekly_data = await attention_integrity_service.get_weekly_average(user.id)
+        return weekly_data
+    except Exception as e:
+        logger.error("Focus weekly failed for user %s: %s", user.id, e, exc_info=True)
+        return _fallback_payload(
+            "Weekly focus data is temporarily unavailable.",
+            daily_scores=[],
+            weekly_average=0,
+            peak_day=None,
+            lowest_day=None,
+        )
 
 
 @router.get("/focus/heatmap")
@@ -771,9 +792,37 @@ async def get_behavior_timeline(
         from backend.services.behavior_timeline_service import behavior_timeline_service
         return await behavior_timeline_service.get_timeline(current_user.id, days)
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get behavior timeline: {str(e)}"
+        logger.error("Behavior timeline failed for user %s: %s", current_user.id, e, exc_info=True)
+        return _fallback_payload(
+            "Behavior timeline is temporarily unavailable.",
+            timeline=[],
+            summary={
+                "active_days": 0,
+                "absent_days": max(days, 0),
+                "engagement_rate": 0,
+                "longest_streak": 0,
+                "current_streak": 0,
+                "flow_days": 0,
+                "interventions_triggered": 0,
+                "dominant_pattern": "Insufficient data",
+                "anti_quit": {
+                    "profile": "maker",
+                    "current_state": "STABLE",
+                    "quit_probability": 0,
+                    "risk_level": "low",
+                    "warning_label": "Behavior is stable.",
+                    "confidence": 0.2,
+                    "evidence": [],
+                },
+            },
+            meta={
+                "start_date": datetime.utcnow().date().isoformat(),
+                "end_date": datetime.utcnow().date().isoformat(),
+                "days": days,
+                "score_version": "v3",
+                "source": "fallback",
+                "generated_at": datetime.utcnow().isoformat(),
+            },
         )
 
 
@@ -838,9 +887,9 @@ async def get_ai_intelligence(
     Supports daily, weekly, and monthly contexts.
     """
     _require_ultra(current_user, "ai_intelligence")
-    if settings.ANALYTICS_V2_ENABLED:
-        return await analytics_v2_service.ai_intelligence(current_user, time_range)
     try:
+        if settings.ANALYTICS_V2_ENABLED:
+            return await analytics_v2_service.ai_intelligence(current_user, time_range)
         from backend.services.enhanced_ai_intelligence_service import enhanced_ai_intelligence_service
         result = await enhanced_ai_intelligence_service.get_score(current_user.id, time_range)
         if isinstance(result, dict):
@@ -851,9 +900,7 @@ async def get_ai_intelligence(
             result.setdefault("generated_at", datetime.utcnow().isoformat())
         return result
     except Exception as e:
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Error calculating AI intelligence for user {current_user.id}: {e}", exc_info=True)
+        logger.error("Error calculating AI intelligence for user %s: %s", current_user.id, e, exc_info=True)
         # Return fallback data to prevent frontend crash
         return {
             "ready": False,
@@ -947,8 +994,24 @@ async def get_goal_progress_report(
             str(goal_id) if goal_id else None
         )
         return report
-    except HTTPException:
-        raise
+    except HTTPException as exc:
+        if exc.status_code < 500:
+            raise
+        logger.error("Goal progress failed for user %s: %s", current_user.id, exc, exc_info=True)
+        return _fallback_payload(
+            "Goal progress is temporarily unavailable.",
+            goals=[],
+            summary={
+                "total_goals": 0,
+                "completed_goals": 0,
+                "overall_progress": 0,
+                "avg_confidence": 0,
+            },
+            score_version=analytics_v2_service.SCORE_VERSION,
+            source="fallback",
+            confidence=0.2,
+            time_range=time_range,
+        )
     except Exception as e:
         logger.error("Goal progress failed for user %s: %s", current_user.id, e, exc_info=True)
         return _fallback_payload(

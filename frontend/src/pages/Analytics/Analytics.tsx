@@ -333,18 +333,26 @@ export default function AnalyticsPage() {
   // Handle refresh
   const handleRefresh = async () => {
     setLoading(true);
-    await fetchAnalytics();
+    try {
+      await fetchAnalytics();
+    } catch (error) {
+      console.error('Failed to refresh analytics:', error);
+    }
     setTimeout(() => setLoading(false), 800);
   };
 
   // Handle time range change
-  const handleTimeRangeChange = (range: 'daily' | 'weekly' | 'monthly' | 'yearly') => {
+  const handleTimeRangeChange = async (range: 'daily' | 'weekly' | 'monthly' | 'yearly') => {
     setTimeRange(range);
     if (range === 'yearly') {
       // Show yearly message
       return;
     }
-    fetchHistoricalAnalytics(range);
+    try {
+      await fetchHistoricalAnalytics(range);
+    } catch (error) {
+      console.error(`Failed to fetch ${range} analytics:`, error);
+    }
   };
 
   return (

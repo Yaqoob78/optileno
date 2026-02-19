@@ -332,27 +332,11 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Validate incoming requests."""
 
-        # Check Content-Type for POST/PUT/PATCH
-        if request.method in ["POST", "PUT", "PATCH"]:
-            content_type = request.headers.get("content-type", "")
-
-            if not any(ct in content_type for ct in [
-                "application/json",
-                "multipart/form-data",
-                "application/x-www-form-urlencoded",
-            ]):
-                middleware_metrics.validation_failures += 1
-                logger.warning(f"Invalid Content-Type: {content_type}")
-                return Response(
-                    content='{"error": "Invalid Content-Type"}',
-                    status_code=415,
-                    media_type="application/json"
-                )
-
-        # Check content length
-        content_length = request.headers.get("content-length", "0")
+        # Check content length first
+        content_length_raw = request.headers.get("content-length", "0")
+        content_length = 0
         try:
-            content_length = int(content_length)
+            content_length = int(content_length_raw)
             if content_length > self.MAX_BODY_SIZE:
                 middleware_metrics.validation_failures += 1
                 logger.warning(f"Request body too large: {content_length}")
@@ -362,7 +346,29 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
                     media_type="application/json"
                 )
         except ValueError:
-            pass
+            # Unknown content length (for example, chunked transfer).
+            content_length = -1
+
+        # Check Content-Type for POST/PUT/PATCH when a request body is present.
+        # Empty-body POSTs (for example /auth/logout) should not require a content type.
+        if request.method in ["POST", "PUT", "PATCH"]:
+            transfer_encoding = (request.headers.get("transfer-encoding") or "").strip().lower()
+            has_body = content_length > 0 or transfer_encoding not in ("", "identity")
+
+            if has_body:
+                content_type = request.headers.get("content-type", "")
+                if not any(ct in content_type for ct in [
+                    "application/json",
+                    "multipart/form-data",
+                    "application/x-www-form-urlencoded",
+                ]):
+                    middleware_metrics.validation_failures += 1
+                    logger.warning(f"Invalid Content-Type: {content_type}")
+                    return Response(
+                        content='{"error": "Invalid Content-Type"}',
+                        status_code=415,
+                        media_type="application/json"
+                    )
 
         # Check query parameters for injection (lightweight check)
         for key, value in request.query_params.items():
