@@ -1,23 +1,70 @@
 {
-  "name": "Optileno — AI Life Operating System",
+  "id": "/",
+  "name": "Optileno - AI Life Operating System",
   "short_name": "Optileno",
-  "description": "Optileno transforms your goals, habits, and time into measurable performance insights using AI-powered analytics and intelligent planning systems.",
+  "description": "Optileno turns goals, planning, and focus into measurable AI-powered progress.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#060a18",
+  "display_override": [
+    "standalone",
+    "minimal-ui",
+    "browser"
+  ],
+  "orientation": "portrait",
+  "background_color": "#0b1220",
   "theme_color": "#0b1220",
+  "categories": [
+    "productivity",
+    "business",
+    "education"
+  ],
   "icons": [
     {
-      "src": "/android-chrome-192x192.png",
+      "src": "/pwa-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/android-chrome-512x512.png",
+      "src": "/pwa-maskable-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/pwa-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Chat Leno",
+      "short_name": "Chat",
+      "url": "/chat-leno"
+    },
+    {
+      "name": "Plan Tasks",
+      "short_name": "Planner",
+      "url": "/plan-task"
+    },
+    {
+      "name": "Show Analytics",
+      "short_name": "Analytics",
+      "url": "/show-analytics"
+    },
+    {
+      "name": "Goal Progress",
+      "short_name": "Goals",
+      "url": "/goal-progress"
     }
   ]
 }

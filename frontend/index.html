@@ -4,11 +4,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Optileno — AI Life Operating System for Performance & Goal Intelligence</title>
+  <title>Optileno - AI Planning, Chat Leno, Analytics and Goal Progress</title>
   <meta name="description"
-    content="Optileno transforms your goals, habits, and time into measurable performance insights using AI-powered analytics and intelligent planning systems." />
+    content="Optileno is an AI productivity operating system with Chat Leno, planning, analytics, dashboard intelligence, and goal progress tracking." />
   <meta name="keywords"
-    content="Optileno, AI productivity, performance intelligence, goal analytics, habit tracking, focus optimization, deep work planner" />
+    content="Optileno, Chat Leno, AI planner, productivity dashboard, goal progress, focus heatmap, burnout risk analytics" />
   <meta name="author" content="Optileno" />
   <meta name="application-name" content="Optileno" />
   <meta name="theme-color" content="#0b1220" />
@@ -28,20 +28,22 @@
 
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Optileno" />
-  <meta property="og:title" content="Optileno — AI Life Operating System for Performance & Goal Intelligence" />
+  <meta property="og:title" content="Optileno - AI Planning, Chat Leno, Analytics and Goal Progress" />
   <meta property="og:description"
-    content="Optileno transforms your goals, habits, and time into measurable performance insights using AI-powered analytics and intelligent planning systems." />
+    content="AI productivity platform with chat, planning, analytics, and transparent goal progress intelligence." />
   <meta property="og:url" content="https://www.optileno.com/" />
   <meta property="og:image" content="https://www.optileno.com/social-preview.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Optileno AI performance intelligence platform preview" />
+  <meta property="og:locale" content="en_US" />
 
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Optileno — AI Life Operating System for Performance & Goal Intelligence" />
+  <meta name="twitter:title" content="Optileno - AI Planning, Chat Leno, Analytics and Goal Progress" />
   <meta name="twitter:description"
-    content="Optileno transforms your goals, habits, and time into measurable performance insights using AI-powered analytics and intelligent planning systems." />
+    content="AI productivity platform with chat, planning, analytics, and transparent goal progress intelligence." />
   <meta name="twitter:image" content="https://www.optileno.com/social-preview.png" />
+  <meta name="twitter:site" content="@optilenoai" />
 
   <script type="application/ld+json">
     {
@@ -51,21 +53,66 @@
           "@type": "Organization",
           "name": "Optileno",
           "url": "https://www.optileno.com/",
-          "logo": "https://www.optileno.com/android-chrome-512x512.png"
+          "logo": "https://www.optileno.com/pwa-512x512.png",
+          "sameAs": [
+            "https://www.instagram.com/optilenoai",
+            "https://x.com/optilenoai"
+          ]
         },
         {
           "@type": "WebSite",
           "name": "Optileno",
           "url": "https://www.optileno.com/",
-          "description": "Optileno transforms your goals, habits, and time into measurable performance insights using AI-powered analytics and intelligent planning systems."
+          "description": "Optileno is an AI productivity operating system for planning, analytics, and goal execution.",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://www.optileno.com/?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
         },
         {
-          "@type": "SoftwareApplication",
+          "@type": "WebApplication",
           "name": "Optileno",
-          "applicationCategory": "BusinessApplication",
+          "applicationCategory": "ProductivityApplication",
           "operatingSystem": "Web",
           "url": "https://www.optileno.com/",
-          "description": "AI Life Operating System for performance and goal intelligence."
+          "description": "AI productivity platform for chat, planning, analytics, and goal progress."
+        },
+        {
+          "@type": "ItemList",
+          "name": "Primary Optileno Pages",
+          "itemListElement": [
+            {
+              "@type": "SiteNavigationElement",
+              "position": 1,
+              "name": "Chat Leno",
+              "url": "https://www.optileno.com/chat-leno"
+            },
+            {
+              "@type": "SiteNavigationElement",
+              "position": 2,
+              "name": "Plan Task",
+              "url": "https://www.optileno.com/plan-task"
+            },
+            {
+              "@type": "SiteNavigationElement",
+              "position": 3,
+              "name": "Show Analytics",
+              "url": "https://www.optileno.com/show-analytics"
+            },
+            {
+              "@type": "SiteNavigationElement",
+              "position": 4,
+              "name": "Dashboard",
+              "url": "https://www.optileno.com/dashboard-preview"
+            },
+            {
+              "@type": "SiteNavigationElement",
+              "position": 5,
+              "name": "Goal Progress",
+              "url": "https://www.optileno.com/goal-progress"
+            }
+          ]
         }
       ]
     }
@@ -74,10 +121,7 @@
 </head>
 
 <body>
-  <!-- THIS ID MUST MATCH main.tsx -->
   <div id="root"></div>
-
-  <!-- THIS PATH MUST BE CORRECT -->
   <script type="module" src="/src/main.tsx"></script>
 </body>
 

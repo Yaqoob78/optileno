@@ -455,6 +455,9 @@
     top: 0;
     bottom: 0;
     z-index: 50;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: linear-gradient(180deg, #0b1220 0%, #0f172a 100%);
     box-shadow:
       12px 0 60px rgba(0, 0, 0, 0.5),
       1px 0 0 rgba(255, 255, 255, 0.05) inset;
@@ -600,8 +603,11 @@
     top: 0;
     bottom: 0;
     z-index: 100;
-    width: 260px !important;
+    width: 280px !important;
     max-width: 80vw;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: linear-gradient(180deg, #0b1220 0%, #0f172a 100%);
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
   }
 
@@ -633,6 +639,10 @@
     padding: 0.5rem 0.75rem;
     border-radius: 0.625rem;
     margin-bottom: 0.125rem;
+  }
+
+  .nav-menu-item:hover {
+    transform: none;
   }
 
   .nav-menu-icon {

@@ -50,6 +50,11 @@
 
 /* ========== RESPONSIVE DESIGN ========== */
 @media (max-width: 768px) {
+  .chat-container {
+    height: 100%;
+    min-height: calc(100dvh - 3.5rem);
+  }
+
   .chat-messages-area {
     padding: var(--space-4) 0;
   }

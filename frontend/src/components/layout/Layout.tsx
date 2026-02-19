@@ -40,6 +40,36 @@ export default function Layout() {
     }
   }, [location.pathname, isMobile]);
 
+  // Lock background scroll when mobile sidebar is open.
+  useEffect(() => {
+    if (!isMobile) {
+      document.body.style.overflow = "";
+      return;
+    }
+
+    document.body.style.overflow = sidebarOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isMobile, sidebarOpen]);
+
+  useEffect(() => {
+    if (!isMobile || !sidebarOpen) {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isMobile, sidebarOpen]);
+
 
   // CORRECTED MENU ORDER: Chat → Planner → Analytics → Settings → Dashboard
   const menuItems: MenuItem[] = [
@@ -105,7 +135,7 @@ export default function Layout() {
   };
 
   return (
-    <div className="layout-container">
+    <div className={`layout-container ${isMobile && sidebarOpen ? "mobile-sidebar-active" : ""}`}>
       {/* Luxury Background Texture */}
       <div className="layout-background" />
 
@@ -114,6 +144,7 @@ export default function Layout() {
         <div
           className="mobile-sidebar-overlay"
           onClick={() => setSidebarOpen(false)}
+          aria-label="Close sidebar"
         />
       )}
 
@@ -122,7 +153,7 @@ export default function Layout() {
         <motion.div
           className={`layout-sidebar-wrapper ${isMobile && sidebarOpen ? 'mobile-open' : ''}`}
           animate={{
-            width: isMobile ? 260 : (sidebarOpen ? 260 : 70)
+            width: isMobile ? 280 : (sidebarOpen ? 260 : 70)
           }}
           transition={{ duration: 0.3 }}
         >

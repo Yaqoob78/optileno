@@ -14,6 +14,7 @@ const Register = lazy(() => import("../pages/Auth/Register"));
 const ForgotPassword = lazy(() => import("../pages/Auth/ForgotPassword"));
 const ResetPassword = lazy(() => import("../pages/Auth/ResetPassword"));
 const Landing = lazy(() => import("../pages/Landing/Landing"));
+const FeaturePage = lazy(() => import("../pages/Marketing/FeaturePage"));
 const TermsOfService = lazy(() => import("../pages/Legal/TermsOfService"));
 const PrivacyPolicy = lazy(() => import("../pages/Legal/PrivacyPolicy"));
 const RefundPolicy = lazy(() => import("../pages/Legal/RefundPolicy"));
@@ -45,6 +46,11 @@ export default function AppRoutes() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/chat-leno" element={<FeaturePage featureKey="chat-leno" />} />
+        <Route path="/plan-task" element={<FeaturePage featureKey="plan-task" />} />
+        <Route path="/show-analytics" element={<FeaturePage featureKey="show-analytics" />} />
+        <Route path="/dashboard-preview" element={<FeaturePage featureKey="dashboard-preview" />} />
+        <Route path="/goal-progress" element={<FeaturePage featureKey="goal-progress" />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/terms" element={<TermsOfService />} />

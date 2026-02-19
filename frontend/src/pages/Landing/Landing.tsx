@@ -490,6 +490,14 @@ export default function Landing() {
       </main>
 
       <footer className="landing-footer" style={{ position: 'relative', zIndex: 10, padding: '2rem', textAlign: 'center', borderTop: '1px solid rgba(255, 255, 255, 0.05)', background: 'rgba(2, 6, 23, 0.8)', backdropFilter: 'blur(10px)' }}>
+        <div className="footer-links" style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+          <a href="/chat-leno" style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.78rem', textDecoration: 'none' }}>Chat Leno</a>
+          <a href="/plan-task" style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.78rem', textDecoration: 'none' }}>Plan Task</a>
+          <a href="/show-analytics" style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.78rem', textDecoration: 'none' }}>Show Analytics</a>
+          <a href="/dashboard-preview" style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.78rem', textDecoration: 'none' }}>Dashboard</a>
+          <a href="/goal-progress" style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.78rem', textDecoration: 'none' }}>Goal Progress</a>
+        </div>
+
         <div className="footer-links" style={{ display: 'flex', justifyContent: 'center', gap: '1.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
           <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', textDecoration: 'none' }}>Terms & Conditions</a>
           <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', textDecoration: 'none' }}>Privacy Policy</a>
