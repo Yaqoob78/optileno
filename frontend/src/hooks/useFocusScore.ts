@@ -13,13 +13,13 @@ interface FocusBreakdown {
 }
 
 interface FocusScore {
-    score: number;
+    score: number | null;
     date: string;
     total_minutes: number;
     heatmap_average: number;
     breakdown: FocusBreakdown;
-    grade: string;
-    status: string;
+    grade: string | null;
+    status: string | null;
 }
 
 interface FocusAverageData {
@@ -73,21 +73,25 @@ export function useFocusScore(timeRange: 'daily' | 'weekly' | 'monthly' = 'daily
                 throw new Error(todayResponse.error?.message || 'Failed to fetch focus score');
             }
             const todayPayload = todayResponse.data as any;
+            const parsedScore =
+                todayPayload.score === null || todayPayload.score === undefined || Number.isNaN(Number(todayPayload.score))
+                    ? null
+                    : Number(todayPayload.score);
             const normalizedBreakdown: FocusBreakdown = {
                 session_duration: Number(todayPayload.breakdown?.session_duration ?? todayPayload.breakdown?.deep_work_component ?? 0),
                 session_quality: Number(todayPayload.breakdown?.session_quality ?? todayPayload.breakdown?.task_component ?? 0),
                 consistency: Number(todayPayload.breakdown?.consistency ?? todayPayload.breakdown?.goal_alignment_component ?? 0),
-                peak_performance: Number(todayPayload.breakdown?.peak_performance ?? todayPayload.score ?? 0),
+                peak_performance: Number(todayPayload.breakdown?.peak_performance ?? parsedScore ?? 0),
                 distraction_resistance: Number(todayPayload.breakdown?.distraction_resistance ?? 0),
             };
             setScore({
-                score: Number(todayPayload.score ?? 0),
+                score: parsedScore,
                 date: todayPayload.period_end || todayPayload.date || new Date().toISOString(),
                 total_minutes: Number(todayPayload.total_minutes ?? todayPayload.inputs?.deep_work_minutes ?? 0),
-                heatmap_average: Number(todayPayload.heatmap_average ?? todayPayload.score ?? 0),
+                heatmap_average: Number(todayPayload.heatmap_average ?? parsedScore ?? 0),
                 breakdown: normalizedBreakdown,
-                grade: String(todayPayload.grade || todayPayload.source || 'Live'),
-                status: String(todayPayload.status || todayPayload.level || 'Active'),
+                grade: todayPayload.grade || null,
+                status: todayPayload.status || todayPayload.level || null,
             });
 
             // Fetch weekly average if needed
@@ -95,12 +99,17 @@ export function useFocusScore(timeRange: 'daily' | 'weekly' | 'monthly' = 'daily
                 const weeklyResponse = await api.get<FocusAverageData>('/analytics/focus/score/weekly');
                 if (weeklyResponse.success && weeklyResponse.data) {
                     const weeklyPayload = weeklyResponse.data as any;
-                    setWeeklyAverage({
-                        average_score: Number(weeklyPayload.average_score ?? weeklyPayload.score ?? 0),
-                        average_minutes: Number(weeklyPayload.average_minutes ?? 0),
-                        period: weeklyPayload.period || 'weekly',
-                        days: Number(weeklyPayload.days ?? 7),
-                    });
+                    const weeklyRaw = weeklyPayload.average_score ?? weeklyPayload.score ?? null;
+                    if (weeklyRaw === null || weeklyRaw === undefined || Number.isNaN(Number(weeklyRaw))) {
+                        setWeeklyAverage(null);
+                    } else {
+                        setWeeklyAverage({
+                            average_score: Number(weeklyRaw),
+                            average_minutes: Number(weeklyPayload.average_minutes ?? 0),
+                            period: weeklyPayload.period || 'weekly',
+                            days: Number(weeklyPayload.days ?? 7),
+                        });
+                    }
                 } else if (weeklyResponse.error?.code === 'HTTP_401') {
                     setWeeklyAverage(null);
                 }
@@ -111,18 +120,26 @@ export function useFocusScore(timeRange: 'daily' | 'weekly' | 'monthly' = 'daily
                 const monthlyResponse = await api.get<FocusAverageData>('/analytics/focus/score/monthly');
                 if (monthlyResponse.success && monthlyResponse.data) {
                     const monthlyPayload = monthlyResponse.data as any;
-                    setMonthlyAverage({
-                        average_score: Number(monthlyPayload.average_score ?? monthlyPayload.score ?? 0),
-                        average_minutes: Number(monthlyPayload.average_minutes ?? 0),
-                        period: monthlyPayload.period || 'monthly',
-                        days: Number(monthlyPayload.days ?? 30),
-                    });
+                    const monthlyRaw = monthlyPayload.average_score ?? monthlyPayload.score ?? null;
+                    if (monthlyRaw === null || monthlyRaw === undefined || Number.isNaN(Number(monthlyRaw))) {
+                        setMonthlyAverage(null);
+                    } else {
+                        setMonthlyAverage({
+                            average_score: Number(monthlyRaw),
+                            average_minutes: Number(monthlyPayload.average_minutes ?? 0),
+                            period: monthlyPayload.period || 'monthly',
+                            days: Number(monthlyPayload.days ?? 30),
+                        });
+                    }
                 } else if (monthlyResponse.error?.code === 'HTTP_401') {
                     setMonthlyAverage(null);
                 }
             }
         } catch (err: any) {
             console.error('Error fetching focus score:', err);
+            setScore(null);
+            setWeeklyAverage(null);
+            setMonthlyAverage(null);
             setError(err.message);
         } finally {
             setIsLoading(false);

@@ -48,7 +48,7 @@
 }
 
 .goal-max-count {
-    font-weight: 700;
+    font-weight: 600;
     color: #f59e0b;
 }
 
@@ -161,7 +161,7 @@
 
 .probability-score {
     font-size: 1.1rem;
-    font-weight: 800;
+    font-weight: 600;
     line-height: 1;
     font-variant-numeric: tabular-nums;
 }
@@ -506,7 +506,7 @@
 
 .goal-stat-value {
     font-size: 0.85rem;
-    font-weight: 800;
+    font-weight: 600;
     color: var(--text-primary, #f0f0f0);
     font-variant-numeric: tabular-nums;
 }

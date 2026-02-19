@@ -90,7 +90,10 @@ export function useProductivityScore(timeRange: 'daily' | 'weekly' | 'monthly' =
                 score: parsedScore,
                 date: todayPayload.period_end || todayPayload.date || new Date().toISOString(),
                 breakdown: normalizedBreakdown,
-                grade: String(todayPayload.grade || todayPayload.goal_band || (parsedScore === null ? 'No Data' : 'C')),
+                grade:
+                    parsedScore === null
+                        ? 'No Data'
+                        : String(todayPayload.grade || todayPayload.goal_band || 'Live'),
                 daily_intent: String(todayPayload.daily_intent || 'athlete'),
                 baseline_state: String(todayPayload.baseline_state || 'cold_start'),
                 reason_codes: Array.isArray(todayPayload.reason_codes) ? todayPayload.reason_codes : [],

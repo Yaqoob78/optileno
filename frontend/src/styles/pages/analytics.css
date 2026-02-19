@@ -514,7 +514,7 @@
 
 .stat-value {
   font-size: 2rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 0.25rem;
   line-height: 1;
@@ -880,7 +880,7 @@
 
 .score-value {
   font-size: 2rem;
-  font-weight: 700;
+  font-weight: 600;
   background: var(--gradient-primary);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;

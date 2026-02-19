@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import BehaviorTimeline from '../../components/analytics/BehaviorTimeline';
 import FocusHeatmap from '../../components/analytics/FocusHeatmap';
 import BigFiveProfile from '../../components/analytics/BigFiveProfile';
@@ -47,6 +47,8 @@ import { useTheme } from '../../hooks/useTheme';
 export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('weekly');
   const [loading, setLoading] = useState<boolean>(false);
+  const realtimeRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const realtimeRefreshInFlightRef = useRef(false);
   const { theme, setTheme } = useTheme();
   const resolvedTheme: 'dark' | 'light' =
     theme === 'auto'
@@ -56,6 +58,29 @@ export default function AnalyticsPage() {
 
   // Safe time range for hooks that don't support yearly yet
   const safeTimeRange = timeRange === 'yearly' ? 'monthly' : timeRange;
+  const nextYearReportDate = useMemo(() => {
+    const now = new Date();
+    const reportDate = new Date(now.getFullYear() + 1, 0, 1);
+    return reportDate.toLocaleDateString(undefined, {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  }, []);
+
+  const analyticsParticles = useMemo(() => {
+    const seeded = (seed: number) => {
+      const value = Math.sin(seed * 12.9898) * 43758.5453;
+      return value - Math.floor(value);
+    };
+
+    return Array.from({ length: 15 }, (_, index) => ({
+      key: index,
+      animationDelay: `${index * 0.15}s`,
+      left: `${(seeded(index + 1) * 100).toFixed(2)}%`,
+      top: `${(seeded(index + 101) * 100).toFixed(2)}%`,
+    }));
+  }, []);
 
   const { isUltra, user } = useUser();
   const bigFiveIntervalDays = Number((user as any)?.limits?.big_five_interval_days ?? (isUltra ? 7 : 14));
@@ -82,15 +107,29 @@ export default function AnalyticsPage() {
 
   // Subscribe to real-time analytics updates
   useEffect(() => {
-    const unsubscribeAnalytics = onAnalyticsUpdate(() => {
-      fetchAnalytics(); // Refresh analytics when update received
-    });
+    const queueRefresh = () => {
+      if (realtimeRefreshTimerRef.current) {
+        clearTimeout(realtimeRefreshTimerRef.current);
+      }
+      realtimeRefreshTimerRef.current = setTimeout(async () => {
+        if (realtimeRefreshInFlightRef.current) return;
+        realtimeRefreshInFlightRef.current = true;
+        try {
+          await fetchAnalytics();
+        } finally {
+          realtimeRefreshInFlightRef.current = false;
+        }
+      }, 300);
+    };
 
-    const unsubscribeInsight = onInsightGenerated(() => {
-      fetchAnalytics(); // Refresh analytics when new insight generated
-    });
+    const unsubscribeAnalytics = onAnalyticsUpdate(queueRefresh);
+    const unsubscribeInsight = onInsightGenerated(queueRefresh);
 
     return () => {
+      if (realtimeRefreshTimerRef.current) {
+        clearTimeout(realtimeRefreshTimerRef.current);
+        realtimeRefreshTimerRef.current = null;
+      }
       unsubscribeAnalytics?.();
       unsubscribeInsight?.();
     };
@@ -132,10 +171,6 @@ export default function AnalyticsPage() {
       return Math.round(productivityData.score);
     }
 
-    if (currentMetrics.productivityScore > 0) {
-      return Math.round(currentMetrics.productivityScore);
-    }
-
     return null;
   };
 
@@ -170,32 +205,30 @@ export default function AnalyticsPage() {
   const productivityColors = getProductivityColor(getDisplayScore());
 
   // Get real focus score (not hardcoded)
-  const getRealFocusScore = () => {
+  const getRealFocusScore = (): number | null => {
     if (timeRange === 'monthly' && monthlyFocusAvg !== null) {
-      if (typeof monthlyFocusAvg === 'object' && 'average_score' in monthlyFocusAvg) {
-        return Math.round(monthlyFocusAvg.average_score);
-      }
-      return Math.round(currentMetrics.focusScore || 0);
-    } else if (timeRange === 'weekly' && weeklyFocusAvg !== null) {
-      if (typeof weeklyFocusAvg === 'object' && 'average_score' in weeklyFocusAvg) {
-        return Math.round(weeklyFocusAvg.average_score);
-      }
-      return Math.round(currentMetrics.focusScore || 0);
-    } else if (focusData) {
+      return Math.round(monthlyFocusAvg.average_score);
+    }
+    if (timeRange === 'weekly' && weeklyFocusAvg !== null) {
+      return Math.round(weeklyFocusAvg.average_score);
+    }
+    if (focusData?.score !== null && focusData?.score !== undefined) {
       return Math.round(focusData.score);
     }
-    return Math.round(currentMetrics.focusScore || 0);
+    return null;
   };
 
-  const getFocusMinutes = () => {
+  const getFocusMinutes = (): number | null => {
     if (timeRange === 'monthly' && monthlyFocusAvg !== null) {
       return monthlyFocusAvg.average_minutes;
-    } else if (timeRange === 'weekly' && weeklyFocusAvg !== null) {
+    }
+    if (timeRange === 'weekly' && weeklyFocusAvg !== null) {
       return weeklyFocusAvg.average_minutes;
-    } else if (focusData) {
+    }
+    if (focusData?.score !== null && focusData?.score !== undefined) {
       return focusData.total_minutes;
     }
-    return Math.round(currentMetrics.averageFocusDuration || 0);
+    return null;
   };
 
   const currentFocusScore = getRealFocusScore();
@@ -213,7 +246,26 @@ export default function AnalyticsPage() {
     return { bg: '#8b5cf6', text: '#ffffff', glow: '0 0 10px rgba(139, 92, 246, 0.4)' };
   };
 
-  const focusColors = getFocusColor(currentFocusScore);
+  const focusColors = getFocusColor(currentFocusScore ?? 0);
+
+  const getBurnoutRiskValue = (): number | null => {
+    if (!isUltra) return null;
+    if (timeRange === 'monthly' && monthlyBurnoutData) return monthlyBurnoutData.average_risk;
+    if (timeRange === 'weekly' && weeklyBurnoutAvg) return weeklyBurnoutAvg.average_risk;
+    if (burnoutData?.risk !== null && burnoutData?.risk !== undefined) return burnoutData.risk;
+    return null;
+  };
+
+  const getBurnoutLevel = (): string | null => {
+    if (!isUltra) return null;
+    if (timeRange === 'monthly' && monthlyBurnoutData?.level) return monthlyBurnoutData.level;
+    if (timeRange === 'weekly' && weeklyBurnoutAvg?.level) return weeklyBurnoutAvg.level;
+    if (burnoutData?.level) return burnoutData.level;
+    return null;
+  };
+
+  const burnoutRiskValue = getBurnoutRiskValue();
+  const burnoutLevel = getBurnoutLevel();
 
   const stats = [
     {
@@ -245,58 +297,71 @@ export default function AnalyticsPage() {
     },
     {
       label: 'Focus Score',
-      value: focusLoading && currentFocusScore === 0 ? '...' : currentFocusScore.toString(),
-      change: focusData?.status || `${focusMinutes}m total`,
-      trend: currentFocusScore > 60 ? 'up' : currentFocusScore > 40 ? 'neutral' : 'down',
+      value:
+        focusLoading && currentFocusScore === null
+          ? '...'
+          : currentFocusScore === null
+            ? '--'
+            : currentFocusScore.toString(),
+      change: focusData?.status || (focusMinutes !== null ? `${focusMinutes}m total` : 'No Data Yet'),
+      trend:
+        currentFocusScore === null
+          ? 'neutral'
+          : currentFocusScore > 60
+            ? 'up'
+            : currentFocusScore > 40
+              ? 'neutral'
+              : 'down',
       icon: Clock,
-      progress: currentFocusScore,
-      subtitle: focusData?.grade ? `Grade: ${focusData.grade}` : undefined,
+      progress: currentFocusScore ?? 0,
+      subtitle:
+        currentFocusScore === null
+          ? 'Complete a task, habit, or deep work session to generate a focus score.'
+          : focusData?.grade
+            ? `Grade: ${focusData.grade}`
+            : undefined,
       customColors: focusColors
     },
     {
       label: 'Burnout Risk',
-      value: !isUltra ? 'Locked' : burnoutLoading ? '...' : (() => {
-        if (timeRange === 'monthly' && monthlyBurnoutData) return `${monthlyBurnoutData.average_risk.toFixed(0)}%`;
-        if (timeRange === 'weekly' && weeklyBurnoutAvg) return `${weeklyBurnoutAvg.average_risk.toFixed(0)}%`;
-        if (burnoutData) return `${burnoutData.risk.toFixed(0)}%`;
-        return '--';
-      })(),
+      value: !isUltra
+        ? 'Locked'
+        : burnoutLoading && burnoutRiskValue === null
+          ? '...'
+          : burnoutRiskValue === null
+            ? '--'
+            : `${burnoutRiskValue.toFixed(0)}%`,
       change: (() => {
         if (!isUltra) return 'Ultra only';
-        if (timeRange === 'monthly' && monthlyBurnoutData) return monthlyBurnoutData.level;
-        if (timeRange === 'weekly' && weeklyBurnoutAvg) return weeklyBurnoutAvg.level;
-        return burnoutData?.level || 'Low';
+        return burnoutLevel || 'No Data Yet';
       })(),
       trend: (() => {
-        if (!isUltra) return 'neutral';
-        const risk = timeRange === 'monthly' && monthlyBurnoutData ? monthlyBurnoutData.average_risk
-          : timeRange === 'weekly' && weeklyBurnoutAvg ? weeklyBurnoutAvg.average_risk
-            : burnoutData?.risk || 0;
-        return risk < 40 ? 'down' : risk < 60 ? 'neutral' : 'up';
+        if (!isUltra || burnoutRiskValue === null) return 'neutral';
+        return burnoutRiskValue < 40 ? 'down' : burnoutRiskValue < 60 ? 'neutral' : 'up';
       })(),
       icon: Activity,
       progress: (() => {
-        if (!isUltra) return 0;
-        const risk = timeRange === 'monthly' && monthlyBurnoutData ? monthlyBurnoutData.average_risk
-          : timeRange === 'weekly' && weeklyBurnoutAvg ? weeklyBurnoutAvg.average_risk
-            : burnoutData?.risk || 0;
-        return 100 - risk; // Invert for progress bar (lower risk = higher progress)
+        if (!isUltra || burnoutRiskValue === null) return 0;
+        return 100 - burnoutRiskValue; // Invert for progress bar (lower risk = higher progress)
       })(),
-      subtitle: burnoutData?.ai_insights?.[0] || monthlyBurnoutData?.note,
+      subtitle:
+        burnoutRiskValue === null
+          ? 'Keep using tasks, habits, and deep work to calibrate burnout risk.'
+          : burnoutData?.ai_insights?.[0] || monthlyBurnoutData?.note,
       customColors: (() => {
         if (!isUltra) {
           return { bg: 'rgba(148, 163, 184, 0.08)', text: '#94a3b8', glow: 'none' };
         }
-        const risk = timeRange === 'monthly' && monthlyBurnoutData ? monthlyBurnoutData.average_risk
-          : timeRange === 'weekly' && weeklyBurnoutAvg ? weeklyBurnoutAvg.average_risk
-            : burnoutData?.risk || 0;
+        if (burnoutRiskValue === null) {
+          return { bg: 'transparent', text: 'var(--text-muted)', glow: 'none' };
+        }
 
         // Inverted colors (low risk = green, high risk = red)
-        if (risk === 0) return { bg: 'rgba(16, 185, 129, 0.1)', text: '#10b981', glow: '0 0 10px rgba(16, 185, 129, 0.3)' };
-        if (risk <= 20) return { bg: 'rgba(16, 185, 129, 0.08)', text: '#059669', glow: 'none' };
-        if (risk <= 40) return { bg: 'transparent', text: 'var(--text-primary)', glow: 'none' };
-        if (risk <= 60) return { bg: 'rgba(251, 191, 36, 0.08)', text: '#f59e0b', glow: 'none' };
-        if (risk <= 80) return { bg: 'rgba(239, 68, 68, 0.08)', text: '#ef4444', glow: '0 0 8px rgba(239, 68, 68, 0.3)' };
+        if (burnoutRiskValue === 0) return { bg: 'rgba(16, 185, 129, 0.1)', text: '#10b981', glow: '0 0 10px rgba(16, 185, 129, 0.3)' };
+        if (burnoutRiskValue <= 20) return { bg: 'rgba(16, 185, 129, 0.08)', text: '#059669', glow: 'none' };
+        if (burnoutRiskValue <= 40) return { bg: 'transparent', text: 'var(--text-primary)', glow: 'none' };
+        if (burnoutRiskValue <= 60) return { bg: 'rgba(251, 191, 36, 0.08)', text: '#f59e0b', glow: 'none' };
+        if (burnoutRiskValue <= 80) return { bg: 'rgba(239, 68, 68, 0.08)', text: '#ef4444', glow: '0 0 8px rgba(239, 68, 68, 0.3)' };
         return { bg: '#2a0000', text: '#ff1a1a', glow: '0 0 15px rgba(255, 26, 26, 0.5)' }; // Critical
       })()
     },
@@ -359,19 +424,23 @@ export default function AnalyticsPage() {
     <ErrorBoundary componentName="Analytics">
       <div className={`analytics-page theme-${resolvedTheme}`}>
         {/* Animated Background */}
-        <div className="analytics-background">
-          <div className="background-waves" />
-          <div className="data-grid-overlay" />
-          <div className="particles-container">
-            {[...Array(15)].map((_, i) => (
-              <div key={i} className="data-particle" style={{
-                animationDelay: `${i * 0.15}s`,
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`
-              }} />
-            ))}
+          <div className="analytics-background">
+            <div className="background-waves" />
+            <div className="data-grid-overlay" />
+            <div className="particles-container">
+              {analyticsParticles.map((particle) => (
+                <div
+                  key={particle.key}
+                  className="data-particle"
+                  style={{
+                    animationDelay: particle.animationDelay,
+                    left: particle.left,
+                    top: particle.top
+                  }}
+                />
+              ))}
+            </div>
           </div>
-        </div>
 
         <div className="analytics-content-wrapper">
           {/* Top Navigation / Header */}
@@ -424,7 +493,7 @@ export default function AnalyticsPage() {
                 <Trophy className="w-16 h-16 text-yellow-500 mb-4" />
                 <h2 className="text-2xl font-bold text-white mb-2">Yearly Analytics Report</h2>
                 <p className="text-gray-300 mb-4">
-                  Your comprehensive yearly analytics will be ready on January 1, 2027.
+                  Your comprehensive yearly analytics will be ready on {nextYearReportDate}.
                 </p>
                 <p className="text-gray-400 text-sm">
                   Real-time analysis in progress. We'll deliver your personalized insights and performance summary.
@@ -668,7 +737,7 @@ export default function AnalyticsPage() {
             </div>
             <div className="status-item">
               <div className={`status-dot ${currentMetrics.lastUpdated ? 'success' : 'warning'}`} />
-              <span>Data Integrity: {currentMetrics.lastUpdated ? '100%' : 'Syncing'}</span>
+              <span>Data Integrity: {currentMetrics.lastUpdated ? 'Live' : 'Syncing'}</span>
             </div>
             <div className="status-item">
               <div className="status-dot success" />

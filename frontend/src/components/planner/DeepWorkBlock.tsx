@@ -69,21 +69,11 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
       return;
     }
 
-    // Generate Break Schedule
-    // For each hour, schedule a random break between minute 30 and 50
+    // Generate deterministic break schedule:
+    // one short break every 60 minutes, centered at minute 45.
     const newBreakSchedule: number[] = [];
-    const totalHours = Math.ceil(totalMinutes / 60);
-
-    for (let i = 0; i < totalHours; i++) {
-      // Random minute between 30 and 50
-      const randomMinute = Math.floor(Math.random() * (50 - 30 + 1)) + 30;
-      // Convert to absolute elapsed seconds: (Hour Index * 60min + RandomMin) * 60s
-      // Ensure strictly BEFORE the end of the session
-      const breakTimeSeconds = (i * 60 + randomMinute) * 60;
-
-      if (breakTimeSeconds < totalMinutes * 60) {
-        newBreakSchedule.push(breakTimeSeconds);
-      }
+    for (let minuteMark = 45; minuteMark < totalMinutes; minuteMark += 60) {
+      newBreakSchedule.push(minuteMark * 60);
     }
     setBreakSchedule(newBreakSchedule.sort((a, b) => a - b));
 
@@ -390,7 +380,7 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
                       className="task-input"
                       value={hours}
                       onChange={(e) => setHours(Math.max(0, parseInt(e.target.value) || 0))}
-                      style={{ textAlign: 'center', fontSize: '1.2rem', fontWeight: 'bold' }}
+                      style={{ textAlign: 'center', fontSize: '1.2rem', fontWeight: 500 }}
                     />
                   </div>
                   <div>
@@ -403,25 +393,21 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
                       className="task-input"
                       value={minutes}
                       onChange={(e) => setMinutes(Math.max(0, parseInt(e.target.value) || 0))}
-                      style={{ textAlign: 'center', fontSize: '1.2rem', fontWeight: 'bold' }}
+                      style={{ textAlign: 'center', fontSize: '1.2rem', fontWeight: 500 }}
                     />
                   </div>
                 </div>
                 <p style={{
                   fontSize: '13px',
-                  fontWeight: 'bold',
+                  fontWeight: 500,
                   textAlign: 'center',
                   marginTop: '12px',
-                  background: 'linear-gradient(to right, #ef4444, #f97316, #eab308, #22c55e, #3b82f6, #6366f1, #a855f7)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                  color: 'transparent'
+                  color: '#64748b'
                 }}>
-                  ✨ Recommended: 2-4 hours for deep focus ✨
+                  Recommended focus block: 2-4 hours.
                 </p>
                 <p style={{ fontSize: '13px', color: '#64748b', marginTop: '4px', textAlign: 'center' }}>
-                  Total Focus Time: <span style={{ color: '#e2e8f0', fontWeight: '600' }}>{hours}h {minutes}m</span>
+                  Total Focus Time: <span style={{ color: '#e2e8f0', fontWeight: 500 }}>{hours}h {minutes}m</span>
                 </p>
               </div>
 
@@ -505,7 +491,7 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
               <div key={session.id} className="session-item">
                 <CheckCircle size={14} />
                 <span>
-                  {session.duration} min • {session.date.toLocaleDateString()}
+                  {session.duration} min - {session.date.toLocaleDateString()}
                 </span>
               </div>
             ))}
@@ -515,3 +501,4 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
     </div>
   );
 }
+

@@ -5,7 +5,7 @@
  * Listens to realtime planner events and triggers backend goal progress refreshes.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useRealtime } from '../../hooks/useRealtime';
 import GoalAnalyticsDashboard from './GoalAnalyticsDashboard';
 
@@ -15,6 +15,7 @@ interface GoalProgressProps {
 
 export default function GoalProgress({ timeRange = 'weekly' }: GoalProgressProps) {
   const [refreshKey, setRefreshKey] = useState(0);
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const {
     onGoalCreated,
     onGoalUpdated,
@@ -28,7 +29,14 @@ export default function GoalProgress({ timeRange = 'weekly' }: GoalProgressProps
   } = useRealtime();
 
   useEffect(() => {
-    const tick = () => setRefreshKey((prev) => prev + 1);
+    const tick = () => {
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
+      refreshTimerRef.current = setTimeout(() => {
+        setRefreshKey((prev) => prev + 1);
+      }, 300);
+    };
     const unsubscribers = [
       onGoalCreated(tick),
       onGoalUpdated(tick),
@@ -42,6 +50,10 @@ export default function GoalProgress({ timeRange = 'weekly' }: GoalProgressProps
     ];
 
     return () => {
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
       unsubscribers.forEach((unsubscribe) => unsubscribe?.());
     };
   }, [
