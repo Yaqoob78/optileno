@@ -139,16 +139,16 @@ export default function Layout() {
       {/* Luxury Background Texture */}
       <div className="layout-background" />
 
-      {/* Mobile sidebar overlay */}
-      {isMobile && sidebarOpen && (
-        <div
-          className="mobile-sidebar-overlay"
-          onClick={() => setSidebarOpen(false)}
-          aria-label="Close sidebar"
-        />
-      )}
-
       <div className="layout-content-wrapper">
+        {/* Mobile sidebar overlay (must be inside shell so sidebar stays clickable above it) */}
+        {isMobile && sidebarOpen && (
+          <div
+            className="mobile-sidebar-overlay"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Close sidebar"
+          />
+        )}
+
         {/* Sidebar */}
         <motion.div
           className={`layout-sidebar-wrapper ${isMobile && sidebarOpen ? 'mobile-open' : ''}`}

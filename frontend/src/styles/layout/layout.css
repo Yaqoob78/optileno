@@ -138,9 +138,9 @@
   .mobile-sidebar-overlay {
     position: fixed;
     inset: 0;
-    background: linear-gradient(180deg,
-        rgba(2, 6, 23, 0.72) 0%,
-        rgba(2, 6, 23, 0.82) 100%);
+    background: rgba(2, 6, 23, 0.62);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     z-index: 90;
     animation: overlayFadeIn 0.3s ease;
   }
@@ -444,5 +444,9 @@
 @media (max-width: 768px) {
   .layout-container.mobile-sidebar-active .layout-main-content {
     user-select: none;
+  }
+
+  .layout-container.mobile-sidebar-active .main-content-area {
+    overflow: hidden;
   }
 }
