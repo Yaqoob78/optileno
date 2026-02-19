@@ -38,6 +38,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
             hasChecked.current = true;
 
             if (isAuthenticated) {
+                // Fast path: session already restored in store, avoid extra blocking round-trip.
+                if (profile) {
+                    setChecking(false);
+                    return;
+                }
+
                 try {
                     const response = await userService.getProfile();
                     if (response.success && response.data) {
@@ -52,6 +58,27 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
             }
 
             try {
+                if (isPaymentReturn) {
+                    try {
+                        const { paymentService } = await import('../../services/api/payment.service');
+                        const restoreRes = await paymentService.completePaymentReturn({
+                            order_id: paymentReturnOrderId || undefined,
+                            subscription_id: paymentReturnSubscriptionId || undefined,
+                        });
+                        if (
+                            restoreRes.success &&
+                            restoreRes.data?.authenticated &&
+                            restoreRes.data?.user
+                        ) {
+                            login(restoreRes.data.user as any, (restoreRes.data.user as any).preferences as any);
+                            setChecking(false);
+                            return;
+                        }
+                    } catch {
+                        // Fall back to normal session/profile check below.
+                    }
+                }
+
                 const response = await userService.getProfile();
                 if (response.success && response.data) {
                     login(response.data as any, response.data.preferences as any);
@@ -66,7 +93,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
         };
 
         checkAuth();
-    }, [isAuthenticated, login, logout]);
+    }, [
+        isAuthenticated,
+        isPaymentReturn,
+        login,
+        logout,
+        paymentReturnOrderId,
+        paymentReturnSubscriptionId,
+        profile,
+    ]);
 
     useEffect(() => {
         if (!isAuthenticated || !isPaymentReturn) {
@@ -169,7 +204,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
         if (publicPaths.includes(location.pathname)) {
             return <>{children}</>;
         }
-        return <Navigate to="/" state={{ from: location }} replace />;
+        return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
     const subscriptionStatus = String((profile as any)?.subscription?.status || '').toLowerCase();

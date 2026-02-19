@@ -15,9 +15,10 @@ Endpoints:
 
 import json
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from pydantic import BaseModel
 from typing import Optional
 
@@ -25,6 +26,9 @@ from backend.db.database import get_db
 from backend.db.models import User
 from backend.core.security import get_current_user
 from backend.app.config import settings
+from backend.auth.auth_service import auth_service
+from backend.auth.auth_routes import set_auth_cookies
+from backend.utils.user_profile import build_user_profile
 from .cashfree_service import cashfree_service, SUBSCRIPTION_PLANS
 
 logger = logging.getLogger(__name__)
@@ -46,6 +50,11 @@ class VerifyPaymentRequest(BaseModel):
 
 class VerifySubscriptionRequest(BaseModel):
     subscription_id: str
+
+
+class CompletePaymentReturnRequest(BaseModel):
+    order_id: Optional[str] = None
+    subscription_id: Optional[str] = None
 
 
 class CancelSubscriptionRequest(BaseModel):
@@ -356,6 +365,141 @@ async def verify_subscription(
     except Exception as e:
         logger.error(f"Failed to verify subscription: {e}")
         raise HTTPException(status_code=500, detail="Failed to verify subscription")
+
+
+@router.post("/complete-return")
+async def complete_payment_return(
+    request: CompletePaymentReturnRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Complete checkout return for users that lost auth cookies during provider redirect.
+
+    Validates successful payment/subscription directly with Cashfree, activates the user state,
+    then creates a fresh auth session and cookies.
+    """
+    order_id = str(request.order_id or "").strip()
+    subscription_id = str(request.subscription_id or "").strip()
+
+    if not order_id and not subscription_id:
+        raise HTTPException(status_code=400, detail="order_id or subscription_id is required")
+
+    try:
+        user: Optional[User] = None
+        resolved_user_id: Optional[int] = None
+        verification_message = ""
+        verification_status = ""
+
+        if subscription_id:
+            subscription_data = await cashfree_service.get_subscription(subscription_id)
+            if not subscription_data:
+                raise HTTPException(status_code=404, detail="Subscription not found")
+
+            tags = subscription_data.get("subscription_tags", {}) or {}
+            subscription_user_id = str(tags.get("user_id") or "").strip()
+            if not subscription_user_id:
+                raise HTTPException(status_code=400, detail="Subscription metadata is incomplete")
+            if not subscription_user_id.isdigit():
+                raise HTTPException(status_code=400, detail="Subscription metadata contains invalid user_id")
+            resolved_user_id = int(subscription_user_id)
+
+            status_value = str(subscription_data.get("subscription_status") or "").strip().upper()
+            auth_details = subscription_data.get("authorization_details", {}) or {}
+            auth_status = str(auth_details.get("authorization_status") or "").strip().upper()
+            success_states = {"ACTIVE", "BANK_APPROVAL_PENDING"}
+            auth_success_states = {"SUCCESS", "ACTIVE"}
+            is_verified = status_value in success_states or auth_status in auth_success_states
+
+            if not is_verified:
+                payments = await cashfree_service.get_payments_for_subscription(subscription_id)
+                is_verified = any(
+                    str(payment.get("payment_status") or "").strip().upper() in {"SUCCESS", "PAID"}
+                    for payment in payments
+                )
+
+            if not is_verified:
+                verification_status = status_value or "PENDING"
+                return {
+                    "success": False,
+                    "authenticated": False,
+                    "message": "Subscription verification is still pending",
+                    "subscription_status": verification_status,
+                }
+
+            user = await cashfree_service.handle_subscription_success(db, subscription_data)
+            verification_message = "Subscription mandate verified successfully"
+            verification_status = status_value or "ACTIVE"
+        else:
+            order_data = await cashfree_service.get_order_status(order_id)
+            if not order_data:
+                raise HTTPException(status_code=404, detail="Order not found")
+
+            tags = order_data.get("order_tags", {}) or {}
+            order_user_id = str(tags.get("user_id") or "").strip()
+            if not order_user_id:
+                raise HTTPException(status_code=400, detail="Order metadata is incomplete")
+            if not order_user_id.isdigit():
+                raise HTTPException(status_code=400, detail="Order metadata contains invalid user_id")
+            resolved_user_id = int(order_user_id)
+
+            order_status = str(order_data.get("order_status") or "").strip().upper()
+            is_paid = order_status == "PAID"
+            if not is_paid:
+                payments = await cashfree_service.get_payments_for_order(order_id)
+                is_paid = any(
+                    str(payment.get("payment_status") or "").strip().upper() in {"SUCCESS", "PAID"}
+                    for payment in payments
+                )
+
+            if not is_paid:
+                verification_status = order_status or "PENDING"
+                return {
+                    "success": False,
+                    "authenticated": False,
+                    "message": "Payment is still pending",
+                    "order_status": verification_status,
+                }
+
+            user = await cashfree_service.handle_payment_success(db, order_data)
+            verification_message = "Payment verified successfully"
+            verification_status = order_status or "PAID"
+
+        if not user:
+            # Defensive fallback if handler couldn't return hydrated user.
+            if resolved_user_id is None:
+                raise HTTPException(status_code=500, detail="Failed to resolve user for completed payment")
+
+            result = await db.execute(select(User).where(User.id == int(resolved_user_id)))
+            user = result.scalar_one_or_none()
+            if not user:
+                raise HTTPException(status_code=404, detail="User not found for completed payment")
+
+        access_token, refresh_token, refresh_days = await auth_service.create_session(
+            db, int(user.id), remember_me=False
+        )
+        refresh_max_age = refresh_days * 24 * 60 * 60
+        set_auth_cookies(response, access_token, refresh_token, refresh_max_age=refresh_max_age)
+
+        payload = {
+            "success": True,
+            "authenticated": True,
+            "message": verification_message,
+            "plan": user.plan_type,
+            "tier": user.tier,
+            "user": build_user_profile(user),
+        }
+        if subscription_id:
+            payload["subscription_status"] = verification_status
+        else:
+            payload["order_status"] = verification_status
+        return payload
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to complete payment return: {e}")
+        raise HTTPException(status_code=500, detail="Failed to complete payment return")
 
 
 @router.post("/cancel")

@@ -1,54 +1,75 @@
 // src/routes/AppRoutes.tsx
-import { Routes, Route, Navigate } from "react-router-dom";
+import { lazy, Suspense } from "react";
+import { Routes, Route } from "react-router-dom";
 import Layout from "../components/layout/Layout";
 import ProtectedRoute from "../components/auth/ProtectedRoute";
 
-import Dashboard from "../pages/Dashboard/Dashboard";
-import Chat from "../pages/Chat/chat";
-import Analytics from "../pages/Analytics/Analytics";
-import Planner from "../pages/Planner/Planner";
-import Settings from "../pages/Settings/Settings";
-import Login from "../pages/Auth/Login";
-import Register from "../pages/Auth/Register";
-import ForgotPassword from "../pages/Auth/ForgotPassword";
-import ResetPassword from "../pages/Auth/ResetPassword";
-import Landing from "../pages/Landing/Landing";
-import TermsOfService from "../pages/Legal/TermsOfService";
-import PrivacyPolicy from "../pages/Legal/PrivacyPolicy";
-import RefundPolicy from "../pages/Legal/RefundPolicy";
-import CookiesPolicy from "../pages/Legal/CookiesPolicy";
+const Dashboard = lazy(() => import("../pages/Dashboard/Dashboard"));
+const Chat = lazy(() => import("../pages/Chat/chat"));
+const Analytics = lazy(() => import("../pages/Analytics/Analytics"));
+const Planner = lazy(() => import("../pages/Planner/Planner"));
+const Settings = lazy(() => import("../pages/Settings/Settings"));
+const Login = lazy(() => import("../pages/Auth/Login"));
+const Register = lazy(() => import("../pages/Auth/Register"));
+const ForgotPassword = lazy(() => import("../pages/Auth/ForgotPassword"));
+const ResetPassword = lazy(() => import("../pages/Auth/ResetPassword"));
+const Landing = lazy(() => import("../pages/Landing/Landing"));
+const TermsOfService = lazy(() => import("../pages/Legal/TermsOfService"));
+const PrivacyPolicy = lazy(() => import("../pages/Legal/PrivacyPolicy"));
+const RefundPolicy = lazy(() => import("../pages/Legal/RefundPolicy"));
+const CookiesPolicy = lazy(() => import("../pages/Legal/CookiesPolicy"));
+
+function RouteLoader() {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "100vh",
+        background: "#020617",
+        color: "#cbd5e1",
+        fontSize: "0.95rem",
+      }}
+    >
+      Loading...
+    </div>
+  );
+}
 
 export default function AppRoutes() {
   return (
-    <Routes>
-      {/* Public routes */}
-      <Route path="/" element={<Landing />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/terms" element={<TermsOfService />} />
-      <Route path="/privacy" element={<PrivacyPolicy />} />
-      <Route path="/refund" element={<RefundPolicy />} />
-      <Route path="/cookies" element={<CookiesPolicy />} />
+    <Suspense fallback={<RouteLoader />}>
+      <Routes>
+        {/* Public routes */}
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/terms" element={<TermsOfService />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/refund" element={<RefundPolicy />} />
+        <Route path="/cookies" element={<CookiesPolicy />} />
 
-      {/* Protected routes wrapped in Layout */}
-      <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/chat" element={<Chat />} />
-        <Route path="/analytics" element={<Analytics />} />
-        <Route path="/planner" element={<Planner />} />
-        <Route path="/settings" element={<Settings />} />
-      </Route>
+        {/* Protected routes wrapped in Layout */}
+        <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/chat" element={<Chat />} />
+          <Route path="/analytics" element={<Analytics />} />
+          <Route path="/planner" element={<Planner />} />
+          <Route path="/settings" element={<Settings />} />
+        </Route>
 
-      {/* Error / Catch-all - STOP REDIRECTING TO DASHBOARD TO BREAK LOOP */}
-      <Route path="*" element={
-        <div style={{ padding: '2rem', color: 'white', background: '#020617', minHeight: '100vh' }}>
-          <h2>404 - Page Not Found</h2>
-          <p>Current path: {window.location.pathname}</p>
-          <a href="/" style={{ color: '#3b82f6' }}>Go back to Landing Page</a>
-        </div>
-      } />
-    </Routes>
+        {/* Error / Catch-all */}
+        <Route path="*" element={
+          <div style={{ padding: '2rem', color: 'white', background: '#020617', minHeight: '100vh' }}>
+            <h2>404 - Page Not Found</h2>
+            <p>Current path: {window.location.pathname}</p>
+            <a href="/" style={{ color: '#3b82f6' }}>Go back to Landing Page</a>
+          </div>
+        } />
+      </Routes>
+    </Suspense>
   );
 }

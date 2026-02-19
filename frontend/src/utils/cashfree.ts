@@ -33,7 +33,9 @@ function resolveRedirectTarget(flow: "order" | "subscription"): CashfreeRedirect
     return "_self";
   }
 
-  return flow === "order" ? "_modal" : "_blank";
+  // Subscription flow is more reliable in same-tab redirect on desktop, especially
+  // for restoring session/cookies after provider return.
+  return flow === "order" ? "_modal" : "_self";
 }
 
 export async function loadCashfreeSdk(timeoutMs = 12000): Promise<void> {

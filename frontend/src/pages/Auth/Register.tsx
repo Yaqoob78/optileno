@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Mail, Lock, User, Eye, EyeOff, Loader2, AlertCircle, ArrowRight, CreditCard } from 'lucide-react';
 import { userService } from '../../services/api/user.service';
+import { useUserStore } from '../../stores/useUserStore';
 import {
     CashfreeMode,
     loadCashfreeSdk,
@@ -12,6 +13,9 @@ import '../../styles/pages/auth.css';
 
 export default function Register() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const isAuthenticated = useUserStore((state) => state.isAuthenticated);
+    const login = useUserStore((state) => state.login);
 
     const [formData, setFormData] = useState({
         full_name: '',
@@ -31,6 +35,7 @@ export default function Register() {
         flow: 'order' | 'subscription';
     } | null>(null);
     const [retryingCheckout, setRetryingCheckout] = useState(false);
+    const [processingPaymentReturn, setProcessingPaymentReturn] = useState(false);
 
     // Warm up Cashfree SDK early for faster checkout open.
     useEffect(() => {
@@ -38,6 +43,65 @@ export default function Register() {
             // Non-blocking warmup; retry occurs on submit/checkout click.
         });
     }, []);
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            navigate('/dashboard', { replace: true });
+        }
+    }, [isAuthenticated, navigate]);
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const paymentStatus = params.get('payment');
+        const orderId = params.get('order_id');
+        const subscriptionId = params.get('subscription_id');
+
+        if (paymentStatus !== 'success' || (!orderId && !subscriptionId)) {
+            return;
+        }
+
+        let cancelled = false;
+        const restoreSession = async () => {
+            setProcessingPaymentReturn(true);
+            setError(null);
+            try {
+                const { paymentService } = await import('../../services/api/payment.service');
+                const response = await paymentService.completePaymentReturn({
+                    order_id: orderId || undefined,
+                    subscription_id: subscriptionId || undefined,
+                });
+
+                if (cancelled) {
+                    return;
+                }
+
+                if (response.success && response.data?.authenticated && response.data?.user) {
+                    login(response.data.user as any, (response.data.user as any).preferences as any);
+                    navigate('/dashboard', { replace: true });
+                    return;
+                }
+
+                setError(
+                    response.error?.message ||
+                    response.data?.message ||
+                    'Payment completed, but we could not restore your session. Please sign in.'
+                );
+            } catch {
+                if (!cancelled) {
+                    setError('Payment completed, but we could not restore your session. Please sign in.');
+                }
+            } finally {
+                if (!cancelled) {
+                    setProcessingPaymentReturn(false);
+                }
+            }
+        };
+
+        restoreSession();
+        return () => {
+            cancelled = true;
+        };
+    }, [location.search, login, navigate]);
 
     const resolveCashfreeMode = (environment?: string): CashfreeMode =>
         environment === 'production' ? 'production' : 'sandbox';
@@ -164,7 +228,17 @@ export default function Register() {
                         </div>
                     )}
 
-                    {paymentStep ? (
+                    {processingPaymentReturn ? (
+                        <div className="payment-loading-state">
+                            <Loader2 className="animate-spin" size={24} style={{ color: 'var(--primary)', marginBottom: '0.75rem' }} />
+                            <h3 style={{ color: 'var(--text-main)', marginBottom: '0.5rem' }}>
+                                Finalizing Your Account...
+                            </h3>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', textAlign: 'center', lineHeight: '1.6' }}>
+                                We are verifying your payment and restoring your session.
+                            </p>
+                        </div>
+                    ) : paymentStep ? (
                         <div className="payment-loading-state">
                             <CreditCard size={48} style={{ color: 'var(--primary)', marginBottom: '1rem' }} />
                             <h3 style={{ color: 'var(--text-main)', marginBottom: '0.5rem' }}>

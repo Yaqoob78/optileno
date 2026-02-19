@@ -56,6 +56,9 @@ export interface VerifySubscriptionResponse {
     plan?: string;
     tier?: string;
     subscription_status?: string;
+    authenticated?: boolean;
+    user?: any;
+    order_status?: string;
 }
 
 export interface SubscriptionStatus {
@@ -69,6 +72,11 @@ export interface SubscriptionStatus {
     trial_ends_at?: string;
     subscription_ends_at?: string;
     is_trial?: boolean;
+}
+
+export interface CompletePaymentReturnRequest {
+    order_id?: string;
+    subscription_id?: string;
 }
 
 class PaymentService {
@@ -112,6 +120,14 @@ class PaymentService {
      */
     async verifySubscription(subscriptionId: string): Promise<ApiResponse<VerifySubscriptionResponse>> {
         return api.post<VerifySubscriptionResponse>('/payments/verify-subscription', { subscription_id: subscriptionId });
+    }
+
+    /**
+     * Complete checkout return when user loses auth cookies after provider redirect.
+     * Backend verifies payment/subscription and issues fresh auth cookies.
+     */
+    async completePaymentReturn(payload: CompletePaymentReturnRequest): Promise<ApiResponse<VerifySubscriptionResponse>> {
+        return api.post<VerifySubscriptionResponse>('/payments/complete-return', payload);
     }
 
     /**
