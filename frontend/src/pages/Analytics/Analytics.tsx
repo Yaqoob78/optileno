@@ -41,12 +41,18 @@ import { ErrorBoundary } from '../../components/common/ErrorBoundary';
 import { useProductivityScore } from '../../hooks/useProductivityScore';
 import { useFocusScore } from '../../hooks/useFocusScore';
 import { useBurnoutRisk } from '../../hooks/useBurnoutRisk';
+import { useTheme } from '../../hooks/useTheme';
 
 
 export default function AnalyticsPage() {
-  const [darkMode, setDarkMode] = useState<boolean>(true);
   const [timeRange, setTimeRange] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('weekly');
   const [loading, setLoading] = useState<boolean>(false);
+  const { theme, setTheme } = useTheme();
+  const resolvedTheme: 'dark' | 'light' =
+    theme === 'auto'
+      ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+      : theme;
+  const isDarkMode = resolvedTheme === 'dark';
 
   // Safe time range for hooks that don't support yearly yet
   const safeTimeRange = timeRange === 'yearly' ? 'monthly' : timeRange;
@@ -343,7 +349,7 @@ export default function AnalyticsPage() {
 
   return (
     <ErrorBoundary componentName="Analytics">
-      <div className={`analytics-page theme-${darkMode ? 'dark' : 'light'}`}>
+      <div className={`analytics-page theme-${resolvedTheme}`}>
         {/* Animated Background */}
         <div className="analytics-background">
           <div className="background-waves" />
@@ -394,10 +400,10 @@ export default function AnalyticsPage() {
                 </button>
                 <button
                   className="nav-action-btn"
-                  onClick={() => setDarkMode(!darkMode)}
-                  title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                  onClick={() => setTheme(isDarkMode ? 'light' : 'dark')}
+                  title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
                 >
-                  {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+                  {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
                 </button>
               </div>
             </div>

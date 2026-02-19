@@ -3,15 +3,15 @@
 /* Theme Variables */
 :root {
   /* Light Theme */
-  --bg-primary: #ffffff;
-  --bg-secondary: #f8fafc;
-  --bg-tertiary: #f1f5f9;
+  --bg-primary: #f5f8fc;
+  --bg-secondary: #fbfcff;
+  --bg-tertiary: #edf2f8;
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --text-tertiary: #64748b;
   --text-muted: #94a3b8;
-  --border-color: #e2e8f0;
-  --border-light: #f1f5f9;
+  --border-color: #dbe3ee;
+  --border-light: #e9eff7;
 
   /* Analytics Color Scheme */
   --primary: #7c3aed;
@@ -32,7 +32,7 @@
   --gradient-primary: linear-gradient(135deg, #7c3aed 0%, #06b6d4 100%);
   --gradient-secondary: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
   --gradient-success: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
-  --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
+  --gradient-glass: linear-gradient(135deg, rgba(251, 253, 255, 0.95) 0%, rgba(243, 248, 253, 0.88) 100%);
   --gradient-card: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
 
   /* Shadows */
@@ -88,16 +88,16 @@
 
 /* Light Theme Overrides */
 .theme-light {
-  --bg-primary: #ffffff;
-  --bg-secondary: #f8fafc;
-  --bg-tertiary: #f1f5f9;
+  --bg-primary: #f5f8fc;
+  --bg-secondary: #fbfcff;
+  --bg-tertiary: #edf2f8;
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --text-tertiary: #64748b;
   --text-muted: #94a3b8;
-  --border-color: #e2e8f0;
-  --border-light: #f1f5f9;
-  --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
+  --border-color: #dbe3ee;
+  --border-light: #e9eff7;
+  --gradient-glass: linear-gradient(135deg, rgba(251, 253, 255, 0.95) 0%, rgba(243, 248, 253, 0.88) 100%);
 }
 
 /* ===== BASE STYLES ===== */

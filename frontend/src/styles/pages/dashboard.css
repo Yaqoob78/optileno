@@ -3,15 +3,15 @@
 /* Theme Variables */
 :root {
   /* Light Theme */
-  --bg-primary: #ffffff;
-  --bg-secondary: #f8fafc;
-  --bg-tertiary: #f1f5f9;
+  --bg-primary: #f5f8fc;
+  --bg-secondary: #fbfcff;
+  --bg-tertiary: #edf2f8;
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --text-tertiary: #64748b;
   --text-muted: #94a3b8;
-  --border-color: #e2e8f0;
-  --border-light: #f1f5f9;
+  --border-color: #dbe3ee;
+  --border-light: #e9eff7;
 
   /* Colors */
   /* Colors - Warm Shift */
@@ -31,7 +31,7 @@
   /* Gradients - Warm Shift */
   --gradient-primary: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
   --gradient-accent: linear-gradient(135deg, #f97316 0%, #fbbf24 100%);
-  --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
+  --gradient-glass: linear-gradient(135deg, rgba(251, 253, 255, 0.95) 0%, rgba(243, 248, 253, 0.88) 100%);
 
   /* Shadows - Warm Glow */
   --shadow-subtle: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
