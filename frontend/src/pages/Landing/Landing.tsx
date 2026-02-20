@@ -1,5 +1,6 @@
 ﻿import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, useReducedMotion, type Variants } from 'framer-motion';
 import {
   ArrowRight,
   Bot,
@@ -221,8 +222,69 @@ const HERO_METRICS = [
   },
 ];
 
+const HERO_TITLE = 'Get an unfair advantage with AI that doubles daily productivity.';
+const HERO_TITLE_WORDS = HERO_TITLE.split(' ');
+const HERO_PILLS = ['AI Projects', 'AI Tasks', 'AI Calendar', 'AI Meetings', 'AI Docs', 'AI Reports'];
+
 export default function Landing() {
   const navigate = useNavigate();
+  const shouldReduceMotion = useReducedMotion();
+
+  const revealVariants = React.useMemo<Variants>(
+    () => ({
+      hidden: {
+        opacity: 0,
+        y: shouldReduceMotion ? 0 : 24,
+        scale: shouldReduceMotion ? 1 : 0.985,
+        filter: shouldReduceMotion ? 'none' : 'blur(8px)',
+      },
+      visible: (delay: number = 0) => ({
+        opacity: 1,
+        y: 0,
+        scale: 1,
+        filter: 'blur(0px)',
+        transition: {
+          duration: shouldReduceMotion ? 0.18 : 0.62,
+          delay,
+          ease: [0.22, 1, 0.36, 1],
+        },
+      }),
+    }),
+    [shouldReduceMotion],
+  );
+
+  const titleContainerVariants = React.useMemo<Variants>(
+    () => ({
+      hidden: {},
+      visible: {
+        transition: {
+          delayChildren: shouldReduceMotion ? 0 : 0.08,
+          staggerChildren: shouldReduceMotion ? 0 : 0.045,
+        },
+      },
+    }),
+    [shouldReduceMotion],
+  );
+
+  const titleWordVariants = React.useMemo<Variants>(
+    () => ({
+      hidden: {
+        opacity: 0,
+        y: shouldReduceMotion ? 0 : 20,
+        filter: shouldReduceMotion ? 'none' : 'blur(10px)',
+      },
+      visible: {
+        opacity: 1,
+        y: 0,
+        filter: 'blur(0px)',
+        transition: {
+          duration: shouldReduceMotion ? 0.1 : 0.55,
+          ease: [0.22, 1, 0.36, 1],
+        },
+      },
+    }),
+    [shouldReduceMotion],
+  );
 
   return (
     <div className="landing-page">
@@ -239,60 +301,111 @@ export default function Landing() {
             <span className="logo-text">Optileno</span>
           </div>
           <div className="nav-actions">
-            <button className="nav-btn-secondary" onClick={() => navigate('/register')}>Try Optileno For Free</button>
-            <button className="nav-btn-secondary" onClick={() => navigate('/chat-leno')}>Leno AI Free Chat</button>
-            <button className="nav-link" onClick={() => navigate('/login')}>Login</button>
-            <button className="nav-btn-primary" onClick={() => navigate('/register')}>Get Access</button>
+            <button className="nav-btn-secondary btn-premium" onClick={() => navigate('/register')}>Try Optileno For Free</button>
+            <button className="nav-btn-secondary btn-premium" onClick={() => navigate('/chat-leno')}>Leno AI Free Chat</button>
+            <button className="nav-link btn-premium" onClick={() => navigate('/login')}>Login</button>
+            <button className="nav-btn-primary btn-premium" onClick={() => navigate('/register')}>Get Access</button>
           </div>
         </div>
       </nav>
 
       <main className="hero-section">
-        <section className="hero-content">
-          <span className="kicker">AI Productivity Platform For The AI Era</span>
-          <h1 className="hero-title">Get an unfair advantage with AI that doubles daily productivity.</h1>
-          <p className="hero-subtitle">
+        <motion.section
+          className="hero-content"
+          initial="hidden"
+          animate="visible"
+          variants={revealVariants}
+          custom={0.02}
+        >
+          <motion.span className="kicker" variants={revealVariants} custom={0.08}>
+            AI Productivity Platform For The AI Era
+          </motion.span>
+
+          <motion.h1
+            className="hero-title"
+            variants={titleContainerVariants}
+            initial="hidden"
+            animate="visible"
+            aria-label={HERO_TITLE}
+          >
+            {HERO_TITLE_WORDS.map((word, index) => (
+              <motion.span key={`${word}-${index}`} className="hero-title-word" variants={titleWordVariants}>
+                {word}
+              </motion.span>
+            ))}
+          </motion.h1>
+
+          <motion.p className="hero-subtitle" variants={revealVariants} custom={0.16}>
             Optileno unifies AI Projects, AI Tasks, AI Calendar, AI Meetings, AI Docs, AI Notes, AI Reports,
             AI Workflows, and more so your team executes faster with less overhead.
-          </p>
+          </motion.p>
 
           <div className="hero-pill-row" aria-label="Core Optileno capabilities">
-            <span className="hero-pill">AI Projects</span>
-            <span className="hero-pill">AI Tasks</span>
-            <span className="hero-pill">AI Calendar</span>
-            <span className="hero-pill">AI Meetings</span>
-            <span className="hero-pill">AI Docs</span>
-            <span className="hero-pill">AI Reports</span>
-          </div>
-
-          <div className="hero-stats">
-            {HERO_METRICS.map((metric) => (
-              <div className="stat-card" key={metric.label}>
-                {metric.icon}
-                <span>{metric.label}</span>
-              </div>
+            {HERO_PILLS.map((pill, index) => (
+              <motion.span
+                key={pill}
+                className="hero-pill"
+                variants={revealVariants}
+                initial="hidden"
+                animate="visible"
+                custom={0.2 + index * 0.04}
+              >
+                {pill}
+              </motion.span>
             ))}
           </div>
 
-          <div className="cta-wrapper hero-cta-stack">
-            <button className="cta-button" onClick={() => navigate('/register')}>
+          <div className="hero-stats">
+            {HERO_METRICS.map((metric, index) => (
+              <motion.div
+                className="stat-card"
+                key={metric.label}
+                variants={revealVariants}
+                initial="hidden"
+                animate="visible"
+                custom={0.28 + index * 0.05}
+              >
+                {metric.icon}
+                <span>{metric.label}</span>
+              </motion.div>
+            ))}
+          </div>
+
+          <motion.div className="cta-wrapper hero-cta-stack" variants={revealVariants} custom={0.48}>
+            <button className="cta-button btn-premium" onClick={() => navigate('/register')}>
               Try Optileno For Free
               <ArrowRight size={18} />
             </button>
-            <button className="cta-button-secondary" onClick={() => navigate('/chat-leno')}>
+            <button className="cta-button-secondary btn-premium" onClick={() => navigate('/chat-leno')}>
               Leno AI Free Chat
             </button>
-            <button className="cta-button-tertiary" onClick={() => navigate('/dashboard-preview')}>
+            <button className="cta-button-tertiary btn-premium" onClick={() => navigate('/dashboard-preview')}>
               See Dashboard Preview
               <ArrowUpRight size={16} />
             </button>
             <p className="cta-note">3-day free trial. Built for serious execution teams and ambitious individuals.</p>
-          </div>
-        </section>
+          </motion.div>
+        </motion.section>
 
-        <section className="screens-section" aria-label="Product screenshots">
-          {SCREEN_CARDS.map((screen) => (
-            <article key={screen.fileName} className="screen-card">
+        <motion.section
+          className="screens-section"
+          aria-label="Product screenshots"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={revealVariants}
+          custom={0.03}
+        >
+          {SCREEN_CARDS.map((screen, index) => (
+            <motion.article
+              key={screen.fileName}
+              className="screen-card"
+              variants={revealVariants}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.2 }}
+              custom={0.06 + index * 0.06}
+            >
               <div className="screen-top">
                 <span className="screen-badge">{screen.badge}</span>
                 <h3>{screen.title}</h3>
@@ -317,24 +430,48 @@ export default function Landing() {
                   Add <strong>{screen.fileName}</strong> to <code>frontend/public</code>
                 </div>
               </div>
-            </article>
+            </motion.article>
           ))}
-        </section>
+        </motion.section>
 
-        <section className="features-section" aria-label="Platform features">
+        <motion.section
+          className="features-section"
+          aria-label="Platform features"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={revealVariants}
+          custom={0.04}
+        >
           <h2>Built for measurable output, not vanity metrics</h2>
           <div className="features-grid">
-            {FEATURES.map((feature) => (
-              <article key={feature.title} className="feature-card">
+            {FEATURES.map((feature, index) => (
+              <motion.article
+                key={feature.title}
+                className="feature-card"
+                variants={revealVariants}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, amount: 0.2 }}
+                custom={0.08 + index * 0.04}
+              >
                 <div className="feature-icon">{feature.icon}</div>
                 <h3>{feature.title}</h3>
                 <p>{feature.description}</p>
-              </article>
+              </motion.article>
             ))}
           </div>
-        </section>
+        </motion.section>
 
-        <section className="capabilities-section" aria-label="Platform capability categories">
+        <motion.section
+          className="capabilities-section"
+          aria-label="Platform capability categories"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={revealVariants}
+          custom={0.04}
+        >
           <div className="section-heading">
             <span>Platform Capabilities</span>
             <h2>One operating layer for project, time, and knowledge execution</h2>
@@ -344,8 +481,16 @@ export default function Landing() {
           </div>
 
           <div className="capabilities-grid">
-            {CAPABILITY_GROUPS.map((group) => (
-              <article key={group.title} className="capability-card">
+            {CAPABILITY_GROUPS.map((group, groupIndex) => (
+              <motion.article
+                key={group.title}
+                className="capability-card"
+                variants={revealVariants}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, amount: 0.2 }}
+                custom={0.08 + groupIndex * 0.05}
+              >
                 <h3>{group.title}</h3>
                 <p>{group.summary}</p>
                 <div className="capability-list">
@@ -356,12 +501,20 @@ export default function Landing() {
                     </div>
                   ))}
                 </div>
-              </article>
+              </motion.article>
             ))}
           </div>
-        </section>
+        </motion.section>
 
-        <section className="use-cases-section" aria-label="Optileno use cases">
+        <motion.section
+          className="use-cases-section"
+          aria-label="Optileno use cases"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={revealVariants}
+          custom={0.04}
+        >
           <div className="section-heading">
             <span>Use Cases</span>
             <h2>Built for service organizations and high-output internal teams</h2>
@@ -371,8 +524,16 @@ export default function Landing() {
           </div>
 
           <div className="use-case-grid">
-            {USE_CASE_GROUPS.map((group) => (
-              <article key={group.title} className="use-case-card">
+            {USE_CASE_GROUPS.map((group, index) => (
+              <motion.article
+                key={group.title}
+                className="use-case-card"
+                variants={revealVariants}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, amount: 0.2 }}
+                custom={0.1 + index * 0.08}
+              >
                 <div className="use-case-head">
                   {group.icon}
                   <h3>{group.title}</h3>
@@ -382,12 +543,20 @@ export default function Landing() {
                     <span key={entry}>{entry}</span>
                   ))}
                 </div>
-              </article>
+              </motion.article>
             ))}
           </div>
-        </section>
+        </motion.section>
 
-        <section className="journey-section" aria-label="Start your Optileno journey">
+        <motion.section
+          className="journey-section"
+          aria-label="Start your Optileno journey"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={revealVariants}
+          custom={0.04}
+        >
           <div className="journey-card">
             <div className="journey-copy">
               <span className="journey-kicker">Start Today</span>
@@ -397,19 +566,19 @@ export default function Landing() {
               </p>
             </div>
             <div className="journey-actions">
-              <button className="cta-button" onClick={() => navigate('/register')}>
+              <button className="cta-button btn-premium" onClick={() => navigate('/register')}>
                 Begin Journey
                 <ArrowRight size={18} />
               </button>
-              <button className="cta-button-secondary" onClick={() => navigate('/chat-leno')}>
+              <button className="cta-button-secondary btn-premium" onClick={() => navigate('/chat-leno')}>
                 Try Leno AI Free Chat
               </button>
-              <button className="cta-button-tertiary" onClick={() => navigate('/login')}>
+              <button className="cta-button-tertiary btn-premium" onClick={() => navigate('/login')}>
                 Login
               </button>
             </div>
           </div>
-        </section>
+        </motion.section>
       </main>
 
       <footer className="landing-footer">
