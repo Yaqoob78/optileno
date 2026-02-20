@@ -7,6 +7,7 @@ import { useSettingsStore } from '../../stores/useSettingsStore';
 import { getDateKeyInTimezone } from '../../utils/timezone';
 import '../../styles/components/planner/HabitTracker.css';
 import type { Habit } from '../../types/planner.types';
+import { Modal } from '../common/Modal';
 
 interface UIHabit extends Omit<Habit, 'frequency'> {
   frequency: 'daily' | 'weekly' | 'monthly' | 'custom';
@@ -310,81 +311,78 @@ export default function HabitTracker({ habits: propsHabits }: HabitTrackerProps)
         </button>
       </div>
 
-      {showNewHabitModal && (
-        <div className="modal-overlay" onClick={() => setShowNewHabitModal(false)}>
-          <div className="modal-content habit-modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-title">
-                <Plus size={18} />
-                <h3>New Daily Habit</h3>
-              </div>
-              <button className="modal-close" onClick={() => setShowNewHabitModal(false)}><X size={20} /></button>
-            </div>
-            {/* Form content remains roughly the same but cleaner */}
-            <div className="modal-body">
-              <div className="form-group">
-                <label>Habit Name</label>
-                <input
-                  value={newHabit.name}
-                  onChange={e => setNewHabit({ ...newHabit, name: e.target.value })}
-                  placeholder="e.g., Meditation, Reading..."
-                  autoFocus
-                  className="modern-input"
-                />
-              </div>
-              <div className="form-group">
-                <label>Motivation / Description</label>
-                <textarea
-                  value={newHabit.description}
-                  onChange={e => setNewHabit({ ...newHabit, description: e.target.value })}
-                  placeholder="Why do you want to build this habit?"
-                  className="modern-textarea"
-                />
-              </div>
-              <div className="form-group">
-                <label>Category</label>
-                <div className="category-select-modern">
-                  {['Wellness', 'Health', 'Learning', 'Productivity', 'Fitness'].map(cat => (
-                    <button
-                      key={cat}
-                      className={`cat-btn ${newHabit.category === cat ? 'selected' : ''}`}
-                      onClick={() => setNewHabit({ ...newHabit, category: cat })}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {isUltra && (
-                <div className="form-group">
-                  <label>Link to Goal (Optional)</label>
-                  <select
-                    value={newHabit.goalId || ''}
-                    onChange={e => setNewHabit({ ...newHabit, goalId: e.target.value })}
-                    className="modern-input"
-                    style={{ width: '100%', padding: '10px', marginTop: '5px' }}
-                  >
-                    <option value="">No Link</option>
-                    {goals.map(g => (
-                      <option key={g.id} value={g.id}>{g.title}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
-            <div className="modal-footer">
-              <button className="modal-btn cancel" onClick={() => setShowNewHabitModal(false)}>Cancel</button>
-              <button
-                className="modal-btn submit"
-                onClick={handleCreateHabit}
-                disabled={isSaving || !newHabit.name.trim()}
-              >
-                {isSaving ? 'Creating...' : 'Start Habit'}
-              </button>
+      <Modal
+        isOpen={showNewHabitModal}
+        onOpenChange={setShowNewHabitModal}
+        title="New Daily Habit"
+        maxWidth="md"
+        footer={
+          <div className="flex gap-3 w-full justify-end">
+            <button className="px-4 py-2 rounded-lg font-medium text-[var(--color-text-secondary)] hover:bg-[var(--bg-secondary)] transition-colors" onClick={() => setShowNewHabitModal(false)}>Cancel</button>
+            <button
+              className="px-4 py-2 rounded-lg font-medium bg-[var(--brand-accent)] text-[var(--color-text-inverse)] hover:opacity-90 transition-opacity disabled:opacity-50"
+              onClick={handleCreateHabit}
+              disabled={isSaving || !newHabit.name.trim()}
+            >
+              {isSaving ? 'Creating...' : 'Start Habit'}
+            </button>
+          </div>
+        }
+      >
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-[var(--color-text-secondary)]">Habit Name</label>
+            <input
+              value={newHabit.name}
+              onChange={e => setNewHabit({ ...newHabit, name: e.target.value })}
+              placeholder="e.g., Meditation, Reading..."
+              autoFocus
+              className="px-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg outline-none focus:border-[var(--brand-accent)] text-[var(--color-text-primary)] modern-input"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-[var(--color-text-secondary)]">Motivation / Description</label>
+            <textarea
+              value={newHabit.description}
+              onChange={e => setNewHabit({ ...newHabit, description: e.target.value })}
+              placeholder="Why do you want to build this habit?"
+              className="px-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg outline-none focus:border-[var(--brand-accent)] text-[var(--color-text-primary)] modern-textarea"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-[var(--color-text-secondary)]">Category</label>
+            <div className="flex flex-wrap gap-2">
+              {['Wellness', 'Health', 'Learning', 'Productivity', 'Fitness'].map(cat => (
+                <button
+                  key={cat}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${newHabit.category === cat
+                      ? 'bg-[var(--brand-accent)] text-[var(--color-text-inverse)]'
+                      : 'bg-[var(--bg-secondary)] text-[var(--color-text-secondary)] hover:bg-[var(--border-color)]'
+                    }`}
+                  onClick={() => setNewHabit({ ...newHabit, category: cat })}
+                >
+                  {cat}
+                </button>
+              ))}
             </div>
           </div>
+          {isUltra && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-[var(--color-text-secondary)]">Link to Goal (Optional)</label>
+              <select
+                value={newHabit.goalId || ''}
+                onChange={e => setNewHabit({ ...newHabit, goalId: e.target.value })}
+                className="px-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg outline-none focus:border-[var(--brand-accent)] text-[var(--color-text-primary)] modern-input"
+              >
+                <option value="">No Link</option>
+                {goals.map(g => (
+                  <option key={g.id} value={g.id}>{g.title}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

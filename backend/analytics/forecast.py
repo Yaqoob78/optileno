@@ -9,6 +9,8 @@ from datetime import datetime, timedelta
 import statistics
 import math
 
+from backend.analytics.engine.deterministic_math import DeterministicAnalyticsEngine
+
 logger = logging.getLogger(__name__)
 
 
@@ -255,63 +257,28 @@ class PerformanceScorer:
     
     @staticmethod
     def calculate_productivity_score(
+        tasks_created: int,
         tasks_completed: int,
+        tasks_completed_on_time: int,
+        tasks_completed_late: int,
+        habits_due: int,
+        habits_completed: int,
         deep_work_minutes: int,
-        focus_quality: float,  # 0-100
-        consistency: float  # 0-100
+        active_days_history: int = 7
     ) -> Dict[str, Any]:
         """
-        Calculate overall productivity score
-        
-        Score breakdown:
-        - Task completion: 30%
-        - Deep work: 30%
-        - Focus quality: 20%
-        - Consistency: 20%
+        Calculate overall productivity score using deterministic math.
         """
-        
-        # Normalize components (0-100)
-        task_score = min(100, (tasks_completed / 10) * 100)  # Max 10 tasks = 100
-        deep_work_score = min(100, (deep_work_minutes / 120) * 100)  # Max 120 min = 100
-        focus_score = min(100, focus_quality)
-        consistency_score = min(100, consistency)
-        
-        # Weighted average
-        overall_score = (
-            (task_score * 0.30) +
-            (deep_work_score * 0.30) +
-            (focus_score * 0.20) +
-            (consistency_score * 0.20)
+        return DeterministicAnalyticsEngine.calculate_productivity_score(
+            tasks_created=tasks_created,
+            tasks_completed=tasks_completed,
+            tasks_completed_on_time=tasks_completed_on_time,
+            tasks_completed_late=tasks_completed_late,
+            habits_due=habits_due,
+            habits_completed=habits_completed,
+            deep_work_minutes=deep_work_minutes,
+            active_days_history=active_days_history
         )
-        
-        # Determine grade
-        if overall_score >= 90:
-            grade = "A+"
-            status = "Exceptional"
-        elif overall_score >= 80:
-            grade = "A"
-            status = "Excellent"
-        elif overall_score >= 70:
-            grade = "B"
-            status = "Good"
-        elif overall_score >= 60:
-            grade = "C"
-            status = "Fair"
-        else:
-            grade = "D"
-            status = "Needs Improvement"
-        
-        return {
-            "overall_score": round(overall_score, 1),
-            "grade": grade,
-            "status": status,
-            "components": {
-                "task_completion": round(task_score, 1),
-                "deep_work": round(deep_work_score, 1),
-                "focus_quality": round(focus_score, 1),
-                "consistency": round(consistency_score, 1)
-            }
-        }
     
     @staticmethod
     def calculate_wellness_score(

@@ -1126,31 +1126,51 @@ class PlannerService:
     # ─────────────────────────────────────────────────────────────
 
     async def start_deep_work(self, user_id: str, data: Any) -> Any:
-        """Start a new deep work session."""
+        """Start an IMMEDIATE deep work session."""
         from backend.db.models import Plan
+        from sqlalchemy import select
         
         try:
             async for db in get_db():
+                # OVERLAPPING CONFLICT RULE 3: Only ONE Active/Paused session
+                result = await db.execute(
+                    select(Plan).where(
+                        Plan.user_id == int(user_id),
+                        Plan.plan_type == "deep_work"
+                    ).order_by(Plan.created_at.desc())
+                )
+                sessions = result.scalars().all()
+                for session in sessions:
+                    sched = session.schedule if isinstance(session.schedule, dict) else {}
+                    if sched.get("status") in ["active", "paused"]:
+                        return {"error": "You already have an active or paused deep work session."}
+                
                 input_data = data.dict() if hasattr(data, "dict") else data
                 goal_id = input_data.get("goal_id")
                 await self._enforce_goal_id_ultra(user_id, goal_id)
-                session = Plan(
+                
+                # We do NOT use explicit scheduling for this, start it right now
+                now_utc = datetime.now(timezone.utc)
+                
+                new_session = Plan(
                     user_id=int(user_id),
                     name="Deep Work",
                     plan_type="deep_work",
-                    date=self._utc_now(),
+                    date=now_utc,
                     goal_id=int(goal_id) if goal_id not in (None, "") else None,
                     schedule={
                         "planned_duration": input_data.get("planned_duration_minutes"),
                         "focus_goal": input_data.get("focus_goal"),
                         "notes": input_data.get("notes"),
-                        "status": "active"
+                        "status": "active",
+                        "started_at": now_utc.isoformat(),
+                        "accumulated_pause_seconds": 0
                     }
                 )
-                db.add(session)
+                db.add(new_session)
                 await db.commit()
-                await db.refresh(session)
-                return self._map_to_deep_work_out(session)
+                await db.refresh(new_session)
+                return self._map_to_deep_work_out(new_session)
         except Exception as e:
             logger.error(f"Failed to start deep work: {e}")
             return None
@@ -1210,9 +1230,11 @@ class PlannerService:
                             "focus_goal": input_data.get("focus_goal"),
                             "notes": input_data.get("notes"),
                             "status": "scheduled",
+                            "scheduled_start_at": scheduled_utc.isoformat(),
                             "timezone": timezone_name,
                             "scheduled_local_date": local_date.isoformat(),
                             "scheduled_local_time": start_time_value,
+                            "accumulated_pause_seconds": 0
                         },
                     )
                     db.add(session)
@@ -1245,9 +1267,34 @@ class PlannerService:
                 if not session:
                     return None
                 
-                schedule = session.schedule.copy()
+                schedule = dict(session.schedule) if session.schedule else {}
+                
+                # If they try to complete a scheduled session that was never started
+                if schedule.get("status") == "scheduled":
+                     schedule["status"] = "missed"
+                     session.schedule = schedule
+                     await db.commit()
+                     return {"error": "Cannot complete a session that hasn't started."}
+                
+                now_utc = datetime.now(timezone.utc)
                 schedule["status"] = "completed"
-                schedule["actual_duration"] = actual_duration_minutes
+                schedule["completed_at"] = now_utc.isoformat()
+                
+                # Invariant Enforcement: Actual duration MUST be exactly the difference MINUS pause time
+                # We default to actual_duration_minutes if missing started_at, but we prefer strict math.
+                started_at_str = schedule.get("started_at")
+                if started_at_str:
+                    started_time = datetime.fromisoformat(started_at_str).replace(tzinfo=timezone.utc)
+                    total_seconds_lived = (now_utc - started_time).total_seconds()
+                    pause_seconds = int(schedule.get("accumulated_pause_seconds", 0))
+                    net_active_minutes = max(0, int((total_seconds_lived - pause_seconds) / 60.0))
+                    # Bound their self-reported actuals
+                    if abs(net_active_minutes - actual_duration_minutes) <= 2: 
+                        schedule["actual_duration"] = actual_duration_minutes
+                    else:
+                        schedule["actual_duration"] = net_active_minutes
+                else:
+                    schedule["actual_duration"] = actual_duration_minutes
                 
                 session.schedule = schedule
                 await db.commit()
@@ -1260,12 +1307,12 @@ class PlannerService:
                         event_type='deep_work_session',
                         metadata={
                             'session_id': session_id,
-                            'duration': actual_duration_minutes,
+                            'duration': schedule["actual_duration"],
                             'interruptions': schedule.get('interruptions', 0),
                             'quality_score': schedule.get('quality_score', 0)
                         }
                     )
-                    logger.info(f"Tracked deep_work_session event for session {session_id}: {actual_duration_minutes} min")
+                    logger.info(f"Tracked deep_work_session event for session {session_id}: {schedule['actual_duration']} min")
                 except Exception as e:
                     logger.error(f"Failed to track analytics event: {e}")
                 
@@ -1273,6 +1320,60 @@ class PlannerService:
         except Exception as e:
             logger.error(f"Failed to complete deep work: {e}")
             return None
+
+    async def pause_deep_work(self, user_id: str, session_id: str) -> Any:
+        from backend.db.models import Plan
+        from sqlalchemy import select
+        async for db in get_db():
+            result = await db.execute(select(Plan).where(Plan.id == int(session_id), Plan.user_id == int(user_id)))
+            session = result.scalar_one_or_none()
+            if not session: return None
+            sched = dict(session.schedule)
+            if sched.get("status") != "active": return {"error": "Can only pause 'active' sessions."}
+            sched["status"] = "paused"
+            sched["paused_at"] = datetime.now(timezone.utc).isoformat()
+            session.schedule = sched
+            await db.commit()
+            await db.refresh(session)
+            return self._map_to_deep_work_out(session)
+            
+    async def resume_deep_work(self, user_id: str, session_id: str) -> Any:
+        from backend.db.models import Plan
+        from sqlalchemy import select
+        async for db in get_db():
+            result = await db.execute(select(Plan).where(Plan.id == int(session_id), Plan.user_id == int(user_id)))
+            session = result.scalar_one_or_none()
+            if not session: return None
+            sched = dict(session.schedule)
+            if sched.get("status") != "paused": return {"error": "Can only resume 'paused' sessions."}
+            
+            paused_at_str = sched.get("paused_at")
+            if paused_at_str:
+                paused_time = datetime.fromisoformat(paused_at_str).replace(tzinfo=timezone.utc)
+                now_time = datetime.now(timezone.utc)
+                pause_delta = int((now_time - paused_time).total_seconds())
+                sched["accumulated_pause_seconds"] = int(sched.get("accumulated_pause_seconds", 0)) + pause_delta
+                
+            sched["status"] = "active"
+            sched["paused_at"] = None
+            session.schedule = sched
+            await db.commit()
+            await db.refresh(session)
+            return self._map_to_deep_work_out(session)
+
+    async def cancel_deep_work(self, user_id: str, session_id: str) -> Any:
+        from backend.db.models import Plan
+        from sqlalchemy import select
+        async for db in get_db():
+            result = await db.execute(select(Plan).where(Plan.id == int(session_id), Plan.user_id == int(user_id)))
+            session = result.scalar_one_or_none()
+            if not session: return None
+            sched = dict(session.schedule)
+            sched["status"] = "cancelled"
+            session.schedule = sched
+            await db.commit()
+            await db.refresh(session)
+            return self._map_to_deep_work_out(session)
 
     async def get_active_deep_work(self, user_id: str) -> Optional[Any]:
         """Get active deep work session."""
@@ -1299,6 +1400,11 @@ class PlannerService:
     def _map_to_deep_work_out(self, session: Any) -> Any:
         """Helper to map Plan model to DeepWorkOut shape."""
         schedule = session.schedule or {}
+        
+        def safe_iso(dt_str):
+            if not dt_str: return None
+            return datetime.fromisoformat(dt_str)
+
         return {
             "id": str(session.id),
             "user_id": str(session.user_id),
@@ -1306,8 +1412,13 @@ class PlannerService:
             "focus_goal": schedule.get("focus_goal"),
             "notes": schedule.get("notes"),
             "goal_id": str(session.goal_id) if session.goal_id else None,
-            "started_at": session.date or session.created_at,
+            "scheduled_start_at": safe_iso(schedule.get("scheduled_start_at")),
+            "started_at": safe_iso(schedule.get("started_at")) or (session.date if schedule.get("status") in ("active", "completed") else None),
+            "paused_at": safe_iso(schedule.get("paused_at")),
+            "completed_at": safe_iso(schedule.get("completed_at")),
+            "ended_at": safe_iso(schedule.get("completed_at")), 
             "actual_duration_minutes": schedule.get("actual_duration"),
+            "accumulated_pause_seconds": schedule.get("accumulated_pause_seconds", 0),
             "status": schedule.get("status", "active"),
             "created_at": session.created_at,
         }

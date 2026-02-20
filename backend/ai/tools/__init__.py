@@ -68,7 +68,7 @@ try:
         "UPDATE_TASK_STATUS": PlannerToolSet.update_task_status,
         "UPDATE_GOAL_PROGRESS": PlannerToolSet.update_goal_progress,
         "COMPLETE_HABIT": PlannerToolSet.complete_habit,
-        "START_DEEP_WORK": PlannerToolSet.start_deep_work_session,  # Override legacy
+        "START_DEEP_WORK": PlannerToolSet.create_deep_work_session,  # Override legacy with pure creation
         "CREATE_GOAL_CASCADE": PlannerToolSet.create_goal_with_cascade,  # Override legacy
     }
 

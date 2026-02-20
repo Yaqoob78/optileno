@@ -193,24 +193,60 @@ async def schedule_deep_work(
 
 
 class CompleteDeepWorkRequest(BaseModel):
-    session_id: str = Field(..., description="Session id to complete")
     actual_duration_minutes: int = Field(..., ge=1, le=480, description="Actual duration")
 
-
-@router.post("/deep-work/complete", response_model=DeepWorkOut)
+@router.post("/deep-work/{session_id}/complete", response_model=DeepWorkOut)
 async def complete_deep_work(
+    session_id: str,
     request_body: CompleteDeepWorkRequest,
     current_user: User = Depends(get_current_user),
 ):
     session = await planner_service.complete_deep_work(
         user_id=str(current_user.id),
-        session_id=request_body.session_id,
+        session_id=session_id,
         actual_duration_minutes=request_body.actual_duration_minutes,
     )
     if not session:
         raise HTTPException(status_code=404, detail="Active session not found")
+    if isinstance(session, dict) and "error" in session:
+        raise HTTPException(status_code=400, detail=session["error"])
+        
     session_payload = session if isinstance(session, dict) else session.dict()
     await broadcast_deep_work_completed(current_user.id, session_payload)
+    return session
+
+@router.post("/deep-work/{session_id}/pause", response_model=DeepWorkOut)
+async def pause_deep_work(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    session = await planner_service.pause_deep_work(str(current_user.id), session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Active session not found")
+    if isinstance(session, dict) and "error" in session:
+        raise HTTPException(status_code=400, detail=session["error"])
+    return session
+
+@router.post("/deep-work/{session_id}/resume", response_model=DeepWorkOut)
+async def resume_deep_work(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    session = await planner_service.resume_deep_work(str(current_user.id), session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Paused session not found")
+    if isinstance(session, dict) and "error" in session:
+        raise HTTPException(status_code=400, detail=session["error"])
+    return session
+
+@router.delete("/deep-work/{session_id}", response_model=DeepWorkOut)
+async def cancel_deep_work(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    session = await planner_service.cancel_deep_work(str(current_user.id), session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
     return session
 
 

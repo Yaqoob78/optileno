@@ -24,6 +24,7 @@ import re
 
 from backend.services.planner_service import planner_service
 from backend.services.analytics_service import analytics_service
+from backend.ai.tool_contracts import validate_tool_payload, ToolExecutionError
 
 logger = logging.getLogger(__name__)
 
@@ -247,13 +248,26 @@ class AIAgentActions:
         normalized_tool_name = self._normalize_tool_name(tool_name)
         normalized_plan_tier = self._normalize_plan_tier(plan_tier)
         effective_request_id = request_id or str(uuid.uuid4())
-        payload_summary = self._summarize_payload(payload)
+        
+        try:
+            # 1. Pipeline Validation Layer (Tier & Schema)
+            # Will raise ToolExecutionError if invalid
+            validated_payload = validate_tool_payload(
+                tool_name=tool_name.upper(), 
+                payload=payload, 
+                plan_tier=normalized_plan_tier
+            )
+        except ToolExecutionError as e:
+            # Re-raise so the AI Client can catch the strict format error and retry
+            raise 
+
+        payload_summary = self._summarize_payload(validated_payload)
 
         started_at = time.perf_counter()
         success = False
         error_type: Optional[str] = None
         try:
-            result = await self._invoke_tool_callable(tool_callable, user_id, payload)
+            result = await self._invoke_tool_callable(tool_callable, user_id, validated_payload)
             success = True
             return result
         except Exception as exc:

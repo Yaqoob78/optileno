@@ -40,6 +40,9 @@ interface UsePlannerReturn {
     goal_id?: string | number | null;
   }) => Promise<{ success: boolean; sessions?: DeepWorkSession[]; error?: string }>;
   completeDeepWork: (actualMinutes: number) => Promise<{ success: boolean; error?: string }>;
+  pauseDeepWork: () => Promise<{ success: boolean; session?: DeepWorkSession; error?: string }>;
+  resumeDeepWork: () => Promise<{ success: boolean; session?: DeepWorkSession; error?: string }>;
+  cancelDeepWork: () => Promise<{ success: boolean; error?: string }>;
   createGoalWithCascade: (data: {
     title: string;
     description?: string;
@@ -362,6 +365,48 @@ export const usePlanner = (): UsePlannerReturn => {
     }
   }, [activeDeepWork, clearActiveDeepWork, incrementDeepWorkCount]);
 
+  const pauseDeepWork = useCallback(async () => {
+    if (!activeDeepWork?.id) return { success: false, error: 'No active session' };
+    try {
+      const res = await plannerApi.pauseDeepWork(activeDeepWork.id);
+      if (res.success && res.data) {
+        setActiveDeepWork(res.data);
+        return { success: true, session: res.data };
+      }
+      return { success: false, error: res.error?.message };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }, [activeDeepWork, setActiveDeepWork]);
+
+  const resumeDeepWork = useCallback(async () => {
+    if (!activeDeepWork?.id) return { success: false, error: 'No active session' };
+    try {
+      const res = await plannerApi.resumeDeepWork(activeDeepWork.id);
+      if (res.success && res.data) {
+        setActiveDeepWork(res.data);
+        return { success: true, session: res.data };
+      }
+      return { success: false, error: res.error?.message };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }, [activeDeepWork, setActiveDeepWork]);
+
+  const cancelDeepWork = useCallback(async () => {
+    if (!activeDeepWork?.id) return { success: false, error: 'No active session' };
+    try {
+      const res = await plannerApi.cancelDeepWork(activeDeepWork.id);
+      if (res.success) {
+        clearActiveDeepWork();
+        return { success: true };
+      }
+      return { success: false, error: res.error?.message };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }, [activeDeepWork, clearActiveDeepWork]);
+
   // ── Derived values ────────────────────────────────────────────────
   const isDeepWorkActive = !!activeDeepWork && activeDeepWork.status === 'active';
 
@@ -533,6 +578,9 @@ export const usePlanner = (): UsePlannerReturn => {
     startDeepWork,
     scheduleDeepWork,
     completeDeepWork,
+    pauseDeepWork,
+    resumeDeepWork,
+    cancelDeepWork,
     createGoalWithCascade,
     forceRefresh,
 

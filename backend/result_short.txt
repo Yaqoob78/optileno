@@ -1,3 +1,3 @@
 Starting short test
-Hash created successfully: $2b$12$ntEoF8V.kRT5BDWolYw.F.wPUGcmWzCJVywWy1cOaRekBY7Csf6.a
+Hash created successfully: $2b$12$yI6QUxpCxAQ3kImxuv9hjO1uyEbMFokXV7FidB.oPMSSnOiRsJCD.
 Verify result: True

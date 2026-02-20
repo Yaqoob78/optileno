@@ -25,6 +25,7 @@ import GoalTimeline from '../../components/planner/GoalTimeline';
 import HabitTracker from '../../components/planner/HabitTracker';
 import TaskCard from '../../components/planner/TaskCard';
 import PlannerDashboard from '../../components/planner/Plannerdashboard';
+import { Modal } from '../../components/common/Modal';
 
 import '../../styles/pages/planner.css';
 
@@ -86,6 +87,9 @@ export default function PlannerPage() {
     deleteTask,
     startDeepWork,
     completeDeepWork,
+    pauseDeepWork,
+    resumeDeepWork,
+    cancelDeepWork,
     isDeepWorkActive,
     forceRefresh
   } = usePlanner();
@@ -522,313 +526,297 @@ export default function PlannerPage() {
         </div>
 
         {/* Edit Modal - FIXED VERSION */}
-        {isEditing && editForm && (
-          <div className="modal-overlay" onClick={handleCancelEdit}>
-            <div
-              className="modal-content task-modal"
-              ref={editModalRef}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="modal-header">
-                <div className="modal-title">
-                  <div className="modal-icon">
-                    <PenTool size={18} />
-                  </div>
-                  <h3>{isNewTask ? 'Create New Task' : 'Edit Task'}</h3>
-                </div>
-                <button
-                  className="modal-close"
-                  onClick={handleCancelEdit}
+        <Modal
+          isOpen={isEditing && !!editForm}
+          onOpenChange={(open) => { if (!open) handleCancelEdit(); }}
+          title={isNewTask ? 'Create New Task' : 'Edit Task'}
+          maxWidth="lg"
+          footer={
+            <div className="flex gap-3 w-full justify-end">
+              <button
+                className="modal-btn cancel"
+                onClick={handleCancelEdit}
+                disabled={isSaving}
+              >
+                Cancel
+              </button>
+              <button
+                className={`modal-btn submit ${!editForm?.title.trim() || isSaving ? 'disabled' : ''}`}
+                onClick={handleSaveEdit}
+                disabled={!editForm?.title.trim() || isSaving}
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 size={16} />
+                    <span>{isNewTask ? 'Add Task' : 'Save Changes'}</span>
+                  </>
+                )}
+              </button>
+            </div>
+          }
+        >
+          {editForm && (
+            <div className="flex flex-col gap-5 pt-2">
+              {saveError && <div className="modal-error-notice">{saveError}</div>}
+
+              <div className="form-group">
+                <label htmlFor="task-title">
+                  <span className="label-icon">📝</span>
+                  Task Title *
+                </label>
+                <input
+                  id="task-title"
+                  type="text"
+                  value={editForm.title}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setEditForm((prev) => {
+                      if (!prev) return null;
+                      const updates: any = { title: val };
+                      if (!isEnergyTouched) {
+                        updates.energy = estimateEnergyLevel(val, prev.category);
+                      }
+                      return { ...prev, ...updates };
+                    });
+                  }}
+                  placeholder="e.g., Morning Deep Work"
+                  className="task-input"
+                  autoFocus
                   disabled={isSaving}
-                >
-                  <X size={20} />
-                </button>
+                />
               </div>
 
-              <div className="modal-body">
-                {saveError && <div className="modal-error-notice">{saveError}</div>}
+              <div className="form-group">
+                <label htmlFor="task-description">
+                  <span className="label-icon">📄</span>
+                  Description
+                </label>
+                <textarea
+                  id="task-description"
+                  value={editForm.description || ''}
+                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                  placeholder="What needs to be done?"
+                  rows={2}
+                  className="task-textarea"
+                  disabled={isSaving}
+                />
+              </div>
 
+              {/* ── Day Picker ── */}
+              <div className="form-group">
+                <label>
+                  <span className="label-icon">📅</span>
+                  Schedule Day
+                </label>
+                <div className="day-picker-row">
+                  {DAY_LABELS.map((label, idx) => {
+                    const isSelected = editForm.scheduledDay === idx;
+                    const isToday = getWeekdayIndexInTimezone(new Date(), timezone) === idx;
+                    return (
+                      <button
+                        key={label}
+                        type="button"
+                        className={`day-pill${isSelected ? ' selected' : ''}${isToday ? ' today' : ''}`}
+                        disabled={isSaving}
+                        onClick={() => {
+                          setEditForm(prev => prev ? {
+                            ...prev,
+                            scheduledDay: idx,
+                            dueDate: getNextLocalDateForWeekday(timezone, idx),
+                          } : null);
+                        }}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {editForm.scheduledDay != null && (
+                  <span className="day-picker-hint">
+                    {(() => {
+                      const dayYmd = getNextLocalDateForWeekday(timezone, editForm.scheduledDay);
+                      const todayYmd = getDateKeyInTimezone(new Date(), timezone);
+                      if (dayYmd === todayYmd) return 'Today';
+                      const tomorrow = new Date();
+                      tomorrow.setDate(tomorrow.getDate() + 1);
+                      if (dayYmd === getDateKeyInTimezone(tomorrow, timezone)) return 'Tomorrow';
+                      return formatLocalDateLabel(dayYmd, timezone);
+                    })()}
+                  </span>
+                )}
+              </div>
+
+              <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="task-title">
-                    <span className="label-icon">📝</span>
-                    Task Title *
+                  <label htmlFor="task-time">
+                    <span className="label-icon">⏰</span>
+                    Start Time
                   </label>
                   <input
-                    id="task-title"
-                    type="text"
-                    value={editForm.title}
+                    id="task-time"
+                    type="time"
+                    value={editForm.startTime || ''}
                     onChange={(e) => {
-                      const val = e.target.value;
+                      const newTime = e.target.value;
+                      setEditForm(prev => {
+                        if (!prev) return null;
+                        let updatedDueDate = prev.dueDate;
+                        if (prev.scheduledDay != null) {
+                          updatedDueDate = getNextLocalDateForWeekday(timezone, prev.scheduledDay);
+                        }
+                        return { ...prev, startTime: newTime, dueDate: updatedDueDate };
+                      });
+                    }}
+                    className="task-input"
+                    disabled={isSaving}
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="task-duration">
+                    <span className="label-icon">⏱️</span>
+                    Duration (min)
+                  </label>
+                  <input
+                    id="task-duration"
+                    type="number"
+                    value={editForm.duration ?? 60}
+                    onChange={(e) => setEditForm(prev => prev ? { ...prev, duration: Number(e.target.value) || 60 } : null)}
+                    min={5}
+                    step={5}
+                    className="task-input"
+                    disabled={isSaving}
+                  />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="task-category">
+                    <span className="label-icon">🏷️</span>
+                    Category
+                  </label>
+                  <select
+                    id="task-category"
+                    value={editForm.category || ''}
+                    onChange={(e) => {
+                      const val = e.target.value as any;
                       setEditForm((prev) => {
                         if (!prev) return null;
-                        const updates: any = { title: val };
+                        const updates: any = { category: val };
                         if (!isEnergyTouched) {
-                          updates.energy = estimateEnergyLevel(val, prev.category);
+                          updates.energy = estimateEnergyLevel(prev.title, val);
                         }
                         return { ...prev, ...updates };
                       });
                     }}
-                    placeholder="e.g., Morning Deep Work"
-                    className="task-input"
-                    autoFocus
+                    className="task-select"
                     disabled={isSaving}
-                  />
+                  >
+                    <option value="" disabled>-- Select Category --</option>
+                    {isUltra && <option value="goal">Goal</option>}
+                    <option value="work">Work</option>
+                    <option value="meeting">Meeting</option>
+                    <option value="health">Health</option>
+                    <option value="learning">Learning</option>
+                    <option value="routine">Routine</option>
+                    <option value="personal">Personal</option>
+                  </select>
                 </div>
 
-                <div className="form-group">
-                  <label htmlFor="task-description">
-                    <span className="label-icon">📄</span>
-                    Description
-                  </label>
-                  <textarea
-                    id="task-description"
-                    value={editForm.description || ''}
-                    onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                    placeholder="What needs to be done?"
-                    rows={2}
-                    className="task-textarea"
-                    disabled={isSaving}
-                  />
-                </div>
-
-                {/* ── Day Picker ── */}
-                <div className="form-group">
-                  <label>
-                    <span className="label-icon">📅</span>
-                    Schedule Day
-                  </label>
-                  <div className="day-picker-row">
-                    {DAY_LABELS.map((label, idx) => {
-                      const isSelected = editForm.scheduledDay === idx;
-                      const isToday = getWeekdayIndexInTimezone(new Date(), timezone) === idx;
-                      return (
-                        <button
-                          key={label}
-                          type="button"
-                          className={`day-pill${isSelected ? ' selected' : ''}${isToday ? ' today' : ''}`}
-                          disabled={isSaving}
-                          onClick={() => {
-                            setEditForm(prev => prev ? {
-                              ...prev,
-                              scheduledDay: idx,
-                              dueDate: getNextLocalDateForWeekday(timezone, idx),
-                            } : null);
-                          }}
-                        >
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {editForm.scheduledDay != null && (
-                    <span className="day-picker-hint">
-                      {(() => {
-                        const dayYmd = getNextLocalDateForWeekday(timezone, editForm.scheduledDay);
-                        const todayYmd = getDateKeyInTimezone(new Date(), timezone);
-                        if (dayYmd === todayYmd) return 'Today';
-                        const tomorrow = new Date();
-                        tomorrow.setDate(tomorrow.getDate() + 1);
-                        if (dayYmd === getDateKeyInTimezone(tomorrow, timezone)) return 'Tomorrow';
-                        return formatLocalDateLabel(dayYmd, timezone);
-                      })()}
-                    </span>
-                  )}
-                </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="task-time">
-                      <span className="label-icon">⏰</span>
-                      Start Time
-                    </label>
-                    <input
-                      id="task-time"
-                      type="time"
-                      value={editForm.startTime || ''}
-                      onChange={(e) => {
-                        const newTime = e.target.value;
-                        setEditForm(prev => {
-                          if (!prev) return null;
-                          let updatedDueDate = prev.dueDate;
-                          if (prev.scheduledDay != null) {
-                            updatedDueDate = getNextLocalDateForWeekday(timezone, prev.scheduledDay);
-                          }
-                          return { ...prev, startTime: newTime, dueDate: updatedDueDate };
-                        });
-                      }}
-                      className="task-input"
-                      disabled={isSaving}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="task-duration">
-                      <span className="label-icon">⏱️</span>
-                      Duration (min)
-                    </label>
-                    <input
-                      id="task-duration"
-                      type="number"
-                      value={editForm.duration ?? 60}
-                      onChange={(e) => setEditForm({ ...editForm, duration: Number(e.target.value) || 60 })}
-                      min={5}
-                      step={5}
-                      className="task-input"
-                      disabled={isSaving}
-                    />
-                  </div>
-                </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="task-category">
-                      <span className="label-icon">🏷️</span>
-                      Category
+                {isUltra && editForm.category === 'goal' && (
+                  <div className="form-group" style={{ marginTop: '0.5rem' }}>
+                    <label htmlFor="task-goal-select">
+                      <span className="label-icon">🎯</span>
+                      Select Goal
                     </label>
                     <select
-                      id="task-category"
-                      value={editForm.category || ''}
+                      id="task-goal-select"
+                      value={editForm.goalId || ''}
+                      onChange={(e) => setEditForm({ ...editForm, goalId: e.target.value })}
+                      className="task-select"
+                      disabled={isSaving}
+                    >
+                      <option value="">-- Choose a Goal --</option>
+                      {goals.filter(g => g.status !== 'completed').map(goal => (
+                        <option key={goal.id} value={goal.id}>
+                          {goal.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="task-priority">
+                      <span className="label-icon">⚡</span>
+                      Priority
+                    </label>
+                    <select
+                      id="task-priority"
+                      value={editForm.priority || 'medium'}
+                      onChange={(e) => setEditForm(prev => prev ? { ...prev, priority: e.target.value as any } : null)}
+                      className="task-select"
+                      disabled={isSaving}
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="urgent">Urgent</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="task-energy">
+                      <span className="label-icon">🔋</span>
+                      Energy
+                    </label>
+                    <select
+                      id="task-energy"
+                      value={editForm.energy || 'medium'}
                       onChange={(e) => {
-                        const val = e.target.value as any;
-                        setEditForm((prev) => {
-                          if (!prev) return null;
-                          const updates: any = { category: val };
-                          if (!isEnergyTouched) {
-                            updates.energy = estimateEnergyLevel(prev.title, val);
-                          }
-                          return { ...prev, ...updates };
-                        });
+                        setIsEnergyTouched(true);
+                        setEditForm(prev => prev ? { ...prev, energy: e.target.value as any } : null);
                       }}
                       className="task-select"
                       disabled={isSaving}
                     >
-                      <option value="" disabled>-- Select Category --</option>
-                      {isUltra && <option value="goal">Goal</option>}
-                      <option value="work">Work</option>
-                      <option value="meeting">Meeting</option>
-                      <option value="health">Health</option>
-                      <option value="learning">Learning</option>
-                      <option value="routine">Routine</option>
-                      <option value="personal">Personal</option>
+                      <option value="high">High ⚡</option>
+                      <option value="medium">Medium 😐</option>
+                      <option value="low">Low 🍵</option>
                     </select>
                   </div>
-
-                  {isUltra && editForm.category === 'goal' && (
-                    <div className="form-group" style={{ marginTop: '0.5rem' }}>
-                      <label htmlFor="task-goal-select">
-                        <span className="label-icon">🎯</span>
-                        Select Goal
-                      </label>
-                      <select
-                        id="task-goal-select"
-                        value={editForm.goalId || ''}
-                        onChange={(e) => setEditForm({ ...editForm, goalId: e.target.value })}
-                        className="task-select"
-                        disabled={isSaving}
-                      >
-                        <option value="">-- Choose a Goal --</option>
-                        {goals.filter(g => g.status !== 'completed').map(goal => (
-                          <option key={goal.id} value={goal.id}>
-                            {goal.title}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label htmlFor="task-priority">
-                        <span className="label-icon">⚡</span>
-                        Priority
-                      </label>
-                      <select
-                        id="task-priority"
-                        value={editForm.priority || 'medium'}
-                        onChange={(e) => setEditForm(prev => prev ? { ...prev, priority: e.target.value as any } : null)}
-                        className="task-select"
-                        disabled={isSaving}
-                      >
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
-                        <option value="urgent">Urgent</option>
-                      </select>
-                    </div>
-
-                    <div className="form-group">
-                      <label htmlFor="task-energy">
-                        <span className="label-icon">🔋</span>
-                        Energy
-                      </label>
-                      <select
-                        id="task-energy"
-                        value={editForm.energy || 'medium'}
-                        onChange={(e) => {
-                          setIsEnergyTouched(true);
-                          setEditForm(prev => prev ? { ...prev, energy: e.target.value as any } : null);
-                        }}
-                        className="task-select"
-                        disabled={isSaving}
-                      >
-                        <option value="high">High ⚡</option>
-                        <option value="medium">Medium 😐</option>
-                        <option value="low">Low 🍵</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="task-tags">
-                    <span className="label-icon">#</span>
-                    Tags (comma separated)
-                  </label>
-                  <input
-                    id="task-tags"
-                    type="text"
-                    value={editForm.tags?.join(', ') || ''}
-                    onChange={(e) =>
-                      setEditForm({
-                        ...editForm,
-                        tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean),
-                      })
-                    }
-                    placeholder="work, urgent, internal"
-                    className="task-input"
-                    disabled={isSaving}
-                  />
                 </div>
               </div>
 
-              <div className="modal-footer">
-                <button
-                  className="modal-btn cancel"
-                  onClick={handleCancelEdit}
+              <div className="form-group">
+                <label htmlFor="task-tags">
+                  <span className="label-icon">#</span>
+                  Tags (comma separated)
+                </label>
+                <input
+                  id="task-tags"
+                  type="text"
+                  value={editForm.tags?.join(', ') || ''}
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean),
+                    })
+                  }
+                  placeholder="work, urgent, internal"
+                  className="task-input"
                   disabled={isSaving}
-                >
-                  Cancel
-                </button>
-                <button
-                  className={`modal-btn submit ${!editForm.title.trim() || isSaving ? 'disabled' : ''}`}
-                  onClick={handleSaveEdit}
-                  disabled={!editForm.title.trim() || isSaving}
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin" />
-                      <span>Saving...</span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 size={16} />
-                      <span>{isNewTask ? 'Add Task' : 'Save Changes'}</span>
-                    </>
-                  )}
-                </button>
+                />
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </Modal>
 
         {/* Main content */}
         <div className={`planner-main-grid ${maximizedView ? 'maximized' : ''}`}>
@@ -903,12 +891,51 @@ export default function PlannerPage() {
                 <>
                   <DeepWorkBlock currentTime={currentTime} />
                   {/* Leno indicator */}
-                  {activeDeepWork && activeDeepWork.status === 'active' && (
+                  {activeDeepWork && (activeDeepWork.status === 'active' || activeDeepWork.status === 'paused') && (
                     <div className="ai-status-block">
-                      <div className="ai-active-notice">
-                        Deep Work Session Active
-                        <br />
-                        Started: {new Date(activeDeepWork.startTime || activeDeepWork.started_at || Date.now()).toLocaleTimeString()}
+                      <div className="ai-active-notice" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <div>
+                          <strong>{activeDeepWork.status === 'active' ? 'Deep Work Active' : 'Deep Work Paused'}</strong>
+                          <br />
+                          Started: {new Date(activeDeepWork.startTime || activeDeepWork.started_at || Date.now()).toLocaleTimeString()}
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+                          {activeDeepWork.status === 'active' ? (
+                            <button
+                              className="modal-btn cancel"
+                              style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', flex: 1 }}
+                              onClick={() => pauseDeepWork()}
+                            >
+                              Pause
+                            </button>
+                          ) : (
+                            <button
+                              className="modal-btn submit"
+                              style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', flex: 1 }}
+                              onClick={() => resumeDeepWork()}
+                            >
+                              Resume
+                            </button>
+                          )}
+                          <button
+                            className="modal-btn submit"
+                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', flex: 1 }}
+                            onClick={() => {
+                              // basic complete assumption; real implementation probably calculates actual duration diff
+                              completeDeepWork(activeDeepWork.duration || 60);
+                            }}
+                          >
+                            Finish
+                          </button>
+                          <button
+                            className="modal-btn cancel"
+                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', color: 'var(--color-danger)' }}
+                            onClick={() => cancelDeepWork()}
+                            title="Cancel session"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}

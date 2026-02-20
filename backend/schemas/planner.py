@@ -137,6 +137,71 @@ class TaskOut(TaskBase):
         """Convert IDs to strings for response"""
         return str(value)
 
+class TaskOut(TaskBase):
+    """Response model — includes DB-generated fields"""
+    id: int | str  # Accept both int and str
+    user_id: int | str  # Accept both int and str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    related_goal_id: Optional[str] = None
+    goal_title: Optional[str] = None
+    meta: Optional[dict] = None
+
+    model_config = ConfigDict(from_attributes=True)  # Enables .from_orm()
+
+    @model_validator(mode='before')
+    @classmethod
+    def convert_db_values(cls, data: Any) -> Any:
+        """Convert database values to API format before validation"""
+        if isinstance(data, dict):
+            # Map database status values to API values
+            status_map = {
+                "pending": "todo",
+                "in_progress": "in-progress",
+                "completed": "done",
+                "planned": "planned",
+                "overdue": "overdue",
+                # Handle already-correct values
+                "todo": "todo",
+                "in-progress": "in-progress",
+                "done": "done",
+            }
+            if "status" in data and data["status"] in status_map:
+                data["status"] = status_map[data["status"]]
+            
+            # Map estimated_minutes -> estimated_duration_minutes
+            if "estimated_minutes" in data:
+                data["estimated_duration_minutes"] = data["estimated_minutes"]
+                
+            return data
+        # For ORM objects, convert them to dict first
+        if hasattr(data, '__dict__'):
+            data_dict = {k: v for k, v in data.__dict__.items() if not k.startswith('_')}
+            status_map = {
+                "pending": "todo",
+                "in_progress": "in-progress",
+                "completed": "done",
+                "planned": "planned",
+                "overdue": "overdue",
+                "todo": "todo",
+                "in-progress": "in-progress",
+                "done": "done",
+            }
+            if "status" in data_dict and data_dict["status"] in status_map:
+                data_dict["status"] = status_map[data_dict["status"]]
+                
+            # Map estimated_minutes -> estimated_duration_minutes
+            if "estimated_minutes" in data_dict:
+                data_dict["estimated_duration_minutes"] = data_dict["estimated_minutes"]
+                
+            return data_dict
+        return data
+
+    @field_serializer('id', 'user_id')
+    def serialize_ids(self, value: Any) -> str:
+        """Convert IDs to strings for response"""
+        return str(value)
+
 
 # ── Deep Work Session Schemas ──────────────────────────────────────────
 
@@ -145,6 +210,8 @@ class DeepWorkBase(BaseModel):
     focus_goal: Optional[str] = Field(None, max_length=300)
     notes: Optional[str] = Field(None, max_length=1000)
     goal_id: Optional[int | str] = None
+    status: Literal["scheduled", "active", "paused", "completed", "cancelled", "missed"] = "active"
+    accumulated_pause_seconds: int = 0
 
 
 class DeepWorkCreate(DeepWorkBase):
@@ -190,22 +257,22 @@ class DeepWorkScheduleCreate(BaseModel):
 
 
 class DeepWorkOut(DeepWorkBase):
-    """Response model for deep work sessions"""
     id: int | str
     user_id: int | str
-    started_at: datetime
+    scheduled_start_at: Optional[datetime] = None
+    started_at: Optional[datetime] = None
+    paused_at: Optional[datetime] = None
     ended_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
     actual_duration_minutes: Optional[int] = None
-    status: Literal["scheduled", "active", "completed", "cancelled"] = "active"
     created_at: datetime
-
+    
     model_config = ConfigDict(from_attributes=True)
 
     @field_serializer('id', 'user_id')
     def serialize_ids(self, value: Any) -> str:
         """Convert IDs to strings for response"""
         return str(value)
-
 
 # ── Optional: Goal Schemas (expand when you implement GoalTimeline) ─────
 

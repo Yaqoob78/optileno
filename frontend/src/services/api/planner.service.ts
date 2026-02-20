@@ -132,6 +132,18 @@ class PlannerService {
     return api.get<DeepWorkSession | null>(`${this.basePath}/deep-work/active`);
   }
 
+  async pauseDeepWork(sessionId: string): Promise<ApiResponse<DeepWorkSession>> {
+    return api.post<DeepWorkSession>(`${this.basePath}/deep-work/${sessionId}/pause`, {});
+  }
+
+  async resumeDeepWork(sessionId: string): Promise<ApiResponse<DeepWorkSession>> {
+    return api.post<DeepWorkSession>(`${this.basePath}/deep-work/${sessionId}/resume`, {});
+  }
+
+  async cancelDeepWork(sessionId: string): Promise<ApiResponse<DeepWorkSession>> {
+    return api.delete<DeepWorkSession>(`${this.basePath}/deep-work/${sessionId}`);
+  }
+
   async scheduleDeepWork(data: DeepWorkScheduleRequest): Promise<ApiResponse<DeepWorkSession[]>> {
     return api.post<DeepWorkSession[]>(`${this.basePath}/deep-work/schedule`, data);
   }

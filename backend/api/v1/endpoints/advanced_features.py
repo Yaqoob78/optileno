@@ -163,10 +163,14 @@ async def get_performance_score(
     """Calculate user's performance score"""
     # In production, fetch actual metrics
     score = PerformanceScorer.calculate_productivity_score(
+        tasks_created=10,
         tasks_completed=8,
+        tasks_completed_on_time=7,
+        tasks_completed_late=1,
+        habits_due=5,
+        habits_completed=4,
         deep_work_minutes=120,
-        focus_quality=85.0,
-        consistency=90.0
+        active_days_history=7
     )
     
     return {

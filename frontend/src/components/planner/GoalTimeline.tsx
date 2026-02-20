@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { Target, Calendar, TrendingUp, ChevronRight, X, Plus, Clock, Edit2, Trash2, Info, Square, Loader2 } from 'lucide-react';
 import { usePlanner } from '../../hooks/usePlanner';
 import '../../styles/components/planner/GoalTimeline.css';
 import type { Goal } from '../../types/planner.types';
 import { DatePicker } from '../ui/DatePicker';
 import { GoalAnalytics } from './GoalAnalytics';
+import { Modal } from '../common/Modal';
 
 export default function GoalTimeline() {
   const { goals, fetchGoals, deleteGoal, createGoal } = usePlanner();
@@ -172,98 +172,99 @@ export default function GoalTimeline() {
         )}
       </div>
 
-      {isModalOpen && createPortal(
-        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
-          <div className="modal-content goal-modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-title">
-                <Target size={18} />
-                <h3>Set New Goal</h3>
-              </div>
-              <button className="modal-close" onClick={() => setIsModalOpen(false)}><X size={20} /></button>
+      <Modal
+        isOpen={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        title="Set New Goal"
+        maxWidth="md"
+        footer={
+          <div className="flex gap-3 w-full justify-end">
+            <button className="px-4 py-2 rounded-lg font-medium text-[var(--color-text-secondary)] hover:bg-[var(--bg-secondary)] transition-colors" onClick={() => setIsModalOpen(false)}>Cancel</button>
+            <button
+              className="px-4 py-2 rounded-lg font-medium bg-[var(--brand-accent)] text-[var(--color-text-inverse)] hover:opacity-90 transition-opacity disabled:opacity-50"
+              onClick={handleSaveGoal}
+              disabled={isSaving || !newGoal.title.trim()}
+            >
+              {isSaving ? 'Saving...' : 'Add Goal'}
+            </button>
+          </div>
+        }
+      >
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-[var(--color-text-secondary)]">Goal Title *</label>
+            <input
+              value={newGoal.title}
+              onChange={e => setNewGoal({ ...newGoal, title: e.target.value })}
+              placeholder="e.g., Run a Marathon"
+              autoFocus
+              className="px-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg outline-none focus:border-[var(--brand-accent)] text-[var(--color-text-primary)]"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-[var(--color-text-secondary)]">Target Date</label>
+            <DatePicker
+              value={newGoal.targetDate}
+              onChange={(date) => setNewGoal({ ...newGoal, targetDate: date })}
+              placeholder="Select target date"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-[var(--color-text-secondary)]">Category</label>
+            <select
+              value={newGoal.category}
+              onChange={e => setNewGoal({ ...newGoal, category: e.target.value })}
+              className="px-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg outline-none focus:border-[var(--brand-accent)] text-[var(--color-text-primary)]"
+            >
+              <option value="Personal">Personal</option>
+              <option value="Work">Work</option>
+              <option value="Learning">Learning</option>
+              <option value="Health">Health</option>
+            </select>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={isDetailsOpen && !!selectedGoal}
+        onOpenChange={setIsDetailsOpen}
+        title={selectedGoal?.title || 'Goal Details'}
+        maxWidth="lg"
+      >
+        {selectedGoal && (
+          <div className="flex flex-col gap-4">
+            <p className="text-[var(--color-text-secondary)] leading-relaxed">
+              {selectedGoal.description || 'No description provided.'}
+            </p>
+
+            {/* Goal Intelligence & Analytics */}
+            <div className="my-2">
+              <GoalAnalytics
+                goal={selectedGoal}
+                onUpdate={(updatedGoal) => {
+                  setSelectedGoal(updatedGoal);
+                  fetchGoals(); // Refresh list to show status on card if needed
+                }}
+              />
             </div>
-            <div className="modal-body">
-              <div className="form-group">
-                <label>Goal Title *</label>
-                <input
-                  value={newGoal.title}
-                  onChange={e => setNewGoal({ ...newGoal, title: e.target.value })}
-                  placeholder="e.g., Run a Marathon"
-                  autoFocus
-                />
-              </div>
-              <div className="form-group">
-                <label>Target Date</label>
-                <DatePicker
-                  value={newGoal.targetDate}
-                  onChange={(date) => setNewGoal({ ...newGoal, targetDate: date })}
-                  placeholder="Select target date"
-                />
-              </div>
-              <div className="form-group">
-                <label>Category</label>
-                <select
-                  value={newGoal.category}
-                  onChange={e => setNewGoal({ ...newGoal, category: e.target.value })}
-                >
-                  <option value="Personal">Personal</option>
-                  <option value="Work">Work</option>
-                  <option value="Learning">Learning</option>
-                  <option value="Health">Health</option>
-                </select>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="modal-btn cancel" onClick={() => setIsModalOpen(false)}>Cancel</button>
-              <button
-                className="modal-btn submit"
-                onClick={handleSaveGoal}
-                disabled={isSaving || !newGoal.title.trim()}
-              >
-                {isSaving ? 'Saving...' : 'Add Goal'}
-              </button>
+
+            <div className="flex flex-col gap-3 p-4 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-color)]">
+              <label className="font-medium text-[var(--color-text-primary)] flex justify-between">
+                <span>Update Progress</span>
+                <span className="text-[var(--brand-accent)]">{selectedGoal.current_progress || 0}%</span>
+              </label>
+              <input
+                type="range"
+                className="w-full accent-[var(--brand-accent)] h-2 rounded-lg appearance-none cursor-pointer"
+                min="0"
+                max="100"
+                value={selectedGoal.current_progress || 0}
+                onChange={e => updateProgress(selectedGoal, parseInt(e.target.value))}
+              />
             </div>
           </div>
-        </div>,
-        document.body
-      )}
-
-      {isDetailsOpen && selectedGoal && createPortal(
-        <div className="modal-overlay" onClick={() => setIsDetailsOpen(false)}>
-          <div className="modal-content goal-modal details-modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>{selectedGoal.title}</h3>
-              <button className="modal-close" onClick={() => setIsDetailsOpen(false)}><X size={20} /></button>
-            </div>
-            <div className="modal-body">
-              <p className="description">{selectedGoal.description || 'No description provided.'}</p>
-
-              {/* Goal Intelligence & Analytics */}
-              <div style={{ marginTop: '16px', marginBottom: '16px' }}>
-                <GoalAnalytics
-                  goal={selectedGoal}
-                  onUpdate={(updatedGoal) => {
-                    setSelectedGoal(updatedGoal);
-                    fetchGoals(); // Refresh list to show status on card if needed
-                  }}
-                />
-              </div>
-
-              <div className="progress-update">
-                <label>Update Progress: {selectedGoal.current_progress}%</label>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={selectedGoal.current_progress || 0}
-                  onChange={e => updateProgress(selectedGoal, parseInt(e.target.value))}
-                />
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+        )}
+      </Modal>
     </div>
   );
 }

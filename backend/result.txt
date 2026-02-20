@@ -1,3 +1,3 @@
 Starting test
-Hash created successfully: $2b$12$q58t99aHHyBGNcgcxqiNSecGZ/z1FDNUyIhEudtvxSovCBfbfqJQ6
+Hash created successfully: $2b$12$2UKijpc4LbkOJF/BnvhfLul3jXtM7VIdrx9oKcOOL08y8uhfLNwRC
 Verification result: True

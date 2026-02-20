@@ -1,5 +1,3 @@
 Starting truncate test 71
 Truncated type: <class 'bytes'>
 Truncated length: 71
-Hash created successfully: $2b$12$XVoTQh0GHSNV2ysaFN3SHek1Qj/ipFErlUfvyudHklkksTApl75iW
-Verify result: True

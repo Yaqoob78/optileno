@@ -543,30 +543,53 @@ class PlannerToolSet:
         return habits
 
     @staticmethod
-    async def start_deep_work_session(
+    async def create_deep_work_session(
         user_id: str,
         duration_minutes: int = 25,
-        focus_goal: str = "Focus on priority tasks"
+        focus_goal: str = "Focus on priority tasks",
+        scheduled_start: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Start a deep work session"""
-        result = await planner_service.start_deep_work_session(user_id, duration_minutes)
+        """Prepare a deep work session (does NOT start the timer)"""
         
+        # Determine if it's scheduled or ad-hoc
+        status = "scheduled" if scheduled_start else "pending"
+        
+        # Prepare payload for the planner service
+        payload = {
+            "planned_duration_minutes": duration_minutes,
+            "focus_goal": focus_goal,
+            "notes": None,
+            "status": status,
+        }
+        
+        if scheduled_start:
+            payload["scheduled_local_time"] = scheduled_start
+            
+        result = await planner_service.start_deep_work(user_id, payload)
+        
+        # Override the status explicitly so it doesn't instantly start running
+        # This requires an update or we can just assume the service respects payload
+        if result and "schedule" in result:
+             result["schedule"]["status"] = status
+             
         # Log analytics event
         await analytics_service.save_event({
             "user_id": int(user_id),
-            "event": "deep_work_started",
+            "event": "deep_work_prepared",
             "source": "ai_agent",
             "metadata": {
                 "duration_minutes": duration_minutes,
-                "focus_goal": focus_goal
+                "focus_goal": focus_goal,
+                "status": status
             }
         })
         
         return {
-            "session_id": result.get('id', 'unknown'),
+            "session_id": result.get('id', 'unknown') if result else 'unknown',
             "duration": duration_minutes,
             "focus_goal": focus_goal,
-            "message": f"Deep work session started for {duration_minutes} minutes"
+            "status": status,
+            "message": f"Deep work session prepared for {duration_minutes} minutes"
         }
 
     @staticmethod

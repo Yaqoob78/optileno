@@ -1,1 +1,2 @@
-Import/Setup Error: The asyncio extension requires an async driver to be used. The loaded 'pysqlite' is not async.
+Testing verify_password with length 80
+Result: True

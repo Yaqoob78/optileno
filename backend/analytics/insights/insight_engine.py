@@ -10,6 +10,7 @@ import asyncio
 from backend.services.planner_service import planner_service
 from backend.services.analytics_service import analytics_service
 from backend.ai.tools.analytics import analyze_behavior_patterns, generate_ai_insight
+from backend.analytics.engine.deterministic_math import DeterministicAnalyticsEngine
 
 logger = logging.getLogger(__name__)
 
@@ -228,44 +229,53 @@ async def _calculate_metrics(
     sessions: List[Dict[str, Any]],
     habits: Dict[str, Any]
 ) -> Dict[str, Any]:
-    """Calculate comprehensive metrics"""
-    # Focus metrics
+    """Calculate comprehensive metrics deterministically."""
     completed_sessions = [s for s in sessions if s.get("status") == "completed"]
-    total_focus_time = sum(s.get("duration", 0) for s in completed_sessions)
+    total_focus_time = sum(s.get("actual_duration", s.get("duration", 0)) for s in completed_sessions)
     avg_session_length = total_focus_time / len(completed_sessions) if completed_sessions else 0
     
     # Planning metrics
     task_events = [e for e in events if e.get("event", "").startswith("task_")]
     created_tasks = [e for e in task_events if e.get("event") == "task_created"]
     completed_tasks = [e for e in task_events if e.get("event") == "task_completed"]
-    completion_rate = len(completed_tasks) / len(created_tasks) * 100 if created_tasks else 0
+    missed_tasks = [e for e in task_events if e.get("event", "").endswith("overdue")]
     
-    # Consistency metrics
     habit_streak = habits.get("current_streak", 0)
     habit_consistency = habits.get("consistency_rate", 0)
     
+    prod_score_data = DeterministicAnalyticsEngine.calculate_productivity_score(
+        tasks_created=len(created_tasks),
+        tasks_completed=len(completed_tasks),
+        tasks_completed_on_time=len(completed_tasks), 
+        tasks_completed_late=len(missed_tasks),
+        habits_due=10, # approximated constant if unknown
+        habits_completed=int(habit_consistency / 10), 
+        deep_work_minutes=total_focus_time,
+        active_days_history=7
+    )
+
     return {
         "focus": {
             "total_sessions": len(completed_sessions),
             "total_duration_minutes": total_focus_time,
             "average_session_minutes": avg_session_length,
-            "score": min(100, len(completed_sessions) * 10 + total_focus_time / 60),
+            "score": prod_score_data["components"]["deep_work"],
         },
         "planning": {
             "tasks_created": len(created_tasks),
             "tasks_completed": len(completed_tasks),
-            "completion_rate": completion_rate,
-            "accuracy": 75,  # This would need planned vs actual duration data
+            "completion_rate": prod_score_data["components"]["task_completion"],
+            "accuracy": prod_score_data["score"],
         },
         "consistency": {
             "habit_streak": habit_streak,
             "habit_consistency": habit_consistency,
-            "routine_score": min(100, habit_streak * 5 + habit_consistency),
+            "routine_score": prod_score_data["components"]["habit_maintenance"],
         },
         "wellbeing": {
             "burnout_risk": _calculate_burnout_risk(events, sessions),
             "engagement_score": _calculate_engagement(events),
-            "balance_score": 65,  # Work-life balance estimate
+            "balance_score": 100 - _calculate_burnout_risk(events, sessions),
         }
     }
 
@@ -326,22 +336,33 @@ def _is_recent(timestamp: Optional[str], minutes: int = 30) -> bool:
         return False
 
 def _calculate_burnout_risk(events: List[Dict[str, Any]], sessions: List[Dict[str, Any]]) -> float:
-    """Calculate burnout risk score (0-100)"""
-    risk = 0
+    """Calculate burnout risk score (0-100) using deterministic math engine"""
+    total_work_minutes = sum(s.get("actual_duration", s.get("duration", 0)) for s in sessions)
+    avg_daily_work = total_work_minutes / 7.0
     
-    # Long work sessions increase risk
-    long_sessions = [s for s in sessions if s.get("duration", 0) > 120]
-    risk += len(long_sessions) * 10
+    missed_habits = len([e for e in events if e.get("event") == "habit_streak_broken"])
     
-    # Venting events increase risk
-    vent_events = [e for e in events if e.get("event") == "vent_detected"]
-    risk += len(vent_events) * 15
+    task_events = [e for e in events if e.get("event", "").startswith("task_")]
+    late_tasks = len([e for e in task_events if e.get("event") == "task_overdue"])
+    total_tasks = len([e for e in task_events if e.get("event") in ["task_completed", "task_overdue"]])
+    late_ratio = late_tasks / max(total_tasks, 1.0)
     
-    # Late night work increases risk
-    late_events = [e for e in events if _is_late_night_event(e)]
-    risk += len(late_events) * 5
+    def is_weekend(timestamp_str):
+        if not timestamp_str: return False
+        try:
+            return datetime.fromisoformat(timestamp_str.replace('Z', '+00:00')).weekday() >= 5
+        except:
+            return False
+            
+    weekend_events = [e for e in events if is_weekend(e.get("timestamp"))]
+    weekend_ratio = len(weekend_events) / max(len(events), 1.0)
     
-    return min(100, risk)
+    return DeterministicAnalyticsEngine.calculate_burnout_risk(
+        average_daily_work_minutes_7d=avg_daily_work,
+        missed_habits_7d=missed_habits,
+        late_tasks_ratio_7d=late_ratio,
+        weekend_work_ratio=weekend_ratio
+    )
 
 def _calculate_engagement(events: List[Dict[str, Any]]) -> float:
     """Calculate engagement score (0-100)"""
