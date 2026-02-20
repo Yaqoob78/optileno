@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import {
   CheckCircle, Clock, Zap, Tag, Edit3, Trash2, MoreVertical,
   ChevronDown, ChevronRight, Copy, AlertCircle, Briefcase,
@@ -9,6 +8,7 @@ import {
 import '../../styles/components/planner/TaskCard.css';
 import { useSettingsStore } from '../../stores/useSettingsStore';
 import { formatLocalDateLabel, getDateKeyInTimezone } from '../../utils/timezone';
+import { Modal } from '../common/Modal';
 
 interface Subtask {
   id: number;
@@ -648,29 +648,28 @@ export default function TaskCard({
         </div>
       </div>
 
-      {
-        isRetryModalOpen && createPortal(
-          <div className="task-retry-overlay" onClick={() => setIsRetryModalOpen(false)}>
-            <div className="task-retry-modal" onClick={(e) => e.stopPropagation()}>
-              <div className="retry-header">
-                <div className="retry-icon-wrapper">
-                  <AlertCircle size={24} />
-                </div>
-              </div>
-              <h3>Retry Task?</h3>
-              <p>You missed the scheduled window for <span className="highlight-text">"{task.title}"</span>.</p>
-              <p className="retry-subtext">Restarting will begin a new timer with the original duration.</p>
-              <div className="retry-actions">
-                <button className="retry-btn cancel" onClick={() => setIsRetryModalOpen(false)}>Close</button>
-                <button className="retry-btn confirm" onClick={handleConfirmRetry}>
-                  <Play size={14} /> Retry Now
-                </button>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )
-      }
+      <Modal
+        isOpen={isRetryModalOpen}
+        onOpenChange={setIsRetryModalOpen}
+        title="Retry Task?"
+        maxWidth="sm"
+        footer={
+          <div className="flex gap-3 w-full justify-end">
+            <button className="px-4 py-2 rounded-lg font-medium text-[var(--color-text-secondary)] hover:bg-[var(--bg-secondary)] transition-colors" onClick={() => setIsRetryModalOpen(false)}>Close</button>
+            <button
+              className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-[var(--brand-accent)] text-[var(--color-text-inverse)] hover:opacity-90 transition-opacity"
+              onClick={handleConfirmRetry}
+            >
+              <Play size={14} /> Retry Now
+            </button>
+          </div>
+        }
+      >
+        <div className="flex flex-col gap-4 text-[var(--color-text-secondary)] leading-relaxed">
+          <p>You missed the scheduled window for <span className="font-semibold text-[var(--color-text-primary)]">"{task.title}"</span>.</p>
+          <p className="text-sm opacity-80">Restarting will begin a new timer with the original duration.</p>
+        </div>
+      </Modal>
     </div >
   );
 }
