@@ -22,10 +22,10 @@
 
   /* ===== COLOR SYSTEM ===== */
   /* Primary Colors - use space-separated format for rgba() */
-  --color-primary: 245 158 11;
-  --color-primary-dark: 217 119 6;
-  --color-secondary: 251 191 36;
-  --color-accent: 251 191 36;
+  --color-primary: 16 185 129;
+  --color-primary-dark: 13 148 136;
+  --color-secondary: 6 182 212;
+  --color-accent: 139 92 246;
   --color-danger: 244 63 94;
   --color-warning: 245 158 11;
   --color-success: 16 185 129;
