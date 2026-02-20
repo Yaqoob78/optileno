@@ -5,7 +5,7 @@ Enhanced analytics tool with AI-powered analysis and insights.
 
 from typing import Dict, Any, List, Optional
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import asyncio
 
 from backend.services.analytics_service import analytics_service
@@ -25,7 +25,7 @@ async def log_event(user_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
             "user_id": user_id,
             "event": payload.get("event", "unknown"),
             "source": payload.get("source", "unknown"),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "metadata": payload.get("metadata", {}),
             **{k: v for k, v in payload.items() if k not in ["event", "source", "metadata"]}
         }
@@ -182,7 +182,7 @@ async def generate_ai_insight(
         # Parse response
         insight = _parse_ai_insight_response(ai_response)
         insight["focus_area"] = focus_area
-        insight["generated_at"] = datetime.utcnow().isoformat()
+        insight["generated_at"] = datetime.now(timezone.utc).isoformat()
         
         # Save insight
         await analytics_service.save_insight(user_id, {
@@ -250,7 +250,7 @@ async def predict_user_trajectory(
         
         prediction = _parse_prediction_response(ai_response)
         prediction["timeframe"] = timeframe
-        prediction["generated_at"] = datetime.utcnow().isoformat()
+        prediction["generated_at"] = datetime.now(timezone.utc).isoformat()
         
         return prediction
         
@@ -373,7 +373,7 @@ def _summarize_trends_for_ai(events: List[Dict[str, Any]]) -> str:
         return "Insufficient data for trend analysis"
     
     # Get events from last 7 days vs previous 7 days
-    recent_cutoff = datetime.utcnow() - timedelta(days=7)
+    recent_cutoff = datetime.now(timezone.utc) - timedelta(days=7)
     older_cutoff = recent_cutoff - timedelta(days=7)
     
     recent_events = [e for e in events if _parse_timestamp(e) > recent_cutoff]
@@ -401,9 +401,12 @@ def _summarize_trends_for_ai(events: List[Dict[str, Any]]) -> str:
 def _parse_timestamp(event: Dict[str, Any]) -> datetime:
     """Parse timestamp from event"""
     try:
-        return datetime.fromisoformat(event["timestamp"].replace('Z', '+00:00'))
+        ts = datetime.fromisoformat(event["timestamp"].replace('Z', '+00:00'))
+        if ts.tzinfo is None:
+            return ts.replace(tzinfo=timezone.utc)
+        return ts
     except:
-        return datetime.utcnow()
+        return datetime.now(timezone.utc)
 
 def _parse_ai_insights(ai_response: Dict[str, Any]) -> Dict[str, Any]:
     """Parse AI response into structured insights"""
