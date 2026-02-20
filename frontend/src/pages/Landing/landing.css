@@ -34,11 +34,16 @@ body {
   background:
     linear-gradient(
       180deg,
-      rgba(3, 9, 15, 0.94) 0%,
-      rgba(4, 11, 18, 0.9) 28%,
-      rgba(9, 21, 33, 0.84) 58%,
-      rgba(20, 39, 53, 0.76) 82%,
-      rgba(29, 53, 71, 0.7) 100%
+      rgba(2, 7, 12, 0.98) 0%,
+      rgba(4, 10, 16, 0.95) 26%,
+      rgba(8, 18, 28, 0.9) 54%,
+      rgba(15, 31, 45, 0.82) 76%,
+      rgba(28, 51, 68, 0.78) 100%
+    ),
+    radial-gradient(
+      ellipse at 50% 115%,
+      rgba(139, 187, 216, 0.26) 0%,
+      rgba(139, 187, 216, 0) 60%
     );
 }
 
@@ -142,9 +147,9 @@ body {
 .nav-logo:hover .logo-container {
   transform: scale(1.08);
   filter:
-    drop-shadow(0 0 10px rgba(96, 165, 250, 0.8))
-    drop-shadow(0 0 20px rgba(14, 165, 164, 0.62))
-    drop-shadow(0 0 34px rgba(251, 191, 36, 0.42));
+    drop-shadow(0 0 12px rgba(96, 165, 250, 0.88))
+    drop-shadow(0 0 24px rgba(14, 165, 164, 0.7))
+    drop-shadow(0 0 42px rgba(251, 191, 36, 0.52));
 }
 
 .nav-logo:hover .logo-text {

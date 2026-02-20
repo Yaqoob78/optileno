@@ -63,9 +63,21 @@ async def get_user_insights(
 @router.get("/comprehensive")
 async def get_comprehensive_analytics(user = Depends(get_current_user)):
     """Get complete analytics dashboard data"""
+    from backend.core.cache import cache_service
+    tier = _plan_tier(user)
+    cache_key = f"analytics:comprehensive:{user.id}"
+    
+    if tier == "explorer":
+        cached = await cache_service.get(cache_key)
+        if cached:
+            return cached
+            
     # Initialize analytics for new users if needed
     await analytics_service.initialize_user_analytics(user.id)
     data = await analytics_service.get_comprehensive_analytics(user.id)
+    
+    if tier == "explorer" and data:
+        await cache_service.set(cache_key, data, expire=900)
     return data
 
 @router.get("/historical/{time_range}")
@@ -493,7 +505,20 @@ async def get_productivity_score_today(
 ):
     """Get today's productivity score with V3 context-aware breakdown."""
     try:
-        return await analytics_v2_service.productivity_score(current_user, "daily")
+        from backend.core.cache import cache_service
+        tier = _plan_tier(current_user)
+        cache_key = f"analytics:productivity:daily:{current_user.id}"
+        
+        if tier == "explorer":
+            cached = await cache_service.get(cache_key)
+            if cached:
+                return cached
+                
+        result = await analytics_v2_service.productivity_score(current_user, "daily")
+        
+        if tier == "explorer" and result and not result.get("reason") == "NO_DATA":
+            await cache_service.set(cache_key, result, expire=900)
+        return result
     except Exception as e:
         logger.error("Productivity score (daily) failed for user %s: %s", current_user.id, e, exc_info=True)
         return _fallback_payload(
@@ -580,7 +605,20 @@ async def get_focus_score_today(
 ):
     """Get today's focus score with detailed breakdown from heatmap data."""
     try:
-        return await analytics_v2_service.focus_score(current_user, _plan_tier(current_user), "daily")
+        from backend.core.cache import cache_service
+        tier = _plan_tier(current_user)
+        cache_key = f"analytics:focus:daily:{current_user.id}"
+        
+        if tier == "explorer":
+            cached = await cache_service.get(cache_key)
+            if cached:
+                return cached
+                
+        result = await analytics_v2_service.focus_score(current_user, tier, "daily")
+        
+        if tier == "explorer" and result and not result.get("reason") == "NO_DATA":
+            await cache_service.set(cache_key, result, expire=900)
+        return result
     except Exception as e:
         logger.error("Focus score (daily) failed for user %s: %s", current_user.id, e, exc_info=True)
         return _fallback_payload(
@@ -672,7 +710,20 @@ async def get_burnout_risk_today(
     """Get today's burnout risk with V3 strain velocity and offline gap analysis."""
     _require_ultra(current_user, "burnout_risk")
     try:
-        return await analytics_v2_service.burnout_risk(current_user, "daily")
+        from backend.core.cache import cache_service
+        tier = _plan_tier(current_user)
+        cache_key = f"analytics:burnout:daily:{current_user.id}"
+        
+        if tier == "explorer":
+            cached = await cache_service.get(cache_key)
+            if cached:
+                return cached
+                
+        result = await analytics_v2_service.burnout_risk(current_user, "daily")
+        
+        if tier == "explorer" and result:
+            await cache_service.set(cache_key, result, expire=900)
+        return result
     except Exception as e:
         logger.error("Burnout risk (daily) failed for user %s: %s", current_user.id, e, exc_info=True)
         return _fallback_payload(

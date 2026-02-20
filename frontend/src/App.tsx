@@ -1,5 +1,4 @@
-// App.tsx - UPDATED VERSION
-import React, { useEffect } from 'react';
+﻿import React, { useEffect } from 'react';
 import AppRoutes from "./routes/AppRoutes";
 import { useSettingsStore } from "./stores/settings.store";
 import { useUserStore } from "./stores/useUserStore";
@@ -11,8 +10,8 @@ import { useSessionBootstrap } from "./hooks/useSessionBootstrap";
 import { useStoreHydration, usePreserveState, useStateListener } from "./hooks/useStoreHydration";
 import { initializeStatePreservation } from "./utils/statePreservation";
 import CookieConsent from "./components/legal/CookieConsent";
+import { FullScreenLoader } from "./components/common/loader/Loader";
 
-// Simple error boundary component
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { hasError: boolean }
@@ -58,53 +57,43 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-/**
- * StoreInitializer Component
- * Ensures all stores are hydrated before rendering child components
- */
 function StoreInitializer({ children }: { children: React.ReactNode }) {
-  const { isHydrated, error } = useStoreHydration();
+  const { isHydrated } = useStoreHydration();
   const { checked: sessionChecked } = useSessionBootstrap();
   const theme = useSettingsStore((state) => state.theme);
   const profile = useUserStore((state) => state.profile);
   const isAuthenticated = useUserStore((state) => state.isAuthenticated);
   const initPlannerSockets = usePlannerStore((state) => state.initSocketListeners);
 
-  // Initialize state preservation system (CRITICAL FOR DATA PERSISTENCE)
   useEffect(() => {
     const cleanup = initializeStatePreservation();
     return cleanup;
   }, []);
 
-  // Initialize auto-save, session tracking, and state preservation
   useAutoSaveChat(5000);
   useSessionTracking(sessionChecked);
   usePreserveState();
-
-  // Enable debug logging for state changes (set to true for debugging)
   useStateListener(false);
 
-  // Real-time connection management
   useEffect(() => {
     if (sessionChecked && isAuthenticated && profile?.id) {
-      console.log('🔄 Initializing Realtime Connection for user:', profile.id);
       realtimeClient.connect(profile.id)
         .then(() => {
-          console.log('✅ Realtime Connected');
           initPlannerSockets();
         })
-        .catch(err => console.error('❌ Realtime Connection Failed:', err));
+        .catch((err) => {
+          console.error('Realtime connection failed:', err);
+        });
 
       return () => {
-        console.log('🔌 Disconnecting Realtime...');
         realtimeClient.disconnect();
       };
     }
+
+    return undefined;
   }, [sessionChecked, isAuthenticated, profile?.id, initPlannerSockets]);
 
-  // Force theme application on mount
   useEffect(() => {
-    // Re-apply theme to ensure it's set
     const appliedTheme = theme === 'auto'
       ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
       : theme;
@@ -112,48 +101,13 @@ function StoreInitializer({ children }: { children: React.ReactNode }) {
     document.documentElement.setAttribute('data-theme', appliedTheme);
   }, [theme]);
 
-  // Show loading state while hydrating
   if (!isHydrated || !sessionChecked) {
-    return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100vh',
-        background: 'var(--color-bg-primary)',
-        color: 'var(--color-text-primary)',
-        fontSize: '16px'
-      }}>
-        <div style={{
-          textAlign: 'center'
-        }}>
-          <div style={{
-            fontSize: '24px',
-            marginBottom: '16px'
-          }}>⏳</div>
-          <div>Loading your data...</div>
-          {error && (
-            <div style={{
-              marginTop: '8px',
-              fontSize: '12px',
-              color: 'var(--color-danger)',
-              opacity: 0.7
-            }}>
-              {error}
-            </div>
-          )}
-        </div>
-      </div>
-    );
+    return <FullScreenLoader size={96} />;
   }
 
   return children as React.ReactElement;
 }
 
-/**
- * AppInitializer Component
- * Initializes all global hooks and state management
- */
 function AppInitializer({ children }: { children: React.ReactNode }) {
   return (
     <StoreInitializer>
