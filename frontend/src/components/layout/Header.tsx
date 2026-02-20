@@ -3,6 +3,7 @@ import { Search, Bell, Menu } from "lucide-react";
 import { api } from "../../services/api/client";
 import { socket } from "../../services/realtime/socket-client";
 import { NotificationCenter } from "../notifications/NotificationCenter";
+import { Logo } from "../common/Logo";
 import "../../styles/layout/header.css"; // CSS CONNECTION
 
 interface HeaderProps {
@@ -85,95 +86,98 @@ export default function Header({ page, onMenuToggle, isMobile }: HeaderProps) {
 
   return (
     <>
-    <header className="premium-header">
-      <div className="header-container">
-        <div className="header-content">
-          {/* Mobile Menu Button */}
-          {isMobile && (
-            <button
-              className="mobile-menu-btn"
-              onClick={onMenuToggle}
-              aria-label="Open menu"
-            >
-              <Menu size={22} />
-            </button>
-          )}
-
-          {/* Left Section - Page Title */}
-          <div className="header-title-section">
-            <h1 className="header-title">
-              {page === "Chat" ? "Chat Optileno" : pageTitles[page] || page}
-            </h1>
-
-            {page === "Chat" && (
-              <p className="header-subtitle">
-                Leno
-              </p>
-            )}
-          </div>
-
-          {/* Right Section - Actions */}
-          <div className="header-actions">
-            {/* Search */}
-            {searchOpen ? (
-              <form
-                onSubmit={handleSearch}
-                className="header-search-active"
-              >
-                <div className="search-input-wrapper">
-                  <Search size={18} className="search-icon" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search conversations..."
-                    className="search-input"
-                    autoFocus
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchOpen(false);
-                    setSearchQuery("");
-                  }}
-                  className="search-cancel"
-                >
-                  Cancel
-                </button>
-              </form>
-            ) : (
+      <header className="premium-header">
+        <div className="header-container">
+          <div className="header-content">
+            {/* Mobile Menu Button */}
+            {isMobile && (
               <button
-                onClick={() => setSearchOpen(true)}
-                className="search-toggle"
-                aria-label="Search"
+                className="mobile-menu-btn"
+                onClick={onMenuToggle}
+                aria-label="Open menu"
               >
-                <Search size={20} />
+                <Menu size={22} />
               </button>
             )}
 
-            {/* Notifications */}
-            <div className="notification-container">
-              <button
-                className="notification-button"
-                onClick={handleNotificationToggle}
-                aria-label="Notifications"
-                aria-expanded={notificationsOpen}
-                aria-controls="notification-center"
-              >
-                <Bell size={20} />
-                {unreadCount > 0 && (
-                  <span className="notification-badge">
-                    {unreadBadgeLabel}
-                  </span>
+            {/* Left Section - Page Title */}
+            <div className="header-title-section" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '1rem' }}>
+              <Logo size={28} glow={true} animated={false} />
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <h1 className="header-title">
+                  {page === "Chat" ? "Chat Optileno" : pageTitles[page] || page}
+                </h1>
+
+                {page === "Chat" && (
+                  <p className="header-subtitle">
+                    Leno
+                  </p>
                 )}
-              </button>
+              </div>
+            </div>
+
+            {/* Right Section - Actions */}
+            <div className="header-actions">
+              {/* Search */}
+              {searchOpen ? (
+                <form
+                  onSubmit={handleSearch}
+                  className="header-search-active"
+                >
+                  <div className="search-input-wrapper">
+                    <Search size={18} className="search-icon" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search conversations..."
+                      className="search-input"
+                      autoFocus
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchOpen(false);
+                      setSearchQuery("");
+                    }}
+                    className="search-cancel"
+                  >
+                    Cancel
+                  </button>
+                </form>
+              ) : (
+                <button
+                  onClick={() => setSearchOpen(true)}
+                  className="search-toggle"
+                  aria-label="Search"
+                >
+                  <Search size={20} />
+                </button>
+              )}
+
+              {/* Notifications */}
+              <div className="notification-container">
+                <button
+                  className="notification-button"
+                  onClick={handleNotificationToggle}
+                  aria-label="Notifications"
+                  aria-expanded={notificationsOpen}
+                  aria-controls="notification-center"
+                >
+                  <Bell size={20} />
+                  {unreadCount > 0 && (
+                    <span className="notification-badge">
+                      {unreadBadgeLabel}
+                    </span>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </header>
-    <NotificationCenter isOpen={notificationsOpen} onClose={handleNotificationClose} />
+      </header>
+      <NotificationCenter isOpen={notificationsOpen} onClose={handleNotificationClose} />
     </>
   );
 }

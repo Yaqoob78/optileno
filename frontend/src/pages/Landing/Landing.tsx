@@ -17,6 +17,7 @@ import {
   Workflow,
   ArrowUpRight,
 } from 'lucide-react';
+import { Logo } from '../../components/common/Logo';
 import './landing.css';
 
 type Feature = {
@@ -297,7 +298,7 @@ export default function Landing() {
       <nav className="landing-nav">
         <div className="nav-container">
           <div className="nav-logo">
-            <img src="/logo-light.svg" alt="Optileno" className="logo-image" />
+            <Logo size={42} animated={false} glow={true} />
             <span className="logo-text">Optileno</span>
           </div>
           <div className="nav-actions">

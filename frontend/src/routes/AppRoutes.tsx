@@ -20,22 +20,10 @@ const PrivacyPolicy = lazy(() => import("../pages/Legal/PrivacyPolicy"));
 const RefundPolicy = lazy(() => import("../pages/Legal/RefundPolicy"));
 const CookiesPolicy = lazy(() => import("../pages/Legal/CookiesPolicy"));
 
+import { FullScreenLoader } from '../components/common/loader/Loader';
+
 function RouteLoader() {
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: "100vh",
-        background: "#020617",
-        color: "#cbd5e1",
-        fontSize: "0.95rem",
-      }}
-    >
-      Loading...
-    </div>
-  );
+  return <FullScreenLoader text="Loading Optileno..." />;
 }
 
 export default function AppRoutes() {
