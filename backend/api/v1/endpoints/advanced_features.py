@@ -95,6 +95,28 @@ async def get_agent_state(current_user: User = Depends(get_current_user)):
     agent = AgentOrchestrator(current_user.id, ai_client)
     return agent.get_agent_state()
 
+@router.post("/agent/daily-command")
+async def daily_command_mode(current_user: User = Depends(get_current_user)):
+    """Triggers the Daily Command Mode AI briefing"""
+    ai_client = DualAIClient(str(current_user.id))
+    agent = AgentOrchestrator(current_user.id, ai_client)
+    response = await agent.process_user_input(
+        "Initialize Daily Command Mode. Review my recent stats, pending tasks, and give me a battle plan for today.", 
+        "PLAN"
+    )
+    return {"response": response, "agent_state": agent.state.value}
+
+@router.post("/agent/weekly-review")
+async def weekly_review_mode(current_user: User = Depends(get_current_user)):
+    """Triggers the Weekly Review Mode AI briefing"""
+    ai_client = DualAIClient(str(current_user.id))
+    agent = AgentOrchestrator(current_user.id, ai_client)
+    response = await agent.process_user_input(
+        "Initialize Weekly Review Mode. Look at my past 7 days of Analytics, identify friction points, and suggest adjustments for the week ahead.", 
+        "ANALYZE"
+    )
+    return {"response": response, "agent_state": agent.state.value}
+
 
 # ========================================
 # Advanced Analytics Endpoints

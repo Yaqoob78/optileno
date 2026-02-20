@@ -93,6 +93,7 @@ class ActionType(str, Enum):
     COMPLETE_HABIT = "COMPLETE_HABIT"
     START_DEEP_WORK = "START_DEEP_WORK"
     CREATE_PLAN = "CREATE_PLAN"
+    RESCHEDULE_TASK = "RESCHEDULE_TASK"
 
 
 class ActionStatus(str, Enum):
@@ -294,6 +295,20 @@ class AIAgentActions:
         **_: Any,
     ) -> Dict[str, Any]:
         return await planner_service.complete_task(user_id, task_id)
+
+    @staticmethod
+    async def _reschedule_task_by_payload(
+        user_id: str,
+        task_id: str,
+        new_time: str,
+        **_: Any,
+    ) -> Dict[str, Any]:
+        from pydantic import BaseModel
+        class TaskTimeUpdate(BaseModel):
+            due_date: str
+            
+        updates = TaskTimeUpdate(due_date=new_time)
+        return await planner_service.update_task(user_id, task_id, updates)
 
     @staticmethod
     async def _create_multiple_tasks(
@@ -574,6 +589,39 @@ class AIAgentActions:
             "confirm_buttons": ["Yes, complete it!", "No, not yet"],
         }
     
+    async def request_reschedule_task(
+        self,
+        user_id: str,
+        task_id: str,
+        task_title: str,
+        new_time: str
+    ) -> Dict[str, Any]:
+        """
+        Request to reschedule a task.
+        """
+        action_id = str(uuid.uuid4())
+        
+        pending_action = {
+            "action_id": action_id,
+            "user_id": user_id,
+            "action_type": ActionType.RESCHEDULE_TASK.value,
+            "status": ActionStatus.PENDING.value,
+            "data": {"task_id": task_id, "task_title": task_title, "new_time": new_time},
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat(),
+        }
+        
+        PENDING_ACTIONS[action_id] = pending_action
+        
+        return {
+            "action": ActionType.RESCHEDULE_TASK.value,
+            "action_id": action_id,
+            "requires_confirmation": True,
+            "data": {"task_id": task_id, "new_time": new_time},
+            "message": f"I suggest rescheduling **{task_title}** to {new_time}. Does that work for you?",
+            "confirm_buttons": ["Yes, change time", "No, keep original"],
+        }
+    
     # ══════════════════════════════════════════════════════════════════════════
     # ACTION EXECUTION (After user confirmation)
     # ══════════════════════════════════════════════════════════════════════════
@@ -723,6 +771,16 @@ class AIAgentActions:
                 request_id=request_id,
             )
         
+        elif action_type == ActionType.RESCHEDULE_TASK.value:
+            return await self.execute_tool(
+                tool_name=action_type,
+                user_id=user_id,
+                payload={"task_id": data["task_id"], "new_time": data["new_time"]},
+                tool_callable=self._reschedule_task_by_payload,
+                plan_tier=plan_tier,
+                request_id=request_id,
+            )
+        
         elif action_type == "CREATE_MULTIPLE_TASKS":
             return await self.execute_tool(
                 tool_name=action_type,
@@ -743,6 +801,7 @@ class AIAgentActions:
             ActionType.CREATE_TASK.value: f"Task added to your planner!",
             ActionType.CREATE_HABIT.value: f"Habit '{result.get('name', 'New Habit')}' is now being tracked!",
             ActionType.COMPLETE_TASK.value: "Task marked as complete! Great job! 🎉",
+            ActionType.RESCHEDULE_TASK.value: "Task rescheduled successfully!",
             "CREATE_MULTIPLE_TASKS": f"Created {result.get('created_count', 0)} tasks for your roadmap!",
         }
         return messages.get(action_type, "Action completed successfully!")
