@@ -6,7 +6,7 @@ interface FullScreenLoaderProps {
     size?: number;
 }
 
-export function FullScreenLoader({ text = "Loading...", size = 80 }: FullScreenLoaderProps) {
+export function FullScreenLoader({ text, size = 80 }: FullScreenLoaderProps) {
     return (
         <div style={{
             position: 'fixed',

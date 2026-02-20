@@ -298,7 +298,7 @@ export default function Landing() {
       <nav className="landing-nav">
         <div className="nav-container">
           <div className="nav-logo">
-            <Logo size={42} animated={false} glow={true} />
+            <Logo size={56} animated={true} glow={true} />
             <span className="logo-text">Optileno</span>
           </div>
           <div className="nav-actions">

@@ -23,7 +23,7 @@ const CookiesPolicy = lazy(() => import("../pages/Legal/CookiesPolicy"));
 import { FullScreenLoader } from '../components/common/loader/Loader';
 
 function RouteLoader() {
-  return <FullScreenLoader text="Loading Optileno..." />;
+  return <FullScreenLoader size={88} />;
 }
 
 export default function AppRoutes() {

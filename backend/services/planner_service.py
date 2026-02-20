@@ -189,7 +189,28 @@ class PlannerService:
     ) -> dict[str, Any]:
         """
         Persist a deep work session as a Plan record.
+        Enforces a minimum of 60 minutes and prevents overlapping sessions.
         """
+        # 1. Enforce minimum duration of 60 minutes
+        if duration_minutes is None or duration_minutes < 60:
+            logger.info(f"Deep work duration {duration_minutes} adjusted to minimum 60 mins for user {user_id}")
+            duration_minutes = 60
+
+        # 2. Prevent overlapping / active sessions
+        latest_session = await self.get_latest_session(user_id)
+        if latest_session and latest_session.get("status") == "active":
+            started_at_str = latest_session.get("started_at")
+            if started_at_str:
+                try:
+                    started_at = datetime.fromisoformat(started_at_str)
+                    session_duration = latest_session.get("data", {}).get("duration_minutes", 60)
+                    end_time = started_at + timedelta(minutes=session_duration)
+                    if self._utc_now() < end_time:
+                        raise ValueError(f"An active deep work session is already running until {end_time.strftime('%H:%M')} UTC.")
+                except ValueError as e:
+                    # Ignore parsing errors if legacy records exist
+                    pass
+
         plan_data = {
             "type": "deep_work",
             "duration_minutes": duration_minutes,
@@ -205,7 +226,7 @@ class PlannerService:
                     plan_type="deep_work",
                     date=self._utc_now(),
                     duration_hours=(
-                        duration_minutes / 60 if duration_minutes else None
+                        duration_minutes / 60.0
                     ),
                     schedule=plan_data,
                     recommendations=[],
@@ -220,6 +241,7 @@ class PlannerService:
 
         except Exception as e:
             logger.warning(f"Deep work persistence skipped: {e}")
+            raise e # Reraising to ensure the AI knows it failed
 
         return {
             "user_id": user_id,
@@ -1149,6 +1171,10 @@ class PlannerService:
                 goal_id = input_data.get("goal_id")
                 await self._enforce_goal_id_ultra(user_id, goal_id)
                 
+                planned_dur = input_data.get("planned_duration_minutes")
+                if planned_dur is None or int(planned_dur) < 60:
+                    planned_dur = 60
+                
                 # We do NOT use explicit scheduling for this, start it right now
                 now_utc = datetime.now(timezone.utc)
                 
@@ -1159,7 +1185,7 @@ class PlannerService:
                     date=now_utc,
                     goal_id=int(goal_id) if goal_id not in (None, "") else None,
                     schedule={
-                        "planned_duration": input_data.get("planned_duration_minutes"),
+                        "planned_duration": planned_dur,
                         "focus_goal": input_data.get("focus_goal"),
                         "notes": input_data.get("notes"),
                         "status": "active",
@@ -1184,6 +1210,9 @@ class PlannerService:
         explicit_local_dates = input_data.get("local_dates") or []
         start_time_value = input_data.get("start_time")
         duration_minutes = input_data.get("duration_minutes")
+        if duration_minutes is None or int(duration_minutes) < 60:
+            duration_minutes = 60
+            
         timezone_name = input_data.get("timezone") or "UTC"
         goal_id = input_data.get("goal_id")
         await self._enforce_goal_id_ultra(user_id, goal_id)

@@ -168,6 +168,32 @@ class AnalyticsV2Service:
             )
         ).scalar() or 0
 
+        high_energy_completed = (
+            await db.execute(
+                select(func.count(Task.id)).where(
+                    Task.user_id == user_id,
+                    Task.status == "completed",
+                    Task.priority.in_(["high", "urgent"]),
+                    Task.completed_at.isnot(None),
+                    Task.completed_at >= window.period_start,
+                    Task.completed_at <= window.period_end,
+                )
+            )
+        ).scalar() or 0
+
+        on_time_completed = (
+            await db.execute(
+                select(func.count(Task.id)).where(
+                    Task.user_id == user_id,
+                    Task.status == "completed",
+                    Task.due_date.isnot(None),
+                    Task.completed_at <= Task.due_date,
+                    Task.completed_at >= window.period_start,
+                    Task.completed_at <= window.period_end,
+                )
+            )
+        ).scalar() or 0
+
         deep_work_rows = await db.execute(
             select(Plan).where(
                 Plan.user_id == user_id,
@@ -188,16 +214,33 @@ class AnalyticsV2Service:
         habits = habits_rows.scalars().all()
         habits_total = len(habits)
         habits_completed = 0
+        active_streaks = 0
+        habits_missed = 0
+        
+        now_dt = datetime.now(timezone.utc)
         for habit in habits:
             schedule = habit.schedule if isinstance(habit.schedule, dict) else {}
             completed_raw = schedule.get("lastCompleted")
+            streak = int(schedule.get("streak", 0))
             if not completed_raw:
+                habits_missed += 1
                 continue
             try:
                 completed_dt = datetime.fromisoformat(str(completed_raw).replace("Z", "+00:00"))
+                if completed_dt.tzinfo is None:
+                    completed_dt = completed_dt.replace(tzinfo=timezone.utc)
+                    
                 if window.period_start <= completed_dt <= window.period_end:
                     habits_completed += 1
+                    
+                days_since = (now_dt.date() - completed_dt.date()).days
+                if days_since <= 1 and streak >= 2:
+                    active_streaks += streak
+                elif days_since > 1:
+                    habits_missed += 1
+                    
             except Exception:
+                habits_missed += 1
                 continue
 
         chat_requests = (
@@ -228,6 +271,8 @@ class AnalyticsV2Service:
             "tasks_created": int(tasks_created),
             "tasks_completed": int(tasks_completed),
             "goal_linked_completed": int(goal_linked_completed),
+            "high_energy_completed": int(high_energy_completed),
+            "on_time_completed": int(on_time_completed),
             "deep_work_minutes": int(deep_work_minutes),
             "deep_work_sessions": len(deep_work_sessions),
             "habits_total": int(habits_total),
@@ -235,6 +280,8 @@ class AnalyticsV2Service:
             "chat_requests": int(chat_requests),
             "active_days": int(active_days),
             "pending_tasks": int(pending_tasks),
+            "active_streaks": int(active_streaks),
+            "habits_missed": int(habits_missed),
         }
 
     async def _goal_progress_summary(
@@ -866,7 +913,10 @@ class AnalyticsV2Service:
 
             last_activity_date = max(activity_dates) if activity_dates else created_at.date()
             days_inactive = max((goal_now.date() - last_activity_date).days, 0)
-            inactivity_decay = max(0.55, 0.95 ** days_inactive)
+            if days_inactive >= 10:
+                inactivity_decay = max(0.55, 0.95 ** (days_inactive - 9))
+            else:
+                inactivity_decay = 1.0
             burnout_multiplier = 0.90 if burnout_value > 80 else 1.0
 
             adjusted_raw = _clamp(raw_score * focus_multiplier * inactivity_decay * burnout_multiplier)
@@ -934,8 +984,8 @@ class AnalyticsV2Service:
                 confidence_state = "calibrating"
                 gatekeeper_reasons.append("low_data_points")
 
-            if days_inactive > 5:
-                score_cap = min(score_cap, 29.0)
+            if days_inactive >= 10:
+                score_cap = min(score_cap, _clamp(100.0 - (days_inactive - 9) * 5.0, 30.0, 100.0))
                 gatekeeper_reasons.append("inactive_decay_gate")
 
             probability = min(probability, score_cap)
@@ -1085,30 +1135,50 @@ class AnalyticsV2Service:
         }
 
     # ── Impact Points ────────────────────────────────────────────────────
-    def _task_impact_points(self, tasks_completed: int, goal_linked: int) -> float:
+    def _task_impact_points(self, tasks_completed: int, goal_linked: int, high_energy: int, on_time: int, tasks_created: int) -> float:
         """
-        Point-based scoring that avoids the ratio trap.
-        Each completed task earns points; goal-linked tasks earn a bonus.
-        Diminishing returns past 10 tasks to avoid gaming.
+        Point-based scoring incorporating completion %, on-time %, and high energy stacked tasks.
+        Each completed task earns points; goal-linked, high-energy, and on-time tasks earn bonuses.
+        Diminishing returns past 10 tasks to avoid gaming. Multiply by completion ratio so creating
+        many uncompleted tasks has a net drag on the score.
         """
-        if tasks_completed == 0:
+        if tasks_completed == 0 and tasks_created == 0:
             return 0.0
-        # Base: 8 points per task, capped at soft ceiling
-        base = min(tasks_completed, 10) * 8.0 + max(0, tasks_completed - 10) * 3.0
-        # Goal-linked bonus: +4 per linked task (max 5 bonus slots)
+            
+        completion_ratio = min(1.0, tasks_completed / tasks_created) if tasks_created > 0 else 1.0
+        
+        # Base: 5 points per task, soft ceiling past 10
+        base = min(tasks_completed, 10) * 5.0 + max(0, tasks_completed - 10) * 2.0
+        
+        # Bonuses
         goal_bonus = min(goal_linked, 5) * 4.0
-        return _clamp(base + goal_bonus)
+        energy_bonus = min(high_energy, 4) * 4.0
+        on_time_bonus = min(on_time, 5) * 3.0
+        
+        # Multiplier scales from 0.5x (0% completed) to 1.0x (100% completed)
+        completion_modifier = 0.5 + (completion_ratio * 0.5)
+        
+        return _clamp((base + goal_bonus + energy_bonus + on_time_bonus) * completion_modifier)
 
-    def _habit_impact_points(self, completed: int, total: int) -> float:
+    def _habit_impact_points(self, completed: int, total: int, active_streaks: int = 0, missed: int = 0) -> float:
         """
         Habits use completion ratio BUT with a floor so partial completion
-        is still rewarded meaningfully.
+        is still rewarded meaningfully. Incorporates streak bonuses and miss penalties.
         """
         if total == 0:
             return 30.0  # No habits set = neutral baseline, not zero
+            
         ratio = completed / total
-        # Floor at 15 (doing any habit work matters), ceiling 100
-        return _clamp(15.0 + ratio * 85.0)
+        base_points = 15.0 + ratio * 85.0
+        
+        # Streak bonus (max +20)
+        streak_bonus = min(active_streaks * 2.0, 20.0)
+        
+        # Miss penalty (max -25)
+        miss_penalty = min(missed * 5.0, 25.0)
+        
+        # Floor at 5.0 to be forgiving
+        return _clamp(base_points + streak_bonus - miss_penalty)
 
     def _deep_work_impact_points(self, minutes: int) -> float:
         """
@@ -1157,10 +1227,14 @@ class AnalyticsV2Service:
 
             # ── 2. Impact Points (replaces ratio trap) ───────────────
             task_points = self._task_impact_points(
-                usage["tasks_completed"], usage.get("goal_linked_completed", 0)
+                usage["tasks_completed"], 
+                usage.get("goal_linked_completed", 0),
+                usage.get("high_energy_completed", 0),
+                usage.get("on_time_completed", 0),
+                usage.get("tasks_created", 0)
             )
             habit_points = self._habit_impact_points(
-                usage["habits_completed"], usage["habits_total"]
+                usage["habits_completed"], usage["habits_total"], usage.get("active_streaks", 0), usage.get("habits_missed", 0)
             )
             deep_work_points = self._deep_work_impact_points(usage["deep_work_minutes"])
 
@@ -1197,10 +1271,15 @@ class AnalyticsV2Service:
                 bl_task = self._task_impact_points(
                     max(baseline_usage["tasks_completed"] // baseline_days, 0),
                     max(baseline_usage.get("goal_linked_completed", 0) // baseline_days, 0),
+                    max(baseline_usage.get("high_energy_completed", 0) // baseline_days, 0),
+                    max(baseline_usage.get("on_time_completed", 0) // baseline_days, 0),
+                    max(baseline_usage.get("tasks_created", 0) // baseline_days, 0)
                 )
                 bl_habit = self._habit_impact_points(
                     max(baseline_usage["habits_completed"] // baseline_days, 0),
                     max(baseline_usage["habits_total"], 1),
+                    max(baseline_usage.get("active_streaks", 0) // baseline_days, 0),
+                    max(baseline_usage.get("habits_missed", 0) // baseline_days, 0)
                 )
                 bl_deep = self._deep_work_impact_points(
                     max(baseline_usage["deep_work_minutes"] // baseline_days, 0)
@@ -1474,14 +1553,13 @@ class AnalyticsV2Service:
                     if hasattr(first_today, 'replace') and first_today.tzinfo is None:
                         first_today = first_today.replace(tzinfo=timezone.utc)
                     gap_hours = (first_today - last_yesterday).total_seconds() / 3600.0
-                    if gap_hours < 5:
-                        offline_gap_risk = 85.0  # Very short sleep / no break
-                    elif gap_hours < 7:
-                        offline_gap_risk = 60.0  # Insufficient recovery
-                    elif gap_hours < 9:
-                        offline_gap_risk = 30.0  # Normal
+                    if gap_hours <= 4:
+                        offline_gap_risk = 90.0
+                    elif gap_hours >= 10:
+                        offline_gap_risk = 10.0
                     else:
-                        offline_gap_risk = 10.0  # Good recovery
+                        # Smooth transition from 90 (at 4 hrs) down to 10 (at 10 hrs)
+                        offline_gap_risk = _clamp(90.0 - ((gap_hours - 4.0) / 6.0) * 80.0)
                 else:
                     offline_gap_risk = 25.0  # No data = neutral-low
             except Exception:
@@ -1512,28 +1590,16 @@ class AnalyticsV2Service:
                     else:
                         consecutive_work_days = 0
 
-                if max_consecutive >= 10:
-                    rest_day_violation = 90.0
-                elif max_consecutive >= 7:
-                    rest_day_violation = 70.0
-                elif max_consecutive >= 5:
-                    rest_day_violation = 40.0
-                else:
-                    rest_day_violation = 10.0
+                # Smooth formula: 0 days = 10 risk, 10 days = 90 risk
+                rest_day_violation = _clamp(10.0 + max_consecutive * 8.0)
             except Exception:
                 rest_day_violation = 20.0
 
             # ── 5. Recovery Deficit (fixed) ──────────────────────────
             # Now properly measures ratio of ACTIVE days (more = less recovery)
             active_ratio = usage["active_days"] / max(range_days, 1)
-            if active_ratio >= 0.9:
-                recovery_deficit = 80.0  # Almost no rest
-            elif active_ratio >= 0.7:
-                recovery_deficit = 50.0
-            elif active_ratio >= 0.4:
-                recovery_deficit = 25.0
-            else:
-                recovery_deficit = 5.0   # Plenty of rest
+            # Smooth formula: 0 ratio = 5 risk, 1.0 ratio = 85 risk
+            recovery_deficit = _clamp(5.0 + active_ratio * 80.0)
 
             # ── 6. Goal Progress Pressure ────────────────────────────
             goal_progress_pressure = _clamp(100.0 - float(goals["score"] or 0.0))

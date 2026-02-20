@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { TrendingUp, Target, AlertCircle } from 'lucide-react';
+import { TrendingUp, Target, AlertCircle, MessageSquare } from 'lucide-react';
 import { socket } from '../../services/realtime/socket-client';
 import { api } from '../../services/api/client';
+import { useChatStore } from '../../stores/chat.store';
 
 interface AnalyticsDatum {
   date: string;
@@ -28,6 +30,8 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ userId }
   const [forecasts, setForecasts] = useState<Forecast[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'quarter'>('week');
+  const { addMessage, createConversation, setActiveConversation } = useChatStore();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchAnalytics();
@@ -74,6 +78,27 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ userId }
     return '➡️';
   };
 
+  const handleAskLeno = () => {
+    const latest = data.length > 0 ? data[data.length - 1] : null;
+    let context = 'my recent performance';
+    if (latest) {
+      context = `my productivity at ${latest.productivity ?? 0}% and focus at ${latest.focus ?? 0}%`;
+    }
+
+    // Create new conversation specialized for analysis
+    const conversation = createConversation(`Analytics Review`, "analyst");
+    setActiveConversation(conversation.id);
+
+    // Initial user message to kick it off
+    addMessage({
+      role: 'user',
+      content: `I'm looking at my analytics dashboard. Can we talk about ${context}?`
+    });
+
+    // Navigate to chat
+    navigate('/chat');
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96 text-gray-500">
@@ -85,22 +110,30 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ userId }
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
         <h2 className="text-2xl font-bold text-gray-900">Analytics</h2>
-        <div className="flex gap-2">
-          {['week', 'month', 'quarter'].map((range) => (
-            <button
-              key={range}
-              onClick={() => setTimeRange(range as any)}
-              className={`px-4 py-2 rounded-md capitalize font-medium transition ${
-                timeRange === range
+        <div className="flex flex-col sm:flex-row gap-4 items-center w-full md:w-auto">
+          <button
+            onClick={handleAskLeno}
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md font-medium hover:bg-indigo-700 transition w-full sm:w-auto min-h-[44px]"
+          >
+            <MessageSquare size={16} />
+            Ask Leno
+          </button>
+          <div className="flex gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+            {['week', 'month', 'quarter'].map((range) => (
+              <button
+                key={range}
+                onClick={() => setTimeRange(range as any)}
+                className={`px-4 py-2 rounded-md capitalize font-medium transition ${timeRange === range
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              {range}
-            </button>
-          ))}
+                  }`}
+              >
+                {range}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -155,33 +188,37 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ userId }
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
             Trend Over Time
           </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="productivity"
-                stroke="#3b82f6"
-                name="Productivity"
-              />
-              <Line
-                type="monotone"
-                dataKey="focus"
-                stroke="#10b981"
-                name="Focus"
-              />
-              <Line
-                type="monotone"
-                dataKey="wellness"
-                stroke="#f59e0b"
-                name="Wellness"
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          <div className="overflow-x-auto pb-2">
+            <div className="min-w-[450px]">
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={data}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="productivity"
+                    stroke="#3b82f6"
+                    name="Productivity"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="focus"
+                    stroke="#10b981"
+                    name="Focus"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="wellness"
+                    stroke="#f59e0b"
+                    name="Wellness"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         </div>
 
         {/* Bar Chart */}
@@ -189,18 +226,22 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ userId }
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
             Daily Scores
           </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={data.slice(-7)}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="productivity" fill="#3b82f6" name="Productivity" />
-              <Bar dataKey="focus" fill="#10b981" name="Focus" />
-              <Bar dataKey="wellness" fill="#f59e0b" name="Wellness" />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="overflow-x-auto pb-2">
+            <div className="min-w-[450px]">
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={data.slice(-7)}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="productivity" fill="#3b82f6" name="Productivity" />
+                  <Bar dataKey="focus" fill="#10b981" name="Focus" />
+                  <Bar dataKey="wellness" fill="#f59e0b" name="Wellness" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -703,6 +703,16 @@
   align-items: start;
 }
 
+@media (max-width: 1024px) {
+  .planner-main-grid:not(.maximized) {
+    grid-template-columns: 1fr;
+  }
+
+  .planner-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Hide right panel when maximized */
 .planner-main-grid.maximized .right-panel {
   display: none;

@@ -31,11 +31,16 @@ class GoalIntelligenceService:
         You are an expert productivity planner. The user has a goal: "{goal_text}".
         Duration: {duration_days} days.
         
-        Break this goal down into a concrete action plan containing:
-        1. **Tasks**: Specific, actionable 1-time items (e.g., "Physics Chapter 1", "Market Research"). 
-           - Suggest 3-5 key tasks per week or phase.
-        2. **Habits**: Recurring daily actions (e.g., "Wake up at 6am", "Code for 1h").
-        3. **Deep Work**: Focused blocks (e.g., "Mock Test", "Deep Reading") with frequency.
+        First, identify the Goal Archetype:
+        - "Grind": Intense studying/exam prep (heavy Deep Work).
+        - "Routine": Fitness/Health/Habits (heavy Habits).
+        - "Builder": Projects/Skills/Business (heavy Tasks and Milestones).
+        - "Blitz": Short deadlines < 14 days (pure execution Tasks).
+        
+        Tailor the breakdown specifically for that Archetype. Break this goal down into a concrete action plan containing:
+        1. **Tasks**: Specific, actionable 1-time items. Provide 3-5 key tasks per week (more if Builder/Blitz).
+        2. **Habits**: Recurring daily actions. (Focus on these if Routine).
+        3. **Deep Work**: Focused blocks with frequency. (Focus on these if Grind).
         
         Output valid JSON only:
         {{

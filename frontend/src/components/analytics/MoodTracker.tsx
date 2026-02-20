@@ -161,6 +161,9 @@ export default function MoodTracker() {
 
         <div className="mood-text">
           <h4 className="mood-status-label">Feeling {moodData.label}</h4>
+          <div className="mood-score-bar-container" title="Energy Level">
+            <div className="mood-score-bar-fill" style={{ width: `${Math.min(100, Math.max(0, moodData.score))}%` }} />
+          </div>
           <blockquote className="mood-ai-hint">
             "{moodData.hint}"
           </blockquote>
