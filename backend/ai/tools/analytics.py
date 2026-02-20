@@ -82,7 +82,7 @@ async def analyze_behavior_patterns(
         
         # Get AI client
         from backend.ai.client import get_ai_client
-        ai_client = get_ai_client()
+        ai_client = get_ai_client(user_id)
         
         # Prepare prompt for pattern analysis
         prompt = f"""
@@ -153,7 +153,7 @@ async def generate_ai_insight(
         
         # Get AI client
         from backend.ai.client import get_ai_client
-        ai_client = get_ai_client()
+        ai_client = get_ai_client(user_id)
         
         # Prepare focused prompt
         prompt = f"""
@@ -221,7 +221,7 @@ async def predict_user_trajectory(
         
         # Get AI client
         from backend.ai.client import get_ai_client
-        ai_client = get_ai_client()
+        ai_client = get_ai_client(user_id)
         
         prompt = f"""
         Predict this user's productivity trajectory for the next {timeframe}.
@@ -301,7 +301,7 @@ async def _analyze_event_with_ai(user_id: str, event: Dict[str, Any], event_id: 
     """Analyze significant event with AI"""
     try:
         from backend.ai.client import get_ai_client
-        ai_client = get_ai_client()
+        ai_client = get_ai_client(user_id)
         
         prompt = f"""
         Analyze this user event and provide immediate insight:

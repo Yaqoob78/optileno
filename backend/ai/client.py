@@ -844,6 +844,59 @@ Now help the user with their request. Use the real data above to give personaliz
         result = await self.chat_completion([{"role": "user", "content": message}])
         return result["text"]
 
+
+class AIClientAdapter:
+    """
+    Minimal adapter for analytics tools that expect analyze/predict/generate_insight methods.
+    Uses DualAIClient under the hood and returns structured content where possible.
+    """
+
+    def __init__(self, user_id: str):
+        self._client = DualAIClient(user_id)
+
+    @staticmethod
+    def _try_parse_json(text: str) -> Optional[Dict[str, Any]]:
+        import json
+
+        if not text:
+            return None
+        try:
+            return json.loads(text)
+        except Exception:
+            return None
+
+    async def _call(self, prompt: str, mode: str) -> Dict[str, Any]:
+        result = await self._client.chat_completion(
+            messages=[{"role": "user", "content": prompt}],
+            mode=mode,
+        )
+        text = result.get("text", "") if isinstance(result, dict) else str(result)
+        parsed = self._try_parse_json(text)
+        return {"content": parsed or {"summary": text}}
+
+    async def analyze(self, prompt: str, context: Optional[Dict[str, Any]] = None, analysis_type: str = "") -> Dict[str, Any]:
+        _ = context, analysis_type
+        return await self._call(prompt, mode="ANALYZE")
+
+    async def generate_insight(self, prompt: str, user_context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        _ = user_context
+        return await self._call(prompt, mode="ANALYZE")
+
+    async def predict(self, prompt: str, prediction_type: str = "") -> Dict[str, Any]:
+        _ = prediction_type
+        return await self._call(prompt, mode="ANALYZE")
+
+    async def analyze_immediate(self, prompt: str, event_context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        _ = event_context
+        return await self._call(prompt, mode="ANALYZE")
+
+
+def get_ai_client(user_id: Optional[str] = None) -> AIClientAdapter:
+    """
+    Backward-compatible factory for analytics tools.
+    """
+    return AIClientAdapter(str(user_id or "0"))
+
     async def _extract_intent_and_actions_v2(
         self,
         user_message: str,
