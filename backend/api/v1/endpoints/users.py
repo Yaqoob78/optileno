@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 import logging
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func
 
@@ -13,6 +13,7 @@ from backend.db.database import get_db
 from backend.db.models import User, Notification, ChatSession, ChatMessage
 from backend.auth.auth_utils import verify_password, get_password_hash
 from backend.app.config import settings
+from backend.core.password_policy import validate_password_policy
 from backend.utils.user_profile import (
     build_user_profile,
     merge_preferences,
@@ -40,8 +41,13 @@ class UserUpdateRequest(BaseModel):
 class UpdatePasswordRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     current_password: str = Field(..., alias="currentPassword")
-    new_password: str = Field(..., alias="newPassword", min_length=8)
+    new_password: str = Field(..., alias="newPassword")
     confirm_password: str = Field(..., alias="confirmPassword")
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, value: str) -> str:
+        return validate_password_policy(value)
 
 
 class UpdateEmailRequest(BaseModel):

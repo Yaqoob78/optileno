@@ -12,16 +12,71 @@ This module provides:
 4. Pending action tracking
 """
 
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Callable
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 import uuid
 import logging
+import inspect
+import json
+import time
+import re
 
 from backend.services.planner_service import planner_service
 from backend.services.analytics_service import analytics_service
 
 logger = logging.getLogger(__name__)
+
+MAX_PAYLOAD_SUMMARY_BYTES = 2048
+_SENSITIVE_KEY_PATTERN = re.compile(
+    r"(password|pass|token|secret|api[_-]?key|authorization|cookie|session|credential)",
+    re.IGNORECASE,
+)
+
+try:
+    from prometheus_client import Counter, Histogram, REGISTRY
+except Exception:  # pragma: no cover - optional dependency
+    Counter = None
+    Histogram = None
+    REGISTRY = None
+
+
+def _build_counter(name: str, documentation: str, labelnames: List[str]):
+    if Counter is None:
+        return None
+    try:
+        return Counter(name, documentation, labelnames=labelnames)
+    except ValueError:
+        collector = getattr(REGISTRY, "_names_to_collectors", {}).get(name)
+        return collector if collector is not None else None
+
+
+def _build_histogram(name: str, documentation: str, labelnames: List[str]):
+    if Histogram is None:
+        return None
+    try:
+        return Histogram(
+            name,
+            documentation,
+            labelnames=labelnames,
+            buckets=(1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000),
+        )
+    except ValueError:
+        collector = getattr(REGISTRY, "_names_to_collectors", {}).get(name)
+        return collector if collector is not None else None
+
+
+TOOL_CALLS_TOTAL = _build_counter(
+    "tool_calls_total",
+    "Total Leno tool calls by tool and success outcome",
+    ["tool", "success"],
+)
+
+TOOL_LATENCY_MS = _build_histogram(
+    "tool_latency_ms",
+    "Leno tool execution latency in milliseconds",
+    ["tool"],
+)
 
 
 class ActionType(str, Enum):
@@ -64,6 +119,180 @@ class AIAgentActions:
     # SUGGESTION METHODS (No confirmation needed - just advice)
     # ══════════════════════════════════════════════════════════════════════════
     
+    @staticmethod
+    def _normalize_tool_name(tool_name: Optional[str]) -> str:
+        return str(tool_name or "unknown").strip().lower()
+
+    @staticmethod
+    def _normalize_plan_tier(plan_tier: Optional[str]) -> str:
+        return str(plan_tier or "unknown").strip().lower()
+
+    def _redact_payload(self, payload: Any, depth: int = 0) -> Any:
+        if depth > 4:
+            return "[max_depth]"
+
+        if isinstance(payload, dict):
+            redacted: Dict[str, Any] = {}
+            for key, value in list(payload.items())[:50]:
+                key_str = str(key)
+                if _SENSITIVE_KEY_PATTERN.search(key_str):
+                    redacted[key_str] = "[REDACTED]"
+                    continue
+                redacted[key_str] = self._redact_payload(value, depth + 1)
+            if len(payload) > 50:
+                redacted["__truncated_keys__"] = len(payload) - 50
+            return redacted
+
+        if isinstance(payload, list):
+            preview = [self._redact_payload(item, depth + 1) for item in payload[:25]]
+            if len(payload) > 25:
+                preview.append(f"[+{len(payload) - 25} more items]")
+            return preview
+
+        if isinstance(payload, str):
+            return f"[str:{len(payload)}]"
+        if isinstance(payload, bytes):
+            return f"[bytes:{len(payload)}]"
+        if isinstance(payload, datetime):
+            return payload.isoformat()
+        if isinstance(payload, (int, float, bool)) or payload is None:
+            return payload
+
+        return f"[{type(payload).__name__}]"
+
+    def _summarize_payload(self, payload: Any) -> str:
+        try:
+            summary = json.dumps(
+                self._redact_payload(payload),
+                ensure_ascii=True,
+                separators=(",", ":"),
+                sort_keys=True,
+            )
+        except Exception:
+            summary = json.dumps({"unserializable_payload_type": type(payload).__name__})
+
+        encoded = summary.encode("utf-8")
+        if len(encoded) <= MAX_PAYLOAD_SUMMARY_BYTES:
+            return summary
+
+        suffix = "[truncated]"
+        trimmed = encoded[: MAX_PAYLOAD_SUMMARY_BYTES - len(suffix)].decode(
+            "utf-8",
+            errors="ignore",
+        )
+        return f"{trimmed}{suffix}"
+
+    @staticmethod
+    async def _await_if_needed(value: Any) -> Any:
+        if inspect.isawaitable(value):
+            return await value
+        return value
+
+    async def _invoke_tool_callable(
+        self,
+        tool_callable: Callable[..., Any],
+        user_id: str,
+        payload: Any,
+    ) -> Any:
+        if isinstance(payload, dict):
+            try:
+                return await self._await_if_needed(tool_callable(user_id, **payload))
+            except TypeError:
+                return await self._await_if_needed(tool_callable(user_id, payload))
+        return await self._await_if_needed(tool_callable(user_id, payload))
+
+    def _record_tool_metrics(self, tool_name: str, success: bool, latency_ms: float) -> None:
+        if TOOL_CALLS_TOTAL is not None:
+            TOOL_CALLS_TOTAL.labels(tool=tool_name, success=str(success).lower()).inc()
+        if TOOL_LATENCY_MS is not None:
+            TOOL_LATENCY_MS.labels(tool=tool_name).observe(latency_ms)
+
+    def _log_tool_execution(
+        self,
+        *,
+        user_id: str,
+        plan_tier: str,
+        tool_name: str,
+        payload_summary: str,
+        success: bool,
+        error_type: Optional[str],
+        latency_ms: float,
+        request_id: str,
+    ) -> None:
+        event = {
+            "request_id": request_id,
+            "user_id": str(user_id),
+            "plan_tier": plan_tier,
+            "tool_name": tool_name,
+            "payload_summary": payload_summary,
+            "success": success,
+            "error_type": error_type,
+            "latency_ms": latency_ms,
+        }
+        logger.info(
+            "leno_tool_execution %s",
+            json.dumps(event, ensure_ascii=True, separators=(",", ":"), sort_keys=True),
+        )
+
+    async def execute_tool(
+        self,
+        *,
+        tool_name: str,
+        user_id: str,
+        payload: Any,
+        tool_callable: Callable[..., Any],
+        plan_tier: str = "unknown",
+        request_id: Optional[str] = None,
+    ) -> Any:
+        normalized_tool_name = self._normalize_tool_name(tool_name)
+        normalized_plan_tier = self._normalize_plan_tier(plan_tier)
+        effective_request_id = request_id or str(uuid.uuid4())
+        payload_summary = self._summarize_payload(payload)
+
+        started_at = time.perf_counter()
+        success = False
+        error_type: Optional[str] = None
+        try:
+            result = await self._invoke_tool_callable(tool_callable, user_id, payload)
+            success = True
+            return result
+        except Exception as exc:
+            error_type = type(exc).__name__
+            raise
+        finally:
+            latency_ms = round((time.perf_counter() - started_at) * 1000, 2)
+            self._record_tool_metrics(normalized_tool_name, success, latency_ms)
+            self._log_tool_execution(
+                user_id=user_id,
+                plan_tier=normalized_plan_tier,
+                tool_name=normalized_tool_name,
+                payload_summary=payload_summary,
+                success=success,
+                error_type=error_type,
+                latency_ms=latency_ms,
+                request_id=effective_request_id,
+            )
+
+    @staticmethod
+    async def _complete_task_by_payload(
+        user_id: str,
+        task_id: str,
+        **_: Any,
+    ) -> Dict[str, Any]:
+        return await planner_service.complete_task(user_id, task_id)
+
+    @staticmethod
+    async def _create_multiple_tasks(
+        user_id: str,
+        tasks: List[Dict[str, Any]],
+        **_: Any,
+    ) -> Dict[str, Any]:
+        results = []
+        for task_data in tasks:
+            result = await planner_service.create_task(user_id, task_data)
+            results.append(result)
+        return {"created_count": len(results), "tasks": results}
+
     async def suggest_goal(
         self,
         user_id: str,
@@ -338,7 +567,9 @@ class AIAgentActions:
     async def confirm_action(
         self,
         action_id: str,
-        user_id: str
+        user_id: str,
+        plan_tier: str = "unknown",
+        request_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Execute a pending action after user confirmation.
@@ -361,7 +592,11 @@ class AIAgentActions:
         # Execute based on action type
         try:
             logger.info(f"⚡ Executing confirmed action: {action['action_type']} (ID: {action_id})")
-            result = await self._execute_action(action)
+            result = await self._execute_action(
+                action,
+                plan_tier=plan_tier,
+                request_id=request_id or action_id,
+            )
             action["status"] = ActionStatus.EXECUTED.value
             
             # Clean up
@@ -421,7 +656,12 @@ class AIAgentActions:
         
         return [a for a in user_actions if a["status"] == ActionStatus.PENDING.value]
     
-    async def _execute_action(self, action: Dict[str, Any]) -> Dict[str, Any]:
+    async def _execute_action(
+        self,
+        action: Dict[str, Any],
+        plan_tier: str = "unknown",
+        request_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """
         Execute the actual action based on type.
         """
@@ -430,23 +670,54 @@ class AIAgentActions:
         data = action["data"]
         
         if action_type == ActionType.CREATE_GOAL.value:
-            return await planner_service.create_goal(user_id, data)
+            return await self.execute_tool(
+                tool_name=action_type,
+                user_id=user_id,
+                payload=data,
+                tool_callable=planner_service.create_goal,
+                plan_tier=plan_tier,
+                request_id=request_id,
+            )
         
         elif action_type == ActionType.CREATE_TASK.value:
-            return await planner_service.create_task(user_id, data)
+            return await self.execute_tool(
+                tool_name=action_type,
+                user_id=user_id,
+                payload=data,
+                tool_callable=planner_service.create_task,
+                plan_tier=plan_tier,
+                request_id=request_id,
+            )
         
         elif action_type == ActionType.CREATE_HABIT.value:
-            return await planner_service.create_habit(user_id, data)
+            return await self.execute_tool(
+                tool_name=action_type,
+                user_id=user_id,
+                payload=data,
+                tool_callable=planner_service.create_habit,
+                plan_tier=plan_tier,
+                request_id=request_id,
+            )
         
         elif action_type == ActionType.COMPLETE_TASK.value:
-            return await planner_service.complete_task(user_id, data["task_id"])
+            return await self.execute_tool(
+                tool_name=action_type,
+                user_id=user_id,
+                payload={"task_id": data["task_id"]},
+                tool_callable=self._complete_task_by_payload,
+                plan_tier=plan_tier,
+                request_id=request_id,
+            )
         
         elif action_type == "CREATE_MULTIPLE_TASKS":
-            results = []
-            for task_data in data["tasks"]:
-                result = await planner_service.create_task(user_id, task_data)
-                results.append(result)
-            return {"created_count": len(results), "tasks": results}
+            return await self.execute_tool(
+                tool_name=action_type,
+                user_id=user_id,
+                payload=data,
+                tool_callable=self._create_multiple_tasks,
+                plan_tier=plan_tier,
+                request_id=request_id,
+            )
         
         else:
             raise ValueError(f"Unknown action type: {action_type}")

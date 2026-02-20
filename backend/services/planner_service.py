@@ -8,12 +8,15 @@ No business logic. No validation. No ORM exposure.
 from __future__ import annotations
 
 from typing import Any, Optional
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, time, timedelta, timezone
 import logging
 import json
+from zoneinfo import ZoneInfo
 
+from fastapi import HTTPException
 from backend.db.database import get_db
 from backend.db.models import Plan
+from backend.services.entitlements_service import is_ultra_user
 
 # Import analytics tracker for real-time event tracking
 from backend.services.realtime_analytics_tracker import realtime_analytics
@@ -50,6 +53,135 @@ class PlannerService:
 
         return schedule
 
+    def _utc_now(self) -> datetime:
+        return datetime.now(timezone.utc)
+
+    def _get_timezone(self, timezone_name: Optional[str]) -> ZoneInfo:
+        if not timezone_name:
+            return ZoneInfo("UTC")
+        try:
+            return ZoneInfo(timezone_name)
+        except Exception:
+            logger.warning("Invalid timezone '%s'; falling back to UTC", timezone_name)
+            return ZoneInfo("UTC")
+
+    def _ensure_utc(self, value: datetime) -> datetime:
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
+
+    def _local_day_bounds_to_utc(self, day_value: date, timezone_name: Optional[str]) -> tuple[datetime, datetime]:
+        tz = self._get_timezone(timezone_name)
+        start_local = datetime.combine(day_value, time(0, 0, 0), tzinfo=tz)
+        end_local = datetime.combine(day_value, time(23, 59, 59, 999999), tzinfo=tz)
+        return start_local.astimezone(timezone.utc), end_local.astimezone(timezone.utc)
+
+    def _date_key_in_timezone(self, dt_value: datetime, timezone_name: Optional[str]) -> str:
+        tz = self._get_timezone(timezone_name)
+        return self._ensure_utc(dt_value).astimezone(tz).date().isoformat()
+
+    async def _is_ultra_user_by_id(self, user_id: str) -> bool:
+        from backend.db.models import User
+        from sqlalchemy import select
+
+        try:
+            async for db in get_db():
+                result = await db.execute(select(User).where(User.id == int(user_id)))
+                user = result.scalar_one_or_none()
+                if not user:
+                    return False
+                return is_ultra_user(user)
+        except Exception as exc:
+            logger.warning("Failed to resolve tier for user %s: %s", user_id, exc)
+            return False
+
+    async def _enforce_goal_id_ultra(self, user_id: str, goal_id: Any) -> None:
+        if goal_id is None or str(goal_id).strip() == "":
+            return
+        if not await self._is_ultra_user_by_id(user_id):
+            raise HTTPException(
+                status_code=403,
+                detail={"code": "PLAN_UPGRADE_REQUIRED", "feature": "goal_linking"},
+            )
+
+    def _parse_due_datetime(self, input_data: dict[str, Any]) -> Optional[datetime]:
+        timezone_name = input_data.get("timezone")
+
+        local_date = input_data.get("due_local_date")
+        local_time = input_data.get("due_local_time")
+        if local_date and local_time:
+            try:
+                if isinstance(local_date, str):
+                    local_date = date.fromisoformat(local_date)
+                hour = int(local_time[:2])
+                minute = int(local_time[3:])
+                tz = self._get_timezone(timezone_name)
+                local_dt = datetime.combine(local_date, time(hour, minute), tzinfo=tz)
+                return local_dt.astimezone(timezone.utc)
+            except Exception as exc:
+                logger.warning("Failed to parse due_local_date/time payload: %s", exc)
+
+        due_date_value = input_data.get("due_date")
+        if not due_date_value:
+            return None
+
+        if isinstance(due_date_value, datetime):
+            return self._ensure_utc(due_date_value)
+
+        if isinstance(due_date_value, str):
+            try:
+                parsed_date = datetime.fromisoformat(due_date_value.replace("Z", "+00:00"))
+                if parsed_date.tzinfo is None:
+                    # Treat naive values as local time in provided timezone (or UTC fallback).
+                    tz = self._get_timezone(timezone_name)
+                    parsed_date = parsed_date.replace(tzinfo=tz)
+                return parsed_date.astimezone(timezone.utc)
+            except (ValueError, AttributeError):
+                try:
+                    now = self._utc_now()
+                    target_date = now.date()
+                    time_lower = due_date_value.lower().strip()
+                    target_time = None
+
+                    if "tomorrow" in time_lower:
+                        target_date = target_date + timedelta(days=1)
+                        time_lower = time_lower.replace("tomorrow", "").strip()
+
+                    if "morning" in time_lower:
+                        target_time = time(9, 0)
+                    elif "afternoon" in time_lower:
+                        target_time = time(14, 0)
+                    elif "evening" in time_lower:
+                        target_time = time(18, 0)
+                    elif "tonight" in time_lower:
+                        target_time = time(20, 0)
+                    elif ":" in time_lower:
+                        fmt = "%H:%M"
+                        if "am" in time_lower or "pm" in time_lower:
+                            fmt = "%I:%M%p"
+                            time_lower = time_lower.replace(" ", "")
+                        target_time = datetime.strptime(time_lower, fmt).time()
+                    else:
+                        hour_str = "".join(filter(str.isdigit, time_lower))
+                        if hour_str:
+                            hour = int(hour_str)
+                            if "pm" in time_lower and hour < 12:
+                                hour += 12
+                            elif "am" in time_lower and hour == 12:
+                                hour = 0
+                            elif hour <= 6 and "am" not in time_lower:
+                                hour += 12
+                            target_time = time(hour, 0)
+
+                    if target_time:
+                        return datetime.combine(target_date, target_time, tzinfo=timezone.utc)
+
+                    if "tomorrow" in due_date_value.lower():
+                        return datetime.combine(target_date, time(0, 0), tzinfo=timezone.utc)
+                except Exception as exc:
+                    logger.warning("Failed to parse due_date '%s': %s", due_date_value, exc)
+        return None
+
     async def start_deep_work_session(
         self,
         user_id: str,
@@ -61,7 +193,7 @@ class PlannerService:
         plan_data = {
             "type": "deep_work",
             "duration_minutes": duration_minutes,
-            "started_at": datetime.utcnow().isoformat(),
+            "started_at": self._utc_now().isoformat(),
         }
 
         try:
@@ -71,7 +203,7 @@ class PlannerService:
                     name="Deep Work Session",
                     description="AI-triggered deep work session",
                     plan_type="deep_work",
-                    date=datetime.utcnow(),
+                    date=self._utc_now(),
                     duration_hours=(
                         duration_minutes / 60 if duration_minutes else None
                     ),
@@ -110,7 +242,7 @@ class PlannerService:
                     name=plan_data.get("name", "AI Plan"),
                     description=plan_data.get("description"),
                     plan_type=plan_data.get("plan_type", "custom"),
-                    date=plan_data.get("date", datetime.utcnow()),
+                    date=self._ensure_utc(plan_data["date"]) if isinstance(plan_data.get("date"), datetime) else self._utc_now(),
                     duration_hours=plan_data.get("duration_hours"),
                     focus_areas=plan_data.get("focus_areas", []),
                     schedule=plan_data.get("schedule", {}),
@@ -427,7 +559,7 @@ class PlannerService:
     # HABITS CRUD
     # ─────────────────────────────────────────────────────────────
     
-    async def get_user_habits(self, user_id: str) -> list[dict[str, Any]]:
+    async def get_user_habits(self, user_id: str, timezone_name: Optional[str] = "UTC") -> list[dict[str, Any]]:
         """Get user habits (stored as plans with type='habit')."""
         try:
             from sqlalchemy import select
@@ -442,7 +574,7 @@ class PlannerService:
                 )
                 plans = result.scalars().all()
                 habits = []
-                now_date = datetime.utcnow().date()
+                now_local_key = self._date_key_in_timezone(self._utc_now(), timezone_name)
                 
                 for plan in plans:
                     schedule = self._normalize_habit_schedule(plan.schedule)
@@ -451,8 +583,11 @@ class PlannerService:
                     last_completed_str = schedule.get("lastCompleted")
                     
                     if last_completed_str and streak > 0:
-                        last_completed = datetime.fromisoformat(last_completed_str).date()
-                        delta = (now_date - last_completed).days
+                        last_completed = datetime.fromisoformat(last_completed_str.replace("Z", "+00:00"))
+                        if last_completed.tzinfo is None:
+                            last_completed = last_completed.replace(tzinfo=timezone.utc)
+                        last_key = self._date_key_in_timezone(last_completed, timezone_name)
+                        delta = (date.fromisoformat(now_local_key) - date.fromisoformat(last_key)).days
                         if delta > 1:
                             streak = 0  # Streak broken
                     
@@ -464,6 +599,7 @@ class PlannerService:
                         "id": str(plan.id),
                         "name": plan.name,
                         "description": plan.description,
+                        "goal_id": str(plan.goal_id) if plan.goal_id else None,
                         "frequency": schedule.get("frequency", "daily"),
                         "category": schedule.get("category", "Wellness"),
                         "targetCount": schedule.get("target", 1),
@@ -480,7 +616,7 @@ class PlannerService:
             logger.error(f"Failed to get habits: {e}")
             return []
 
-    async def track_habit(self, user_id: str, habit_id: str) -> dict[str, Any]:
+    async def track_habit(self, user_id: str, habit_id: str, timezone_name: Optional[str] = "UTC") -> dict[str, Any]:
         """Mark a habit as completed today and update streak."""
         try:
             from sqlalchemy import select
@@ -502,12 +638,16 @@ class PlannerService:
                 longest_streak = schedule.get("longestStreak", 0)
                 last_completed_str = schedule.get("lastCompleted")
                 
-                now = datetime.utcnow()
+                now_utc = self._utc_now()
+                today_local_key = self._date_key_in_timezone(now_utc, timezone_name)
                 new_streak = 1
                 
                 if last_completed_str:
-                    last_completed = datetime.fromisoformat(last_completed_str)
-                    delta = (now.date() - last_completed.date()).days
+                    last_completed = datetime.fromisoformat(last_completed_str.replace("Z", "+00:00"))
+                    if last_completed.tzinfo is None:
+                        last_completed = last_completed.replace(tzinfo=timezone.utc)
+                    last_local_key = self._date_key_in_timezone(last_completed, timezone_name)
+                    delta = (date.fromisoformat(today_local_key) - date.fromisoformat(last_local_key)).days
                     
                     if delta == 0:
                         # Already done today, don't increment but keeps current
@@ -531,9 +671,8 @@ class PlannerService:
                 if not isinstance(history, list):
                     history = []
                 
-                today_str = now.date().isoformat()
-                if today_str not in history:
-                    history.append(today_str)
+                if today_local_key not in history:
+                    history.append(today_local_key)
                     # Sort and keep last 30
                     history.sort()
                     if len(history) > 30:
@@ -543,7 +682,7 @@ class PlannerService:
                 schedule["streak"] = new_streak
                 schedule["longestStreak"] = longest_streak
                 schedule["history"] = history
-                schedule["lastCompleted"] = now.isoformat()
+                schedule["lastCompleted"] = now_utc.isoformat()
                 schedule["last_completed"] = schedule["lastCompleted"]
                 schedule["completedToday"] = True
                 schedule["completed_today"] = True
@@ -575,27 +714,30 @@ class PlannerService:
             logger.error(f"Failed to track habit: {e}")
             return {"error": str(e), "streak": 0}
 
-    async def create_habit(self, user_id: str, habit_data: dict[str, Any]) -> dict[str, Any]:
+    async def create_habit(self, user_id: str, habit_data: Any) -> dict[str, Any]:
         """Create a new habit."""
         from backend.db.models import Plan
-        from datetime import timezone
 
         try:
             async for db in get_db():
-                # Create Plan without goal_id to avoid database schema issues
+                input_data = habit_data.dict() if hasattr(habit_data, "dict") else habit_data
+                goal_id = input_data.get("goal_id") or input_data.get("goalId")
+                await self._enforce_goal_id_ultra(user_id, goal_id)
+
                 plan = Plan(
                     user_id=int(user_id),
-                    name=habit_data.get("name", habit_data.get("title", "New Habit")),
-                    description=habit_data.get("description"),
+                    name=input_data.get("name", input_data.get("title", "New Habit")),
+                    description=input_data.get("description"),
                     plan_type="habit",
-                    date=datetime.utcnow(),
+                    date=self._utc_now(),
+                    goal_id=int(goal_id) if goal_id not in (None, "") else None,
                     schedule={
-                        "frequency": habit_data.get("frequency", "daily"),
+                        "frequency": input_data.get("frequency", "daily"),
                         "streak": 0,
                         "longestStreak": 0,
-                        "target": habit_data.get("target", 1),
-                        "category": habit_data.get("category", "Wellness"),
-                        "goal_link": habit_data.get("goal_link"),
+                        "target": input_data.get("target", 1),
+                        "category": input_data.get("category", "Wellness"),
+                        "goal_link": input_data.get("goal_link"),
                         "completedToday": False,
                         "completed_today": False,
                         "lastCompleted": None,
@@ -603,8 +745,6 @@ class PlannerService:
                     },
                     recommendations=[]
                 )
-                # Note: goal_id is not set here to avoid database schema issues
-                # It will be handled separately when the database is properly migrated
 
                 db.add(plan)
                 await db.commit()
@@ -631,6 +771,7 @@ class PlannerService:
                     "name": plan.name,
                     "title": plan.name,  # Add title field for frontend compatibility
                     "description": plan.description,
+                    "goal_id": str(plan.goal_id) if plan.goal_id else None,
                     "plan_type": plan.plan_type,
                     "schedule": plan.schedule,
                     "created_at": plan.created_at.isoformat() if plan.created_at else None
@@ -660,7 +801,7 @@ class PlannerService:
 
                 # Update metadata
                 meta = dict(task.meta or {})
-                now = datetime.utcnow()
+                now = self._utc_now()
                 
                 # Check if this is a retry
                 if task.status in ['overdue', 'failed']:
@@ -697,12 +838,12 @@ class PlannerService:
     async def create_task(self, user_id: str, task_data: Any) -> Any:
         """Create a new task."""
         from backend.db.models import Task
-        from datetime import timezone
         
         try:
             async for db in get_db():
                 # Support both Pydantic model and Dict
                 input_data = task_data.dict() if hasattr(task_data, 'dict') else task_data
+                await self._enforce_goal_id_ultra(user_id, input_data.get("goal_id"))
                 
                 # Map API status values to database status values
                 status_map = {
@@ -718,65 +859,9 @@ class PlannerService:
                 if "estimated_duration_minutes" not in input_data and "estimated_minutes" in input_data:
                     input_data["estimated_duration_minutes"] = input_data.get("estimated_minutes")
 
-                # Parse due_date properly - handle ISO strings and natural language
-                due_date_value = input_data.get("due_date")
-                if due_date_value:
-                    if isinstance(due_date_value, str):
-                        try:
-                            # Try parsing as ISO format
-                            parsed_date = datetime.fromisoformat(due_date_value.replace('Z', '+00:00'))
-                            # If no timezone info, assume UTC
-                            if parsed_date.tzinfo is None:
-                                parsed_date = parsed_date.replace(tzinfo=timezone.utc)
-                            due_date_value = parsed_date
-                        except (ValueError, AttributeError):
-                            # Try natural language parsing
-                            try:
-                                now = datetime.now(timezone.utc)
-                                target_date = now.date()
-                                time_lower = due_date_value.lower().strip()
-                                target_time = None
-                                
-                                if "tomorrow" in time_lower:
-                                    target_date = target_date + timedelta(days=1)
-                                    time_lower = time_lower.replace("tomorrow", "").strip()
-
-                                if "morning" in time_lower:
-                                    target_time = datetime.strptime("09:00", "%H:%M").time()
-                                elif "afternoon" in time_lower:
-                                    target_time = datetime.strptime("14:00", "%H:%M").time()
-                                elif "evening" in time_lower:
-                                    target_time = datetime.strptime("18:00", "%H:%M").time()
-                                elif "tonight" in time_lower:
-                                    target_time = datetime.strptime("20:00", "%H:%M").time()
-                                elif ":" in time_lower:
-                                    fmt = "%H:%M"
-                                    if "am" in time_lower or "pm" in time_lower:
-                                        fmt = "%I:%M%p"
-                                        time_lower = time_lower.replace(" ", "")
-                                    target_time = datetime.strptime(time_lower, fmt).time()
-                                else:
-                                    # Integer hour check
-                                    hour_str = ''.join(filter(str.isdigit, time_lower))
-                                    if hour_str:
-                                        hour = int(hour_str)
-                                        if "pm" in time_lower and hour < 12: hour += 12
-                                        elif "am" in time_lower and hour == 12: hour = 0
-                                        elif hour <= 6 and "am" not in time_lower: hour += 12
-                                        target_time = datetime.strptime(f"{hour}:00", "%H:%M").time()
-
-                                if target_time:
-                                    due_date_value = datetime.combine(target_date, target_time).replace(tzinfo=timezone.utc)
-                                else:
-                                    # Fallback: Just date if "tomorrow" was only thing
-                                    if "tomorrow" in due_date_value.lower() and not target_time:
-                                        due_date_value = datetime.combine(target_date, datetime.min.time()).replace(tzinfo=timezone.utc)
-                                    else:
-                                        logger.warning(f"Could not parse natural date: {due_date_value}")
-                                        due_date_value = None
-                            except Exception as e:
-                                logger.warning(f"Failed to parse due_date '{due_date_value}': {e}")
-                                due_date_value = None
+                due_date_value = self._parse_due_datetime(input_data)
+                goal_id_raw = input_data.get("goal_id")
+                goal_id_value = int(goal_id_raw) if goal_id_raw not in (None, "") else None
 
                 task = Task(
                     user_id=int(user_id),
@@ -788,7 +873,7 @@ class PlannerService:
                     estimated_minutes=input_data.get("estimated_duration_minutes"),
                     tags=input_data.get("tags", []),
                     category=input_data.get("category"),
-                    goal_id=input_data.get("goal_id"),
+                    goal_id=goal_id_value,
                     meta={
                         **input_data.get("meta", {}),
                         "energy": input_data.get("energy", "medium")
@@ -796,6 +881,7 @@ class PlannerService:
                 )
                 db.add(task)
                 await db.commit()
+                await db.refresh(task)
                 
                 # Reload task to get complete task data (without goal relationship to avoid schema issues)
                 from sqlalchemy import select
@@ -862,6 +948,8 @@ class PlannerService:
         self,
         user_id: str,
         status: Optional[str] = None,
+        local_day: Optional[date] = None,
+        timezone_name: Optional[str] = "UTC",
         due_date_from: Optional[date] = None,
         due_date_to: Optional[date] = None,
         limit: int = 50,
@@ -877,7 +965,7 @@ class PlannerService:
                 status_map = {
                     "todo": "pending",
                     "done": "completed",
-                    "in-progress": "in-progress"
+                    "in-progress": "in_progress"
                 }
                 db_status = status_map.get(status, status) if status else None
 
@@ -885,10 +973,15 @@ class PlannerService:
                 
                 if db_status:
                     query = query.where(Task.status == db_status)
+                if local_day:
+                    day_start_utc, day_end_utc = self._local_day_bounds_to_utc(local_day, timezone_name)
+                    query = query.where(Task.due_date >= day_start_utc, Task.due_date <= day_end_utc)
                 if due_date_from:
-                    query = query.where(Task.due_date >= datetime.combine(due_date_from, datetime.min.time()))
+                    from_start_utc, _ = self._local_day_bounds_to_utc(due_date_from, timezone_name)
+                    query = query.where(Task.due_date >= from_start_utc)
                 if due_date_to:
-                    query = query.where(Task.due_date <= datetime.combine(due_date_to, datetime.max.time()))
+                    _, to_end_utc = self._local_day_bounds_to_utc(due_date_to, timezone_name)
+                    query = query.where(Task.due_date <= to_end_utc)
                 
                 query = query.order_by(Task.created_at.desc()).offset(offset).limit(limit)
                 
@@ -931,6 +1024,7 @@ class PlannerService:
                     return None
                 
                 update_data = updates.dict(exclude_unset=True) if hasattr(updates, 'dict') else updates
+                await self._enforce_goal_id_ultra(user_id, update_data.get("goal_id"))
                 
                 # Track previous status for analytics
                 previous_status = task.status
@@ -950,27 +1044,24 @@ class PlannerService:
                 if "estimated_duration_minutes" in update_data:
                     update_data["estimated_minutes"] = update_data.pop("estimated_duration_minutes")
 
-                # Parse due_date properly - handle both ISO strings with and without timezone
-                if "due_date" in update_data:
-                    due_date_value = update_data["due_date"]
-                    if due_date_value and isinstance(due_date_value, str):
-                        try:
-                            from datetime import timezone
-                            # Try parsing as ISO format
-                            parsed_date = datetime.fromisoformat(due_date_value.replace('Z', '+00:00'))
-                            # If no timezone info, assume UTC
-                            if parsed_date.tzinfo is None:
-                                parsed_date = parsed_date.replace(tzinfo=timezone.utc)
-                            update_data["due_date"] = parsed_date
-                        except (ValueError, AttributeError) as e:
-                            logger.warning(f"Failed to parse due_date '{due_date_value}': {e}")
-                            update_data.pop("due_date", None)
+                if "due_date" in update_data or "due_local_date" in update_data or "due_local_time" in update_data:
+                    parsed_due_date = self._parse_due_datetime(update_data)
+                    if parsed_due_date is None:
+                        update_data.pop("due_date", None)
+                    else:
+                        update_data["due_date"] = parsed_due_date
+                update_data.pop("due_local_date", None)
+                update_data.pop("due_local_time", None)
+                update_data.pop("timezone", None)
+                if "goal_id" in update_data:
+                    raw_goal_id = update_data.get("goal_id")
+                    update_data["goal_id"] = int(raw_goal_id) if raw_goal_id not in (None, "") else None
 
                 for key, value in update_data.items():
                     if hasattr(task, key):
                         setattr(task, key, value)
                 
-                task.updated_at = datetime.utcnow()
+                task.updated_at = self._utc_now()
                 await db.commit()
                 await db.refresh(task)
                 
@@ -1040,15 +1131,19 @@ class PlannerService:
         
         try:
             async for db in get_db():
+                input_data = data.dict() if hasattr(data, "dict") else data
+                goal_id = input_data.get("goal_id")
+                await self._enforce_goal_id_ultra(user_id, goal_id)
                 session = Plan(
                     user_id=int(user_id),
                     name="Deep Work",
                     plan_type="deep_work",
-                    date=datetime.utcnow(),
+                    date=self._utc_now(),
+                    goal_id=int(goal_id) if goal_id not in (None, "") else None,
                     schedule={
-                        "planned_duration": data.planned_duration_minutes,
-                        "focus_goal": data.focus_goal,
-                        "notes": data.notes,
+                        "planned_duration": input_data.get("planned_duration_minutes"),
+                        "focus_goal": input_data.get("focus_goal"),
+                        "notes": input_data.get("notes"),
                         "status": "active"
                     }
                 )
@@ -1059,6 +1154,78 @@ class PlannerService:
         except Exception as e:
             logger.error(f"Failed to start deep work: {e}")
             return None
+
+    async def schedule_deep_work(self, user_id: str, data: Any) -> list[Any]:
+        """Schedule deep work blocks within the next 7 local days."""
+        from backend.db.models import Plan
+
+        input_data = data.dict() if hasattr(data, "dict") else data
+        days_of_week = sorted(set(input_data.get("days_of_week", [])))
+        explicit_local_dates = input_data.get("local_dates") or []
+        start_time_value = input_data.get("start_time")
+        duration_minutes = input_data.get("duration_minutes")
+        timezone_name = input_data.get("timezone") or "UTC"
+        goal_id = input_data.get("goal_id")
+        await self._enforce_goal_id_ultra(user_id, goal_id)
+
+        tz = self._get_timezone(timezone_name)
+        now_local = self._utc_now().astimezone(tz)
+        window_end_local = now_local + timedelta(days=7)
+        hour = int(start_time_value[:2])
+        minute = int(start_time_value[3:])
+
+        selected_dates: list[date] = []
+        if explicit_local_dates:
+            for local_date in explicit_local_dates:
+                if isinstance(local_date, str):
+                    local_date = date.fromisoformat(local_date)
+                selected_dates.append(local_date)
+        else:
+            for day_offset in range(0, 7):
+                candidate = (now_local + timedelta(days=day_offset)).date()
+                # Convert python weekday (Mon=0) to Sun=0..Sat=6
+                candidate_js_day = (candidate.weekday() + 1) % 7
+                if candidate_js_day in days_of_week:
+                    selected_dates.append(candidate)
+
+        if not selected_dates:
+            raise HTTPException(status_code=422, detail="Selected days are outside the next 7 days")
+
+        created: list[Any] = []
+        try:
+            async for db in get_db():
+                for local_date in selected_dates:
+                    local_dt = datetime.combine(local_date, time(hour, minute), tzinfo=tz)
+                    if local_dt < now_local or local_dt > window_end_local:
+                        raise HTTPException(status_code=422, detail="Selected schedule must be within the next 7 days")
+                    scheduled_utc = local_dt.astimezone(timezone.utc)
+                    session = Plan(
+                        user_id=int(user_id),
+                        name="Deep Work",
+                        plan_type="deep_work",
+                        goal_id=int(goal_id) if goal_id not in (None, "") else None,
+                        date=scheduled_utc,
+                        schedule={
+                            "planned_duration": duration_minutes,
+                            "focus_goal": input_data.get("focus_goal"),
+                            "notes": input_data.get("notes"),
+                            "status": "scheduled",
+                            "timezone": timezone_name,
+                            "scheduled_local_date": local_date.isoformat(),
+                            "scheduled_local_time": start_time_value,
+                        },
+                    )
+                    db.add(session)
+                    created.append(session)
+                await db.commit()
+                for session in created:
+                    await db.refresh(session)
+                return [self._map_to_deep_work_out(session) for session in created]
+        except HTTPException:
+            raise
+        except Exception as exc:
+            logger.error("Failed to schedule deep work: %s", exc)
+            raise HTTPException(status_code=500, detail="Failed to schedule deep work")
 
     async def complete_deep_work(self, user_id: str, session_id: str, actual_duration_minutes: int) -> Any:
         """Complete a deep work session."""
@@ -1120,9 +1287,11 @@ class PlannerService:
                         Plan.plan_type == "deep_work"
                     ).order_by(Plan.created_at.desc())
                 )
-                session = result.scalars().first()
-                if session and session.schedule.get("status") == "active":
-                    return self._map_to_deep_work_out(session)
+                sessions = result.scalars().all()
+                for session in sessions:
+                    schedule = session.schedule if isinstance(session.schedule, dict) else {}
+                    if schedule.get("status") == "active":
+                        return self._map_to_deep_work_out(session)
                 return None
         except Exception:
             return None
@@ -1136,9 +1305,11 @@ class PlannerService:
             "planned_duration_minutes": schedule.get("planned_duration", 0),
             "focus_goal": schedule.get("focus_goal"),
             "notes": schedule.get("notes"),
-            "started_at": session.created_at,
+            "goal_id": str(session.goal_id) if session.goal_id else None,
+            "started_at": session.date or session.created_at,
+            "actual_duration_minutes": schedule.get("actual_duration"),
             "status": schedule.get("status", "active"),
-            "created_at": session.created_at
+            "created_at": session.created_at,
         }
 
     async def is_user_in_session(self, user_id: str) -> bool:

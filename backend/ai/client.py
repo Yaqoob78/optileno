@@ -2,6 +2,7 @@ import logging
 import asyncio
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
+import uuid
 
 # Providers
 from openai import AsyncOpenAI
@@ -45,6 +46,7 @@ class DualAIClient:
         
         self.primary_provider = "nvidia" 
         self.secondary_provider = "groq"
+        self.current_plan_tier = "unknown"
 
     @staticmethod
     def _normalize_request_usage(raw_usage: Any, daily_limit: int) -> int:
@@ -66,18 +68,6 @@ class DualAIClient:
             return max(0, (usage + 99) // 100)
 
         return usage
-
-    async def _execute_tool(self, tool, payload):
-        """
-        Execute a tool with flexible payload handling.
-        Supports both (user_id, payload_dict) and (user_id, **payload) signatures.
-        """
-        if isinstance(payload, dict):
-            try:
-                return await tool(self.user_id, **payload)
-            except TypeError:
-                return await tool(self.user_id, payload)
-        return await tool(self.user_id, payload)
 
     async def _get_user_quota_status(self, user: Any) -> Dict[str, Any]:
         """Check which providers are available based on user plan and daily usage."""
@@ -151,6 +141,7 @@ class DualAIClient:
             return {"text": "Error: User not found.", "provider": "system", "model": "none"}
 
         quota = await self._get_user_quota_status(user)
+        self.current_plan_tier = str(quota.get("plan_tier", "unknown"))
 
         if not quota.get("daily_available", True):
             used = int(quota.get("daily_requests_used", 0))
@@ -411,9 +402,17 @@ class DualAIClient:
             response_text = f"I apologize, I'm having trouble connecting right now. Error: {str(e)}"
             provider_info = {"provider": "system", "model": "error"}
         
+        request_id = session_id or str(uuid.uuid4())
+        plan_tier = self.current_plan_tier
+
         # 4. Detect intent and extract actions
         intent, actions, pending_confirmations = await self._extract_intent_and_actions_v2(
-            message, response_text, mode, full_context
+            message,
+            response_text,
+            mode,
+            full_context,
+            request_id=request_id,
+            plan_tier=plan_tier,
         )
         
         # 5. Execute any detected actions (only non-confirmation ones)
@@ -422,13 +421,14 @@ class DualAIClient:
             # Import tools registry
             from backend.ai.tools import TOOL_REGISTRY
 
-            for action in actions:
+            for action_index, action in enumerate(actions):
                 # Skip actions that are already executed (e.g. from confirmation flow)
                 if action.get("status") in ["success", "error", "executed"]:
                     executed_actions.append(action)
                     continue
 
                 tool_name = action.get("type")
+                tool_request_id = f"{request_id}:tool:{action_index}"
 
                 # 🛑 SAFETY CHECK: Intercept actions that need confirmation
                 # If the AI suggests creating something, we MUST ask first
@@ -474,7 +474,14 @@ class DualAIClient:
                         if tool:
                             try:
                                 logger.info(f"🚀 Direct execution of {tool_name} (user requested/confirmed)")
-                                result = await self._execute_tool(tool, action.get("payload", {}))
+                                result = await ai_agent_actions.execute_tool(
+                                    tool_name=tool_name,
+                                    user_id=self.user_id,
+                                    payload=action.get("payload", {}),
+                                    tool_callable=tool,
+                                    plan_tier=plan_tier,
+                                    request_id=tool_request_id,
+                                )
                                 executed_actions.append({
                                     "type": tool_name,
                                     "status": "success",
@@ -533,7 +540,14 @@ class DualAIClient:
                 if tool:
                     try:
                         logger.info(f"🛠️ Executing tool: {tool_name}")
-                        result = await self._execute_tool(tool, action.get("payload", {}))
+                        result = await ai_agent_actions.execute_tool(
+                            tool_name=tool_name,
+                            user_id=self.user_id,
+                            payload=action.get("payload", {}),
+                            tool_callable=tool,
+                            plan_tier=plan_tier,
+                            request_id=tool_request_id,
+                        )
                         executed_actions.append({
                             "type": tool_name,
                             "status": "success",
@@ -835,7 +849,9 @@ Now help the user with their request. Use the real data above to give personaliz
         user_message: str,
         ai_response: str,
         mode: str,
-        context: Dict[str, Any]
+        context: Dict[str, Any],
+        request_id: str = "",
+        plan_tier: str = "unknown",
     ) -> tuple:
         """
         Enhanced intent extraction with confirmation flow.
@@ -927,7 +943,10 @@ Now help the user with their request. Use the real data above to give personaliz
                     intent = "CONFIRM_ACTION"
                     for pending in user_pending:
                         result = await ai_agent_actions.confirm_action(
-                            pending["action_id"], self.user_id
+                            pending["action_id"],
+                            self.user_id,
+                            plan_tier=plan_tier,
+                            request_id=f"{request_id}:confirm:{pending['action_id']}",
                         )
                         actions.append({
                             "type": pending["action_type"],

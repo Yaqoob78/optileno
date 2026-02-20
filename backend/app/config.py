@@ -196,6 +196,7 @@ class Settings:
     ACCESS_TOKEN_EXPIRE_MINUTES: int = _env_int("ACCESS_TOKEN_EXPIRE_MINUTES", 30)
     REFRESH_TOKEN_EXPIRE_DAYS: int = _env_int("REFRESH_TOKEN_EXPIRE_DAYS", 7)
     PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = _env_int("PASSWORD_RESET_TOKEN_EXPIRE_MINUTES", 30)
+    EXPOSE_DEBUG_AUTH_TOKENS: bool = _env_bool("EXPOSE_DEBUG_AUTH_TOKENS", False)
     
     # Session Management
     MAX_CONCURRENT_SESSIONS: int = _env_int("MAX_CONCURRENT_SESSIONS", 5)
@@ -353,6 +354,18 @@ class Settings:
     RATE_LIMIT_AUTH_REQUESTS_PER_MINUTE: int = _env_int("RATE_LIMIT_AUTH_REQUESTS_PER_MINUTE", 3000)
     RATE_LIMIT_BURST_ALLOWANCE: int = _env_int("RATE_LIMIT_BURST_ALLOWANCE", 100)
     RATE_LIMIT_WINDOW_SECONDS: int = _env_int("RATE_LIMIT_WINDOW_SECONDS", 60)
+    AUTH_RATE_LIMIT_ENABLED: bool = _env_bool("AUTH_RATE_LIMIT_ENABLED", True)
+    AUTH_RATE_LIMIT_WINDOW_SECONDS: int = _env_int("AUTH_RATE_LIMIT_WINDOW_SECONDS", 60)
+    AUTH_RATE_LIMIT_LOGIN_IP_MAX_ATTEMPTS: int = _env_int("AUTH_RATE_LIMIT_LOGIN_IP_MAX_ATTEMPTS", 10)
+    AUTH_RATE_LIMIT_LOGIN_IDENTIFIER_MAX_ATTEMPTS: int = _env_int(
+        "AUTH_RATE_LIMIT_LOGIN_IDENTIFIER_MAX_ATTEMPTS",
+        10,
+    )
+    AUTH_RATE_LIMIT_REGISTER_IP_MAX_ATTEMPTS: int = _env_int("AUTH_RATE_LIMIT_REGISTER_IP_MAX_ATTEMPTS", 5)
+    AUTH_RATE_LIMIT_REGISTER_IDENTIFIER_MAX_ATTEMPTS: int = _env_int(
+        "AUTH_RATE_LIMIT_REGISTER_IDENTIFIER_MAX_ATTEMPTS",
+        5,
+    )
 
     # =========================
     # Features
@@ -515,9 +528,63 @@ class Settings:
                 raise ValueError("At least one AI API KEY (NVIDIA/GROQ) must be set in production")
             if not self.SECRET_KEY or self.SECRET_KEY == "dev-secret-key":
                 raise ValueError("SECRET_KEY must be set to a secure value in production")
+            if not self.COOKIE_SECURE:
+                raise ValueError("COOKIE_SECURE must be true in production")
 
-        if self.COOKIE_SAMESITE.lower() == "none" and not self.COOKIE_SECURE:
+        same_site = self.COOKIE_SAMESITE.lower()
+        if same_site not in {"lax", "strict", "none"}:
+            raise ValueError("COOKIE_SAMESITE must be one of: lax, strict, none")
+
+        if same_site == "none" and not self.COOKIE_SECURE:
             raise ValueError("COOKIE_SAMESITE=None requires COOKIE_SECURE=true")
+
+        if self.ACCESS_TOKEN_EXPIRE_MINUTES < 5 or self.ACCESS_TOKEN_EXPIRE_MINUTES > 1440:
+            raise ValueError("ACCESS_TOKEN_EXPIRE_MINUTES must be between 5 and 1440")
+
+        if self.REFRESH_TOKEN_EXPIRE_DAYS < 1 or self.REFRESH_TOKEN_EXPIRE_DAYS > 90:
+            raise ValueError("REFRESH_TOKEN_EXPIRE_DAYS must be between 1 and 90")
+
+        if self.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES < 5 or self.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES > 120:
+            raise ValueError("PASSWORD_RESET_TOKEN_EXPIRE_MINUTES must be between 5 and 120")
+
+        if self.AUTH_RATE_LIMIT_WINDOW_SECONDS < 1:
+            raise ValueError("AUTH_RATE_LIMIT_WINDOW_SECONDS must be >= 1")
+
+        for auth_limit_value, auth_limit_name in (
+            (self.AUTH_RATE_LIMIT_LOGIN_IP_MAX_ATTEMPTS, "AUTH_RATE_LIMIT_LOGIN_IP_MAX_ATTEMPTS"),
+            (self.AUTH_RATE_LIMIT_LOGIN_IDENTIFIER_MAX_ATTEMPTS, "AUTH_RATE_LIMIT_LOGIN_IDENTIFIER_MAX_ATTEMPTS"),
+            (self.AUTH_RATE_LIMIT_REGISTER_IP_MAX_ATTEMPTS, "AUTH_RATE_LIMIT_REGISTER_IP_MAX_ATTEMPTS"),
+            (
+                self.AUTH_RATE_LIMIT_REGISTER_IDENTIFIER_MAX_ATTEMPTS,
+                "AUTH_RATE_LIMIT_REGISTER_IDENTIFIER_MAX_ATTEMPTS",
+            ),
+        ):
+            if auth_limit_value < 1:
+                raise ValueError(f"{auth_limit_name} must be >= 1")
+
+        wildcard_origins = {"*", "http://*", "https://*"}
+        if any((origin or "").strip() in wildcard_origins for origin in self.CORS_ORIGINS):
+            raise ValueError("CORS_ORIGINS cannot contain wildcard entries when credentials are enabled")
+
+        if self.CORS_ALLOW_ORIGIN_REGEX:
+            try:
+                re.compile(self.CORS_ALLOW_ORIGIN_REGEX)
+            except re.error as exc:
+                raise ValueError(f"Invalid CORS_ALLOW_ORIGIN_REGEX: {exc}") from exc
+
+            normalized_regex = self.CORS_ALLOW_ORIGIN_REGEX.strip().lower()
+            disallowed_regexes = {
+                ".*",
+                "^.*$",
+                "^https?://.*$",
+                "^https://.*$",
+                "^http://.*$",
+            }
+            if normalized_regex in disallowed_regexes:
+                raise ValueError(
+                    "CORS_ALLOW_ORIGIN_REGEX is too broad for credentialed requests. "
+                    "Use explicit origins or a constrained regex."
+                )
     
     def get_plan_limits(self, plan: str) -> dict:
         """Get AI limits for a subscription plan."""

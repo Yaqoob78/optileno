@@ -8,9 +8,17 @@ import { usePlanner } from '../../hooks/usePlanner';
 import { useRealtime } from '../../hooks/useRealtime';
 import { useNavStatePreservation } from '../../hooks/useNavStatePreservation';
 import { useUserStore } from '../../stores/useUserStore';
+import { useSettingsStore } from '../../stores/useSettingsStore';
 import { ErrorBoundary } from "../../components/common/ErrorBoundary";
 import { Lock } from 'lucide-react';
 import { LockedFeature } from '../../components/common/LockedFeature';
+import {
+  formatLocalDateLabel,
+  getDateKeyInTimezone,
+  getNextLocalDateForWeekday,
+  getTimeHHMMInTimezone,
+  getWeekdayIndexInTimezone,
+} from '../../utils/timezone';
 
 import DeepWorkBlock from '../../components/planner/DeepWorkBlock';
 import GoalTimeline from '../../components/planner/GoalTimeline';
@@ -21,18 +29,6 @@ import PlannerDashboard from '../../components/planner/Plannerdashboard';
 import '../../styles/pages/planner.css';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
-
-/** Given a target weekday (0=Sun..6=Sat), return the Date for the next occurrence (today if matches). */
-function getNextDay(targetDay: number): Date {
-  const today = new Date();
-  const todayDay = today.getDay();
-  let diff = targetDay - todayDay;
-  if (diff < 0) diff += 7;           // wrap to next week
-  const result = new Date(today);
-  result.setDate(today.getDate() + diff);
-  result.setSeconds(0, 0);
-  return result;
-}
 
 interface EditForm {
   id?: string;
@@ -60,6 +56,7 @@ export default function PlannerPage() {
   const { theme } = useTheme();
   const isUltra = useUserStore((state) => state.isUltra);
   const user = useUserStore((state) => state.profile);
+  const timezone = useSettingsStore((state) => state.timezone);
 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [maximizedView, setMaximizedView] = useState(false);
@@ -224,8 +221,8 @@ export default function PlannerPage() {
       tags: [],
       description: '',
       notes: '',
-      dueDate: new Date().toISOString(),
-      scheduledDay: now.getDay(),           // default to today
+      dueDate: getDateKeyInTimezone(now, timezone),
+      scheduledDay: getWeekdayIndexInTimezone(now, timezone),
     });
     setIsNewTask(true);
     setIsEditing(true);
@@ -244,7 +241,7 @@ export default function PlannerPage() {
         estimated_duration_minutes: data.duration,
         tags: data.tags,
         category: data.category,
-        goal_id: data.goalId,
+        goal_id: isUltra ? data.goalId : null,
       } as any);
       if (result.success) {
         setIsNewTaskOpen(false);
@@ -271,7 +268,7 @@ export default function PlannerPage() {
       try {
         const d = new Date(dueDateVal);
         if (!isNaN(d.getTime())) {
-          scheduledDay = d.getDay(); // 0=Sun..6=Sat
+          scheduledDay = getWeekdayIndexInTimezone(d, timezone);
         }
       } catch { /* ignore */ }
     }
@@ -279,7 +276,7 @@ export default function PlannerPage() {
       id: task.id,
       title: task.title,
       description: task.description,
-      startTime: task.startTime || (dueDateVal ? new Date(dueDateVal).toTimeString().slice(0, 5) : undefined),
+      startTime: task.startTime || (dueDateVal ? getTimeHHMMInTimezone(new Date(dueDateVal), timezone) : undefined),
       duration: task.duration || task.estimatedDurationMinutes,
       energy: task.energy || 'medium',
       status: task.status,
@@ -287,7 +284,7 @@ export default function PlannerPage() {
       priority: task.priority,
       tags: task.tags,
       notes: task.notes,
-      dueDate: dueDateVal,
+      dueDate: dueDateVal ? getDateKeyInTimezone(new Date(dueDateVal), timezone) : undefined,
       goalId: task.related_goal_id, // Map backend field
       scheduledDay: scheduledDay,
     });
@@ -307,8 +304,7 @@ export default function PlannerPage() {
     setSaveError(null);
 
     try {
-      // Format the due date correctly using the scheduled day picker
-      let finalDueDate;
+      let localDateForPayload: string;
       const now = new Date();
       const currentHours = now.getHours();
       const currentMinutes = now.getMinutes();
@@ -321,37 +317,12 @@ export default function PlannerPage() {
         return;
       }
 
-      // Use scheduledDay to compute the actual target date accurately
       if (editForm.scheduledDay != null) {
-        const targetDate = getNextDay(editForm.scheduledDay);
-        targetDate.setHours(hours, minutes, 0, 0);
-        const year = targetDate.getFullYear();
-        const month = String(targetDate.getMonth() + 1).padStart(2, '0');
-        const day = String(targetDate.getDate()).padStart(2, '0');
-        const hoursStr = String(hours).padStart(2, '0');
-        const minutesStr = String(minutes).padStart(2, '0');
-        finalDueDate = `${year}-${month}-${day}T${hoursStr}:${minutesStr}:00`;
+        localDateForPayload = getNextLocalDateForWeekday(timezone, editForm.scheduledDay);
       } else if (editForm.dueDate) {
-        // Fallback: use existing dueDate but update time
-        let d = new Date(editForm.dueDate);
-        if (isNaN(d.getTime())) {
-          d = new Date();
-        }
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        const hoursStr = String(hours).padStart(2, '0');
-        const minutesStr = String(minutes).padStart(2, '0');
-        finalDueDate = `${year}-${month}-${day}T${hoursStr}:${minutesStr}:00`;
+        localDateForPayload = editForm.dueDate;
       } else {
-        // Fallback to today
-        const d = new Date();
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        const hoursStr = String(hours).padStart(2, '0');
-        const minutesStr = String(minutes).padStart(2, '0');
-        finalDueDate = `${year}-${month}-${day}T${hoursStr}:${minutesStr}:00`;
+        localDateForPayload = getDateKeyInTimezone(new Date(), timezone);
       }
 
       // Keep priority as-is — backend accepts 'urgent'
@@ -380,11 +351,13 @@ export default function PlannerPage() {
         description: editForm.description || '',
         priority: apiPriority,
         status: apiStatus,
-        due_date: finalDueDate,
+        due_local_date: localDateForPayload,
+        due_local_time: `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`,
+        timezone,
         estimated_duration_minutes: editForm.duration || 60,
         tags: editForm.tags || [],
         category: editForm.category,
-        goal_id: editForm.category === 'goal' ? editForm.goalId : null
+        goal_id: isUltra && editForm.category === 'goal' ? editForm.goalId : null
       };
 
 
@@ -473,10 +446,8 @@ export default function PlannerPage() {
     let startTime: string | undefined = undefined;
     if (dueDateVal) {
       try {
-        const date = new Date(dueDateVal);
-        const hours = date.getHours().toString().padStart(2, '0');
-        const minutes = date.getMinutes().toString().padStart(2, '0');
-        startTime = `${hours}:${minutes}`;
+        const dateValue = new Date(dueDateVal);
+        startTime = getTimeHHMMInTimezone(dateValue, timezone);
       } catch (e) {
         console.warn('Invalid date format:', dueDateVal);
       }
@@ -629,7 +600,7 @@ export default function PlannerPage() {
                   <div className="day-picker-row">
                     {DAY_LABELS.map((label, idx) => {
                       const isSelected = editForm.scheduledDay === idx;
-                      const isToday = new Date().getDay() === idx;
+                      const isToday = getWeekdayIndexInTimezone(new Date(), timezone) === idx;
                       return (
                         <button
                           key={label}
@@ -637,16 +608,10 @@ export default function PlannerPage() {
                           className={`day-pill${isSelected ? ' selected' : ''}${isToday ? ' today' : ''}`}
                           disabled={isSaving}
                           onClick={() => {
-                            const target = getNextDay(idx);
-                            // Preserve existing time
-                            if (editForm.startTime) {
-                              const [h, m] = editForm.startTime.split(':').map(Number);
-                              target.setHours(h, m);
-                            }
                             setEditForm(prev => prev ? {
                               ...prev,
                               scheduledDay: idx,
-                              dueDate: target.toISOString(),
+                              dueDate: getNextLocalDateForWeekday(timezone, idx),
                             } : null);
                           }}
                         >
@@ -658,12 +623,13 @@ export default function PlannerPage() {
                   {editForm.scheduledDay != null && (
                     <span className="day-picker-hint">
                       {(() => {
-                        const d = getNextDay(editForm.scheduledDay);
-                        const today = new Date();
-                        if (d.toDateString() === today.toDateString()) return 'Today';
-                        const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
-                        if (d.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
-                        return d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+                        const dayYmd = getNextLocalDateForWeekday(timezone, editForm.scheduledDay);
+                        const todayYmd = getDateKeyInTimezone(new Date(), timezone);
+                        if (dayYmd === todayYmd) return 'Today';
+                        const tomorrow = new Date();
+                        tomorrow.setDate(tomorrow.getDate() + 1);
+                        if (dayYmd === getDateKeyInTimezone(tomorrow, timezone)) return 'Tomorrow';
+                        return formatLocalDateLabel(dayYmd, timezone);
                       })()}
                     </span>
                   )}
@@ -683,13 +649,9 @@ export default function PlannerPage() {
                         const newTime = e.target.value;
                         setEditForm(prev => {
                           if (!prev) return null;
-                          // Keep the dueDate in sync with the new time
                           let updatedDueDate = prev.dueDate;
-                          if (newTime && prev.scheduledDay != null) {
-                            const target = getNextDay(prev.scheduledDay);
-                            const [h, m] = newTime.split(':').map(Number);
-                            target.setHours(h, m, 0, 0);
-                            updatedDueDate = target.toISOString();
+                          if (prev.scheduledDay != null) {
+                            updatedDueDate = getNextLocalDateForWeekday(timezone, prev.scheduledDay);
                           }
                           return { ...prev, startTime: newTime, dueDate: updatedDueDate };
                         });
@@ -740,7 +702,7 @@ export default function PlannerPage() {
                       disabled={isSaving}
                     >
                       <option value="" disabled>-- Select Category --</option>
-                      <option value="goal">🎯 Goal</option>
+                      {isUltra && <option value="goal">Goal</option>}
                       <option value="work">Work</option>
                       <option value="meeting">Meeting</option>
                       <option value="health">Health</option>
@@ -750,7 +712,7 @@ export default function PlannerPage() {
                     </select>
                   </div>
 
-                  {editForm.category === 'goal' && (
+                  {isUltra && editForm.category === 'goal' && (
                     <div className="form-group" style={{ marginTop: '0.5rem' }}>
                       <label htmlFor="task-goal-select">
                         <span className="label-icon">🎯</span>
@@ -946,7 +908,7 @@ export default function PlannerPage() {
                       <div className="ai-active-notice">
                         Deep Work Session Active
                         <br />
-                        Started: {new Date(activeDeepWork.startTime).toLocaleTimeString()}
+                        Started: {new Date(activeDeepWork.startTime || activeDeepWork.started_at || Date.now()).toLocaleTimeString()}
                       </div>
                     </div>
                   )}
@@ -976,10 +938,7 @@ export default function PlannerPage() {
               if (h.status === 'archived') return false;
               if (!h.lastCompleted) return false;
               const d = new Date(h.lastCompleted);
-              const now = new Date();
-              return d.getDate() === now.getDate() &&
-                d.getMonth() === now.getMonth() &&
-                d.getFullYear() === now.getFullYear();
+              return getDateKeyInTimezone(d, timezone) === getDateKeyInTimezone(new Date(), timezone);
             }).length}
             deepWorkSessions={dailyDeepWorkCount}
             continuousHabits={habits.filter(h => h.currentStreak > 3).length}
@@ -990,3 +949,5 @@ export default function PlannerPage() {
     </ErrorBoundary>
   );
 }
+
+

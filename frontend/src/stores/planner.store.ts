@@ -3,6 +3,8 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { DeepWorkSession } from '../services/api/planner.service';
 import type { Task, Goal, Habit } from '../types/planner.types';
+import { getDateKeyInTimezone } from '../utils/timezone';
+import { useSettingsStore } from './useSettingsStore';
 
 interface PlannerState {
   tasks: Task[];
@@ -47,10 +49,24 @@ interface PlannerState {
   // Real-time
   socketInitialized: boolean;
   initSocketListeners: () => void;
+  fetchTasks: () => Promise<void>;
+  fetchGoals: () => Promise<void>;
+  fetchHabits: () => Promise<void>;
 }
 
 // We need to import plannerApi to use it in the store actions
 import { plannerApi } from '../services/api/planner.service';
+
+const toId = (value: unknown): string => String(value ?? '');
+
+const mergeById = <T extends { id: unknown }>(existing: T[], incoming: T[]): T[] => {
+  const map = new Map<string, T>();
+  existing.forEach((item) => map.set(toId(item.id), item));
+  incoming.forEach((item) => map.set(toId(item.id), item));
+  return Array.from(map.values());
+};
+
+const uniqueById = <T extends { id: unknown }>(items: T[]): T[] => mergeById([], items);
 
 export const usePlannerStore = create<PlannerState>()(
   persist(
@@ -66,17 +82,30 @@ export const usePlannerStore = create<PlannerState>()(
       socketInitialized: false,
       dataFetched: false,
 
-      setTasks: (tasks) => set({ tasks }),
+      setTasks: (tasks) =>
+        set({
+          tasks: uniqueById(tasks as Task[]),
+        }),
       addTask: (task) => {
-        set((state) => ({ tasks: [...state.tasks, task] }));
+        set((state) => {
+          const taskId = toId(task.id);
+          const existingIndex = state.tasks.findIndex((t) => toId(t.id) === taskId);
+          if (existingIndex >= 0) {
+            const updated = [...state.tasks];
+            updated[existingIndex] = task;
+            return { tasks: updated };
+          }
+          return { tasks: [task, ...state.tasks] };
+        });
         // Dispatch custom event for analytics
         window.dispatchEvent(new CustomEvent('task_created', { detail: task }));
       },
 
       updateTask: (taskId, updates) =>
         set((state) => {
-          const updatedTasks = state.tasks.map((t) => (t.id === taskId ? { ...t, ...updates } : t));
-          const updatedTask = updatedTasks.find(t => t.id === taskId);
+          const targetId = toId(taskId);
+          const updatedTasks = state.tasks.map((t) => (toId(t.id) === targetId ? { ...t, ...updates } : t));
+          const updatedTask = updatedTasks.find((t) => toId(t.id) === targetId);
 
           if (updatedTask) {
             // Dispatch custom event for analytics
@@ -93,9 +122,21 @@ export const usePlannerStore = create<PlannerState>()(
         }));
       },
 
-      setGoals: (goals) => set({ goals }),
+      setGoals: (goals) =>
+        set({
+          goals: uniqueById(goals as Goal[]),
+        }),
       addGoal: (goal) => {
-        set((state) => ({ goals: [...state.goals, goal] }));
+        set((state) => {
+          const goalId = toId(goal.id);
+          const existingIndex = state.goals.findIndex((g) => toId(g.id) === goalId);
+          if (existingIndex >= 0) {
+            const updated = [...state.goals];
+            updated[existingIndex] = goal;
+            return { goals: updated };
+          }
+          return { goals: [goal, ...state.goals] };
+        });
         // Dispatch custom event for analytics
         window.dispatchEvent(new CustomEvent('goal_created', { detail: goal }));
       },
@@ -106,10 +147,22 @@ export const usePlannerStore = create<PlannerState>()(
         }));
       },
 
-      setHabits: (habits) => set({ habits }),
+      setHabits: (habits) =>
+        set({
+          habits: uniqueById(habits as Habit[]),
+        }),
 
       addHabit: (habit) => {
-        set((state) => ({ habits: [...state.habits, habit] }));
+        set((state) => {
+          const habitId = toId(habit.id);
+          const existingIndex = state.habits.findIndex((h) => toId(h.id) === habitId);
+          if (existingIndex >= 0) {
+            const updated = [...state.habits];
+            updated[existingIndex] = habit;
+            return { habits: updated };
+          }
+          return { habits: [habit, ...state.habits] };
+        });
         // Dispatch custom event for analytics
         window.dispatchEvent(new CustomEvent('habit_created', { detail: habit }));
       },
@@ -117,18 +170,42 @@ export const usePlannerStore = create<PlannerState>()(
       // AI-Service Compatible Habit Toggle
       toggleHabit: (habitId, completed) =>
         set((state) => {
+          const timezone = useSettingsStore.getState().timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+          const todayKey = getDateKeyInTimezone(new Date(), timezone);
           const updatedHabits = state.habits.map((h) =>
-            h.id === habitId
-              ? {
-                ...h,
-                currentStreak: completed ? h.currentStreak + 1 : Math.max(0, h.currentStreak - 1),
-                // If uncompleting, clear lastCompleted so it doesn't count as today
-                lastCompleted: completed ? new Date() : (new Date(0)),
-              }
-              : h
+            toId(h.id) === toId(habitId)
+              ? (() => {
+                const lastCompletedDate = h.lastCompleted ? new Date(h.lastCompleted) : null;
+                const alreadyToday =
+                  !!lastCompletedDate && getDateKeyInTimezone(lastCompletedDate, timezone) === todayKey;
+
+                if (completed) {
+                  if (alreadyToday) {
+                    return h;
+                  }
+                  const nextStreak = Math.max(1, (h.currentStreak || 0) + 1);
+                  return {
+                    ...h,
+                    currentStreak: nextStreak,
+                    longestStreak: Math.max(h.longestStreak || 0, nextStreak),
+                    lastCompleted: new Date(),
+                  };
+                }
+
+                if (!alreadyToday) {
+                  return h;
+                }
+
+                return {
+                  ...h,
+                  currentStreak: Math.max(0, (h.currentStreak || 0) - 1),
+                  lastCompleted: null,
+                };
+              })()
+              : h,
           );
 
-          const updatedHabit = updatedHabits.find(h => h.id === habitId);
+          const updatedHabit = updatedHabits.find((h) => toId(h.id) === toId(habitId));
 
           if (updatedHabit) {
             // Dispatch custom event for analytics
@@ -157,7 +234,7 @@ export const usePlannerStore = create<PlannerState>()(
         const session: DeepWorkSession = {
           id: `dw_${Date.now()}`,
           startTime: new Date().toISOString(),
-          duration: 0,
+          duration: duration || 60,
           status: 'active',
           focusArea: 'quick_start'
         };
@@ -165,7 +242,8 @@ export const usePlannerStore = create<PlannerState>()(
       },
 
       incrementDeepWorkCount: () => {
-        const today = new Date().toISOString().split('T')[0];
+        const timezone = useSettingsStore.getState().timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const today = getDateKeyInTimezone(new Date(), timezone);
         set((state) => {
           const lastDate = state.lastDeepWorkDate;
           if (lastDate !== today) {
@@ -198,9 +276,9 @@ export const usePlannerStore = create<PlannerState>()(
           const newGoals = payload.goals ? [...state.goals, ...payload.goals] : state.goals;
 
           const newState = {
-            tasks: newTasks,
-            habits: newHabits,
-            goals: newGoals,
+            tasks: mergeById(state.tasks as Task[], newTasks as Task[]),
+            habits: mergeById(state.habits as Habit[], newHabits as Habit[]),
+            goals: mergeById(state.goals as Goal[], newGoals as Goal[]),
           };
 
           // Dispatch events for each created item
@@ -243,7 +321,10 @@ export const usePlannerStore = create<PlannerState>()(
         try {
           const response = await plannerApi.getTasks();
           if (response.success && response.data) {
-            set({ tasks: response.data, dataFetched: true });
+            set(() => ({
+              tasks: uniqueById(response.data as Task[]),
+              dataFetched: true
+            }));
           }
         } catch (error) {
           console.error('Failed to fetch tasks:', error);
@@ -258,7 +339,10 @@ export const usePlannerStore = create<PlannerState>()(
         try {
           const response = await plannerApi.getGoals();
           if (response.success && response.data) {
-            set({ goals: response.data, dataFetched: true });
+            set(() => ({
+              goals: uniqueById(response.data as Goal[]),
+              dataFetched: true
+            }));
           }
         } catch (error) {
           console.error('Failed to fetch goals:', error);
@@ -271,9 +355,13 @@ export const usePlannerStore = create<PlannerState>()(
       fetchHabits: async () => {
         set({ isLoading: true });
         try {
-          const response = await plannerApi.getHabits();
+          const timezone = useSettingsStore.getState().timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+          const response = await plannerApi.getHabits(timezone);
           if (response.success && response.data) {
-            set({ habits: response.data, dataFetched: true });
+            set(() => ({
+              habits: uniqueById(response.data as Habit[]),
+              dataFetched: true
+            }));
           }
         } catch (error) {
           console.error('Failed to fetch habits:', error);
@@ -297,10 +385,7 @@ export const usePlannerStore = create<PlannerState>()(
         // Task Updated
         plannerApi.onTaskUpdated((task) => {
           console.log('✨ Socket Event: Task Updated', task);
-          // We need to handle the update
-          set((state) => ({
-            tasks: state.tasks.map((t) => (t.id === task.id ? task : t)),
-          }));
+          get().addTask(task);
         });
 
         // Task Deleted
@@ -318,9 +403,7 @@ export const usePlannerStore = create<PlannerState>()(
         // NEW: Habit Completed
         plannerApi.onHabitCompleted((habit) => {
           console.log('✨ Socket Event: Habit Completed', habit);
-          set((state) => ({
-            habits: state.habits.map((h) => (h.id === habit.id ? habit : h)),
-          }));
+          get().addHabit(habit);
         });
 
         // NEW: Goal Events
@@ -331,9 +414,7 @@ export const usePlannerStore = create<PlannerState>()(
 
         plannerApi.onGoalUpdated((goal) => {
           console.log('✨ Socket Event: Goal Updated', goal);
-          set((state) => ({
-            goals: state.goals.map((g) => (g.id === goal.id ? goal : g)),
-          }));
+          get().addGoal(goal);
         });
 
         plannerApi.onGoalProgressChanged(({ goalId, progress }) => {

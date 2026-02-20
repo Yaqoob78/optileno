@@ -451,40 +451,50 @@ export default function Landing() {
       {/* Main Content */}
       <main className="hero-section">
         <div className="hero-content">
-          <div className="text-center mb-12">
-            <h2 className="hero-title">Orchestrate Your Life</h2>
-            <p className="hero-subtitle">
-              Precision tools for the modern achiever.
-              <br />Stop managing tasks. Start designing success.
+          <div className="text-center mb-12" style={{ position: 'relative', zIndex: 10 }}>
+            <h1 className="hero-title" style={{ fontSize: '4rem', maxWidth: '800px', margin: '0 auto 1.5rem' }}>
+              The unified AI workspace for high achievers.
+            </h1>
+            <p className="hero-subtitle" style={{ fontSize: '1.3rem', maxWidth: '650px' }}>
+              Stop juggling five different apps. Combine your tasks, goals, habits, and time-tracking into one intelligent planner managed by your personal AI.
             </p>
           </div>
 
-          <div className="feature-showcase">
-            <div className="feature-carousel" style={{ transform: `translateY(-${activeFeature * 140}px)` }}>
-              {FEATURES.map(feat => (
-                <div key={feat.id} className="feature-slide">
-                  <div className="feature-icon" style={{ borderColor: feat.color, color: feat.color }}>{feat.icon}</div>
-                  <div className="feature-text"><h3>{feat.title}</h3><p>{feat.description}</p></div>
+          <div className="bento-features-grid mt-24">
+            {FEATURES.slice(0, 4).map((feat, i) => (
+              <div key={feat.id} className={`bento-card card-${i + 1}`}>
+                <div className="bento-icon-wrapper" style={{ background: `linear-gradient(135deg, ${feat.color}20, transparent)`, border: `1px solid ${feat.color}40`, color: feat.color }}>
+                  {feat.icon}
                 </div>
-              ))}
-            </div>
-            <div className="feature-indicators">
-              {FEATURES.map((_, i) => <div key={i} className={`indicator ${i === activeFeature ? 'active' : ''}`} onClick={() => setActiveFeature(i)} />)}
-            </div>
+                <h3 className="bento-title">{feat.title}</h3>
+                <p className="bento-desc">{feat.description}</p>
+              </div>
+            ))}
           </div>
 
-          <div className="cta-wrapper">
+          <div className="cta-wrapper" style={{ position: 'relative', zIndex: 10 }}>
             <button ref={buttonRef} className={`cta-button-premium ${btnHovered ? 'hovered' : ''}`}
               onMouseEnter={() => setBtnHovered(true)} onMouseLeave={() => setBtnHovered(false)}
               onClick={() => navigate('/register')}>
-              <span className="btn-text">Begin Journey</span>
+              <span className="btn-text">Start Free Trial</span>
               <div className="btn-icon"><ArrowRight size={20} /></div>
               <div className="btn-glow"></div>
             </button>
             <p className="cta-subtext">
-              Join today for launch pricing. First 100 users get a limited discount.
-              <br />Get 3 days free trial. <span className="secure-badge"><Lock size={12} style={{ display: 'inline', verticalAlign: 'middle' }} /> Secure payments with Cashfree</span>
+              Join today for launch pricing.
+              <br />Get a 3-day free trial. <span className="secure-badge"><Lock size={12} style={{ display: 'inline', verticalAlign: 'middle' }} /> Secure payments</span>
             </p>
+          </div>
+
+          {/* 3D Dashboard Mockup Presentation */}
+          <div className="dashboard-mockup-wrapper">
+            <div className="dashboard-mockup-3d">
+              <div className="mockup-screen">
+                {/* You can replace this src with your actual dashboard screenshot later */}
+                <img src="/dashboard-mockup.png" alt="Optileno Dashboard" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '16px' }} />
+              </div>
+              <div className="mockup-glow"></div>
+            </div>
           </div>
         </div>
       </main>

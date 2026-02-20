@@ -16,6 +16,10 @@ from backend.schemas.auth import UserRegister, UserLogin
 from backend.services.email_service import email_service
 from backend.services.entitlements_service import normalize_plan_tier, canonical_plan_type
 from backend.utils.owner import is_owner_email
+from backend.core.password_policy import (
+    PASSWORD_POLICY_MESSAGE,
+    validate_password_policy,
+)
 from .auth_utils import (
     get_password_hash,
     verify_password,
@@ -260,7 +264,10 @@ class AuthService:
 
             if not user_id or token_type != "refresh":
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
+            user_id_int = int(user_id)
         except JWTError:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
+        except (TypeError, ValueError):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
 
         refresh_token_hash = self._hash_refresh_token(refresh_token)
@@ -269,20 +276,27 @@ class AuthService:
         result = await db.execute(
             select(RefreshToken).where(
                 RefreshToken.token == refresh_token_hash,
+                RefreshToken.user_id == user_id_int,
                 RefreshToken.is_revoked == False,
                 RefreshToken.expires_at > datetime.now(timezone.utc)
             )
+            .with_for_update()
         )
         db_token = result.scalar_one_or_none()
 
         if not db_token:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token expired or revoked")
 
+        user_result = await db.execute(select(User).where(User.id == user_id_int))
+        user = user_result.scalar_one_or_none()
+        if not user or not user.is_active:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
+
         # Revoke old token and issue new ones (rotation for extra security)
         db_token.is_revoked = True
         await db.commit()
 
-        return await self.create_session(db, int(user_id), remember_me=remember_me)
+        return await self.create_session(db, user_id_int, remember_me=remember_me)
 
     async def logout(self, db: AsyncSession, refresh_token: str):
         if not refresh_token:
@@ -355,10 +369,12 @@ class AuthService:
         if not token:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Reset token is required")
 
-        if len(new_password) < settings.PASSWORD_MIN_LENGTH:
+        try:
+            validate_password_policy(new_password)
+        except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Password must be at least {settings.PASSWORD_MIN_LENGTH} characters",
+                detail=PASSWORD_POLICY_MESSAGE,
             )
 
         now = datetime.now(timezone.utc)

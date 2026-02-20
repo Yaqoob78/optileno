@@ -2,18 +2,19 @@
 Security utilities: authentication, Redis-based rate limiting, AI quota protection.
 """
 
-from fastapi import Depends, HTTPException, status, Request
-from sqlalchemy.ext.asyncio import AsyncSession
-from backend.db.database import get_db
-from backend.db.models import User
-from sqlalchemy import select
-from jose import JWTError, jwt
-from datetime import datetime, timedelta, timezone
-from typing import Dict
+import asyncio
 import logging
 
+from fastapi import Depends, HTTPException, status, Request
+from jose import JWTError, jwt
+from sqlalchemy import select
+from sqlalchemy.exc import TimeoutError as SQLAlchemyTimeoutError
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from backend.db.database import get_db
+from backend.db.models import User
+
 from backend.app.config import settings
-from backend.services.user_service import user_service
 from backend.core.redis_rate_limiter import check_api_rate_limit, check_ai_quota_limit
 from backend.utils.owner import is_owner_email
 
@@ -91,10 +92,28 @@ async def get_current_user(
     except JWTError:
         raise credentials_exception
 
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
+    # A tiny retry helps absorb short-lived pool spikes under bursty traffic.
+    for attempt in range(2):
+        try:
+            result = await db.execute(select(User).where(User.id == user_id))
+            user = result.scalar_one_or_none()
+            break
+        except SQLAlchemyTimeoutError as exc:
+            if attempt == 0:
+                await asyncio.sleep(0.05)
+                continue
+            logger.error("Database pool exhausted while resolving current user %s: %s", user_id, exc)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database is temporarily busy. Please retry.",
+            ) from exc
 
     if not user or not user.is_active:
+        try:
+            if db.in_transaction():
+                await db.rollback()
+        except Exception:
+            pass
         raise credentials_exception
 
     # Ensure configured owner account always has full privileges, even on old sessions.
@@ -121,6 +140,29 @@ async def get_current_user(
                 user.tier = "ultra"
                 user.plan_type = "ULTRA"
                 user.is_superuser = True
+
+    # Release any open auth transaction immediately so long-running handlers don't
+    # pin a pooled connection for the full request duration.
+    try:
+        if db.in_transaction():
+            has_pending_changes = bool(db.new or db.dirty or db.deleted)
+            if has_pending_changes:
+                logger.warning(
+                    "Skipping early auth transaction finalization for user %s due to pending session changes.",
+                    getattr(user, "id", "unknown"),
+                )
+            else:
+                await db.commit()
+    except Exception as exc:
+        logger.warning(
+            "Failed to finalize auth transaction for user %s: %s",
+            getattr(user, "id", "unknown"),
+            exc,
+        )
+        try:
+            await db.rollback()
+        except Exception:
+            pass
 
     # Enforce payment completion server-side to prevent API-level bypasses.
     subscription_status = (getattr(user, "subscription_status", "") or "").strip().lower()

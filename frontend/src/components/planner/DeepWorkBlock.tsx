@@ -1,245 +1,121 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Brain, Play, Pause, X, Coffee, CheckCircle, AlertCircle, Clock, Calendar } from 'lucide-react';
-import '../../styles/components/planner/DeepWorkBlock.css';
+import React, { useMemo, useState } from 'react';
+import { Brain, Calendar, Clock, Lock } from 'lucide-react';
 import { usePlanner } from '../../hooks/usePlanner';
+import { useSettingsStore } from '../../stores/useSettingsStore';
+import { useUserStore } from '../../stores/useUserStore';
+import {
+  formatLocalDateLabel,
+  getDateKeyInTimezone,
+  getNextLocalDateForWeekday,
+  getWeekdayIndexInTimezone,
+} from '../../utils/timezone';
+import '../../styles/components/planner/DeepWorkBlock.css';
 
 interface DeepWorkBlockProps {
   currentTime: Date;
 }
 
-interface DeepWorkSession {
-  id: string;
-  date: Date;
-  duration: number; // in minutes
-  completed: boolean;
-  breaksTaken: number;
-}
+const DAYS: Array<{ label: string; value: number }> = [
+  { label: 'Sun', value: 0 },
+  { label: 'Mon', value: 1 },
+  { label: 'Tue', value: 2 },
+  { label: 'Wed', value: 3 },
+  { label: 'Thu', value: 4 },
+  { label: 'Fri', value: 5 },
+  { label: 'Sat', value: 6 },
+];
 
 export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
-  const { goals, startDeepWork, completeDeepWork } = usePlanner();
+  const { goals, scheduleDeepWork } = usePlanner();
+  const timezone = useSettingsStore((state) => state.timezone);
+  const isUltra = useUserStore((state) => state.isUltra);
+
+  const [selectedDays, setSelectedDays] = useState<number[]>([getWeekdayIndexInTimezone(currentTime, timezone)]);
+  const [startTime, setStartTime] = useState('09:00');
+  const [durationMinutes, setDurationMinutes] = useState(90);
   const [selectedGoalId, setSelectedGoalId] = useState<string>('');
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [notes, setNotes] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [scheduledBlocks, setScheduledBlocks] = useState<Array<any>>([]);
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [hours, setHours] = useState(2);
-  const [minutes, setMinutes] = useState(0);
-  const [isRunning, setIsRunning] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(0); // in seconds
-  const [totalDuration, setTotalDuration] = useState(0); // in seconds
-  const [progress, setProgress] = useState(0);
-  const [selectedDay, setSelectedDay] = useState<number>(new Date().getDay()); // 0=Sun..6=Sat
+  const dayPreview = useMemo(
+    () =>
+      selectedDays.map((day) => {
+        const localDate = getNextLocalDateForWeekday(timezone, day);
+        const today = getDateKeyInTimezone(new Date(), timezone);
+        const tomorrowDate = new Date();
+        tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+        const tomorrow = getDateKeyInTimezone(tomorrowDate, timezone);
+        if (localDate === today) return `${DAYS.find((d) => d.value === day)?.label}: Today`;
+        if (localDate === tomorrow) return `${DAYS.find((d) => d.value === day)?.label}: Tomorrow`;
+        return `${DAYS.find((d) => d.value === day)?.label}: ${formatLocalDateLabel(localDate, timezone)}`;
+      }),
+    [selectedDays, timezone],
+  );
 
-  // Break Logic State
-  const [breakSchedule, setBreakSchedule] = useState<number[]>([]); // Array of break times in seconds (elapsed time)
-  const [isBreakPromptOpen, setIsBreakPromptOpen] = useState(false); // Validating if user wants a break
-  const [isBreakActive, setIsBreakActive] = useState(false); // Actually ON a break
-  const [breakTimer, setBreakTimer] = useState(0); // Seconds left in break
-  const [completedSessions, setCompletedSessions] = useState<DeepWorkSession[]>([]);
-
-  const intervalRef = useRef<any>(null);
-  const breakIntervalRef = useRef<any>(null);
-
-  // Load completed sessions from localStorage on mount
-  useEffect(() => {
-    const savedSessions = localStorage.getItem('deepWorkSessions');
-    if (savedSessions) {
-      try {
-        const sessions = JSON.parse(savedSessions);
-        const parsedSessions = sessions.map((session: any) => ({
-          ...session,
-          date: new Date(session.date)
-        }));
-        setCompletedSessions(parsedSessions);
-      } catch (error) {
-        console.error('Error loading sessions:', error);
+  const toggleDay = (dayValue: number) => {
+    setSelectedDays((prev) => {
+      if (prev.includes(dayValue)) {
+        return prev.filter((value) => value !== dayValue);
       }
-    }
-  }, []);
+      return [...prev, dayValue].sort((a, b) => a - b);
+    });
+  };
 
-  const handleStartSession = async () => {
-    const totalMinutes = (hours * 60) + minutes;
-
-    // Constraint: Min 1 hour (60 mins), Max 12 hours (720 mins)
-    if (totalMinutes < 60) {
-      alert('Deep Work sessions must be at least 1 hour to be effective.');
+  const handleSchedule = async () => {
+    setError(null);
+    if (selectedDays.length === 0) {
+      setError('Select at least one day.');
       return;
     }
-    if (totalMinutes > 720) {
-      alert('Deep Work sessions cannot exceed 12 hours.');
+    if (!startTime) {
+      setError('Select a start time.');
+      return;
+    }
+    if (!durationMinutes || durationMinutes < 5) {
+      setError('Duration must be at least 5 minutes.');
       return;
     }
 
-    // Generate deterministic break schedule:
-    // one short break every 60 minutes, centered at minute 45.
-    const newBreakSchedule: number[] = [];
-    for (let minuteMark = 45; minuteMark < totalMinutes; minuteMark += 60) {
-      newBreakSchedule.push(minuteMark * 60);
-    }
-    setBreakSchedule(newBreakSchedule.sort((a, b) => a - b));
+    setIsSubmitting(true);
+    const result = await scheduleDeepWork({
+      days_of_week: selectedDays,
+      start_time: startTime,
+      duration_minutes: durationMinutes,
+      timezone,
+      goal_id: selectedGoalId || null,
+      notes: notes || undefined,
+    });
+    setIsSubmitting(false);
 
-    // Call API to start session
-    try {
-      const result = await startDeepWork({
-        plannedDurationMinutes: totalMinutes,
-        goalId: selectedGoalId || undefined
-      });
-
-      if (result.success && result.session) {
-        setCurrentSessionId(result.session.id);
-      } else {
-        console.error('Failed to start backend session:', result.error);
-      }
-    } catch (e) {
-      console.error('Error starting session:', e);
+    if (!result.success || !result.sessions) {
+      setError(result.error || 'Failed to schedule deep work.');
+      return;
     }
 
-    const durationSeconds = totalMinutes * 60;
-    setTotalDuration(durationSeconds);
-    setTimeLeft(durationSeconds);
-    setProgress(0);
-    setIsRunning(true);
-    setIsModalOpen(false);
-    setIsBreakPromptOpen(false);
-    setIsBreakActive(false);
-
-    startTimer();
+    setScheduledBlocks(result.sessions);
+    setNotes('');
   };
 
-  const startTimer = () => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-
-    intervalRef.current = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 0) {
-          finishSession();
-          return 0;
-        }
-
-        const newTime = prev - 1;
-        const elapsed = totalDuration - newTime;
-
-        // Progress Calculation
-        const newProgress = (elapsed / totalDuration) * 100;
-        setProgress(newProgress);
-
-        // Check for Break
-        // We check if 'elapsed' roughly matches any scheduled break time
-        // Using a range of 1s to avoid missing it due to timing jitters
-        if (breakSchedule.some(bt => Math.abs(bt - elapsed) < 1)) {
-          triggerBreakPrompt();
-        }
-
-        return newTime;
-      });
-    }, 1000);
-  };
-
-  const triggerBreakPrompt = () => {
-    pauseTimer();
-    setIsBreakPromptOpen(true);
-  };
-
-  const pauseTimer = () => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-      setIsRunning(false);
-    }
-  };
-
-  const resumeTimer = () => {
-    if (!isRunning && !isBreakActive && !isBreakPromptOpen) {
-      setIsRunning(true);
-      startTimer();
-    }
-  };
-
-  // User selects a break duration
-  const startBreak = (minutes: number) => {
-    setIsBreakPromptOpen(false);
-    setIsBreakActive(true);
-    setBreakTimer(minutes * 60);
-
-    if (breakIntervalRef.current) clearInterval(breakIntervalRef.current);
-
-    breakIntervalRef.current = setInterval(() => {
-      setBreakTimer(prev => {
-        if (prev <= 0) {
-          endBreak();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  };
-
-  const endBreak = () => {
-    if (breakIntervalRef.current) {
-      clearInterval(breakIntervalRef.current);
-      breakIntervalRef.current = null;
-    }
-    setIsBreakActive(false);
-    alert("Break is over! Time to focus again.");
-    resumeTimer();
-  };
-
-  const skipBreak = () => {
-    setIsBreakPromptOpen(false);
-    resumeTimer();
-  };
-
-  const finishSession = async () => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    if (breakIntervalRef.current) clearInterval(breakIntervalRef.current);
-
-    intervalRef.current = null;
-    breakIntervalRef.current = null;
-
-    setIsRunning(false);
-
-    const usedDuration = Math.round((totalDuration - timeLeft) / 60);
-
-    if (currentSessionId) {
-      await completeDeepWork(usedDuration);
-    }
-
-    const newSession: DeepWorkSession = {
-      id: Date.now().toString(),
-      date: new Date(),
-      duration: usedDuration,
-      completed: true,
-      breaksTaken: 0 // Simplification
-    };
-
-    const updatedSessions = [...completedSessions, newSession];
-    setCompletedSessions(updatedSessions);
-    localStorage.setItem('deepWorkSessions', JSON.stringify(updatedSessions));
-
-    setTimeLeft(0);
-    setProgress(100);
-    setIsBreakActive(false);
-    setIsBreakPromptOpen(false);
-    setCurrentSessionId(null);
-  };
-
-  const cancelSession = () => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    if (breakIntervalRef.current) clearInterval(breakIntervalRef.current);
-
-    setIsRunning(false);
-    setTimeLeft(0);
-    setProgress(0);
-    setIsBreakActive(false);
-    setIsBreakPromptOpen(false);
-    setIsModalOpen(false);
-  };
-
-  const formatTime = (seconds: number) => {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
+  if (!isUltra) {
+    return (
+      <div className="deepwork-block">
+        <div className="block-header">
+          <div className="icon-title">
+            <div className="icon-wrapper">
+              <Brain size={20} />
+            </div>
+            <h3>Deep Work Scheduling</h3>
+          </div>
+        </div>
+        <div className="timer-inactive">
+          <Lock size={36} />
+          <p>Deep work scheduling is available on Ultra.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="deepwork-block">
@@ -248,257 +124,131 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
           <div className="icon-wrapper">
             <Brain size={20} />
           </div>
-          <h3>Deep Work Timer</h3>
-        </div>
-        <div className="session-stats">
-          <span>{completedSessions.length} sessions completed</span>
+          <h3>Deep Work Scheduling</h3>
         </div>
       </div>
 
-      {/* Timer Display */}
-      <div className="timer-container">
-        {!isRunning && timeLeft === 0 && !isBreakActive && !isBreakPromptOpen ? (
-          <div className="timer-inactive">
-            <Clock size={48} className="timer-icon" />
-            <p>Ready for focused work?</p>
-            <button
-              className="deepwork-btn primary start-btn"
-              onClick={() => setIsModalOpen(true)}
-            >
-              <Play size={16} />
-              Start Deep Work Session
-            </button>
-          </div>
-        ) : (
-          <div className="timer-active">
-            {isBreakActive ? (
-              <div className="timer-display break-mode">
-                <h3 style={{ color: '#4ade80', marginBottom: '1rem' }}>Relaxing...</h3>
-                <div className="time-left" style={{ color: '#4ade80', borderColor: '#4ade80' }}>
-                  {Math.floor(breakTimer / 60)}:{String(breakTimer % 60).padStart(2, '0')}
-                </div>
-                <p style={{ color: '#cbd5e1' }}>Take a deep breath.</p>
-                <button className="timer-btn" onClick={endBreak} style={{ marginTop: '1rem' }}>
-                  End Break Early
-                </button>
-              </div>
-            ) : (
-              <>
-                <div className="timer-display">
-                  <div className="time-left">{formatTime(timeLeft)}</div>
-                  <div className="progress-label">{progress.toFixed(1)}% Complete</div>
-                </div>
+      <div className="modal-body" style={{ paddingTop: 0 }}>
+        {error && <div className="modal-error-notice">{error}</div>}
 
-                <div className="progress-bar-container">
-                  <div
-                    className="progress-bar-fill"
-                    style={{ width: `${progress}%` }}
-                  ></div>
-                </div>
-
-                <div className="timer-controls">
-                  {isRunning ? (
-                    <button className="timer-btn" onClick={pauseTimer}>
-                      <Pause size={16} />
-                      Pause
-                    </button>
-                  ) : (
-                    <button className="timer-btn" onClick={resumeTimer} disabled={isBreakPromptOpen}>
-                      <Play size={16} />
-                      Resume
-                    </button>
-                  )}
-                  <button className="timer-btn cancel" onClick={cancelSession}>
-                    <X size={16} />
-                    Cancel
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Break Prompt Modal */}
-      {isBreakPromptOpen && (
-        <div className="break-modal-overlay">
-          <div className="break-modal">
-            <div className="break-header">
-              <Coffee size={24} color="#f59e0b" />
-              <h3>Break Incoming!</h3>
-            </div>
-            <p>You've been focused for a while. Want to take a quick break?</p>
-            <div className="break-options">
-              <button className="break-option" onClick={() => startBreak(2)}>
-                2 min
-              </button>
-              <button className="break-option" onClick={() => startBreak(5)}>
-                5 min
-              </button>
-              <button className="break-option" onClick={() => startBreak(10)}>
-                10 min
-              </button>
-            </div>
-            <div className="break-controls">
-              <button className="skip-break" onClick={skipBreak}>
-                Skip Break & Continue
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Session Setup Modal */}
-      {isModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
-          <div className="modal-content deepwork-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-title">
-                <div className="modal-icon">
-                  <Brain size={20} />
-                </div>
-                <h3>Deep Work Session</h3>
-              </div>
-              <button className="modal-close" onClick={() => setIsModalOpen(false)}>
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="modal-body">
-              <div className="form-group">
-                <label>
-                  <Clock size={16} style={{ marginRight: '8px' }} />
-                  Duration
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div>
-                    <label style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '4px', display: 'block' }}>Hours</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="12"
-                      className="task-input"
-                      value={hours}
-                      onChange={(e) => setHours(Math.max(0, parseInt(e.target.value) || 0))}
-                      style={{ textAlign: 'center', fontSize: '1.2rem', fontWeight: 500 }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '4px', display: 'block' }}>Minutes</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="59"
-                      step="5"
-                      className="task-input"
-                      value={minutes}
-                      onChange={(e) => setMinutes(Math.max(0, parseInt(e.target.value) || 0))}
-                      style={{ textAlign: 'center', fontSize: '1.2rem', fontWeight: 500 }}
-                    />
-                  </div>
-                </div>
-                <p style={{
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  textAlign: 'center',
-                  marginTop: '12px',
-                  color: '#64748b'
-                }}>
-                  Recommended focus block: 2-4 hours.
-                </p>
-                <p style={{ fontSize: '13px', color: '#64748b', marginTop: '4px', textAlign: 'center' }}>
-                  Total Focus Time: <span style={{ color: '#e2e8f0', fontWeight: 500 }}>{hours}h {minutes}m</span>
-                </p>
-              </div>
-
-              <div className="form-group">
-                <label>
-                  <Brain size={16} style={{ marginRight: '8px' }} />
-                  Focus Goal (Optional)
-                </label>
-                <select
-                  className="task-select"
-                  value={selectedGoalId}
-                  onChange={(e) => setSelectedGoalId(e.target.value)}
+        <div className="form-group">
+          <label>
+            <Calendar size={16} style={{ marginRight: '8px' }} />
+            Select Day(s) in Next 7 Days
+          </label>
+          <div className="day-picker-row">
+            {DAYS.map((day) => {
+              const isSelected = selectedDays.includes(day.value);
+              return (
+                <button
+                  key={day.value}
+                  type="button"
+                  className={`day-pill${isSelected ? ' selected' : ''}`}
+                  onClick={() => toggleDay(day.value)}
                 >
-                  <option value="">No specific goal</option>
-                  {goals.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Day Picker */}
-              <div className="form-group">
-                <label>
-                  <Calendar size={16} style={{ marginRight: '8px' }} />
-                  Schedule Day
-                </label>
-                <div className="day-picker-row">
-                  {(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const).map((label, idx) => {
-                    const isSelected = selectedDay === idx;
-                    const isToday = new Date().getDay() === idx;
-                    return (
-                      <button
-                        key={label}
-                        type="button"
-                        className={`day-pill${isSelected ? ' selected' : ''}${isToday ? ' today' : ''}`}
-                        onClick={() => setSelectedDay(idx)}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-                <span className="day-picker-hint">
-                  {(() => {
-                    const today = new Date();
-                    const todayDay = today.getDay();
-                    let diff = selectedDay - todayDay;
-                    if (diff < 0) diff += 7;
-                    const target = new Date(today);
-                    target.setDate(today.getDate() + diff);
-                    if (target.toDateString() === today.toDateString()) return 'Today';
-                    const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
-                    if (target.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
-                    return target.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
-                  })()}
-                </span>
-              </div>
+                  {day.label}
+                </button>
+              );
+            })}
+          </div>
+          {dayPreview.length > 0 && (
+            <div className="day-picker-hint" style={{ display: 'grid', gap: '0.25rem' }}>
+              {dayPreview.map((label) => (
+                <span key={label}>{label}</span>
+              ))}
             </div>
+          )}
+        </div>
 
-            <div className="modal-footer">
-              <button className="modal-btn cancel" onClick={() => setIsModalOpen(false)}>
-                Cancel
-              </button>
-              <button className="modal-btn submit" onClick={handleStartSession}>
-                <Play size={16} />
-                <span>Start Focus</span>
-              </button>
-            </div>
+        <div className="form-row">
+          <div className="form-group">
+            <label>
+              <Clock size={16} style={{ marginRight: '8px' }} />
+              Start Time
+            </label>
+            <input
+              type="time"
+              className="task-input"
+              value={startTime}
+              onChange={(event) => setStartTime(event.target.value)}
+            />
+          </div>
+          <div className="form-group">
+            <label>Duration (minutes)</label>
+            <input
+              type="number"
+              className="task-input"
+              min={5}
+              max={480}
+              value={durationMinutes}
+              onChange={(event) => setDurationMinutes(Math.max(5, Number(event.target.value) || 5))}
+            />
           </div>
         </div>
-      )}
 
-      {/* Completed Sessions */}
-      {completedSessions.length > 0 && (
-        <div className="completed-sessions">
-          <h4>Recent Sessions</h4>
-          <div className="sessions-list">
-            {completedSessions.slice(-3).map((session) => (
-              <div key={session.id} className="session-item">
-                <CheckCircle size={14} />
-                <span>
-                  {session.duration} min - {session.date.toLocaleDateString()}
-                </span>
-              </div>
+        <div className="form-group">
+          <label>Goal (Optional)</label>
+          <select
+            className="task-select"
+            value={selectedGoalId}
+            onChange={(event) => setSelectedGoalId(event.target.value)}
+          >
+            <option value="">No specific goal</option>
+            {goals.map((goal) => (
+              <option key={goal.id} value={goal.id}>
+                {goal.title}
+              </option>
             ))}
+          </select>
+        </div>
+
+        <div className="form-group">
+          <label>Notes (Optional)</label>
+          <textarea
+            className="task-textarea"
+            rows={2}
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
+          />
+        </div>
+
+        <button
+          className="modal-btn submit"
+          style={{ width: '100%' }}
+          onClick={handleSchedule}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? 'Scheduling...' : 'Schedule Deep Work'}
+        </button>
+      </div>
+
+      {scheduledBlocks.length > 0 && (
+        <div className="completed-sessions">
+          <h4>Scheduled Blocks</h4>
+          <div className="sessions-list">
+            {scheduledBlocks.map((session) => {
+              const startedAt = session.started_at ? new Date(session.started_at) : null;
+              const localDate = startedAt ? getDateKeyInTimezone(startedAt, timezone) : '';
+              const startTimeLabel =
+                startedAt
+                  ? new Intl.DateTimeFormat(undefined, {
+                      timeZone: timezone,
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    }).format(startedAt)
+                  : startTime;
+              return (
+                <div key={session.id} className="session-item">
+                  <span>
+                    {localDate ? formatLocalDateLabel(localDate, timezone) : 'Scheduled'} at {startTimeLabel}
+                    {' '}({session.planned_duration_minutes || durationMinutes} min)
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
     </div>
   );
 }
-

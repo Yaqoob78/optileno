@@ -337,6 +337,10 @@ async def export_prometheus_metrics() -> str:
     from backend.realtime.socket_manager import get_websocket_metrics
     from backend.db.database import get_database_metrics
     from backend.core.cache import cache_service
+    try:
+        from prometheus_client import generate_latest
+    except Exception:  # pragma: no cover - optional dependency
+        generate_latest = None
     
     lines = []
     
@@ -400,5 +404,12 @@ async def export_prometheus_metrics() -> str:
         lines.append(f'optileno_cache_operations_total {cache_metrics.get("total_operations", 0)}')
     except Exception:
         pass
+
+    # Include metrics registered via prometheus_client (e.g. tool_calls_total/tool_latency_ms)
+    if generate_latest is not None:
+        try:
+            lines.append(generate_latest().decode("utf-8").strip())
+        except Exception:
+            pass
     
     return "\n".join(lines)

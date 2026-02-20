@@ -290,12 +290,26 @@ class PlannerToolSet:
             category = args.get("category", category)
             goal_link = args.get("goal_link", goal_link)
 
+        goal_id = None
+        if goal_link:
+            user_goals = await planner_service.get_user_goals(user_id)
+            goal_match = next((g for g in user_goals if str(g.get("id")) == str(goal_link)), None)
+            if not goal_match:
+                goal_link_clean = goal_link.lower().strip()
+                goal_match = next(
+                    (g for g in user_goals if str(g.get("title", "")).lower().strip() == goal_link_clean),
+                    None,
+                )
+            if goal_match:
+                goal_id = goal_match.get("id")
+
         habit_data = {
             'title': title,  # Changed from 'name' to 'title' to match API
             'description': description,
             'frequency': frequency,
             'category': category,
-            'goal_link': goal_link  # Store goal_link in schedule, not as direct goal_id
+            'goal_link': goal_link,
+            'goal_id': goal_id,
         }
         
         result = await planner_service.create_habit(user_id, habit_data)

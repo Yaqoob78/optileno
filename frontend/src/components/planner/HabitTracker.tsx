@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { CheckCircle, Flame, TrendingUp, Plus, X, Trash2, Calendar, Award, Zap, Trophy } from 'lucide-react';
 import { usePlanner } from '../../hooks/usePlanner';
 import { useRealtime } from '../../hooks/useRealtime';
+import { useUserStore } from '../../stores/useUserStore';
+import { useSettingsStore } from '../../stores/useSettingsStore';
+import { getDateKeyInTimezone } from '../../utils/timezone';
 import '../../styles/components/planner/HabitTracker.css';
 import type { Habit } from '../../types/planner.types';
 
@@ -18,6 +21,8 @@ interface HabitTrackerProps {
 
 export default function HabitTracker({ habits: propsHabits }: HabitTrackerProps) {
   const { habits: storeHabits, createHabit, fetchHabits, deleteHabit, trackHabit, goals } = usePlanner();
+  const isUltra = useUserStore((state) => state.isUltra);
+  const timezone = useSettingsStore((state) => state.timezone);
   const { onHabitCreated, onHabitCompleted } = useRealtime();
 
   // Use habits from hook primarily
@@ -52,10 +57,12 @@ export default function HabitTracker({ habits: propsHabits }: HabitTrackerProps)
 
   // Adapter to enhance habit data for UI
   const adaptHabit = (h: Habit): UIHabit => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getDateKeyInTimezone(new Date(), timezone);
     const last = h.lastCompleted instanceof Date
-      ? h.lastCompleted.toISOString().split('T')[0]
-      : (typeof h.lastCompleted === 'string' ? h.lastCompleted.split('T')[0] : '');
+      ? getDateKeyInTimezone(h.lastCompleted, timezone)
+      : (typeof h.lastCompleted === 'string'
+        ? getDateKeyInTimezone(new Date(h.lastCompleted), timezone)
+        : '');
 
     const isCompletedToday = last === today;
 
@@ -69,7 +76,7 @@ export default function HabitTracker({ habits: propsHabits }: HabitTrackerProps)
     for (let i = 0; i < 7; i++) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = getDateKeyInTimezone(d, timezone);
 
       if (useStreakFallback) {
         // Legacy behavior: infer from streak
@@ -348,20 +355,22 @@ export default function HabitTracker({ habits: propsHabits }: HabitTrackerProps)
                   ))}
                 </div>
               </div>
-              <div className="form-group">
-                <label>Link to Goal (Optional)</label>
-                <select
-                  value={newHabit.goalId || ''}
-                  onChange={e => setNewHabit({ ...newHabit, goalId: e.target.value })}
-                  className="modern-input"
-                  style={{ width: '100%', padding: '10px', marginTop: '5px' }}
-                >
-                  <option value="">No Link</option>
-                  {goals.map(g => (
-                    <option key={g.id} value={g.id}>{g.title}</option>
-                  ))}
-                </select>
-              </div>
+              {isUltra && (
+                <div className="form-group">
+                  <label>Link to Goal (Optional)</label>
+                  <select
+                    value={newHabit.goalId || ''}
+                    onChange={e => setNewHabit({ ...newHabit, goalId: e.target.value })}
+                    className="modern-input"
+                    style={{ width: '100%', padding: '10px', marginTop: '5px' }}
+                  >
+                    <option value="">No Link</option>
+                    {goals.map(g => (
+                      <option key={g.id} value={g.id}>{g.title}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
             <div className="modal-footer">
               <button className="modal-btn cancel" onClick={() => setShowNewHabitModal(false)}>Cancel</button>

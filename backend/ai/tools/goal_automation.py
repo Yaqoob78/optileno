@@ -313,6 +313,7 @@ async def create_habits_for_goal(
                 "frequency": habit_data.get("frequency", "daily"),
                 "target": habit_data.get("target", 1),
                 "goal_link": goal_id,
+                "goal_id": goal_id,
             })
             if "error" not in habit:
                 created_habits.append(habit)

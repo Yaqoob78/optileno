@@ -3,6 +3,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { plannerApi, type Task, type DeepWorkSession, type TaskCreate, type DeepWorkStart, type Habit, type Goal } from '../services/api/planner.service';
 import { usePlannerStore } from '../stores/planner.store';
 import { useUser } from './useUser';
+import { useSettingsStore } from '../stores/useSettingsStore';
+import { getDateKeyInTimezone } from '../utils/timezone';
 
 interface UsePlannerReturn {
   // State from store
@@ -15,7 +17,7 @@ interface UsePlannerReturn {
   error: string | null;
 
   // Actions
-  fetchTasks: (params?: { status?: string; dueFrom?: string; dueTo?: string }) => Promise<void>;
+  fetchTasks: (params?: { status?: string; day?: string; timezone?: string; dueFrom?: string; dueTo?: string }) => Promise<void>;
   fetchGoals: () => Promise<void>;
   fetchHabits: () => Promise<void>;
   createTask: (data: TaskCreate) => Promise<{ success: boolean; task?: Task; error?: string }>;
@@ -28,6 +30,15 @@ interface UsePlannerReturn {
   createGoal: (data: { title: string; description?: string; category?: string; target_date?: string; milestones?: string[] }) => Promise<{ success: boolean; goal?: Goal; error?: string }>;
   deleteGoal: (goalId: string) => Promise<{ success: boolean; error?: string }>;
   startDeepWork: (data: DeepWorkStart) => Promise<{ success: boolean; session?: DeepWorkSession; error?: string }>;
+  scheduleDeepWork: (data: {
+    days_of_week: number[];
+    start_time: string;
+    duration_minutes: number;
+    timezone: string;
+    focus_goal?: string;
+    notes?: string;
+    goal_id?: string | number | null;
+  }) => Promise<{ success: boolean; sessions?: DeepWorkSession[]; error?: string }>;
   completeDeepWork: (actualMinutes: number) => Promise<{ success: boolean; error?: string }>;
   createGoalWithCascade: (data: {
     title: string;
@@ -49,6 +60,7 @@ interface UsePlannerReturn {
 
 export const usePlanner = (): UsePlannerReturn => {
   const { userId } = useUser();
+  const timezone = useSettingsStore((state) => state.timezone);
   const {
     tasks,
     goals,
@@ -62,9 +74,12 @@ export const usePlanner = (): UsePlannerReturn => {
     setGoals,
     setHabits,
     addTask,
+    addHabit,
+    removeTask: removeTaskFromStore,
     incrementDeepWorkCount,
     updateTask: updateTaskInStore,
-    startDeepWork: startDeepWorkInStore,
+    setActiveDeepWork,
+    clearActiveDeepWork,
     setDataFetched,
   } = usePlannerStore();
 
@@ -73,17 +88,21 @@ export const usePlanner = (): UsePlannerReturn => {
 
   // ── Data Fetching Actions ──────────────────────────────────────────
 
-  const fetchTasks = useCallback(async (params?: { status?: string; dueFrom?: string; dueTo?: string }) => {
+  const fetchTasks = useCallback(async (params?: { status?: string; day?: string; timezone?: string; dueFrom?: string; dueTo?: string }) => {
     if (!userId) return;
     try {
-      const response = await plannerApi.getTasks(params);
+      const effectiveTimezone = params?.timezone || timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const response = await plannerApi.getTasks({
+        ...params,
+        timezone: effectiveTimezone,
+      });
       if (response.success && response.data) {
         setTasks(response.data);
       }
     } catch (err: any) {
       console.error('Failed to fetch tasks:', err);
     }
-  }, [userId, setTasks]);
+  }, [userId, setTasks, timezone]);
 
   const fetchGoals = useCallback(async () => {
     if (!userId) return;
@@ -100,14 +119,14 @@ export const usePlanner = (): UsePlannerReturn => {
   const fetchHabits = useCallback(async () => {
     if (!userId) return;
     try {
-      const resp = await plannerApi.getHabits();
+      const resp = await plannerApi.getHabits(timezone);
       if (resp.success && resp.data) {
         setHabits(resp.data);
       }
     } catch (e) {
       console.error('Failed to fetch habits:', e);
     }
-  }, [userId, setHabits]);
+  }, [userId, setHabits, timezone]);
 
   // ── Unified initial data load ──────────────────────────────────────
   useEffect(() => {
@@ -172,14 +191,14 @@ export const usePlanner = (): UsePlannerReturn => {
       try {
         const res = await plannerApi.getActiveDeepWork();
         if (res.success && res.data) {
-          startDeepWorkInStore(res.data.duration || 60);
+          setActiveDeepWork(res.data);
         }
       } catch {
         // Silent fail
       }
     };
     checkActiveSession();
-  }, [userId, startDeepWorkInStore]);
+  }, [userId, setActiveDeepWork]);
 
   // ── Task actions ──────────────────────────────────────────────────
   const createTask = useCallback(async (data: TaskCreate) => {
@@ -198,68 +217,131 @@ export const usePlanner = (): UsePlannerReturn => {
   }, [addTask]);
 
   const updateTask = useCallback(async (taskId: string, updates: Partial<TaskCreate>) => {
+    const plannerStore = usePlannerStore.getState();
+    const existingTask = plannerStore.tasks.find((task) => String(task.id) === String(taskId));
+    const optimisticUpdates: any = { ...updates };
+    if (updates.estimated_duration_minutes !== undefined) {
+      optimisticUpdates.estimatedDurationMinutes = updates.estimated_duration_minutes;
+    }
+    if ((updates as any).due_local_date && (updates as any).due_local_time) {
+      optimisticUpdates.dueDate = `${(updates as any).due_local_date}T${(updates as any).due_local_time}:00`;
+      optimisticUpdates.due_date = optimisticUpdates.dueDate;
+    }
+    if (existingTask) {
+      updateTaskInStore(taskId, optimisticUpdates as Task);
+    }
+
     try {
       const res = await plannerApi.updateTask(taskId, updates);
       if (res.success && res.data) {
-        updateTaskInStore(taskId, res.data as Task);
+        updateTaskInStore(String((res.data as any).id ?? taskId), res.data as Task);
         return { success: true };
+      }
+      if (existingTask) {
+        updateTaskInStore(taskId, existingTask as Task);
       }
       return { success: false, error: res.error?.message };
     } catch (err: any) {
+      if (existingTask) {
+        updateTaskInStore(taskId, existingTask as Task);
+      }
       return { success: false, error: err.message };
     }
   }, [updateTaskInStore]);
 
   const startTask = useCallback(async (taskId: string) => {
+    const plannerStore = usePlannerStore.getState();
+    const existingTask = plannerStore.tasks.find((task) => String(task.id) === String(taskId));
+    if (existingTask) {
+      updateTaskInStore(taskId, { ...(existingTask as any), status: 'in-progress' } as Task);
+    }
+
     try {
       const res = await plannerApi.startTask(taskId);
       if (res.success && res.data) {
-        updateTaskInStore(taskId, res.data as Task);
+        updateTaskInStore(String((res.data as any).id ?? taskId), res.data as Task);
         return { success: true, task: res.data as Task };
+      }
+      if (existingTask) {
+        updateTaskInStore(taskId, existingTask as Task);
       }
       return { success: false, error: res.error?.message };
     } catch (err: any) {
+      if (existingTask) {
+        updateTaskInStore(taskId, existingTask as Task);
+      }
       return { success: false, error: err.message };
     }
   }, [updateTaskInStore]);
 
   const deleteTask = useCallback(async (taskId: string | number) => {
+    const idStr = String(taskId);
+    const plannerStore = usePlannerStore.getState();
+    const existingTask = plannerStore.tasks.find((task) => String(task.id) === idStr);
+    removeTaskFromStore(idStr);
+
     try {
-      // Ensure taskId is a string
-      const idStr = String(taskId);
-      console.log('🗑️ Deleting task with ID:', idStr);
+      console.log('Deleting task with ID:', idStr);
 
       const res = await plannerApi.deleteTask(idStr);
       console.log('Delete response:', res);
 
       if (res.success) {
-        // Remove from store using the removeTask action
-        const plannerStore = usePlannerStore.getState();
-        plannerStore.removeTask(idStr);
-        console.log('✓ Task deleted from store');
+        console.log('Task deleted from store');
         return { success: true };
+      }
+      if (existingTask) {
+        addTask(existingTask as Task);
       }
       console.error('Delete failed:', res.error);
       return { success: false, error: res.error?.message || 'Failed to delete task' };
     } catch (err: any) {
+      if (existingTask) {
+        addTask(existingTask as Task);
+      }
       console.error('Delete error:', err);
       return { success: false, error: err.message };
     }
-  }, []);
+  }, [addTask, removeTaskFromStore]);
 
   // ── Deep Work actions ─────────────────────────────────────────────
   const startDeepWork = useCallback(async (data: DeepWorkStart) => {
     try {
-      const res = await plannerApi.startDeepWork(data);
+      const res = await plannerApi.startDeepWork({
+        planned_duration_minutes: data.plannedDurationMinutes,
+        focus_goal: data.focusGoal,
+        notes: data.notes,
+        goal_id: data.goalId,
+      } as any);
       if (res.success && res.data) {
-        startDeepWorkInStore(res.data.duration || 60);
+        setActiveDeepWork(res.data);
         return { success: true, session: res.data };
       }
       return { success: false, error: res.error?.message };
     } catch (err: any) {
       return { success: false, error: err.message };
     }
-  }, [startDeepWorkInStore]);
+  }, [setActiveDeepWork]);
+
+  const scheduleDeepWork = useCallback(async (data: {
+    days_of_week: number[];
+    start_time: string;
+    duration_minutes: number;
+    timezone: string;
+    focus_goal?: string;
+    notes?: string;
+    goal_id?: string | number | null;
+  }) => {
+    try {
+      const res = await plannerApi.scheduleDeepWork(data);
+      if (res.success && res.data) {
+        return { success: true, sessions: res.data };
+      }
+      return { success: false, error: res.error?.message };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }, []);
 
   const completeDeepWork = useCallback(async (actualMinutes: number) => {
     if (!activeDeepWork?.id) return { success: false, error: 'No active session' };
@@ -270,7 +352,7 @@ export const usePlanner = (): UsePlannerReturn => {
         actualDurationMinutes: actualMinutes,
       });
       if (res.success && res.data) {
-        startDeepWorkInStore(0);
+        clearActiveDeepWork();
         incrementDeepWorkCount();
         return { success: true };
       }
@@ -278,7 +360,7 @@ export const usePlanner = (): UsePlannerReturn => {
     } catch (err: any) {
       return { success: false, error: err.message };
     }
-  }, [activeDeepWork, startDeepWorkInStore, incrementDeepWorkCount]);
+  }, [activeDeepWork, clearActiveDeepWork, incrementDeepWorkCount]);
 
   // ── Derived values ────────────────────────────────────────────────
   const isDeepWorkActive = !!activeDeepWork && activeDeepWork.status === 'active';
@@ -286,8 +368,7 @@ export const usePlanner = (): UsePlannerReturn => {
   const hasTasksToday = tasks.some((t) => {
     if (!t.dueDate) return false;
     const due = new Date(t.dueDate);
-    const today = new Date();
-    return due.toDateString() === today.toDateString();
+    return getDateKeyInTimezone(due, timezone) === getDateKeyInTimezone(new Date(), timezone);
   });
 
   // ── AI Goal Automation ─────────────────────────────────────────────
@@ -333,40 +414,45 @@ export const usePlanner = (): UsePlannerReturn => {
 
     if (!habit) return { success: false, error: 'Habit not found' };
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = getDateKeyInTimezone(new Date(), timezone);
     const last = habit.lastCompleted instanceof Date
-      ? habit.lastCompleted.toISOString().split('T')[0]
-      : (typeof habit.lastCompleted === 'string' ? habit.lastCompleted.split('T')[0] : '');
+      ? getDateKeyInTimezone(habit.lastCompleted, timezone)
+      : (typeof habit.lastCompleted === 'string'
+        ? getDateKeyInTimezone(new Date(habit.lastCompleted), timezone)
+        : '');
 
     const isCompletedToday = last === today;
-    const newCompleted = !isCompletedToday;
+    if (isCompletedToday) {
+      return { success: true };
+    }
 
     // Optimistic Update
-    plannerStore.toggleHabit(habitId, newCompleted);
+    plannerStore.toggleHabit(habitId, true);
 
     try {
-      const res = await plannerApi.trackHabit(habitId);
+      const res = await plannerApi.trackHabit(habitId, timezone);
       if (res.success) {
         return { success: true };
       }
       // Revert
-      plannerStore.toggleHabit(habitId, !newCompleted);
+      plannerStore.toggleHabit(habitId, false);
       return { success: false, error: res.error?.message || 'Failed to track habit' };
     } catch (err: any) {
-      plannerStore.toggleHabit(habitId, !newCompleted);
+      plannerStore.toggleHabit(habitId, false);
       return { success: false, error: err.message };
     }
-  }, []);
+  }, [timezone]);
 
   const createHabit = useCallback(async (data: { name: string; description?: string; category?: string; goalId?: string }) => {
     if (!userId) return { success: false, error: 'User not logged in' };
 
     try {
-      const response = await plannerApi.createHabit(data);
+      const response = await plannerApi.createHabit({
+        ...data,
+        goal_id: data.goalId || null,
+      } as any);
       if (response.success && response.data) {
-        // Add the new habit to the store
-        const plannerStore = usePlannerStore.getState();
-        plannerStore.addHabit(response.data as Habit);
+        addHabit(response.data as Habit);
         return { success: true, habit: response.data as Habit };
       } else {
         return { success: false, error: response.error || 'Failed to create habit' };
@@ -375,7 +461,7 @@ export const usePlanner = (): UsePlannerReturn => {
       console.error('Create habit error:', error);
       return { success: false, error: error.message || 'Failed to create habit' };
     }
-  }, [userId]);
+  }, [addHabit, userId]);
 
   const deleteHabit = useCallback(async (habitId: string) => {
     try {
@@ -445,6 +531,7 @@ export const usePlanner = (): UsePlannerReturn => {
     createGoal,
     deleteGoal,
     startDeepWork,
+    scheduleDeepWork,
     completeDeepWork,
     createGoalWithCascade,
     forceRefresh,

@@ -16,6 +16,7 @@ from backend.schemas.auth import (
 )
 from backend.db.models import User
 from backend.utils.user_profile import build_user_profile
+from backend.core.auth_rate_limiter import auth_rate_limiter
 from .auth_service import auth_service
 from .auth_utils import decode_token, verify_password
 
@@ -103,6 +104,7 @@ def _password_matches(user: User, plain_password: str) -> bool:
 @router.post("/register")
 async def register(
     user_in: UserRegister,
+    request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db),
 ):
@@ -115,6 +117,7 @@ async def register(
     """
     created_new_user = False
     normalized_email = str(user_in.email).strip().lower()
+    await auth_rate_limiter.enforce(request=request, action="register", identifier=normalized_email)
 
     existing_result = await db.execute(
         select(User).where(func.lower(User.email) == normalized_email)
@@ -295,11 +298,17 @@ async def register(
 
 @router.post("/login")
 async def login(
+    request: Request,
     response: Response,
     login_data: UserLogin,
     db: AsyncSession = Depends(get_db)
 ):
     """Clean login: validates user and sets HttpOnly cookies."""
+    await auth_rate_limiter.enforce(
+        request=request,
+        action="login",
+        identifier=str(login_data.email).strip().lower(),
+    )
     user = await auth_service.authenticate(db, login_data)
     access_token, refresh_token, refresh_days = await auth_service.create_session(
         db,
@@ -315,7 +324,7 @@ async def login(
         "user": build_user_profile(user),
     }
 
-    if settings.DEBUG or settings.ENVIRONMENT != "production":
+    if settings.EXPOSE_DEBUG_AUTH_TOKENS and settings.ENVIRONMENT != "production":
         payload["access_token"] = access_token
         payload["refresh_token"] = refresh_token
 
@@ -341,7 +350,7 @@ async def refresh(
     set_auth_cookies(response, access_token, new_refresh_token, refresh_max_age=refresh_max_age)
 
     payload = {"status": "success"}
-    if settings.DEBUG or settings.ENVIRONMENT != "production":
+    if settings.EXPOSE_DEBUG_AUTH_TOKENS and settings.ENVIRONMENT != "production":
         payload["access_token"] = access_token
         payload["refresh_token"] = new_refresh_token
     return payload

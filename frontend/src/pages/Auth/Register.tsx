@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Mail, Lock, User, Eye, EyeOff, Loader2, AlertCircle, ArrowRight, CreditCard } from 'lucide-react';
+import { useForm } from 'react-hook-form';
 import { userService } from '../../services/api/user.service';
 import { useUserStore } from '../../stores/useUserStore';
 import {
@@ -10,6 +11,13 @@ import {
     openCashfreeSubscriptionCheckout,
 } from '../../utils/cashfree';
 import '../../styles/pages/auth.css';
+
+const PASSWORD_POLICY_MESSAGE = 'Password must be at least 8 characters and include at least 1 letter and 1 number.';
+
+type RegisterValidationFields = {
+    password: string;
+    confirmPassword: string;
+};
 
 export default function Register() {
     const navigate = useNavigate();
@@ -36,6 +44,14 @@ export default function Register() {
     } | null>(null);
     const [retryingCheckout, setRetryingCheckout] = useState(false);
     const [processingPaymentReturn, setProcessingPaymentReturn] = useState(false);
+    const {
+        register: registerField,
+        handleSubmit: handleFormSubmit,
+        trigger,
+        formState: { errors: validationErrors },
+    } = useForm<RegisterValidationFields>({
+        mode: 'onChange',
+    });
 
     // Warm up Cashfree SDK early for faster checkout open.
     useEffect(() => {
@@ -142,11 +158,9 @@ export default function Register() {
         }
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        if (formData.password !== formData.confirmPassword) {
-            setError("Passwords do not match");
+    const handleSubmit = async () => {
+        const valid = await trigger(['password', 'confirmPassword']);
+        if (!valid) {
             return;
         }
 
@@ -203,6 +217,17 @@ export default function Register() {
             setLoading(false);
         }
     };
+
+    const passwordField = registerField('password', {
+        validate: (value) =>
+            (value.length >= 8 && /[A-Za-z]/.test(value) && /\d/.test(value))
+            || PASSWORD_POLICY_MESSAGE,
+    });
+
+    const confirmPasswordField = registerField('confirmPassword', {
+        validate: (value) =>
+            value === formData.password || 'Passwords do not match.',
+    });
 
     return (
         <div className="auth-page dark">
@@ -267,7 +292,7 @@ export default function Register() {
                             </button>
                         </div>
                     ) : (
-                        <form className="auth-form" onSubmit={handleSubmit}>
+                        <form className="auth-form" onSubmit={handleFormSubmit(handleSubmit)}>
                             {/* Plan Selection */}
                             <div className="pricing-launch-offer">
                                 Join today and lock launch pricing. Limited deal for the first 100 users.
@@ -353,10 +378,16 @@ export default function Register() {
                                         type={showPassword ? 'text' : 'password'}
                                         className="auth-input has-toggle"
                                         placeholder="Min. 8 characters"
+                                        {...passwordField}
                                         value={formData.password}
-                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                        onChange={async (e) => {
+                                            setFormData({ ...formData, password: e.target.value });
+                                            passwordField.onChange(e);
+                                            if (formData.confirmPassword) {
+                                                await trigger('confirmPassword');
+                                            }
+                                        }}
                                         required
-                                        minLength={8}
                                     />
                                     <Lock className="input-icon" size={18} />
                                     <button
@@ -368,6 +399,11 @@ export default function Register() {
                                         {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                                     </button>
                                 </div>
+                                {validationErrors.password?.message && (
+                                    <p style={{ marginTop: '0.45rem', fontSize: '0.78rem', color: '#f87171' }}>
+                                        {validationErrors.password.message}
+                                    </p>
+                                )}
                             </div>
 
                             <div className="form-group">
@@ -377,8 +413,12 @@ export default function Register() {
                                         type={showConfirmPassword ? 'text' : 'password'}
                                         className="auth-input has-toggle"
                                         placeholder="Confirm your password"
+                                        {...confirmPasswordField}
                                         value={formData.confirmPassword}
-                                        onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                                        onChange={(e) => {
+                                            setFormData({ ...formData, confirmPassword: e.target.value });
+                                            confirmPasswordField.onChange(e);
+                                        }}
                                         required
                                     />
                                     <Lock className="input-icon" size={18} />
@@ -391,6 +431,11 @@ export default function Register() {
                                         {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                                     </button>
                                 </div>
+                                {validationErrors.confirmPassword?.message && (
+                                    <p style={{ marginTop: '0.45rem', fontSize: '0.78rem', color: '#f87171' }}>
+                                        {validationErrors.confirmPassword.message}
+                                    </p>
+                                )}
                             </div>
 
                             {formData.plan_type === 'EXPLORER' && (

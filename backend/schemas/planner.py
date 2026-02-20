@@ -22,6 +22,22 @@ class TaskBase(BaseModel):
 class TaskCreate(TaskBase):
     """Used when creating a new task (from frontend or AI)"""
     goal_id: Optional[int | str] = None
+    due_local_date: Optional[date] = None
+    due_local_time: Optional[str] = None
+    timezone: Optional[str] = None
+
+    @field_validator("due_local_time")
+    @classmethod
+    def validate_due_local_time(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        if len(value) != 5 or value[2] != ":":
+            raise ValueError("due_local_time must be HH:MM")
+        hour = int(value[:2])
+        minute = int(value[3:])
+        if hour < 0 or hour > 23 or minute < 0 or minute > 59:
+            raise ValueError("due_local_time must be HH:MM")
+        return value
 
 
 class TaskUpdate(BaseModel):
@@ -36,8 +52,24 @@ class TaskUpdate(BaseModel):
     category: Optional[str] = None
     energy: Optional[Literal["low", "medium", "high"]] = None
     goal_id: Optional[int | str] = None
+    due_local_date: Optional[date] = None
+    due_local_time: Optional[str] = None
+    timezone: Optional[str] = None
 
     model_config = ConfigDict(extra="forbid")
+
+    @field_validator("due_local_time")
+    @classmethod
+    def validate_due_local_time(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        if len(value) != 5 or value[2] != ":":
+            raise ValueError("due_local_time must be HH:MM")
+        hour = int(value[:2])
+        minute = int(value[3:])
+        if hour < 0 or hour > 23 or minute < 0 or minute > 59:
+            raise ValueError("due_local_time must be HH:MM")
+        return value
 
 
 class TaskOut(TaskBase):
@@ -120,6 +152,43 @@ class DeepWorkCreate(DeepWorkBase):
     pass
 
 
+class DeepWorkScheduleCreate(BaseModel):
+    days_of_week: List[int] = Field(..., min_length=1, max_length=7, description="0=Sun .. 6=Sat")
+    local_dates: Optional[List[date]] = None
+    start_time: str = Field(..., description="Local HH:MM")
+    duration_minutes: int = Field(..., ge=5, le=480)
+    timezone: str = Field(..., min_length=1, max_length=64)
+    focus_goal: Optional[str] = Field(None, max_length=300)
+    notes: Optional[str] = Field(None, max_length=1000)
+    goal_id: Optional[int | str] = None
+
+    @field_validator("days_of_week")
+    @classmethod
+    def validate_days_of_week(cls, value: List[int]) -> List[int]:
+        normalized = sorted(set(value))
+        if any(day < 0 or day > 6 for day in normalized):
+            raise ValueError("days_of_week must contain values between 0 and 6")
+        return normalized
+
+    @field_validator("local_dates")
+    @classmethod
+    def validate_local_dates(cls, value: Optional[List[date]]) -> Optional[List[date]]:
+        if value is None:
+            return value
+        return sorted(set(value))
+
+    @field_validator("start_time")
+    @classmethod
+    def validate_start_time(cls, value: str) -> str:
+        if len(value) != 5 or value[2] != ":":
+            raise ValueError("start_time must be HH:MM")
+        hour = int(value[:2])
+        minute = int(value[3:])
+        if hour < 0 or hour > 23 or minute < 0 or minute > 59:
+            raise ValueError("start_time must be HH:MM")
+        return value
+
+
 class DeepWorkOut(DeepWorkBase):
     """Response model for deep work sessions"""
     id: int | str
@@ -127,7 +196,7 @@ class DeepWorkOut(DeepWorkBase):
     started_at: datetime
     ended_at: Optional[datetime] = None
     actual_duration_minutes: Optional[int] = None
-    status: Literal["active", "completed", "cancelled"] = "active"
+    status: Literal["scheduled", "active", "completed", "cancelled"] = "active"
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

@@ -7,6 +7,8 @@ import {
   Play, Pause, Timer, FileText, Hash, X, Calendar as CalendarIcon
 } from 'lucide-react';
 import '../../styles/components/planner/TaskCard.css';
+import { useSettingsStore } from '../../stores/useSettingsStore';
+import { formatLocalDateLabel, getDateKeyInTimezone } from '../../utils/timezone';
 
 interface Subtask {
   id: number;
@@ -65,6 +67,7 @@ export default function TaskCard({
   compact = false,
   draggable = false
 }: TaskCardProps) {
+  const timezone = useSettingsStore((state) => state.timezone);
   const [expanded, setExpanded] = useState(false);
   const [showActions, setShowActions] = useState(false);
 
@@ -151,10 +154,7 @@ export default function TaskCard({
   // Check if the task is scheduled for today
   const isToday = (() => {
     const taskDate = getTaskDate();
-    const now = new Date();
-    return taskDate.getFullYear() === now.getFullYear()
-      && taskDate.getMonth() === now.getMonth()
-      && taskDate.getDate() === now.getDate();
+    return getDateKeyInTimezone(taskDate, timezone) === getDateKeyInTimezone(new Date(), timezone);
   })();
 
   // Determine if it's a retry (started significantly after original schedule)
@@ -342,6 +342,18 @@ export default function TaskCard({
   }, [task.startTime, task.duration, task.dueDate, currentStatus, task.meta, localStartTime]);
 
   const formatTime = (startTime?: string, duration?: number) => {
+    if (task.dueDate && duration !== undefined) {
+      const start = new Date(task.dueDate);
+      if (!Number.isNaN(start.getTime())) {
+        const end = new Date(start.getTime() + duration * 60 * 1000);
+        const formatter = new Intl.DateTimeFormat(undefined, {
+          timeZone: timezone,
+          hour: 'numeric',
+          minute: '2-digit',
+        });
+        return `${formatter.format(start)} - ${formatter.format(end)}`;
+      }
+    }
     if (!startTime || duration === undefined) return '';
     const [hours, minutes] = startTime.split(':').map(Number);
     const totalMinutes = hours * 60 + minutes + duration;
@@ -546,12 +558,14 @@ export default function TaskCard({
             <span className="meta-label">Day</span>
             <span className="meta-value">{(() => {
               const taskDate = getTaskDate();
-              const now = new Date();
-              const tomorrow = new Date(now);
-              tomorrow.setDate(now.getDate() + 1);
-              if (taskDate.toDateString() === now.toDateString()) return 'Today';
-              if (taskDate.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
-              return taskDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+              const taskDateKey = getDateKeyInTimezone(taskDate, timezone);
+              const todayDateKey = getDateKeyInTimezone(new Date(), timezone);
+              const tomorrow = new Date();
+              tomorrow.setDate(tomorrow.getDate() + 1);
+              const tomorrowDateKey = getDateKeyInTimezone(tomorrow, timezone);
+              if (taskDateKey === todayDateKey) return 'Today';
+              if (taskDateKey === tomorrowDateKey) return 'Tomorrow';
+              return formatLocalDateLabel(taskDateKey, timezone);
             })()}</span>
           </div>
         )}

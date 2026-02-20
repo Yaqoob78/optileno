@@ -15,6 +15,9 @@ export interface TaskCreate {
   status?: TaskStatus;
   dueDate?: string;
   due_date?: string;
+  due_local_date?: string;
+  due_local_time?: string;
+  timezone?: string;
   estimatedDurationMinutes?: number;
   estimated_duration_minutes?: number;
   relatedGoalId?: string;
@@ -32,6 +35,16 @@ export interface DeepWorkStart {
   focusGoal?: string;
   notes?: string;
   goalId?: string;
+}
+
+export interface DeepWorkScheduleRequest {
+  days_of_week: number[];
+  start_time: string;
+  duration_minutes: number;
+  timezone: string;
+  focus_goal?: string;
+  notes?: string;
+  goal_id?: string | number | null;
 }
 
 export interface DeepWorkComplete {
@@ -54,6 +67,7 @@ export interface HabitCreate {
   target?: number;
   category?: string;
   goalId?: string;
+  goal_id?: string | number | null;
 }
 
 
@@ -69,12 +83,23 @@ class PlannerService {
 
   async getTasks(params?: {
     status?: string;
+    day?: string;
+    timezone?: string;
     dueFrom?: string;
     dueTo?: string;
     limit?: number;
     offset?: number;
   }): Promise<ApiResponse<Task[]>> {
-    return api.get<Task[]>(`${this.basePath}/tasks`, { params });
+    const query = params ? {
+      status: params.status,
+      day: params.day,
+      timezone: params.timezone,
+      due_from: params.dueFrom,
+      due_to: params.dueTo,
+      limit: params.limit,
+      offset: params.offset,
+    } : undefined;
+    return api.get<Task[]>(`${this.basePath}/tasks`, { params: query });
   }
 
   async getTaskById(taskId: string): Promise<ApiResponse<Task>> {
@@ -105,6 +130,10 @@ class PlannerService {
 
   async getActiveDeepWork(): Promise<ApiResponse<DeepWorkSession | null>> {
     return api.get<DeepWorkSession | null>(`${this.basePath}/deep-work/active`);
+  }
+
+  async scheduleDeepWork(data: DeepWorkScheduleRequest): Promise<ApiResponse<DeepWorkSession[]>> {
+    return api.post<DeepWorkSession[]>(`${this.basePath}/deep-work/schedule`, data);
   }
 
   // ── Goals ────────────────────────────────────────────────────────
@@ -184,16 +213,23 @@ class PlannerService {
 
   // ── Habits ───────────────────────────────────────────────────────
 
-  async getHabits(): Promise<ApiResponse<Habit[]>> {
-    return api.get<Habit[]>(`${this.basePath}/habits`);
+  async getHabits(timezone?: string): Promise<ApiResponse<Habit[]>> {
+    return api.get<Habit[]>(`${this.basePath}/habits`, { params: timezone ? { timezone } : undefined });
   }
 
   async createHabit(data: HabitCreate): Promise<ApiResponse<Habit>> {
-    return api.post<Habit>(`${this.basePath}/habits`, data);
+    return api.post<Habit>(`${this.basePath}/habits`, {
+      ...data,
+      goal_id: data.goal_id ?? data.goalId ?? null,
+    });
   }
 
-  async trackHabit(habitId: string): Promise<ApiResponse<{ streak: number; habit_id: string }>> {
-    return api.post<{ streak: number; habit_id: string }>(`${this.basePath}/habits/${habitId}/track`, {});
+  async trackHabit(habitId: string, timezone?: string): Promise<ApiResponse<{ streak: number; habit_id: string }>> {
+    return api.post<{ streak: number; habit_id: string }>(
+      `${this.basePath}/habits/${habitId}/track`,
+      {},
+      { params: timezone ? { timezone } : undefined },
+    );
   }
 
   async deleteHabit(habitId: string): Promise<ApiResponse<null>> {
