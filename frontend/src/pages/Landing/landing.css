@@ -36,16 +36,16 @@ body {
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
-  background-color: #010306 !important;
+  background-color: #020408 !important;
   color: var(--text) !important;
   background-image:
     linear-gradient(180deg,
-      #010306 0%,
-      #040a12 25%,
-      #0c1b30 40%,
-      #132b47 60%,
-      #2f5b8c 80%,
-      #e2ebf3 100%) !important;
+      #020408 0%,
+      #05111f 15%,
+      #081c3b 30%,
+      #133766 50%,
+      #2f609e 75%,
+      #e8f0f8 100%) !important;
 }
 
 .scene-bg {
@@ -245,8 +245,16 @@ body {
 
 .btn-premium:hover,
 .btn-premium:focus-visible {
-  transform: translateY(-1px);
-  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.6), 0 10px 24px rgba(4, 14, 24, 0.6), 0 0 28px rgba(251, 191, 36, 0.4);
+  transform: translateY(-2px);
+  box-shadow:
+    0 -1px 0 0 rgba(251, 191, 36, 0.8),
+    /* Sharp gold line on top */
+    0 1px 0 0 rgba(59, 130, 246, 0.8),
+    /* Sharp blue line on bottom */
+    0 8px 30px rgba(4, 14, 24, 0.8),
+    0 0 35px rgba(251, 191, 36, 0.5);
+  /* Outer gold glow */
+  border-color: transparent;
   outline: none;
 }
 
@@ -336,6 +344,7 @@ body {
 }
 
 .stat-card {
+  position: relative;
   border: 1px solid var(--line);
   border-radius: 14px;
   background: linear-gradient(155deg, rgba(18, 33, 46, 0.9), rgba(10, 18, 28, 0.8));
@@ -347,13 +356,30 @@ body {
   padding: 0.84rem;
   color: #c3d4e7;
   font-size: 0.83rem;
-  transition: transform 260ms ease, border-color 260ms ease, box-shadow 260ms ease;
+  transition: all 300ms cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+.stat-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.8), rgba(251, 191, 36, 0.9), transparent);
+  opacity: 0;
+  transition: opacity 300ms ease;
 }
 
 .stat-card:hover {
-  transform: translateY(-3px);
-  border-color: rgba(251, 191, 36, 0.5);
-  box-shadow: 0 20px 32px rgba(0, 0, 0, 0.4), 0 0 24px rgba(245, 158, 11, 0.2);
+  transform: translateY(-4px);
+  border-color: rgba(96, 165, 250, 0.3);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 30px rgba(251, 191, 36, 0.25);
+}
+
+.stat-card:hover::after {
+  opacity: 1;
 }
 
 .cta-wrapper {
@@ -416,7 +442,7 @@ body {
 
 .screen-card {
   position: relative;
-  border: 1px solid rgba(96, 165, 250, 0.2);
+  border: 1px solid rgba(96, 165, 250, 0.15);
   border-radius: 20px;
   padding: 0.95rem;
   background: linear-gradient(165deg, rgba(16, 34, 48, 0.95), rgba(7, 14, 22, 0.92));
@@ -424,15 +450,40 @@ body {
   transform-origin: center top;
   transition: transform 400ms cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 400ms ease, border-color 400ms ease;
   animation: screen-ambient-glow 4s infinite alternate ease-in-out;
+  overflow: hidden;
+}
+
+.screen-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(96, 165, 250, 1), transparent);
+  opacity: 0;
+  transition: opacity 400ms ease;
+}
+
+.screen-card::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(251, 191, 36, 1), transparent);
+  opacity: 0;
+  transition: opacity 400ms ease;
 }
 
 @keyframes screen-ambient-glow {
   0% {
-    box-shadow: 0 24px 40px rgba(0, 0, 0, 0.4), 0 0 15px rgba(59, 130, 246, 0.1);
+    box-shadow: 0 24px 40px rgba(0, 0, 0, 0.4), 0 0 25px rgba(59, 130, 246, 0.15);
   }
 
   100% {
-    box-shadow: 0 26px 45px rgba(0, 0, 0, 0.45), 0 0 32px rgba(251, 191, 36, 0.15);
+    box-shadow: 0 26px 45px rgba(0, 0, 0, 0.45), 0 0 40px rgba(251, 191, 36, 0.2);
   }
 }
 
@@ -440,8 +491,13 @@ body {
   animation: none;
   z-index: 10;
   transform: perspective(1200px) rotateX(0deg) scale(1.1) translateY(-8px);
-  box-shadow: 0 40px 60px rgba(0, 0, 0, 0.6), 0 0 45px rgba(251, 191, 36, 0.3);
-  border-color: rgba(96, 165, 250, 0.55);
+  box-shadow: 0 40px 60px rgba(0, 0, 0, 0.6), 0 0 60px rgba(251, 191, 36, 0.4);
+  border-color: rgba(96, 165, 250, 0.4);
+}
+
+.screen-card:hover::after,
+.screen-card:hover::before {
+  opacity: 1;
 }
 
 .screen-top h3 {
@@ -533,19 +589,41 @@ body {
 }
 
 .feature-card {
+  position: relative;
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 1rem;
   background: var(--card);
   backdrop-filter: blur(10px);
+  overflow: hidden;
+}
+
+.feature-card::before,
+.capability-card::before,
+.use-case-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2px;
+  height: 100%;
+  background: linear-gradient(180deg, rgba(96, 165, 250, 0.9), rgba(251, 191, 36, 0.9));
+  opacity: 0;
+  transition: opacity 300ms ease;
 }
 
 .feature-card:hover,
 .capability-card:hover,
 .use-case-card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(96, 165, 250, 0.4);
-  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.35), 0 0 22px rgba(251, 191, 36, 0.2);
+  transform: translateY(-5px);
+  border-color: rgba(96, 165, 250, 0.2);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 35px rgba(251, 191, 36, 0.25);
+}
+
+.feature-card:hover::before,
+.capability-card:hover::before,
+.use-case-card:hover::before {
+  opacity: 1;
 }
 
 .feature-icon {
@@ -613,10 +691,12 @@ body {
 }
 
 .capability-card {
+  position: relative;
   border: 1px solid var(--line);
   border-radius: 18px;
   padding: 1rem;
   background: linear-gradient(165deg, rgba(14, 32, 45, 0.84), rgba(7, 15, 23, 0.88));
+  overflow: hidden;
 }
 
 .capability-card>h3 {
@@ -662,10 +742,12 @@ body {
 }
 
 .use-case-card {
+  position: relative;
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 1rem;
   background: linear-gradient(160deg, rgba(16, 34, 49, 0.84), rgba(7, 16, 24, 0.88));
+  overflow: hidden;
 }
 
 .use-case-head {
@@ -698,16 +780,30 @@ body {
 }
 
 .journey-card {
-  border: 1px solid var(--line);
+  position: relative;
+  border: 1px solid rgba(251, 191, 36, 0.3);
   border-radius: 22px;
   padding: 1.4rem;
   background:
     linear-gradient(140deg, rgba(12, 32, 45, 0.9), rgba(6, 16, 23, 0.9)),
-    radial-gradient(circle at top right, rgba(78, 216, 195, 0.14), transparent 42%);
+    radial-gradient(circle at top right, rgba(251, 191, 36, 0.15), transparent 42%);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  overflow: hidden;
+  box-shadow: 0 0 40px rgba(59, 130, 246, 0.15);
+}
+
+.journey-card::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #fbbf24, transparent);
+  box-shadow: 0 0 10px #fbbf24;
 }
 
 .journey-kicker {
