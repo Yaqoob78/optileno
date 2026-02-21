@@ -1,4 +1,4 @@
-﻿import React from 'react';
+﻿import React, { useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, useReducedMotion, type Variants } from 'framer-motion';
 import {
@@ -205,14 +205,21 @@ const HERO_TITLE = 'Double your execution speed with an AI operating system.';
 const HERO_TITLE_WORDS = HERO_TITLE.split(' ');
 const HERO_PILLS = ['Goals', 'Tasks', 'Planner', 'Leno AI', 'Habits', 'Analytics'];
 const NEURAL_ROWS: NeuralRow[] = [
-  { top: 10, leftStart: 6, gap: 11.8, count: 8, widths: [62, 76, 68, 84], baseRotate: -10, delayOffset: 0.1, toneStart: 'blue' },
-  { top: 18, leftStart: 10, gap: 11.5, count: 8, widths: [74, 64, 82, 70], baseRotate: 8, delayOffset: 0.35, toneStart: 'gold' },
-  { top: 26, leftStart: 8, gap: 11.3, count: 8, widths: [66, 80, 72, 88], baseRotate: -7, delayOffset: 0.7, toneStart: 'blue' },
-  { top: 34, leftStart: 12, gap: 10.9, count: 7, widths: [78, 68, 86, 74], baseRotate: 9, delayOffset: 1.0, toneStart: 'gold' },
-  { top: 42, leftStart: 9, gap: 11.1, count: 8, widths: [70, 84, 64, 80], baseRotate: -8, delayOffset: 1.4, toneStart: 'blue' },
-  { top: 50, leftStart: 13, gap: 10.7, count: 7, widths: [82, 72, 90, 68], baseRotate: 7, delayOffset: 1.85, toneStart: 'gold' },
-  { top: 58, leftStart: 11, gap: 10.9, count: 7, widths: [68, 78, 74, 86], baseRotate: -9, delayOffset: 2.15, toneStart: 'blue' },
-  { top: 66, leftStart: 15, gap: 10.5, count: 6, widths: [76, 66, 84, 72], baseRotate: 8, delayOffset: 2.45, toneStart: 'gold' },
+  { top: 8, leftStart: 4, gap: 10.5, count: 10, widths: [70, 85, 75, 90], baseRotate: -10, delayOffset: 0.1, toneStart: 'blue' },
+  { top: 14, leftStart: 8, gap: 10.2, count: 9, widths: [80, 70, 90, 75], baseRotate: 8, delayOffset: 0.35, toneStart: 'gold' },
+  { top: 20, leftStart: 5, gap: 10.4, count: 10, widths: [75, 85, 70, 95], baseRotate: -8, delayOffset: 0.6, toneStart: 'blue' },
+  { top: 26, leftStart: 9, gap: 10.1, count: 9, widths: [85, 75, 95, 80], baseRotate: 9, delayOffset: 0.85, toneStart: 'gold' },
+  { top: 32, leftStart: 6, gap: 10.3, count: 10, widths: [70, 90, 80, 85], baseRotate: -7, delayOffset: 1.1, toneStart: 'blue' },
+  { top: 38, leftStart: 10, gap: 10.0, count: 9, widths: [90, 80, 85, 75], baseRotate: 7, delayOffset: 1.35, toneStart: 'gold' },
+  { top: 44, leftStart: 7, gap: 10.2, count: 10, widths: [80, 75, 90, 85], baseRotate: -9, delayOffset: 1.6, toneStart: 'blue' },
+  { top: 50, leftStart: 11, gap: 9.9, count: 9, widths: [85, 90, 75, 80], baseRotate: 8, delayOffset: 1.85, toneStart: 'gold' },
+  { top: 56, leftStart: 8, gap: 10.1, count: 10, widths: [75, 80, 95, 70], baseRotate: -8, delayOffset: 2.1, toneStart: 'blue' },
+  { top: 62, leftStart: 12, gap: 9.8, count: 9, widths: [95, 85, 80, 75], baseRotate: 6, delayOffset: 2.35, toneStart: 'gold' },
+  { top: 68, leftStart: 9, gap: 10.0, count: 10, widths: [70, 90, 75, 85], baseRotate: -7, delayOffset: 2.6, toneStart: 'blue' },
+  { top: 74, leftStart: 13, gap: 9.7, count: 9, widths: [85, 75, 90, 80], baseRotate: 8, delayOffset: 2.85, toneStart: 'gold' },
+  { top: 80, leftStart: 10, gap: 9.9, count: 10, widths: [80, 85, 70, 95], baseRotate: -9, delayOffset: 3.1, toneStart: 'blue' },
+  { top: 86, leftStart: 14, gap: 9.6, count: 8, widths: [90, 80, 85, 75], baseRotate: 7, delayOffset: 3.35, toneStart: 'gold' },
+  { top: 92, leftStart: 11, gap: 9.8, count: 10, widths: [75, 95, 80, 85], baseRotate: -8, delayOffset: 3.6, toneStart: 'blue' },
 ];
 
 const NEURAL_LINES: NeuralLine[] = NEURAL_ROWS.flatMap((row, rowIndex) =>
@@ -239,6 +246,21 @@ const NEURAL_LINES: NeuralLine[] = NEURAL_ROWS.flatMap((row, rowIndex) =>
 export default function Landing() {
   const navigate = useNavigate();
   const shouldReduceMotion = useReducedMotion();
+  const sceneRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!sceneRef.current) return;
+      const rect = sceneRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      sceneRef.current.style.setProperty('--mouse-x', `${x}px`);
+      sceneRef.current.style.setProperty('--mouse-y', `${y}px`);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
 
   const revealVariants = React.useMemo<Variants>(
     () => ({
@@ -298,13 +320,28 @@ export default function Landing() {
 
   return (
     <div className="landing-page">
-      <div className="scene-bg" aria-hidden="true">
+      <div className="scene-bg" aria-hidden="true" ref={sceneRef}>
         <div className="orb orb-a" />
         <div className="orb orb-b" />
         <div className="neural-lines">
           {NEURAL_LINES.map((line, index) => (
             <span
-              key={`${line.tone}-${index}`}
+              key={`base-${line.tone}-${index}`}
+              className={`neural-line neural-line-${line.tone}`}
+              style={{
+                top: line.top,
+                left: line.left,
+                width: line.width,
+                transform: `rotate(${line.rotate})`,
+                animationDelay: line.delay,
+              }}
+            />
+          ))}
+        </div>
+        <div className="neural-lines neural-lines-glow">
+          {NEURAL_LINES.map((line, index) => (
+            <span
+              key={`glow-${line.tone}-${index}`}
               className={`neural-line neural-line-${line.tone}`}
               style={{
                 top: line.top,
