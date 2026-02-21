@@ -270,6 +270,7 @@ export default function Landing() {
       </nav>
 
       <main className="hero-section">
+        <h1 className="visually-hidden">10x Your Productivity With The Ultimate AI Operating System</h1>
         <motion.section
           className="hero-content"
           initial="hidden"
