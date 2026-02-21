@@ -52,33 +52,28 @@ type UseCaseGroup = {
 
 const FEATURES: Feature[] = [
   {
-    title: 'AI Workflow Control',
-    description: 'Leno turns goals into daily actions with clear priorities and adaptive planning.',
+    title: 'AI Workflow Engine',
+    description: 'Turn ambitions into daily tasks with clear priorities.',
     icon: <Bot size={20} />,
   },
   {
-    title: 'Planner Precision',
-    description: 'Tasks, habits, and deep work blocks remain aligned with your real calendar context.',
+    title: 'Precision Planner',
+    description: 'Sync your tasks, habits, and focus sprints seamlessly.',
     icon: <Calendar size={20} />,
   },
   {
-    title: 'Analytics You Can Act On',
-    description: 'Productivity and behavior metrics are surfaced with decisions, not noise.',
+    title: 'Behavioral Insights',
+    description: 'Track real metrics like focus score and burnout risk.',
     icon: <BarChart2 size={20} />,
   },
   {
     title: 'Execution Reliability',
-    description: 'Fast feedback loops, stable state sync, and predictable outcomes across sessions.',
+    description: 'Fast feedback loops, state sync, and predictable outcomes.',
     icon: <CheckCircle size={20} />,
   },
   {
-    title: 'Trust and Security',
-    description: 'Built with secure auth flows and clear data boundaries for professional use.',
-    icon: <Shield size={20} />,
-  },
-  {
-    title: 'Focus Engineering',
-    description: 'Deep work timing and session quality are structured to protect high-value output.',
+    title: 'Deep Work Flow',
+    description: 'Built-in focus timers to maximize output and shield attention.',
     icon: <Clock size={20} />,
   },
 ];
@@ -86,19 +81,19 @@ const FEATURES: Feature[] = [
 const SCREEN_CARDS: ScreenCard[] = [
   {
     title: 'Dashboard Overview',
-    subtitle: 'Command center for focus, goals, and momentum.',
+    subtitle: 'Your command center for goals, tasks, and intelligence.',
     fileName: 'dashboard-mockup.png',
     badge: 'Executive View',
   },
   {
-    title: 'Planner Overview',
-    subtitle: 'Daily execution stack with tasks, habits, and deep work.',
+    title: 'Execution Planner',
+    subtitle: 'The daily stack tracking tasks, habits, and focus.',
     fileName: 'planner-overall.png',
     badge: 'Planner Grid',
   },
   {
-    title: 'Analytics Overview',
-    subtitle: 'Performance and behavior intelligence in one place.',
+    title: 'Performance Analytics',
+    subtitle: 'Transparent insights into your behavior and productivity.',
     fileName: 'analytics-overall.png',
     badge: 'Insights Layer',
   },
@@ -106,78 +101,44 @@ const SCREEN_CARDS: ScreenCard[] = [
 
 const CAPABILITY_GROUPS: CapabilityGroup[] = [
   {
-    title: 'Project Management',
-    summary: 'Plan, schedule, and automate delivery without losing control of priorities.',
+    title: 'Goal Execution',
+    summary: 'Plan and execute without losing control of your overarching priorities.',
     items: [
       {
-        title: 'AI Project Manager',
-        description: 'Auto-build execution plans from goals, deadlines, and team constraints.',
+        title: 'Leno Assistant',
+        description: 'Ask Leno to draft tasks from complex objectives in seconds.',
       },
       {
-        title: 'Adaptive Project Timeline',
-        description: 'Visualize project phases with smart reordering when priorities change.',
-      },
-      {
-        title: 'AI Workflows',
-        description: 'Automate repeatable SOPs so recurring projects ship with less overhead.',
+        title: 'Adaptive Planning',
+        description: 'Stay on course even when priorities inevitably shift.',
       },
     ],
   },
   {
-    title: 'Time Management',
-    summary: 'Turn scattered tasks into a structured, high-output day.',
+    title: 'Time & Focus Mastery',
+    summary: 'Turn scattered inputs into structured, high-output sessions.',
     items: [
       {
-        title: 'AI Task Manager',
-        description: 'Prioritize tasks based on urgency, impact, and your actual workload.',
+        title: 'Smart Task Manager',
+        description: 'Prioritize by urgency, impact, and your actual capacity.',
       },
       {
-        title: 'AI Calendar Planning',
-        description: 'Auto-plan focused work blocks around meetings and hard deadlines.',
-      },
-      {
-        title: 'Meeting Assistant',
-        description: 'Simplify planning, prep, and follow-ups from one execution layer.',
+        title: 'Deep Work Modes',
+        description: 'Eliminate distractions with focused time-boxing.',
       },
     ],
   },
   {
-    title: 'Knowledge Management',
-    summary: 'Capture context quickly and convert insight into action.',
+    title: 'Actionable Intelligence',
+    summary: 'Convert raw productivity data into behavioral insights.',
     items: [
       {
-        title: 'Leno AI Chat',
-        description: 'Ask, plan, and execute in one conversation instead of switching tools.',
+        title: 'Burnout Tracking',
+        description: 'Monitor fatigue to prevent crashes before they happen.',
       },
       {
-        title: 'AI Meeting Notetaker',
-        description: 'Auto-summarize meetings into clear action items and owners.',
-      },
-      {
-        title: 'AI Dashboards',
-        description: 'Track tasks, goals, and execution quality in one live command center.',
-      },
-      {
-        title: 'AI Docs Assistant',
-        description: 'Draft, organize, and refine documents with execution context attached.',
-      },
-    ],
-  },
-  {
-    title: 'And More',
-    summary: 'Expand operations with deeper intelligence and connected systems.',
-    items: [
-      {
-        title: 'AI Sheets',
-        description: 'Blend spreadsheet flexibility with AI recommendations and automation.',
-      },
-      {
-        title: 'Integrations Layer',
-        description: 'Connect existing tools without breaking execution flow in Optileno.',
-      },
-      {
-        title: 'AI Reports',
-        description: 'Generate decision-ready reports from productivity and behavior signals.',
+        title: 'Focus Hotspots',
+        description: 'Learn when you work best across the week.',
       },
     ],
   },
@@ -185,22 +146,20 @@ const CAPABILITY_GROUPS: CapabilityGroup[] = [
 
 const USE_CASE_GROUPS: UseCaseGroup[] = [
   {
-    title: 'Service Businesses',
+    title: 'Ambitious Professionals',
     icon: <Building2 size={18} />,
     entries: [
-      'IT Service Providers',
-      'Marketing Agencies',
-      'Design Agencies',
-      'Law Firms',
-      'Consulting Businesses',
-      'Construction Companies',
-      'Real Estate Management',
+      'Founders & Builders',
+      'Creators',
+      'Executives',
+      'Freelancers',
+      'Consultants',
     ],
   },
   {
-    title: 'Functional Teams',
+    title: 'High-Output Teams',
     icon: <Briefcase size={18} />,
-    entries: ['Startups', 'Sales Teams', 'Executive Teams'],
+    entries: ['Startups', 'Small Agencies', 'Remote Teams'],
   },
 ];
 
@@ -223,9 +182,9 @@ const HERO_METRICS = [
   },
 ];
 
-const HERO_TITLE = 'Get an unfair advantage with AI that doubles daily productivity.';
+const HERO_TITLE = 'Double your execution speed with an AI operating system.';
 const HERO_TITLE_WORDS = HERO_TITLE.split(' ');
-const HERO_PILLS = ['AI Projects', 'AI Tasks', 'AI Calendar', 'AI Meetings', 'AI Docs', 'AI Reports'];
+const HERO_PILLS = ['Goals', 'Tasks', 'Planner', 'Leno AI', 'Habits', 'Analytics'];
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -337,8 +296,8 @@ export default function Landing() {
           </motion.h1>
 
           <motion.p className="hero-subtitle" variants={revealVariants} custom={0.16}>
-            Optileno unifies AI Projects, AI Tasks, AI Calendar, AI Meetings, AI Docs, AI Notes, AI Reports,
-            AI Workflows, and more so your team executes faster with less overhead.
+            Unify your workflow with intelligent planning, proactive deep work blocks, and
+            behavioral analytics to execute faster.
           </motion.p>
 
           <div className="hero-pill-row" aria-label="Core Optileno capabilities">
@@ -474,10 +433,10 @@ export default function Landing() {
           custom={0.04}
         >
           <div className="section-heading">
-            <span>Platform Capabilities</span>
-            <h2>One operating layer for project, time, and knowledge execution</h2>
+            <span>Core Modules</span>
+            <h2>One layer for project, time, and focus execution</h2>
             <p>
-              Structured like enterprise software, designed for speed like an AI-native workspace.
+              Structured for serious work, designed for speed.
             </p>
           </div>
 
@@ -518,9 +477,9 @@ export default function Landing() {
         >
           <div className="section-heading">
             <span>Use Cases</span>
-            <h2>Built for service organizations and high-output internal teams</h2>
+            <h2>Built for professionals and high-output teams</h2>
             <p>
-              Choose your operating mode and run planning, delivery, and reporting from one AI platform.
+              Run your planning, delivery, and analytics from one AI platform.
             </p>
           </div>
 
@@ -583,8 +542,8 @@ export default function Landing() {
       </main>
 
       <footer className="landing-footer">
-        <p>© 2026 Optileno. Serious productivity, engineered with AI.</p>
-        <p className="footer-note">AI projects. AI planning. AI execution. One system.</p>
+        <p>© 2026. Serious productivity, engineered with AI.</p>
+        <p className="footer-note">Goals. Planning. Execution. One system.</p>
       </footer>
     </div>
   );
