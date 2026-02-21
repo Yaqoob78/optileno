@@ -36,16 +36,23 @@ body {
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
-  background-color: #020408 !important;
+  background-color: #010205 !important;
   color: var(--text) !important;
   background-image:
-    linear-gradient(180deg,
-      #020408 0%,
-      #05111f 15%,
-      #081c3b 30%,
-      #133766 50%,
-      #2f609e 75%,
-      #e8f0f8 100%) !important;
+    radial-gradient(ellipse at 50% 5%, rgba(15, 45, 87, 0.8) 0%, rgba(4, 15, 33, 0.9) 30%, #010205 70%) !important;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
 }
 
 .scene-bg {
@@ -106,14 +113,26 @@ body {
 
 .grid-fade {
   position: absolute;
+  inset: -50%;
+  background-image:
+    linear-gradient(to right, rgba(96, 165, 250, 0.15) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(96, 165, 250, 0.15) 1px, transparent 1px);
+  background-size: 60px 60px;
+  background-position: 0 0;
+  transform: perspective(1000px) rotateX(60deg) scale(1.5);
+  transform-origin: top center;
+  mask-image: radial-gradient(ellipse at 50% 30%, black 10%, transparent 65%);
+  animation: grid-pan 12s linear infinite;
+}
+
+.grid-fade::after {
+  content: '';
+  position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-  background-size: 64px 64px;
-  background-position: 0 0;
-  mask-image: radial-gradient(circle at center, black 25%, transparent 80%);
-  animation: grid-pan 24s linear infinite;
+    linear-gradient(to right, rgba(251, 191, 36, 0.15) 1px, transparent 1px);
+  background-size: 240px 240px;
+  mask-image: radial-gradient(ellipse at 50% 30%, black 0%, transparent 50%);
 }
 
 .landing-nav {
@@ -899,11 +918,11 @@ body {
 
 @keyframes grid-pan {
   0% {
-    background-position: 0 0;
+    transform: perspective(1000px) rotateX(60deg) scale(1.5) translateY(0);
   }
 
   100% {
-    background-position: 64px 64px;
+    transform: perspective(1000px) rotateX(60deg) scale(1.5) translateY(60px);
   }
 }
 
