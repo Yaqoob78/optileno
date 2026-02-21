@@ -17,6 +17,7 @@ import {
   ArrowUpRight,
 } from 'lucide-react';
 import { Logo } from '../../components/common/Logo';
+import { Interactive3DCard } from '../../components/landing/Interactive3DCard';
 import './landing.css';
 
 type Feature = {
@@ -454,24 +455,7 @@ export default function Landing() {
                 <p>{screen.subtitle}</p>
               </div>
 
-              <div className="screen-frame">
-                <img
-                  src={`/${screen.fileName}`}
-                  alt={screen.title}
-                  loading="lazy"
-                  onError={(event) => {
-                    const target = event.currentTarget;
-                    target.style.display = 'none';
-                    const placeholder = target.nextElementSibling as HTMLElement | null;
-                    if (placeholder) {
-                      placeholder.style.display = 'flex';
-                    }
-                  }}
-                />
-                <div className="screen-placeholder" style={{ display: 'none' }}>
-                  Add <strong>{screen.fileName}</strong> to <code>frontend/public</code>
-                </div>
-              </div>
+              <Interactive3DCard fileName={screen.fileName} title={screen.title} />
             </motion.article>
           ))}
         </motion.section>
