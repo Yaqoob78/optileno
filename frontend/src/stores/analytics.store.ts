@@ -175,13 +175,8 @@ export const useAnalyticsStore = create<AnalyticsState>()(
         set((state) => {
           const newEvents = [...state.events, event];
 
-          // Immediately compute metrics
-          const newMetrics = computeRealTimeMetrics(newEvents, state.focusSessions);
-
           return {
             events: newEvents,
-            currentMetrics: newMetrics,
-            historicalMetrics: [...state.historicalMetrics, newMetrics],
           };
         });
 
@@ -194,12 +189,9 @@ export const useAnalyticsStore = create<AnalyticsState>()(
       addEvents: (events) => {
         set((state) => {
           const newEvents = [...state.events, ...events];
-          const newMetrics = computeRealTimeMetrics(newEvents, state.focusSessions);
 
           return {
             events: newEvents,
-            currentMetrics: newMetrics,
-            historicalMetrics: [...state.historicalMetrics, newMetrics],
           };
         });
       },
@@ -618,8 +610,7 @@ export const useAnalyticsStore = create<AnalyticsState>()(
       },
 
       computeMetrics: () => {
-        const { events, focusSessions } = get();
-        return computeRealTimeMetrics(events, focusSessions);
+        return get().currentMetrics;
       },
 
       detectPatterns: () => {

@@ -125,7 +125,9 @@ class PlannerService {
   }
 
   async completeDeepWork(data: DeepWorkComplete): Promise<ApiResponse<DeepWorkSession>> {
-    return api.post<DeepWorkSession>(`${this.basePath}/deep-work/complete`, data);
+    return api.post<DeepWorkSession>(`${this.basePath}/deep-work/${data.sessionId}/complete`, {
+      actual_duration_minutes: data.actualDurationMinutes
+    });
   }
 
   async getActiveDeepWork(): Promise<ApiResponse<DeepWorkSession | null>> {
@@ -163,7 +165,11 @@ class PlannerService {
   }
 
   async updateGoalProgress(goalId: string, progress: number): Promise<ApiResponse<{ message: string; progress: number }>> {
-    return api.patch<{ message: string; progress: number }>(`${this.basePath}/goals/${goalId}/progress`, { progress });
+    return api.patch<{ message: string; progress: number }>(
+      `${this.basePath}/goals/${goalId}/progress`,
+      undefined,
+      { params: { progress } }
+    );
   }
 
   async deleteGoal(goalId: string): Promise<ApiResponse<null>> {

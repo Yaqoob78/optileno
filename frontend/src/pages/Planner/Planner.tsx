@@ -12,6 +12,7 @@ import { useSettingsStore } from '../../stores/useSettingsStore';
 import { ErrorBoundary } from "../../components/common/ErrorBoundary";
 import { Lock } from 'lucide-react';
 import { LockedFeature } from '../../components/common/LockedFeature';
+import { OnboardingFlow } from '../../components/planner/OnboardingFlow';
 import {
   formatLocalDateLabel,
   getDateKeyInTimezone,
@@ -415,17 +416,17 @@ export default function PlannerPage() {
   };
 
   const handleCompleteTask = (taskId: string) => {
-    updateTask(taskId, { status: 'completed' });
+    updateTask(taskId, { status: 'done' });
   };
 
   // ── Stats ─────────────────────────────────────────────────────────
   const totalTasks = tasks.length;
-  const completedTasks = tasks.filter(t => t.status === 'completed').length;
+  const completedTasks = tasks.filter(t => t.status === 'done').length;
 
   const filteredTasks = tasks.filter(t => {
-    if (filterStatus === 'todo') return t.status === 'pending';
+    if (filterStatus === 'todo') return t.status === 'todo';
     if (filterStatus === 'in-progress') return t.status === 'in-progress';
-    if (filterStatus === 'done') return t.status === 'completed';
+    if (filterStatus === 'done') return t.status === 'done';
     return true;
   });
 
@@ -460,7 +461,7 @@ export default function PlannerPage() {
     // Ensure all required fields exist with defaults
     const transformedTask = {
       ...task, // Spread original task FIRST to prevent overwriting our normalized values
-      id: task.id || task._id || `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Robust fallback
+      id: task.id || task._id || `temp-${crypto.randomUUID()}`, // Robust fallback
       originalId: String(task.id || task._id), // Keep original string ID for API calls
       title: task.title || 'New Task',
       startTime: startTime,
@@ -469,7 +470,7 @@ export default function PlannerPage() {
       energy: (task.energy || 'medium') as 'low' | 'medium' | 'high',
       category: (task.category || 'work') as 'work' | 'meeting' | 'break' | 'health' | 'learning' | 'routine' | 'personal',
       priority: (task.priority || 'medium') as 'low' | 'medium' | 'high' | 'urgent',
-      status: (task.status || 'planned') as 'completed' | 'in-progress' | 'scheduled' | 'planned' | 'overdue' | 'failed' | 'pending' | 'todo',
+      status: (task.status || 'planned') as 'todo' | 'in-progress' | 'done' | 'planned' | 'overdue',
       tags: Array.isArray(task.tags) ? task.tags : [],
       description: task.description || '',
       subtasks: Array.isArray(task.subtasks) ? task.subtasks : [],
@@ -489,6 +490,7 @@ export default function PlannerPage() {
 
   return (
     <ErrorBoundary componentName="Planner">
+      <OnboardingFlow />
       <div className="planner-page" data-theme={theme}>
         {/* Header */}
         <div className="planner-header">
@@ -870,7 +872,7 @@ export default function PlannerPage() {
                   });
                   return uniqueTasks.map((task) => (
                     <TaskCard
-                      key={task.id || task._id || `task-${Math.random()}`}
+                      key={task.id || task._id || `task-${crypto.randomUUID()}`}
                       task={transformTaskForCard(task)}
                       onEdit={() => handleEditTask(task)}
                       onDelete={() => deleteTask(task.originalId || task.id)}
@@ -959,7 +961,7 @@ export default function PlannerPage() {
             totalTasks={totalTasks}
             completedTasks={completedTasks}
             tasksOverdue={tasks.filter(t => (t.status as any) === 'overdue').length}
-            tasksLeft={tasks.filter(t => t.status === 'pending' || (t.status as any) === 'todo' || t.status === 'in-progress').length}
+            tasksLeft={tasks.filter(t => t.status === 'todo' || t.status === 'in-progress').length}
             totalHabits={habits.filter(h => h.status !== 'archived').length}
             completedHabits={habits.filter(h => {
               if (h.status === 'archived') return false;

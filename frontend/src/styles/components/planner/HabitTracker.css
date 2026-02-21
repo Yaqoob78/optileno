@@ -241,6 +241,7 @@
   opacity: 0.8;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -421,69 +422,7 @@
   color: white;
 }
 
-/* Modal Styling Overrides */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(8px);
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: fadeIn 0.2s ease-out;
-}
-
-.modal-content.habit-modal {
-  background: #0f172a;
-  /* Slate 900 */
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 24px;
-  width: 100%;
-  max-width: 450px;
-  padding: 0;
-  overflow: hidden;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.modal-header {
-  padding: 24px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.modal-title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: #fff;
-}
-
-.modal-close {
-  background: transparent;
-  border: none;
-  color: rgb(var(--color-text-tertiary));
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 50%;
-  transition: all 0.2s;
-}
-
-.modal-close:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-}
-
-.modal-body {
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
+/* Modal Overrides Migrated to Radix Modal */
 
 .form-group label {
   display: block;
@@ -545,51 +484,7 @@
   box-shadow: 0 4px 12px rgba(var(--color-primary), 0.3);
 }
 
-.modal-footer {
-  padding: 20px 24px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  background: rgba(0, 0, 0, 0.2);
-}
 
-.modal-btn {
-  padding: 10px 20px;
-  border-radius: 10px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 0.9rem;
-}
-
-.modal-btn.cancel {
-  background: transparent;
-  border: 1px solid transparent;
-  color: rgb(var(--color-text-secondary));
-}
-
-.modal-btn.cancel:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.modal-btn.submit {
-  background: rgb(var(--color-primary));
-  border: 1px solid rgb(var(--color-primary));
-  color: white;
-  box-shadow: 0 4px 15px rgba(var(--color-primary), 0.3);
-}
-
-.modal-btn.submit:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(var(--color-primary), 0.4);
-}
-
-.modal-btn.submit:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
 
 @keyframes fadeIn {
   from {

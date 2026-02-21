@@ -1,7 +1,7 @@
 // types/planner.types.ts
 
 // Task types
-export type TaskStatus = 'pending' | 'in-progress' | 'completed' | 'blocked' | 'failed';
+export type TaskStatus = 'todo' | 'in-progress' | 'done' | 'planned' | 'overdue';
 
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 

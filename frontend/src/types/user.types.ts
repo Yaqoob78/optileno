@@ -124,6 +124,7 @@ export interface UserPreferences {
     totalMinutes?: number;
     updatedAt?: string;
   };
+  hasCompletedOnboarding?: boolean;
   accessibility?: {
     fontSize: 'small' | 'medium' | 'large';
     contrast: 'normal' | 'high';
@@ -289,6 +290,7 @@ export const defaultPreferences: UserPreferences = {
     responseStyle: { length: 'medium', temperature: 0.7, maxTokens: 1000 },
     context: { useMemory: true, memorySize: 10, includeMetadata: false }
   },
+  hasCompletedOnboarding: false,
 };
 
 export const defaultProfile: UserProfile = {
@@ -312,3 +314,5 @@ export const defaultProfile: UserProfile = {
     lastActiveAt: new Date(),
   },
 };
+
+
