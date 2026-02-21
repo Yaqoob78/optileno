@@ -10,7 +10,6 @@ import {
   Calendar,
   BarChart2,
   CheckCircle,
-  Shield,
   Clock,
   Sparkles,
   Layers,
@@ -48,6 +47,15 @@ type UseCaseGroup = {
   title: string;
   icon: React.ReactNode;
   entries: string[];
+};
+
+type NeuralLine = {
+  top: string;
+  left: string;
+  width: string;
+  rotate: string;
+  tone: 'blue' | 'gold';
+  delay: string;
 };
 
 const FEATURES: Feature[] = [
@@ -185,6 +193,30 @@ const HERO_METRICS = [
 const HERO_TITLE = 'Double your execution speed with an AI operating system.';
 const HERO_TITLE_WORDS = HERO_TITLE.split(' ');
 const HERO_PILLS = ['Goals', 'Tasks', 'Planner', 'Leno AI', 'Habits', 'Analytics'];
+const NEURAL_LINES: NeuralLine[] = [
+  { top: '9%', left: '6%', width: '86px', rotate: '-13deg', tone: 'blue', delay: '0s' },
+  { top: '12%', left: '17%', width: '58px', rotate: '-5deg', tone: 'gold', delay: '0.9s' },
+  { top: '15%', left: '30%', width: '96px', rotate: '9deg', tone: 'blue', delay: '1.5s' },
+  { top: '11%', left: '43%', width: '64px', rotate: '-10deg', tone: 'gold', delay: '2.3s' },
+  { top: '18%', left: '54%', width: '88px', rotate: '6deg', tone: 'blue', delay: '1.1s' },
+  { top: '13%', left: '66%', width: '72px', rotate: '-14deg', tone: 'gold', delay: '0.4s' },
+  { top: '17%', left: '79%', width: '94px', rotate: '8deg', tone: 'blue', delay: '2.9s' },
+  { top: '24%', left: '10%', width: '68px', rotate: '-7deg', tone: 'gold', delay: '1.8s' },
+  { top: '27%', left: '23%', width: '92px', rotate: '11deg', tone: 'blue', delay: '0.2s' },
+  { top: '23%', left: '36%', width: '76px', rotate: '-9deg', tone: 'gold', delay: '1.2s' },
+  { top: '29%', left: '48%', width: '60px', rotate: '4deg', tone: 'blue', delay: '2.1s' },
+  { top: '25%', left: '60%', width: '98px', rotate: '-12deg', tone: 'gold', delay: '0.7s' },
+  { top: '31%', left: '73%', width: '62px', rotate: '10deg', tone: 'blue', delay: '2.6s' },
+  { top: '35%', left: '14%', width: '78px', rotate: '-11deg', tone: 'gold', delay: '1.4s' },
+  { top: '38%', left: '31%', width: '90px', rotate: '6deg', tone: 'blue', delay: '2.4s' },
+  { top: '36%', left: '47%', width: '66px', rotate: '-6deg', tone: 'gold', delay: '0.5s' },
+  { top: '41%', left: '58%', width: '84px', rotate: '12deg', tone: 'blue', delay: '1.9s' },
+  { top: '39%', left: '74%', width: '70px', rotate: '-8deg', tone: 'gold', delay: '2.8s' },
+  { top: '46%', left: '22%', width: '58px', rotate: '8deg', tone: 'blue', delay: '0.3s' },
+  { top: '49%', left: '38%', width: '88px', rotate: '-9deg', tone: 'gold', delay: '1.7s' },
+  { top: '47%', left: '53%', width: '72px', rotate: '5deg', tone: 'blue', delay: '2.5s' },
+  { top: '51%', left: '68%', width: '80px', rotate: '-11deg', tone: 'gold', delay: '0.8s' },
+];
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -251,7 +283,21 @@ export default function Landing() {
       <div className="scene-bg" aria-hidden="true">
         <div className="orb orb-a" />
         <div className="orb orb-b" />
-        <div className="grid-fade" />
+        <div className="neural-lines">
+          {NEURAL_LINES.map((line, index) => (
+            <span
+              key={`${line.tone}-${index}`}
+              className={`neural-line neural-line-${line.tone}`}
+              style={{
+                top: line.top,
+                left: line.left,
+                width: line.width,
+                transform: `rotate(${line.rotate})`,
+                animationDelay: line.delay,
+              }}
+            />
+          ))}
+        </div>
       </div>
 
       <nav className="landing-nav">

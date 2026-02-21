@@ -6,7 +6,7 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: #010306;
+  background: #02050b;
   color: var(--text);
   font-family: 'Sora', 'Segoe UI', sans-serif;
 }
@@ -36,10 +36,20 @@ body {
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
-  background-color: #010205 !important;
+  background-color: #02050b !important;
   color: var(--text) !important;
   background-image:
-    radial-gradient(ellipse at 50% 5%, rgba(15, 45, 87, 0.8) 0%, rgba(4, 15, 33, 0.9) 30%, #010205 70%) !important;
+    radial-gradient(circle at 14% 12%, rgba(96, 165, 250, 0.22) 0%, rgba(96, 165, 250, 0) 34%),
+    radial-gradient(circle at 82% 18%, rgba(251, 191, 36, 0.16) 0%, rgba(251, 191, 36, 0) 31%),
+    linear-gradient(
+      180deg,
+      #02050b 0%,
+      #061122 18%,
+      #0b1d36 38%,
+      #1d3f68 62%,
+      #6d90b6 82%,
+      #e6eef8 100%
+    ) !important;
 }
 
 .visually-hidden {
@@ -67,72 +77,100 @@ body {
 .scene-bg::after {
   content: '';
   position: absolute;
-  inset: -18%;
+  inset: 0;
 }
 
 .scene-bg::before {
   background:
-    radial-gradient(circle at 18% 12%, rgba(78, 216, 195, 0.34) 0%, transparent 29%),
-    radial-gradient(circle at 82% 11%, rgba(47, 126, 247, 0.36) 0%, transparent 32%),
-    radial-gradient(circle at 61% 84%, rgba(111, 177, 223, 0.2) 0%, transparent 38%);
-  animation: sky-drift 20s ease-in-out infinite alternate;
+    radial-gradient(circle at 20% 11%, rgba(96, 165, 250, 0.2) 0%, transparent 30%),
+    radial-gradient(circle at 80% 16%, rgba(251, 191, 36, 0.12) 0%, transparent 28%),
+    linear-gradient(180deg, rgba(4, 10, 20, 0.4) 0%, rgba(4, 10, 20, 0) 65%);
 }
 
 .scene-bg::after {
-  background:
-    linear-gradient(118deg, transparent 0%, rgba(255, 255, 255, 0.08) 45%, transparent 65%),
-    linear-gradient(180deg, rgba(160, 208, 235, 0.02) 0%, rgba(166, 205, 233, 0.14) 100%);
-  opacity: 0.55;
-  animation: sheen-drift 24s linear infinite;
+  background: linear-gradient(180deg, rgba(2, 6, 12, 0.55) 0%, rgba(2, 6, 12, 0.08) 52%, rgba(230, 238, 248, 0.12) 100%);
+  opacity: 0.75;
 }
 
 .orb {
   position: absolute;
   border-radius: 999px;
-  filter: blur(70px);
-  opacity: 0.4;
+  filter: blur(88px);
+  opacity: 0.32;
 }
 
 .orb-a {
-  width: 420px;
-  height: 420px;
+  width: 380px;
+  height: 380px;
   background: linear-gradient(135deg, var(--accent-a), var(--accent-b));
-  top: -140px;
-  right: -80px;
-  animation: float-a 18s ease-in-out infinite;
+  top: -120px;
+  right: -70px;
+  animation: float-a 16s ease-in-out infinite;
 }
 
 .orb-b {
-  width: 460px;
-  height: 460px;
+  width: 420px;
+  height: 420px;
   background: linear-gradient(135deg, var(--accent-c), var(--accent-b));
-  bottom: -240px;
-  left: -100px;
-  animation: float-b 24s ease-in-out infinite;
+  bottom: -260px;
+  left: -120px;
+  animation: float-b 22s ease-in-out infinite;
 }
 
-.grid-fade {
-  position: absolute;
-  inset: -50%;
-  background-image:
-    linear-gradient(to right, rgba(96, 165, 250, 0.15) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(96, 165, 250, 0.15) 1px, transparent 1px);
-  background-size: 60px 60px;
-  background-position: 0 0;
-  transform: perspective(1000px) rotateX(60deg) scale(1.5);
-  transform-origin: top center;
-  mask-image: radial-gradient(ellipse at 50% 30%, black 10%, transparent 65%);
-  animation: grid-pan 12s linear infinite;
-}
-
-.grid-fade::after {
-  content: '';
+.neural-lines {
   position: absolute;
   inset: 0;
-  background-image:
-    linear-gradient(to right, rgba(251, 191, 36, 0.15) 1px, transparent 1px);
-  background-size: 240px 240px;
-  mask-image: radial-gradient(ellipse at 50% 30%, black 0%, transparent 50%);
+  height: min(62vh, 640px);
+  pointer-events: none;
+  mask-image: linear-gradient(180deg, black 0%, black 72%, transparent 100%);
+}
+
+.neural-line {
+  position: absolute;
+  height: 2px;
+  border-radius: 999px;
+  opacity: 0.24;
+  transform-origin: left center;
+  animation: neural-breathe 7.5s ease-in-out infinite;
+  transition: opacity 220ms ease, box-shadow 260ms ease, filter 260ms ease;
+}
+
+.neural-line::after {
+  content: '';
+  position: absolute;
+  right: -7px;
+  top: 50%;
+  width: 8px;
+  height: 2px;
+  border-radius: 999px;
+  transform: translateY(-50%);
+  background: inherit;
+  opacity: 0.8;
+}
+
+.neural-line-blue {
+  background: linear-gradient(90deg, rgba(96, 165, 250, 0), rgba(96, 165, 250, 0.55) 25%, rgba(59, 130, 246, 0.9) 65%, rgba(59, 130, 246, 0));
+}
+
+.neural-line-gold {
+  background: linear-gradient(90deg, rgba(251, 191, 36, 0), rgba(251, 191, 36, 0.45) 25%, rgba(217, 119, 6, 0.86) 65%, rgba(217, 119, 6, 0));
+}
+
+.landing-page:hover .neural-line,
+.landing-page:focus-within .neural-line {
+  opacity: 0.78;
+}
+
+.landing-page:hover .neural-line-blue,
+.landing-page:focus-within .neural-line-blue {
+  filter: saturate(132%);
+  box-shadow: 0 0 12px rgba(96, 165, 250, 0.35), 0 0 24px rgba(59, 130, 246, 0.3);
+}
+
+.landing-page:hover .neural-line-gold,
+.landing-page:focus-within .neural-line-gold {
+  filter: saturate(132%);
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.35), 0 0 24px rgba(217, 119, 6, 0.24);
 }
 
 .landing-nav {
@@ -872,23 +910,17 @@ body {
   color: #89aac7;
 }
 
-@keyframes sky-drift {
+@keyframes neural-breathe {
   0% {
-    transform: translate3d(-3%, -2%, 0) scale(1);
+    opacity: 0.18;
+  }
+
+  50% {
+    opacity: 0.3;
   }
 
   100% {
-    transform: translate3d(4%, 3%, 0) scale(1.05);
-  }
-}
-
-@keyframes sheen-drift {
-  0% {
-    transform: translate3d(-14%, -8%, 0) rotate(0deg);
-  }
-
-  100% {
-    transform: translate3d(12%, 10%, 0) rotate(6deg);
+    opacity: 0.2;
   }
 }
 
@@ -913,16 +945,6 @@ body {
 
   50% {
     transform: translate3d(20px, -14px, 0) scale(1.04);
-  }
-}
-
-@keyframes grid-pan {
-  0% {
-    transform: perspective(1000px) rotateX(60deg) scale(1.5) translateY(0);
-  }
-
-  100% {
-    transform: perspective(1000px) rotateX(60deg) scale(1.5) translateY(60px);
   }
 }
 
@@ -1003,7 +1025,6 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-
   *,
   *::before,
   *::after {

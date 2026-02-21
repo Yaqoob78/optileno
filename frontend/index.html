@@ -115,11 +115,171 @@
       ]
     }
   </script>
-  <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <script src="https://sdk.cashfree.com/js/v3/cashfree.js" defer></script>
+  <style>
+    #root:empty {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #010205;
+      z-index: 99999;
+    }
+
+    .startup-logo {
+      width: 80px;
+      height: 80px;
+      position: relative;
+    }
+
+    .s-ring {
+      stroke-dasharray: 830;
+      stroke-dashoffset: 830;
+      animation: s-drawRing 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards infinite alternate;
+    }
+
+    .s-glow {
+      animation: s-pulseGlow 2s ease-in-out infinite alternate;
+    }
+
+    .s-node {
+      transform-origin: center;
+      transform-box: fill-box;
+      transform: scale(0);
+      animation: s-popNode 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards infinite alternate;
+    }
+
+    .s-line {
+      stroke-dasharray: 120;
+      stroke-dashoffset: 120;
+      animation: s-drawLine 0.8s ease forwards infinite alternate;
+    }
+
+    .s-n1 {
+      animation-delay: 0.1s;
+    }
+
+    .s-n2,
+    .s-n3 {
+      animation-delay: 0.2s;
+    }
+
+    .s-n4,
+    .s-n5 {
+      animation-delay: 0.3s;
+    }
+
+    .s-n6 {
+      animation-delay: 0.4s;
+    }
+
+    .s-l1,
+    .s-l2 {
+      animation-delay: 0.4s;
+    }
+
+    .s-l3,
+    .s-l4 {
+      animation-delay: 0.6s;
+    }
+
+    .s-l5,
+    .s-l6 {
+      animation-delay: 0.8s;
+    }
+
+    @keyframes s-drawRing {
+      0% {
+        stroke-dashoffset: 830;
+      }
+
+      100% {
+        stroke-dashoffset: 0;
+      }
+    }
+
+    @keyframes s-popNode {
+      0% {
+        transform: scale(0);
+        opacity: 0;
+      }
+
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    @keyframes s-drawLine {
+      0% {
+        stroke-dashoffset: 120;
+      }
+
+      100% {
+        stroke-dashoffset: 0;
+      }
+    }
+
+    @keyframes s-pulseGlow {
+      0% {
+        opacity: 0.2;
+      }
+
+      100% {
+        opacity: 0.6;
+      }
+    }
+  </style>
 </head>
 
 <body>
-  <div id="root"></div>
+  <div id="root">
+    <div class="startup-logo">
+      <svg width="100%" height="100%" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="optilenoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#60a5fa" />
+            <stop offset="50%" stopColor="#3b82f6" />
+            <stop offset="100%" stopColor="#d97706" />
+          </linearGradient>
+          <linearGradient id="optilenoGradientGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#60a5fa" />
+            <stop offset="55%" stopColor="#0ea5e9" />
+            <stop offset="100%" stopColor="#fbbf24" />
+          </linearGradient>
+          <filter id="optilenoDropGlow" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur stdDeviation="8" />
+            <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.5 0" />
+          </filter>
+        </defs>
+        <g>
+          <circle cx="256" cy="256" r="132" stroke="url(#optilenoGradientGlow)" stroke-width="18" fill="none"
+            filter="url(#optilenoDropGlow)" class="s-glow" />
+          <circle cx="256" cy="256" r="132" stroke="url(#optilenoGradient)" stroke-width="12" fill="none"
+            class="s-ring" />
+          <g stroke="url(#optilenoGradient)" stroke-linecap="round" stroke-width="8">
+            <line x1="256" y1="170" x2="190" y2="236" class="s-line s-l1" />
+            <line x1="256" y1="170" x2="322" y2="236" class="s-line s-l2" />
+            <line x1="190" y1="236" x2="172" y2="310" class="s-line s-l3" />
+            <line x1="322" y1="236" x2="340" y2="310" class="s-line s-l4" />
+            <line x1="172" y1="310" x2="256" y2="350" class="s-line s-l5" />
+            <line x1="340" y1="310" x2="256" y2="350" class="s-line s-l6" />
+          </g>
+          <g>
+            <circle cx="256" cy="170" r="15" fill="url(#optilenoGradient)" class="s-node s-n1" />
+            <circle cx="190" cy="236" r="13" fill="url(#optilenoGradient)" class="s-node s-n2" />
+            <circle cx="322" cy="236" r="13" fill="url(#optilenoGradient)" class="s-node s-n3" />
+            <circle cx="172" cy="310" r="11" fill="url(#optilenoGradient)" class="s-node s-n4" />
+            <circle cx="340" cy="310" r="11" fill="url(#optilenoGradient)" class="s-node s-n5" />
+            <circle cx="256" cy="350" r="15" fill="url(#optilenoGradient)" class="s-node s-n6" />
+          </g>
+        </g>
+      </svg>
+    </div>
+  </div>
   <script type="module" src="/src/main.tsx"></script>
 </body>
 
