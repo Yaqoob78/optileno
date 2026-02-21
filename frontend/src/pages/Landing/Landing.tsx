@@ -189,10 +189,11 @@ const HERO_PILLS = ['Goals', 'Tasks', 'Planner', 'Leno AI', 'Habits', 'Analytics
 
 const WAVE_PATHS = Array.from({ length: 42 }).map((_, i) => {
   const y = 40 + i * 26;
-  const cy1 = y - 140 + Math.sin(i * 0.35) * 90;
-  const cy2 = y + 140 + Math.cos(i * 0.45) * 90;
-  const endY = y + Math.sin(i * 0.25) * 70;
-  return `M -100 ${y} C 480 ${cy1}, 1020 ${cy2}, 1600 ${endY}`;
+  const phaseRow = i * 0.3;
+  const cy1 = y - 130 + Math.sin(phaseRow) * 80;
+  const cy2 = y + 130 + Math.sin(phaseRow - 1.2) * 80;
+  const cy3 = y + Math.sin(phaseRow - 2.4) * 60;
+  return `M -100 ${y} C 480 ${cy1}, 1020 ${cy2}, 1600 ${cy3}`;
 });
 
 export default function Landing() {
@@ -201,6 +202,36 @@ export default function Landing() {
   const sceneRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    let animationFrameId: number;
+    let time = 0;
+
+    const renderWaves = () => {
+      time += 0.003; // Controls how fast the waves undulate
+      if (!sceneRef.current) return;
+
+      const basePaths = sceneRef.current.querySelectorAll('.waves-base path');
+      const activePaths = sceneRef.current.querySelectorAll('.waves-active path');
+
+      for (let i = 0; i < 42; i++) {
+        const y = 40 + i * 26;
+        const phaseRow = i * 0.3;
+        const waveSpeed = time * 2;
+
+        const cy1 = y - 130 + Math.sin(phaseRow + waveSpeed) * 80;
+        const cy2 = y + 130 + Math.sin(phaseRow + waveSpeed - 1.2) * 80;
+        const cy3 = y + Math.sin(phaseRow + waveSpeed - 2.4) * 60;
+
+        const d = `M -100 ${y} C 480 ${cy1}, 1020 ${cy2}, 1600 ${cy3}`;
+
+        if (basePaths[i]) basePaths[i].setAttribute('d', d);
+        if (activePaths[i]) activePaths[i].setAttribute('d', d);
+      }
+
+      animationFrameId = requestAnimationFrame(renderWaves);
+    };
+
+    renderWaves();
+
     const handleMouseMove = (e: MouseEvent) => {
       if (!sceneRef.current) return;
       const rect = sceneRef.current.getBoundingClientRect();
@@ -211,7 +242,10 @@ export default function Landing() {
     };
 
     window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      cancelAnimationFrame(animationFrameId);
+    };
   }, []);
 
   const revealVariants = React.useMemo<Variants>(
