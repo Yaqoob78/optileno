@@ -6,7 +6,7 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: #02050b;
+  background: #010309;
   color: var(--text);
   font-family: 'Sora', 'Segoe UI', sans-serif;
 }
@@ -36,19 +36,19 @@ body {
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
-  background-color: #02050b !important;
+  background-color: #010309 !important;
   color: var(--text) !important;
   background-image:
-    radial-gradient(circle at 14% 12%, rgba(96, 165, 250, 0.22) 0%, rgba(96, 165, 250, 0) 34%),
-    radial-gradient(circle at 82% 18%, rgba(251, 191, 36, 0.16) 0%, rgba(251, 191, 36, 0) 31%),
+    radial-gradient(circle at 16% 13%, rgba(96, 165, 250, 0.16) 0%, rgba(96, 165, 250, 0) 36%),
+    radial-gradient(circle at 81% 19%, rgba(251, 191, 36, 0.12) 0%, rgba(251, 191, 36, 0) 34%),
     linear-gradient(
       180deg,
-      #02050b 0%,
-      #061122 18%,
-      #0b1d36 38%,
-      #1d3f68 62%,
-      #6d90b6 82%,
-      #e6eef8 100%
+      #010309 0%,
+      #020710 20%,
+      #061225 42%,
+      #112e52 63%,
+      #2d5680 82%,
+      #c4d5e7 100%
     ) !important;
 }
 
@@ -82,21 +82,23 @@ body {
 
 .scene-bg::before {
   background:
-    radial-gradient(circle at 20% 11%, rgba(96, 165, 250, 0.2) 0%, transparent 30%),
-    radial-gradient(circle at 80% 16%, rgba(251, 191, 36, 0.12) 0%, transparent 28%),
-    linear-gradient(180deg, rgba(4, 10, 20, 0.4) 0%, rgba(4, 10, 20, 0) 65%);
+    radial-gradient(circle at 19% 11%, rgba(96, 165, 250, 0.14) 0%, transparent 31%),
+    radial-gradient(circle at 81% 17%, rgba(251, 191, 36, 0.09) 0%, transparent 30%),
+    linear-gradient(180deg, rgba(1, 4, 10, 0.66) 0%, rgba(1, 4, 10, 0.25) 52%, rgba(196, 213, 231, 0.06) 100%);
 }
 
 .scene-bg::after {
-  background: linear-gradient(180deg, rgba(2, 6, 12, 0.55) 0%, rgba(2, 6, 12, 0.08) 52%, rgba(230, 238, 248, 0.12) 100%);
-  opacity: 0.75;
+  background:
+    radial-gradient(ellipse at 50% -12%, rgba(9, 22, 40, 0.78) 0%, rgba(9, 22, 40, 0.08) 58%, transparent 100%),
+    linear-gradient(180deg, rgba(1, 4, 9, 0.58) 0%, rgba(1, 4, 9, 0.18) 56%, rgba(196, 213, 231, 0.08) 100%);
+  opacity: 0.82;
 }
 
 .orb {
   position: absolute;
   border-radius: 999px;
   filter: blur(88px);
-  opacity: 0.32;
+  opacity: 0.24;
 }
 
 .orb-a {
@@ -120,57 +122,60 @@ body {
 .neural-lines {
   position: absolute;
   inset: 0;
-  height: min(62vh, 640px);
+  height: min(78vh, 920px);
   pointer-events: none;
-  mask-image: linear-gradient(180deg, black 0%, black 72%, transparent 100%);
+  transform: perspective(1200px) rotateX(14deg) translateY(-10px);
+  transform-origin: top center;
+  mask-image: linear-gradient(180deg, black 0%, black 82%, transparent 100%);
 }
 
 .neural-line {
   position: absolute;
-  height: 2px;
+  height: 1.7px;
   border-radius: 999px;
-  opacity: 0.24;
+  opacity: 0.11;
   transform-origin: left center;
-  animation: neural-breathe 7.5s ease-in-out infinite;
-  transition: opacity 220ms ease, box-shadow 260ms ease, filter 260ms ease;
+  mix-blend-mode: screen;
+  filter: saturate(94%);
+  transition: opacity 220ms ease, box-shadow 260ms ease, filter 260ms ease, background 260ms ease;
 }
 
 .neural-line::after {
   content: '';
   position: absolute;
-  right: -7px;
+  right: -5px;
   top: 50%;
-  width: 8px;
-  height: 2px;
+  width: 6px;
+  height: 1.7px;
   border-radius: 999px;
   transform: translateY(-50%);
   background: inherit;
-  opacity: 0.8;
+  opacity: 0.65;
 }
 
 .neural-line-blue {
-  background: linear-gradient(90deg, rgba(96, 165, 250, 0), rgba(96, 165, 250, 0.55) 25%, rgba(59, 130, 246, 0.9) 65%, rgba(59, 130, 246, 0));
+  background: linear-gradient(90deg, rgba(96, 165, 250, 0), rgba(96, 165, 250, 0.38) 24%, rgba(59, 130, 246, 0.7) 63%, rgba(59, 130, 246, 0));
 }
 
 .neural-line-gold {
-  background: linear-gradient(90deg, rgba(251, 191, 36, 0), rgba(251, 191, 36, 0.45) 25%, rgba(217, 119, 6, 0.86) 65%, rgba(217, 119, 6, 0));
+  background: linear-gradient(90deg, rgba(251, 191, 36, 0), rgba(251, 191, 36, 0.35) 24%, rgba(217, 119, 6, 0.68) 63%, rgba(217, 119, 6, 0));
 }
 
 .landing-page:hover .neural-line,
 .landing-page:focus-within .neural-line {
-  opacity: 0.78;
+  opacity: 0.94;
 }
 
 .landing-page:hover .neural-line-blue,
 .landing-page:focus-within .neural-line-blue {
-  filter: saturate(132%);
-  box-shadow: 0 0 12px rgba(96, 165, 250, 0.35), 0 0 24px rgba(59, 130, 246, 0.3);
+  filter: saturate(160%) brightness(1.18);
+  box-shadow: 0 0 14px rgba(96, 165, 250, 0.42), 0 0 28px rgba(59, 130, 246, 0.34);
 }
 
 .landing-page:hover .neural-line-gold,
 .landing-page:focus-within .neural-line-gold {
-  filter: saturate(132%);
-  box-shadow: 0 0 12px rgba(251, 191, 36, 0.35), 0 0 24px rgba(217, 119, 6, 0.24);
+  filter: saturate(160%) brightness(1.2);
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.42), 0 0 28px rgba(217, 119, 6, 0.28);
 }
 
 .landing-nav {
@@ -908,20 +913,6 @@ body {
 .footer-note {
   margin-top: 0.45rem;
   color: #89aac7;
-}
-
-@keyframes neural-breathe {
-  0% {
-    opacity: 0.18;
-  }
-
-  50% {
-    opacity: 0.3;
-  }
-
-  100% {
-    opacity: 0.2;
-  }
 }
 
 @keyframes float-a {

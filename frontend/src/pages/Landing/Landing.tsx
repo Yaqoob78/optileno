@@ -58,6 +58,17 @@ type NeuralLine = {
   delay: string;
 };
 
+type NeuralRow = {
+  top: number;
+  leftStart: number;
+  gap: number;
+  count: number;
+  widths: number[];
+  baseRotate: number;
+  delayOffset: number;
+  toneStart: 'blue' | 'gold';
+};
+
 const FEATURES: Feature[] = [
   {
     title: 'AI Workflow Engine',
@@ -193,30 +204,37 @@ const HERO_METRICS = [
 const HERO_TITLE = 'Double your execution speed with an AI operating system.';
 const HERO_TITLE_WORDS = HERO_TITLE.split(' ');
 const HERO_PILLS = ['Goals', 'Tasks', 'Planner', 'Leno AI', 'Habits', 'Analytics'];
-const NEURAL_LINES: NeuralLine[] = [
-  { top: '9%', left: '6%', width: '86px', rotate: '-13deg', tone: 'blue', delay: '0s' },
-  { top: '12%', left: '17%', width: '58px', rotate: '-5deg', tone: 'gold', delay: '0.9s' },
-  { top: '15%', left: '30%', width: '96px', rotate: '9deg', tone: 'blue', delay: '1.5s' },
-  { top: '11%', left: '43%', width: '64px', rotate: '-10deg', tone: 'gold', delay: '2.3s' },
-  { top: '18%', left: '54%', width: '88px', rotate: '6deg', tone: 'blue', delay: '1.1s' },
-  { top: '13%', left: '66%', width: '72px', rotate: '-14deg', tone: 'gold', delay: '0.4s' },
-  { top: '17%', left: '79%', width: '94px', rotate: '8deg', tone: 'blue', delay: '2.9s' },
-  { top: '24%', left: '10%', width: '68px', rotate: '-7deg', tone: 'gold', delay: '1.8s' },
-  { top: '27%', left: '23%', width: '92px', rotate: '11deg', tone: 'blue', delay: '0.2s' },
-  { top: '23%', left: '36%', width: '76px', rotate: '-9deg', tone: 'gold', delay: '1.2s' },
-  { top: '29%', left: '48%', width: '60px', rotate: '4deg', tone: 'blue', delay: '2.1s' },
-  { top: '25%', left: '60%', width: '98px', rotate: '-12deg', tone: 'gold', delay: '0.7s' },
-  { top: '31%', left: '73%', width: '62px', rotate: '10deg', tone: 'blue', delay: '2.6s' },
-  { top: '35%', left: '14%', width: '78px', rotate: '-11deg', tone: 'gold', delay: '1.4s' },
-  { top: '38%', left: '31%', width: '90px', rotate: '6deg', tone: 'blue', delay: '2.4s' },
-  { top: '36%', left: '47%', width: '66px', rotate: '-6deg', tone: 'gold', delay: '0.5s' },
-  { top: '41%', left: '58%', width: '84px', rotate: '12deg', tone: 'blue', delay: '1.9s' },
-  { top: '39%', left: '74%', width: '70px', rotate: '-8deg', tone: 'gold', delay: '2.8s' },
-  { top: '46%', left: '22%', width: '58px', rotate: '8deg', tone: 'blue', delay: '0.3s' },
-  { top: '49%', left: '38%', width: '88px', rotate: '-9deg', tone: 'gold', delay: '1.7s' },
-  { top: '47%', left: '53%', width: '72px', rotate: '5deg', tone: 'blue', delay: '2.5s' },
-  { top: '51%', left: '68%', width: '80px', rotate: '-11deg', tone: 'gold', delay: '0.8s' },
+const NEURAL_ROWS: NeuralRow[] = [
+  { top: 10, leftStart: 6, gap: 11.8, count: 8, widths: [62, 76, 68, 84], baseRotate: -10, delayOffset: 0.1, toneStart: 'blue' },
+  { top: 18, leftStart: 10, gap: 11.5, count: 8, widths: [74, 64, 82, 70], baseRotate: 8, delayOffset: 0.35, toneStart: 'gold' },
+  { top: 26, leftStart: 8, gap: 11.3, count: 8, widths: [66, 80, 72, 88], baseRotate: -7, delayOffset: 0.7, toneStart: 'blue' },
+  { top: 34, leftStart: 12, gap: 10.9, count: 7, widths: [78, 68, 86, 74], baseRotate: 9, delayOffset: 1.0, toneStart: 'gold' },
+  { top: 42, leftStart: 9, gap: 11.1, count: 8, widths: [70, 84, 64, 80], baseRotate: -8, delayOffset: 1.4, toneStart: 'blue' },
+  { top: 50, leftStart: 13, gap: 10.7, count: 7, widths: [82, 72, 90, 68], baseRotate: 7, delayOffset: 1.85, toneStart: 'gold' },
+  { top: 58, leftStart: 11, gap: 10.9, count: 7, widths: [68, 78, 74, 86], baseRotate: -9, delayOffset: 2.15, toneStart: 'blue' },
+  { top: 66, leftStart: 15, gap: 10.5, count: 6, widths: [76, 66, 84, 72], baseRotate: 8, delayOffset: 2.45, toneStart: 'gold' },
 ];
+
+const NEURAL_LINES: NeuralLine[] = NEURAL_ROWS.flatMap((row, rowIndex) =>
+  Array.from({ length: row.count }, (_, index) => {
+    const top = row.top + ((index % 4) - 1.5) * 0.9;
+    const left = row.leftStart + index * row.gap + ((index + rowIndex) % 2 === 0 ? 0 : 1.4);
+    const width = row.widths[index % row.widths.length] + (index % 2 === 0 ? 0 : 6);
+    const rotate = row.baseRotate + ((index % 3) - 1) * 3;
+    const toneOffset = row.toneStart === 'gold' ? 1 : 0;
+    const tone = (index + toneOffset) % 2 === 0 ? 'blue' : 'gold';
+    const delay = (row.delayOffset + index * 0.19) % 3.6;
+
+    return {
+      top: `${top.toFixed(1)}%`,
+      left: `${left.toFixed(1)}%`,
+      width: `${width}px`,
+      rotate: `${rotate.toFixed(1)}deg`,
+      tone,
+      delay: `${delay.toFixed(2)}s`,
+    };
+  }),
+);
 
 export default function Landing() {
   const navigate = useNavigate();
