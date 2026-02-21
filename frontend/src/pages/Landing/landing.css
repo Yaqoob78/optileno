@@ -117,68 +117,42 @@ body {
   animation: float-b 22s ease-in-out infinite;
 }
 
-.neural-lines {
+.waves-container {
   position: absolute;
   inset: 0;
   height: min(100vh, 1200px);
   pointer-events: none;
-  transform: perspective(1200px) rotateX(14deg) translateY(-10px);
+  transform: perspective(1200px) rotateX(14deg) translateY(-2%);
   transform-origin: top center;
   mask-image: linear-gradient(180deg, black 0%, black 88%, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, black 0%, black 88%, transparent 100%);
 }
 
-.neural-lines-glow {
-  -webkit-mask-image: radial-gradient(400px circle at var(--mouse-x, -50vw) var(--mouse-y, -50vh), black 0%, transparent 100%);
-  mask-image: radial-gradient(400px circle at var(--mouse-x, -50vw) var(--mouse-y, -50vh), black 0%, transparent 100%);
+.waves-glow {
+  /* Creates the dynamic hover illumination window */
+  -webkit-mask-image: radial-gradient(350px circle at var(--mouse-x, -50vw) var(--mouse-y, -50vh), black 0%, transparent 100%);
+  mask-image: radial-gradient(350px circle at var(--mouse-x, -50vw) var(--mouse-y, -50vh), black 0%, transparent 100%);
   z-index: 1;
 }
 
-.neural-lines-glow .neural-line {
-  opacity: 1;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.4);
-  transition: none;
-}
-
-.neural-lines-glow .neural-line-blue {
-  filter: saturate(200%) brightness(1.5);
-  box-shadow: 0 0 8px rgba(96, 165, 250, 0.9), 0 0 16px rgba(59, 130, 246, 0.7);
-}
-
-.neural-lines-glow .neural-line-gold {
-  filter: saturate(200%) brightness(1.5);
-  box-shadow: 0 0 8px rgba(251, 191, 36, 0.9), 0 0 16px rgba(217, 119, 6, 0.7);
-}
-
-.neural-line {
+.waves-base,
+.waves-active {
+  width: 100%;
+  height: 100%;
   position: absolute;
-  height: 1.7px;
-  border-radius: 999px;
-  opacity: 0.11;
-  transform-origin: left center;
+  top: 0;
+  left: 0;
+  overflow: visible;
+}
+
+.waves-active {
   mix-blend-mode: screen;
-  filter: saturate(94%);
-  transition: opacity 220ms ease, box-shadow 260ms ease, filter 260ms ease, background 260ms ease;
 }
 
-.neural-line::after {
-  content: '';
-  position: absolute;
-  right: -5px;
-  top: 50%;
-  width: 6px;
-  height: 1.7px;
-  border-radius: 999px;
-  transform: translateY(-50%);
-  background: inherit;
-  opacity: 0.65;
-}
-
-.neural-line-blue {
-  background: linear-gradient(90deg, rgba(96, 165, 250, 0), rgba(96, 165, 250, 0.38) 24%, rgba(59, 130, 246, 0.7) 63%, rgba(59, 130, 246, 0));
-}
-
-.neural-line-gold {
-  background: linear-gradient(90deg, rgba(251, 191, 36, 0), rgba(251, 191, 36, 0.35) 24%, rgba(217, 119, 6, 0.68) 63%, rgba(217, 119, 6, 0));
+.waves-active path {
+  /* Sharp, non-blurry highlight */
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.4));
+  transition: filter 100ms linear;
 }
 
 

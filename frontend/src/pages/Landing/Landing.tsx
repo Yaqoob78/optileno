@@ -49,25 +49,7 @@ type UseCaseGroup = {
   entries: string[];
 };
 
-type NeuralLine = {
-  top: string;
-  left: string;
-  width: string;
-  rotate: string;
-  tone: 'blue' | 'gold';
-  delay: string;
-};
 
-type NeuralRow = {
-  top: number;
-  leftStart: number;
-  gap: number;
-  count: number;
-  widths: number[];
-  baseRotate: number;
-  delayOffset: number;
-  toneStart: 'blue' | 'gold';
-};
 
 const FEATURES: Feature[] = [
   {
@@ -204,44 +186,14 @@ const HERO_METRICS = [
 const HERO_TITLE = 'Double your execution speed with an AI operating system.';
 const HERO_TITLE_WORDS = HERO_TITLE.split(' ');
 const HERO_PILLS = ['Goals', 'Tasks', 'Planner', 'Leno AI', 'Habits', 'Analytics'];
-const NEURAL_ROWS: NeuralRow[] = [
-  { top: 8, leftStart: 4, gap: 10.5, count: 10, widths: [70, 85, 75, 90], baseRotate: -10, delayOffset: 0.1, toneStart: 'blue' },
-  { top: 14, leftStart: 8, gap: 10.2, count: 9, widths: [80, 70, 90, 75], baseRotate: 8, delayOffset: 0.35, toneStart: 'gold' },
-  { top: 20, leftStart: 5, gap: 10.4, count: 10, widths: [75, 85, 70, 95], baseRotate: -8, delayOffset: 0.6, toneStart: 'blue' },
-  { top: 26, leftStart: 9, gap: 10.1, count: 9, widths: [85, 75, 95, 80], baseRotate: 9, delayOffset: 0.85, toneStart: 'gold' },
-  { top: 32, leftStart: 6, gap: 10.3, count: 10, widths: [70, 90, 80, 85], baseRotate: -7, delayOffset: 1.1, toneStart: 'blue' },
-  { top: 38, leftStart: 10, gap: 10.0, count: 9, widths: [90, 80, 85, 75], baseRotate: 7, delayOffset: 1.35, toneStart: 'gold' },
-  { top: 44, leftStart: 7, gap: 10.2, count: 10, widths: [80, 75, 90, 85], baseRotate: -9, delayOffset: 1.6, toneStart: 'blue' },
-  { top: 50, leftStart: 11, gap: 9.9, count: 9, widths: [85, 90, 75, 80], baseRotate: 8, delayOffset: 1.85, toneStart: 'gold' },
-  { top: 56, leftStart: 8, gap: 10.1, count: 10, widths: [75, 80, 95, 70], baseRotate: -8, delayOffset: 2.1, toneStart: 'blue' },
-  { top: 62, leftStart: 12, gap: 9.8, count: 9, widths: [95, 85, 80, 75], baseRotate: 6, delayOffset: 2.35, toneStart: 'gold' },
-  { top: 68, leftStart: 9, gap: 10.0, count: 10, widths: [70, 90, 75, 85], baseRotate: -7, delayOffset: 2.6, toneStart: 'blue' },
-  { top: 74, leftStart: 13, gap: 9.7, count: 9, widths: [85, 75, 90, 80], baseRotate: 8, delayOffset: 2.85, toneStart: 'gold' },
-  { top: 80, leftStart: 10, gap: 9.9, count: 10, widths: [80, 85, 70, 95], baseRotate: -9, delayOffset: 3.1, toneStart: 'blue' },
-  { top: 86, leftStart: 14, gap: 9.6, count: 8, widths: [90, 80, 85, 75], baseRotate: 7, delayOffset: 3.35, toneStart: 'gold' },
-  { top: 92, leftStart: 11, gap: 9.8, count: 10, widths: [75, 95, 80, 85], baseRotate: -8, delayOffset: 3.6, toneStart: 'blue' },
-];
 
-const NEURAL_LINES: NeuralLine[] = NEURAL_ROWS.flatMap((row, rowIndex) =>
-  Array.from({ length: row.count }, (_, index) => {
-    const top = row.top + ((index % 4) - 1.5) * 0.9;
-    const left = row.leftStart + index * row.gap + ((index + rowIndex) % 2 === 0 ? 0 : 1.4);
-    const width = row.widths[index % row.widths.length] + (index % 2 === 0 ? 0 : 6);
-    const rotate = row.baseRotate + ((index % 3) - 1) * 3;
-    const toneOffset = row.toneStart === 'gold' ? 1 : 0;
-    const tone = (index + toneOffset) % 2 === 0 ? 'blue' : 'gold';
-    const delay = (row.delayOffset + index * 0.19) % 3.6;
-
-    return {
-      top: `${top.toFixed(1)}%`,
-      left: `${left.toFixed(1)}%`,
-      width: `${width}px`,
-      rotate: `${rotate.toFixed(1)}deg`,
-      tone,
-      delay: `${delay.toFixed(2)}s`,
-    };
-  }),
-);
+const WAVE_PATHS = Array.from({ length: 42 }).map((_, i) => {
+  const y = 40 + i * 26;
+  const cy1 = y - 140 + Math.sin(i * 0.35) * 90;
+  const cy2 = y + 140 + Math.cos(i * 0.45) * 90;
+  const endY = y + Math.sin(i * 0.25) * 70;
+  return `M -100 ${y} C 480 ${cy1}, 1020 ${cy2}, 1600 ${endY}`;
+});
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -323,35 +275,28 @@ export default function Landing() {
       <div className="scene-bg" aria-hidden="true" ref={sceneRef}>
         <div className="orb orb-a" />
         <div className="orb orb-b" />
-        <div className="neural-lines">
-          {NEURAL_LINES.map((line, index) => (
-            <span
-              key={`base-${line.tone}-${index}`}
-              className={`neural-line neural-line-${line.tone}`}
-              style={{
-                top: line.top,
-                left: line.left,
-                width: line.width,
-                transform: `rotate(${line.rotate})`,
-                animationDelay: line.delay,
-              }}
-            />
-          ))}
+
+        <div className="waves-container">
+          <svg className="waves-base" viewBox="0 0 1440 1000" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="waveGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#60a5fa" />
+                <stop offset="50%" stopColor="#3b82f6" />
+                <stop offset="100%" stopColor="#d97706" />
+              </linearGradient>
+            </defs>
+            {WAVE_PATHS.map((path, index) => (
+              <path key={`base-${index}`} d={path} stroke="rgba(255, 255, 255, 0.04)" strokeWidth="1" fill="none" />
+            ))}
+          </svg>
         </div>
-        <div className="neural-lines neural-lines-glow">
-          {NEURAL_LINES.map((line, index) => (
-            <span
-              key={`glow-${line.tone}-${index}`}
-              className={`neural-line neural-line-${line.tone}`}
-              style={{
-                top: line.top,
-                left: line.left,
-                width: line.width,
-                transform: `rotate(${line.rotate})`,
-                animationDelay: line.delay,
-              }}
-            />
-          ))}
+
+        <div className="waves-container waves-glow">
+          <svg className="waves-active" viewBox="0 0 1440 1000" preserveAspectRatio="none">
+            {WAVE_PATHS.map((path, index) => (
+              <path key={`glow-${index}`} d={path} stroke="url(#waveGradient)" strokeWidth="2.5" fill="none" />
+            ))}
+          </svg>
         </div>
       </div>
 
