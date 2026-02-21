@@ -68,10 +68,10 @@ export const OnboardingFlow: React.FC = () => {
         <React.Fragment>
             {/* Using a fixed overlay on top of everything to guarantee they see it */}
             <div className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-xl flex items-center justify-center p-4">
-                <div className="bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl w-full max-w-lg shadow-2xl shadow-indigo-500/10 overflow-hidden flex flex-col relative text-[var(--color-text-primary)]">
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl shadow-indigo-500/10 overflow-hidden flex flex-col relative text-slate-50">
 
                     {/* Progress Bar */}
-                    <div className="h-1.5 w-full bg-[var(--bg-tertiary)] overflow-hidden">
+                    <div className="h-1.5 w-full bg-slate-800 overflow-hidden">
                         <div
                             className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 transition-all duration-700 ease-in-out"
                             style={{ width: `${((step + 1) / steps.length) * 100}%` }}
@@ -79,7 +79,7 @@ export const OnboardingFlow: React.FC = () => {
                     </div>
 
                     <div className="p-8 md:p-10 flex flex-col items-center text-center">
-                        <div className={`p-5 rounded-2xl mb-8 ${currentStep.bg} border border-[var(--color-border-light)]/20 shadow-inner`}>
+                        <div className={`p-5 rounded-2xl mb-8 ${currentStep.bg} border border-white/10 shadow-inner`}>
                             {currentStep.icon}
                         </div>
 
@@ -91,7 +91,7 @@ export const OnboardingFlow: React.FC = () => {
                             {currentStep.subtitle}
                         </h3>
 
-                        <p className="text-[var(--color-text-secondary)] leading-relaxed mb-8 max-w-sm">
+                        <p className="text-slate-400 leading-relaxed mb-8 max-w-sm">
                             {currentStep.description}
                         </p>
 
@@ -100,7 +100,7 @@ export const OnboardingFlow: React.FC = () => {
                                 <input
                                     type="text"
                                     placeholder={currentStep.inputPlaceholder}
-                                    className="w-full bg-[rgba(var(--color-bg-tertiary),0.3)] border border-[var(--color-border-light)] rounded-xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)]"
+                                    className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-white placeholder-slate-500"
                                     autoFocus
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') handleNext();
@@ -124,7 +124,7 @@ export const OnboardingFlow: React.FC = () => {
 
                         {step === 0 && (
                             <button
-                                className="mt-6 text-sm text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors"
+                                className="mt-6 text-sm text-slate-500 hover:text-slate-300 transition-colors"
                                 onClick={() => {
                                     updatePreference('hasCompletedOnboarding', true);
                                     setIsOpen(false);

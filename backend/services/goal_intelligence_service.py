@@ -28,19 +28,18 @@ class GoalIntelligenceService:
         ai_client = DualAIClient(user_id)
         
         prompt = f"""
-        You are an expert productivity planner. The user has a goal: "{goal_text}".
+        You are an elite productivity and strategic planning AI. The user has set the following goal: "{goal_text}".
         Duration: {duration_days} days.
         
-        First, identify the Goal Archetype:
-        - "Grind": Intense studying/exam prep (heavy Deep Work).
-        - "Routine": Fitness/Health/Habits (heavy Habits).
-        - "Builder": Projects/Skills/Business (heavy Tasks and Milestones).
-        - "Blitz": Short deadlines < 14 days (pure execution Tasks).
+        Your objective is to break this specific goal down intelligently into a highly customized action plan. 
+        Do NOT use a generic rigid template. Instead, deeply analyze the precise nature of the goal (e.g., highly academic like 'JEE Mains', physical like 'Marathon', or creative like 'Write a Novel') and tailor the exact number, frequency, and type of actions required exclusively for success in {duration_days} days.
         
-        Tailor the breakdown specifically for that Archetype. Break this goal down into a concrete action plan containing:
-        1. **Tasks**: Specific, actionable 1-time items. Provide 3-5 key tasks per week (more if Builder/Blitz).
-        2. **Habits**: Recurring daily actions. (Focus on these if Routine).
-        3. **Deep Work**: Focused blocks with frequency. (Focus on these if Grind).
+        Create a precise execution engine containing:
+        1. **Tasks**: Specific, one-time actionable items. Generate exactly the right amount of key tasks required for the {duration_days} day timeframe.
+        2. **Habits**: Recurring daily actions required for compounding progress (e.g., 'consistency study habits', 'early wake ups'). Only suggest habits that make logical sense for this specific goal.
+        3. **Deep Work**: Focused, uninterrupted work blocks. Define the duration and frequency per week if this goal requires deep focus (like studying or coding). If the goal is purely physical/administrative and doesn't need deep work, omit it.
+        
+        Analyze the time constraint carefully. If the duration is short (e.g., 30 days for a massive goal), the frequency and intensity of habits and deep work MUST be extremely high.
         
         Output valid JSON only:
         {{

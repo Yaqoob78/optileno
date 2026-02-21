@@ -45,7 +45,7 @@ import { useTheme } from '../../hooks/useTheme';
 
 
 export default function AnalyticsPage() {
-  const [timeRange, setTimeRange] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('weekly');
+  const [timeRange, setTimeRange] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('daily');
   const [loading, setLoading] = useState<boolean>(false);
   const realtimeRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const realtimeRefreshInFlightRef = useRef(false);
@@ -424,23 +424,23 @@ export default function AnalyticsPage() {
     <ErrorBoundary componentName="Analytics">
       <div className={`analytics-page theme-${resolvedTheme}`}>
         {/* Animated Background */}
-          <div className="analytics-background">
-            <div className="background-waves" />
-            <div className="data-grid-overlay" />
-            <div className="particles-container">
-              {analyticsParticles.map((particle) => (
-                <div
-                  key={particle.key}
-                  className="data-particle"
-                  style={{
-                    animationDelay: particle.animationDelay,
-                    left: particle.left,
-                    top: particle.top
-                  }}
-                />
-              ))}
-            </div>
+        <div className="analytics-background">
+          <div className="background-waves" />
+          <div className="data-grid-overlay" />
+          <div className="particles-container">
+            {analyticsParticles.map((particle) => (
+              <div
+                key={particle.key}
+                className="data-particle"
+                style={{
+                  animationDelay: particle.animationDelay,
+                  left: particle.left,
+                  top: particle.top
+                }}
+              />
+            ))}
           </div>
+        </div>
 
         <div className="analytics-content-wrapper">
           {/* Top Navigation / Header */}
@@ -727,6 +727,12 @@ export default function AnalyticsPage() {
                 </div>
               </>
             </div>
+          </div>
+
+          {/* AI Disclaimer Banner */}
+          <div className="flex items-center justify-center gap-2 p-3 mt-4 mb-2 mx-4 sm:mx-8 text-xs text-amber-500 bg-amber-500/10 rounded-lg border border-amber-500/20 text-center shadow-inner">
+            <AlertTriangle size={14} className="flex-shrink-0" />
+            <span>Note: These analytics are based on complex mathematical logic and artificial intelligence. They can sometimes be inaccurate.</span>
           </div>
 
           {/* Data Status Footer */}

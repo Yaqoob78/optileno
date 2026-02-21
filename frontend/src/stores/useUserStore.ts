@@ -100,7 +100,7 @@ export const useUserStore = create<UserState>()(
         const currentValue = state.preferences[key];
 
         // Handle different types of preferences
-        if (key === 'theme' || key === 'language') {
+        if (key === 'theme' || key === 'language' || key === 'hasCompletedOnboarding') {
           // For primitive values
           return {
             preferences: {

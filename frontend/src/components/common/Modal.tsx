@@ -50,7 +50,7 @@ export const Modal = ({
                             // Layout rules for positioning
                             "fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%]",
                             // Layout rules for size & dimensions
-                            "w-full sm:w-[90vw] h-full sm:h-auto max-h-[100dvh] sm:max-h-[85vh]",
+                            "w-[95vw] sm:w-full max-h-[85dvh] sm:max-h-[85vh]",
                             maxWidthClass,
                             // Layout styling
                             "bg-[var(--bg-primary,white)] sm:rounded-xl border border-[var(--border-color,#e5e7eb)] shadow-2xl",

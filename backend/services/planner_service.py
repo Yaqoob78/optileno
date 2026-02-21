@@ -730,6 +730,14 @@ class PlannerService:
                     logger.info(f"Tracked habit_completed event for habit {habit_id}, streak: {new_streak}, best: {longest_streak}")
                 except Exception as e:
                     logger.error(f"Failed to track analytics event: {e}")
+                    
+                # Update goal probability if habit is linked to a goal
+                if plan.goal_id:
+                    try:
+                        from backend.services.goal_intelligence_service import goal_intelligence_service
+                        await goal_intelligence_service.update_goal_probability(user_id, str(plan.goal_id))
+                    except Exception as e:
+                        logger.error(f"Failed to update goal probability from habit tracker: {e}")
                 
                 return {"streak": new_streak, "best_streak": longest_streak, "habit_id": habit_id}
         except Exception as e:
@@ -1344,6 +1352,15 @@ class PlannerService:
                     logger.info(f"Tracked deep_work_session event for session {session_id}: {schedule['actual_duration']} min")
                 except Exception as e:
                     logger.error(f"Failed to track analytics event: {e}")
+                    
+                # Update goal probability if deep work is linked to a goal
+                if getattr(session, 'goal_id', None) or schedule.get('goal_id'):
+                    try:
+                        from backend.services.goal_intelligence_service import goal_intelligence_service
+                        goal_id = getattr(session, 'goal_id', None) or schedule.get('goal_id')
+                        await goal_intelligence_service.update_goal_probability(user_id, str(goal_id))
+                    except Exception as e:
+                        logger.error(f"Failed to update goal probability from deep work tracker: {e}")
                 
                 return self._map_to_deep_work_out(session)
         except Exception as e:

@@ -532,7 +532,7 @@ export default function PlannerPage() {
           isOpen={isEditing && !!editForm}
           onOpenChange={(open) => { if (!open) handleCancelEdit(); }}
           title={isNewTask ? 'Create New Task' : 'Edit Task'}
-          maxWidth="lg"
+          maxWidth="md"
           footer={
             <div className="flex gap-3 w-full justify-end">
               <button
