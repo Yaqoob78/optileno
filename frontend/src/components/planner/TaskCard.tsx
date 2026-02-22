@@ -655,9 +655,9 @@ export default function TaskCard({
         maxWidth="sm"
         footer={
           <div className="flex gap-3 justify-end">
-            <button className="px-4 py-2 rounded-lg font-medium text-[var(--text-secondary)] hover:bg-[var(--background-secondary)] transition-colors" onClick={() => setIsRetryModalOpen(false)}>Close</button>
+            <button className="app-modal-btn app-modal-btn-secondary" onClick={() => setIsRetryModalOpen(false)}>Close</button>
             <button
-              className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-[var(--primary)] text-[var(--text-on-primary)] hover:opacity-90 transition-opacity"
+              className="app-modal-btn app-modal-btn-primary"
               onClick={handleConfirmRetry}
             >
               <Play size={14} /> Retry Now

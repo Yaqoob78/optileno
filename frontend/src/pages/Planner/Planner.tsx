@@ -536,14 +536,14 @@ export default function PlannerPage() {
           footer={
             <div className="flex gap-3 justify-end">
               <button
-                className="px-4 py-2.5 rounded-xl font-medium text-[var(--text-secondary)] hover:bg-white/5 border border-transparent hover:border-white/10 transition-all duration-200"
+                className="app-modal-btn app-modal-btn-secondary"
                 onClick={handleCancelEdit}
                 disabled={isSaving}
               >
                 Cancel
               </button>
               <button
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold bg-gradient-to-r from-[var(--primary)] to-amber-600 text-[var(--text-on-primary)] shadow-[0_0_20px_rgba(var(--primary),0.3)] hover:shadow-[0_0_25px_rgba(var(--primary),0.5)] hover:scale-[1.02] transition-all duration-200 ${!editForm?.title.trim() || isSaving ? 'opacity-50 grayscale cursor-not-allowed hover:scale-100' : ''}`}
+                className={`app-modal-btn app-modal-btn-primary ${!editForm?.title.trim() || isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
                 onClick={handleSaveEdit}
                 disabled={!editForm?.title.trim() || isSaving}
               >
@@ -978,4 +978,3 @@ export default function PlannerPage() {
     </ErrorBoundary>
   );
 }
-
