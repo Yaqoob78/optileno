@@ -536,14 +536,14 @@ export default function PlannerPage() {
           footer={
             <div className="flex gap-3 w-full justify-end">
               <button
-                className="modal-btn cancel"
+                className="px-4 py-2.5 rounded-xl font-medium text-[var(--text-secondary)] hover:bg-white/5 border border-transparent hover:border-white/10 transition-all duration-200"
                 onClick={handleCancelEdit}
                 disabled={isSaving}
               >
                 Cancel
               </button>
               <button
-                className={`modal-btn submit ${!editForm?.title.trim() || isSaving ? 'disabled' : ''}`}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold bg-gradient-to-r from-[var(--primary)] to-amber-600 text-[var(--text-on-primary)] shadow-[0_0_20px_rgba(var(--primary),0.3)] hover:shadow-[0_0_25px_rgba(var(--primary),0.5)] hover:scale-[1.02] transition-all duration-200 ${!editForm?.title.trim() || isSaving ? 'opacity-50 grayscale cursor-not-allowed hover:scale-100' : ''}`}
                 onClick={handleSaveEdit}
                 disabled={!editForm?.title.trim() || isSaving}
               >
@@ -587,7 +587,7 @@ export default function PlannerPage() {
                     });
                   }}
                   placeholder="e.g., Morning Deep Work"
-                  className="task-input"
+                  className="px-4 py-2.5 bg-black/20 hover:bg-black/40 focus:bg-black/60 border border-white/5 rounded-xl outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)]/30 backdrop-blur-sm w-full"
                   autoFocus
                   disabled={isSaving}
                 />
@@ -604,7 +604,7 @@ export default function PlannerPage() {
                   onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
                   placeholder="What needs to be done?"
                   rows={2}
-                  className="task-textarea"
+                  className="px-4 py-2.5 bg-black/20 hover:bg-black/40 focus:bg-black/60 border border-white/5 rounded-xl outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)]/30 backdrop-blur-sm w-full min-h-[80px] resize-none"
                   disabled={isSaving}
                 />
               </div>
@@ -674,7 +674,7 @@ export default function PlannerPage() {
                         return { ...prev, startTime: newTime, dueDate: updatedDueDate };
                       });
                     }}
-                    className="task-input"
+                    className="px-4 py-2.5 bg-black/20 hover:bg-black/40 focus:bg-black/60 border border-white/5 rounded-xl outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)]/30 backdrop-blur-sm w-full"
                     disabled={isSaving}
                   />
                 </div>
@@ -690,7 +690,7 @@ export default function PlannerPage() {
                     onChange={(e) => setEditForm(prev => prev ? { ...prev, duration: Number(e.target.value) || 60 } : null)}
                     min={5}
                     step={5}
-                    className="task-input"
+                    className="px-4 py-2.5 bg-black/20 hover:bg-black/40 focus:bg-black/60 border border-white/5 rounded-xl outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)]/30 backdrop-blur-sm w-full"
                     disabled={isSaving}
                   />
                 </div>
@@ -716,7 +716,7 @@ export default function PlannerPage() {
                         return { ...prev, ...updates };
                       });
                     }}
-                    className="task-select"
+                    className="px-4 py-2.5 bg-black/20 hover:bg-black/40 focus:bg-black/60 border border-white/5 rounded-xl outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)]/30 backdrop-blur-sm w-full"
                     disabled={isSaving}
                   >
                     <option value="" disabled>-- Select Category --</option>
@@ -740,7 +740,7 @@ export default function PlannerPage() {
                       id="task-goal-select"
                       value={editForm.goalId || ''}
                       onChange={(e) => setEditForm({ ...editForm, goalId: e.target.value })}
-                      className="task-select"
+                      className="px-4 py-2.5 bg-black/20 hover:bg-black/40 focus:bg-black/60 border border-white/5 rounded-xl outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)]/30 backdrop-blur-sm w-full"
                       disabled={isSaving}
                     >
                       <option value="">-- Choose a Goal --</option>
@@ -763,7 +763,7 @@ export default function PlannerPage() {
                       id="task-priority"
                       value={editForm.priority || 'medium'}
                       onChange={(e) => setEditForm(prev => prev ? { ...prev, priority: e.target.value as any } : null)}
-                      className="task-select"
+                      className="px-4 py-2.5 bg-black/20 hover:bg-black/40 focus:bg-black/60 border border-white/5 rounded-xl outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)]/30 backdrop-blur-sm w-full"
                       disabled={isSaving}
                     >
                       <option value="low">Low</option>
@@ -785,7 +785,7 @@ export default function PlannerPage() {
                         setIsEnergyTouched(true);
                         setEditForm(prev => prev ? { ...prev, energy: e.target.value as any } : null);
                       }}
-                      className="task-select"
+                      className="px-4 py-2.5 bg-black/20 hover:bg-black/40 focus:bg-black/60 border border-white/5 rounded-xl outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)]/30 backdrop-blur-sm w-full"
                       disabled={isSaving}
                     >
                       <option value="high">High ⚡</option>
@@ -812,7 +812,7 @@ export default function PlannerPage() {
                     })
                   }
                   placeholder="work, urgent, internal"
-                  className="task-input"
+                  className="px-4 py-2.5 bg-black/20 hover:bg-black/40 focus:bg-black/60 border border-white/5 rounded-xl outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)]/30 backdrop-blur-sm w-full"
                   disabled={isSaving}
                 />
               </div>
