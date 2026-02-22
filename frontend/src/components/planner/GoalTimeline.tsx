@@ -248,14 +248,14 @@ export default function GoalTimeline() {
               />
             </div>
 
-            <div className="flex flex-col gap-3 p-4 bg-[var(--background-secondary)] rounded-xl border border-[var(--border-primary)]">
+            <div className="flex flex-col gap-3">
               <label className="font-medium text-[var(--text-primary)] flex justify-between">
                 <span>Update Progress</span>
                 <span className="text-[var(--primary)]">{selectedGoal.current_progress || 0}%</span>
               </label>
               <input
                 type="range"
-                className="w-full accent-[var(--primary)] h-2 bg-white/10 rounded-lg appearance-none cursor-pointer transition-all hover:bg-white/20"
+                className="w-full accent-[var(--primary)] h-2 bg-[var(--background-primary)] rounded-lg appearance-none cursor-pointer transition-all"
                 min="0"
                 max="100"
                 value={selectedGoal.current_progress || 0}

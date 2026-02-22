@@ -43,6 +43,17 @@
   --color-gray-900: 17 24 39;
   --color-gray-950: 3 7 18;
 
+  /* Compatibility tokens used across planner dialogs/components */
+  --background-primary: rgb(var(--color-bg-primary, var(--color-gray-950)));
+  --background-secondary: rgb(var(--color-bg-secondary, var(--color-gray-900)));
+  --background-tertiary: rgb(var(--color-bg-tertiary, var(--color-gray-800)));
+  --border-primary: rgba(var(--color-border-light, var(--color-gray-700)), 0.7);
+  --text-primary: rgb(var(--color-text-primary, var(--color-gray-50)));
+  --text-secondary: rgb(var(--color-text-secondary, var(--color-gray-300)));
+  --text-on-primary: #ffffff;
+  --primary: rgb(var(--color-primary));
+  --primary-hover: rgb(var(--color-primary-dark, var(--color-primary)));
+
   /* ===== SPACING SYSTEM ===== */
   --space-unit: 0.25rem;
   --space-0: 0;
@@ -176,30 +187,30 @@ body {
 /* Planner modal styles (theme-safe across all app themes) */
 .app-modal-surface {
   position: relative;
-  background: var(--card-background, rgb(var(--color-bg-secondary)));
-  border-color: var(--border-primary, rgba(var(--color-border-light), 0.55));
-  color: var(--text-primary, rgb(var(--color-text-primary)));
+  background: var(--background-secondary);
+  border-color: var(--border-primary);
+  color: var(--text-primary);
   box-shadow: 0 28px 65px rgba(2, 6, 23, 0.5);
 }
 
 .app-modal-header,
 .app-modal-body,
 .app-modal-footer {
-  background: var(--card-background, rgb(var(--color-bg-secondary)));
+  background: var(--background-secondary);
 }
 
 .app-modal-header,
 .app-modal-footer {
-  border-color: var(--border-primary, rgba(var(--color-border-light), 0.55));
+  border-color: var(--border-primary);
 }
 
 .app-modal-close {
-  background: rgba(var(--color-bg-tertiary), 0.85);
-  border-color: var(--border-primary, rgba(var(--color-border-light), 0.55));
+  background: var(--background-tertiary);
+  border-color: var(--border-primary);
 }
 
 .app-modal-close:hover {
-  background: rgba(var(--color-bg-tertiary), 1);
+  filter: brightness(1.08);
 }
 
 .app-modal-close:focus-visible {
@@ -210,9 +221,9 @@ body {
 .app-modal-surface input:not([type='range']),
 .app-modal-surface textarea,
 .app-modal-surface select {
-  background: rgba(var(--color-bg-primary), 0.95) !important;
-  border-color: var(--border-primary, rgba(var(--color-border-light), 0.55)) !important;
-  color: var(--text-primary, rgb(var(--color-text-primary))) !important;
+  background: var(--background-primary) !important;
+  border-color: var(--border-primary) !important;
+  color: var(--text-primary) !important;
   box-shadow: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
@@ -227,7 +238,7 @@ body {
 
 .app-modal-surface input:not([type='range'])::placeholder,
 .app-modal-surface textarea::placeholder {
-  color: var(--text-secondary, rgb(var(--color-text-secondary))) !important;
+  color: var(--text-secondary) !important;
 }
 
 .app-modal-surface select option {
@@ -237,23 +248,23 @@ body {
 
 /* Keep date picker consistent inside planner modals */
 .app-modal-surface .date-picker-trigger {
-  background: rgba(var(--color-bg-primary), 0.95) !important;
-  border-color: var(--border-primary, rgba(var(--color-border-light), 0.55)) !important;
+  background: var(--background-primary) !important;
+  border-color: var(--border-primary) !important;
 }
 
 .app-modal-surface .date-picker-calendar {
-  background: rgb(var(--color-bg-secondary)) !important;
-  border-color: var(--border-primary, rgba(var(--color-border-light), 0.55)) !important;
+  background: var(--background-secondary) !important;
+  border-color: var(--border-primary) !important;
   box-shadow: 0 14px 30px rgba(2, 6, 23, 0.35);
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
 
 .app-modal-surface .calendar-nav-btn {
-  background: rgba(var(--color-bg-primary), 0.9);
-  border-color: var(--border-primary, rgba(var(--color-border-light), 0.55));
+  background: var(--background-primary);
+  border-color: var(--border-primary);
 }
 
 .app-modal-surface .calendar-day:hover:not(.disabled) {
-  background: rgba(var(--color-bg-tertiary), 0.9);
+  background: var(--background-tertiary);
 }
