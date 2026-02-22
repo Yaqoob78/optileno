@@ -3,7 +3,7 @@ import {
   CheckCircle, Clock, Zap, Tag, Edit3, Trash2, MoreVertical,
   ChevronDown, ChevronRight, Copy, AlertCircle, Briefcase,
   Users, Coffee, Dumbbell, BookOpen, Home, Target,
-  Play, Pause, Timer, FileText, Hash, X, Calendar as CalendarIcon
+  Play, Pause, Timer, FileText, Hash, X, Calendar as CalendarIcon, Repeat
 } from 'lucide-react';
 import '../../styles/components/planner/TaskCard.css';
 import { useSettingsStore } from '../../stores/useSettingsStore';
@@ -46,6 +46,7 @@ interface TaskCardProps {
   onDelete?: (taskId: string | number) => void;
   onToggleStatus?: (taskId: string | number) => void;
   onDuplicate?: (task: Task) => void;
+  onRepeat?: (task: Task) => void;
   onMarkComplete?: (taskId: string | number) => void;
   onStartTask?: (taskId: string | number) => void;
   onPauseTask?: (taskId: string | number) => void;
@@ -60,6 +61,7 @@ export default function TaskCard({
   onDelete,
   onToggleStatus,
   onDuplicate,
+  onRepeat,
   onMarkComplete,
   onStartTask,
   onPauseTask,
@@ -529,10 +531,13 @@ export default function TaskCard({
 
               {showActions && (
                 <div className="dropdown-menu">
-                  <button onClick={() => onDuplicate?.(task)} className="dropdown-item">
+                  <button onClick={() => { setShowActions(false); onRepeat?.(task); }} className="dropdown-item">
+                    <Repeat size={14} /> Set Recurrence
+                  </button>
+                  <button onClick={() => { setShowActions(false); onDuplicate?.(task); }} className="dropdown-item">
                     <Copy size={14} /> Duplicate
                   </button>
-                  <button onClick={() => onDelete?.(task.id)} className="dropdown-item delete">
+                  <button onClick={() => { setShowActions(false); onDelete?.(task.id); }} className="dropdown-item delete">
                     <Trash2 size={14} /> Delete
                   </button>
                 </div>

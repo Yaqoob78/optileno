@@ -11,7 +11,7 @@ This module handles the complete AI-driven planning automation:
 """
 
 from typing import Dict, Any, List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 
 from backend.services.planner_service import planner_service
@@ -25,9 +25,9 @@ from backend.realtime.socket_manager import (
 logger = logging.getLogger(__name__)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # CONSTANTS & TEMPLATES
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 RECOMMENDED_HABITS = {
     "learning": [
@@ -89,9 +89,9 @@ ROADMAP_TEMPLATES = {
 }
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # GOAL DETECTION & PARSING
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def detect_goal_intent(message: str) -> Dict[str, Any]:
     """
@@ -182,7 +182,7 @@ def extract_goal_title(message: str) -> str:
 
 def calculate_target_date(timeframe: str) -> datetime:
     """Calculate realistic deadline based on timeframe."""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     
     timeframe_days = {
         "day": 1,
@@ -196,9 +196,9 @@ def calculate_target_date(timeframe: str) -> datetime:
     return now + timedelta(days=days)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # TASK GENERATION PIPELINE
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async def generate_tasks_from_goal(
     user_id: str,
@@ -296,9 +296,9 @@ async def generate_tasks_from_goal(
     return created_tasks
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # HABIT RECOMMENDATION PIPELINE
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def get_recommended_habits(category: str) -> List[Dict[str, Any]]:
     """Get recommended habits for a goal category."""
@@ -316,8 +316,11 @@ async def create_habits_for_goal(
     
     for habit_data in habits_to_create:
         try:
+            habit_name = habit_data.get("name") or habit_data.get("title")
+            if not habit_name:
+                continue
             habit = await planner_service.create_habit(user_id, {
-                "name": habit_data["name"],
+                "name": habit_name,
                 "description": habit_data.get("description", ""),
                 "frequency": habit_data.get("frequency", "daily"),
                 "target": habit_data.get("target", 1),
@@ -333,9 +336,9 @@ async def create_habits_for_goal(
     return created_habits
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # DEEP WORK SCHEDULING PIPELINE
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def should_propose_deep_work(complexity: str, estimated_hours: int = 3) -> bool:
     """Determine if deep work should be proposed based on goal complexity."""
@@ -383,86 +386,127 @@ async def schedule_deep_work_block(
         return None
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # MAIN GOAL CREATION PIPELINE (CASCADE)
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async def create_goal_with_cascade(
     user_id: str,
     payload: Dict[str, Any],
 ) -> Dict[str, Any]:
     """
-    Main entry point for AI goal creation with full cascade:
-    1. Create the goal
+    Main entry point for AI goal creation/breakdown with full cascade:
+    1. Create or reuse a goal
     2. Generate supporting tasks
     3. Suggest/create supporting habits
-    4. Propose deep work if needed
+    4. Propose/schedule deep work if needed
     5. Return comprehensive result
     """
-    try:
-        # Extract goal parameters
-        title = payload.get("title", "New Goal")
-        description = payload.get("description", "")
-        category = payload.get("category", "personal")
-        timeframe = payload.get("timeframe", "month")
-        complexity = payload.get("complexity", "medium")
-        auto_create_tasks = payload.get("auto_create_tasks", True)
-        auto_create_habits = payload.get("auto_create_habits", False)
-        propose_deep_work = payload.get("propose_deep_work", True)
-        
-        # Determine target date: prioritize explicit date, fallback to timeframe
-        target_date_obj: datetime
-        if payload.get("target_date"):
-            try:
-                # Handle both full ISO and YYYY-MM-DD
-                date_str = payload["target_date"]
-                # If it's just a date string (YYYY-MM-DD), append time
-                if len(date_str) == 10: 
-                    target_date_obj = datetime.fromisoformat(f"{date_str}T23:59:59")
-                else:
-                    target_date_obj = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
-            except ValueError:
-                # Fallback if parse fails
-                logger.warning(f"Failed to parse target_date '{payload['target_date']}', falling back to timeframe")
-                target_date_obj = calculate_target_date(timeframe)
-        else:
-            target_date_obj = calculate_target_date(timeframe)
-        
-        # 1. Create the goal
-        # Pass datetime object, let service/model handle storage
-        goal = await planner_service.create_goal(user_id, {
-            "title": title,
-            "description": description,
-            "category": category,
-            "target_date": target_date_obj,
-            "current_progress": 0,
-            "milestones": [],
-            "ai_suggestions": [],
-        })
 
-        if "error" in goal:
-            return {"status": "error", "message": goal["error"]}
+    def _coerce_utc_datetime(value: Any) -> Optional[datetime]:
+        if not value:
+            return None
+        if isinstance(value, datetime):
+            parsed = value
+        else:
+            raw = str(value).strip()
+            if not raw:
+                return None
+            if len(raw) == 10:
+                raw = f"{raw}T23:59:59"
+            parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            return parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
+
+    def _parse_preferred_time(value: Any, default_hour: int, default_minute: int) -> tuple[int, int]:
+        if not value:
+            return default_hour, default_minute
+        try:
+            parts = str(value).strip().split(":")
+            if len(parts) < 2:
+                return default_hour, default_minute
+            hour = int(parts[0])
+            minute = int(parts[1])
+            if hour < 0 or hour > 23 or minute < 0 or minute > 59:
+                return default_hour, default_minute
+            return hour, minute
+        except Exception:
+            return default_hour, default_minute
+
+    def _normalize_due_offsets(raw_value: Any, fallback: int, max_days: int) -> List[int]:
+        values = raw_value if isinstance(raw_value, list) else [raw_value]
+        offsets: List[int] = []
+        for value in values:
+            try:
+                offset = int(value)
+            except (TypeError, ValueError):
+                offset = fallback
+            offset = max(0, min(offset, max_days))
+            if offset not in offsets:
+                offsets.append(offset)
+        if not offsets:
+            offsets = [max(0, min(fallback, max_days))]
+        return offsets
+
+    try:
+        create_new_goal = bool(payload.get("create_new_goal", True))
+        existing_goal_id = payload.get("existing_goal_id")
+
+        title = str(payload.get("title", "New Goal")).strip() or "New Goal"
+        description = payload.get("description", "") or ""
+        category = (payload.get("category", "personal") or "personal").lower()
+        timeframe = payload.get("timeframe", "month") or "month"
+        complexity = (payload.get("complexity", "medium") or "medium").lower()
+        auto_create_tasks = bool(payload.get("auto_create_tasks", True))
+        auto_create_habits = bool(payload.get("auto_create_habits", True))
+        propose_deep_work = bool(payload.get("propose_deep_work", True))
+
+        now_utc = datetime.now(timezone.utc)
+        target_date_obj = _coerce_utc_datetime(payload.get("target_date")) or calculate_target_date(timeframe)
+        if target_date_obj <= now_utc:
+            target_date_obj = now_utc + timedelta(days=1)
+
+        goal: Dict[str, Any]
+        if create_new_goal:
+            goal = await planner_service.create_goal(
+                user_id,
+                {
+                    "title": title,
+                    "description": description,
+                    "category": category,
+                    "target_date": target_date_obj,
+                    "current_progress": 0,
+                    "milestones": [],
+                    "ai_suggestions": [],
+                },
+            )
+            if "error" in goal:
+                return {"status": "error", "message": goal["error"]}
+        else:
+            if not existing_goal_id:
+                return {
+                    "status": "error",
+                    "message": "existing_goal_id is required when create_new_goal is false",
+                }
+            user_goals = await planner_service.get_user_goals(user_id)
+            goal = next((g for g in user_goals if str(g.get("id")) == str(existing_goal_id)), {})
+            if not goal:
+                return {"status": "error", "message": "Existing goal not found"}
+            title = goal.get("title", title)
+            description = goal.get("description") or description
+            category = (goal.get("category") or category or "personal").lower()
+            goal_target = _coerce_utc_datetime(goal.get("target_date"))
+            if goal_target:
+                target_date_obj = goal_target
+            if target_date_obj <= now_utc:
+                target_date_obj = now_utc + timedelta(days=1)
 
         goal_id = goal.get("id")
+        if not goal_id:
+            return {"status": "error", "message": "Goal creation failed: missing goal id"}
 
-        # Broadcast goal creation event
-        try:
-            from backend.realtime.socket_manager import broadcast_goal_created
-            await broadcast_goal_created(int(user_id), {
-                "id": goal.get("id"),
-                "title": goal.get("title"),
-                "description": goal.get("description"),
-                "category": goal.get("category"),
-                "target_date": goal.get("target_date"), # This should be ISO string from service response
-                "current_progress": goal.get("current_progress", 0),
-                "milestones": goal.get("milestones", []),
-                "created_at": datetime.utcnow().isoformat()
-            })
-        except Exception as e:
-            logger.error(f"Failed to broadcast goal creation: {e}")
-    
-        # Result container
-        result = {
+        result: Dict[str, Any] = {
             "status": "success",
             "goal": goal,
             "tasks_created": [],
@@ -471,178 +515,194 @@ async def create_goal_with_cascade(
             "deep_work_proposed": False,
             "deep_work_session": None,
         }
-        
-        # 2. GET AI BREAKDOWN (The Core Integration)
-        # We fetch the plan once and distribute it
+
         from backend.services.goal_intelligence_service import goal_intelligence_service
-        
-        # Calculate duration days
-        duration_days = max(1, (target_date_obj - datetime.utcnow()).days)
-        
-        logger.info(f"Requesting full AI breakdown for goal: {title} ({duration_days} days)")
+
+        duration_days = max(1, (target_date_obj - now_utc).days)
+        logger.info("Requesting AI breakdown for goal '%s' (%s days)", title, duration_days)
         ai_plan = await goal_intelligence_service.breakdown_goal_with_ai(user_id, title, duration_days)
-        
-        # 3. GENERATE TASKS (From AI Plan)
+        if not isinstance(ai_plan, dict):
+            ai_plan = {}
+
         if auto_create_tasks:
             ai_tasks = ai_plan.get("tasks", [])
-            created_tasks = []
-            
-            for i, task_def in enumerate(ai_tasks):
-                # Ensure due_in_days is a list to handle recurrence
-                due_in_days_val = task_def.get("due_in_days", (i + 1) * 2)
-                if not isinstance(due_in_days_val, list):
-                    due_in_days_list = [due_in_days_val]
-                else:
-                    due_in_days_list = due_in_days_val
+            if not isinstance(ai_tasks, list):
+                ai_tasks = []
 
-                for due_in in due_in_days_list:
+            created_tasks: List[Dict[str, Any]] = []
+            task_hour, task_minute = _parse_preferred_time(payload.get("preferred_task_time"), 9, 0)
+
+            for index, task_def in enumerate(ai_tasks):
+                if not isinstance(task_def, dict):
+                    continue
+                due_offsets = _normalize_due_offsets(
+                    task_def.get("due_in_days"),
+                    fallback=min(duration_days, index + 1),
+                    max_days=duration_days,
+                )
+                for due_in in due_offsets:
+                    due_date = now_utc + timedelta(days=due_in)
+                    due_date = due_date.replace(hour=task_hour, minute=task_minute, second=0, microsecond=0)
+                    if due_date > target_date_obj:
+                        due_date = target_date_obj
+
                     try:
-                        due_date = datetime.utcnow() + timedelta(days=int(due_in))
-                        
-                        # Apply preferred time if provided
-                        preferred_time = payload.get("preferred_task_time")
-                        if preferred_time:
-                            parts = str(preferred_time).split(":")
-                            if len(parts) >= 2:
-                                due_date = due_date.replace(hour=int(parts[0]), minute=int(parts[1]), second=0, microsecond=0)
-                            
-                    except Exception:
-                        due_date = datetime.utcnow() + timedelta(days=(i + 1) * 2)
-                    
+                        estimated_minutes = max(5, int(task_def.get("estimated_minutes", 30)))
+                    except (TypeError, ValueError):
+                        estimated_minutes = 30
+
                     task_data = {
                         "title": task_def.get("title", f"Task for {title}"),
-                        "description": task_def.get("description", f"AI generated task for goal: {title}"),
-                        "priority": task_def.get("priority", "medium").lower(),
+                        "description": task_def.get("description", f"AI-generated task for goal: {title}"),
+                        "priority": str(task_def.get("priority", "medium")).lower(),
                         "category": category,
-                        "estimated_minutes": task_def.get("estimated_minutes", 30),
+                        "estimated_minutes": estimated_minutes,
                         "due_date": due_date.isoformat(),
-                        "goal_id": goal_id, # Link directly
+                        "goal_id": goal_id,
                         "tags": ["ai-generated", f"goal:{goal_id}", category],
                     }
-                    
-                    try:
-                        task = await planner_service.create_task(user_id, task_data)
-                        if "error" not in task:
-                            created_tasks.append(task)
-                            # Broadcast task creation
-                            try:
-                                await broadcast_task_created(int(user_id), task)
-                            except Exception:
-                                pass
-                    except Exception as e:
-                        logger.error(f"Failed to create individual task: {e}")
-            
+                    task = await planner_service.create_task(user_id, task_data)
+                    if isinstance(task, dict) and "error" not in task:
+                        created_tasks.append(task)
+                        try:
+                            await broadcast_task_created(int(user_id), task)
+                        except Exception:
+                            pass
+
             result["tasks_created"] = created_tasks
-        
-        # 4. GENERATE HABITS (From AI Plan)
-        # Use AI suggestions if available, otherwise fallback to static recommendations
-        ai_habits = ai_plan.get("habits", [])
-        if not ai_habits:
-            ai_habits = get_recommended_habits(category)
-            
-        result["habits_suggested"] = ai_habits
-        
-        if auto_create_habits and ai_habits:
-            created_habits = await create_habits_for_goal(
-                user_id, goal_id, category, ai_habits
+
+        raw_habits = ai_plan.get("habits", [])
+        normalized_habits: List[Dict[str, Any]] = []
+        if isinstance(raw_habits, list):
+            for habit in raw_habits:
+                if not isinstance(habit, dict):
+                    continue
+                habit_name = str(habit.get("name") or habit.get("title") or "").strip()
+                if not habit_name:
+                    continue
+                normalized_habits.append(
+                    {
+                        "name": habit_name,
+                        "description": habit.get("description", ""),
+                        "frequency": habit.get("frequency", "daily"),
+                        "target": habit.get("target", 1),
+                    }
+                )
+
+        result["habits_suggested"] = normalized_habits
+        if auto_create_habits and normalized_habits:
+            result["habits_created"] = await create_habits_for_goal(
+                user_id,
+                str(goal_id),
+                category,
+                normalized_habits,
             )
-            result["habits_created"] = created_habits
-        
-        # 5. PROPOSE DEEP WORK (From AI Plan or Heuristic)
-        # Check if AI suggested deep work
-        ai_deep_work = ai_plan.get("deep_work", [])
-        
+
+        raw_deep_work = ai_plan.get("deep_work", [])
+        ai_deep_work = raw_deep_work if isinstance(raw_deep_work, list) else []
+
         if propose_deep_work:
-            should_propose = should_propose_deep_work(complexity) or (len(ai_deep_work) > 0)
-            
-            if should_propose:
-                result["deep_work_proposed"] = True
-                
-                # Check if explicit schedule requested or AI has strong recommendation
-                if payload.get("schedule_deep_work", False) or len(ai_deep_work) > 0:
-                    for dw_def in ai_deep_work:
-                        duration = dw_def.get("duration_minutes", 180)
-                        due_in_days_val = dw_def.get("due_in_days", [1])
-                        
-                        if not isinstance(due_in_days_val, list):
-                            due_in_days_val = [due_in_days_val]
-                        
-                        for due_in in due_in_days_val:
-                            try:
-                                start_time = datetime.utcnow() + timedelta(days=int(due_in))
-                            except Exception:
-                                start_time = datetime.utcnow() + timedelta(days=1)
-                                
-                            dw_hour, dw_minute = 9, 0
-                            preferred_time = payload.get("preferred_deep_work_time")
-                            if preferred_time:
-                                parts = str(preferred_time).split(":")
-                                if len(parts) >= 2:
-                                    try:
-                                        dw_hour, dw_minute = int(parts[0]), int(parts[1])
-                                    except ValueError:
-                                        pass
-                                        
-                            start_time = start_time.replace(hour=dw_hour, minute=dw_minute, second=0, microsecond=0)
-                            
-                            focus_goal = dw_def.get("focus_area", f"Deep focus around {title}")
-                            
-                            plan_data = {
-                                "name": "Deep Work Session",
-                                "description": focus_goal,
-                                "plan_type": "deep_work",
-                                "date": start_time,
-                                "duration_hours": duration / 60.0,
-                                "schedule": {
-                                    "type": "deep_work",
-                                    "duration_minutes": duration,
-                                    "status": "scheduled",
-                                    "scheduled_local_time": start_time.isoformat()
-                                }
-                            }
-                            session = await planner_service.create_plan(user_id, plan_data)
-                            result["deep_work_session"] = session # Storing last created session
-        
-        # Log analytics event
-        await analytics_service.save_event({
-            "user_id": user_id,
-            "event": "goal_created_with_cascade",
-            "source": "ai_goal_automation",
-            "metadata": {
-                "goal_id": goal_id,
-                "title": title,
-                "category": category,
-                "timeframe": timeframe,
-                "complexity": complexity,
-                "tasks_count": len(result["tasks_created"]),
-                "habits_count": len(result["habits_created"]),
-                "deep_work_proposed": result["deep_work_proposed"],
-            }
-        })
-        
-        logger.info(f"Goal created with cascade for user {user_id}: {goal_id}")
-        
-        # Build response message
-        msg_parts = [f"✅ Goal '{title}' created!"]
+            should_propose = bool(ai_deep_work) or should_propose_deep_work(complexity)
+            result["deep_work_proposed"] = should_propose
+
+            if should_propose and (payload.get("schedule_deep_work", False) or ai_deep_work):
+                deep_work_defs = ai_deep_work or [
+                    {
+                        "focus_area": f"Focused progress on {title}",
+                        "duration_minutes": 90,
+                        "due_in_days": [1],
+                        "notes": "Heuristic deep work recommendation",
+                    }
+                ]
+
+                dw_hour, dw_minute = _parse_preferred_time(payload.get("preferred_deep_work_time"), 9, 0)
+                sessions: List[Dict[str, Any]] = []
+                for index, deep_work_def in enumerate(deep_work_defs):
+                    if not isinstance(deep_work_def, dict):
+                        continue
+                    due_offsets = _normalize_due_offsets(
+                        deep_work_def.get("due_in_days"),
+                        fallback=min(duration_days, index + 1),
+                        max_days=duration_days,
+                    )
+                    try:
+                        duration_minutes = max(30, int(deep_work_def.get("duration_minutes", 90)))
+                    except (TypeError, ValueError):
+                        duration_minutes = 90
+
+                    for due_in in due_offsets:
+                        start_time = now_utc + timedelta(days=due_in)
+                        start_time = start_time.replace(hour=dw_hour, minute=dw_minute, second=0, microsecond=0)
+                        if start_time > target_date_obj:
+                            continue
+
+                        focus_goal = deep_work_def.get("focus_area", f"Deep focus around {title}")
+                        plan_data = {
+                            "name": "Deep Work Session",
+                            "description": focus_goal,
+                            "plan_type": "deep_work",
+                            "date": start_time,
+                            "duration_hours": duration_minutes / 60.0,
+                            "goal_id": goal_id,
+                            "schedule": {
+                                "type": "deep_work",
+                                "goal_id": goal_id,
+                                "duration_minutes": duration_minutes,
+                                "status": "scheduled",
+                                "scheduled_local_time": start_time.isoformat(),
+                                "notes": deep_work_def.get("notes"),
+                            },
+                        }
+                        session = await planner_service.create_plan(user_id, plan_data)
+                        if isinstance(session, dict) and "error" not in session:
+                            sessions.append(session)
+
+                if sessions:
+                    result["deep_work_session"] = sessions[-1]
+                    result["deep_work_sessions"] = sessions
+
+        try:
+            await analytics_service.save_event(
+                {
+                    "user_id": int(user_id),
+                    "event": "goal_created_with_cascade",
+                    "source": "ai_goal_automation",
+                    "metadata": {
+                        "goal_id": goal_id,
+                        "title": title,
+                        "category": category,
+                        "timeframe": timeframe,
+                        "complexity": complexity,
+                        "create_new_goal": create_new_goal,
+                        "tasks_count": len(result["tasks_created"]),
+                        "habits_count": len(result["habits_created"]),
+                        "deep_work_proposed": result["deep_work_proposed"],
+                    },
+                }
+            )
+        except Exception:
+            pass
+
+        logger.info("Goal cascade completed for user %s and goal %s", user_id, goal_id)
+
+        message_parts = [f"Goal '{title}' {'created' if create_new_goal else 'updated'} with AI breakdown"]
         if result["tasks_created"]:
-            msg_parts.append(f"📋 {len(result['tasks_created'])} tasks generated")
-        if result["habits_suggested"]:
-            msg_parts.append(f"🔄 {len(result['habits_suggested'])} habits suggested")
+            message_parts.append(f"{len(result['tasks_created'])} tasks created")
+        if result["habits_created"]:
+            message_parts.append(f"{len(result['habits_created'])} habits created")
+        elif result["habits_suggested"]:
+            message_parts.append(f"{len(result['habits_suggested'])} habits suggested")
         if result["deep_work_proposed"]:
-            msg_parts.append("🧠 Deep work block recommended")
-        
-        result["message"] = " | ".join(msg_parts)
-        
+            message_parts.append("deep work recommended")
+        result["message"] = " | ".join(message_parts)
+
         return result
-        
+
     except Exception as e:
         logger.error(f"Goal cascade creation failed: {e}")
         return {"status": "error", "message": str(e)}
-
-
-# ─────────────────────────────────────────────────────────────────────────────
 # DASHBOARD AGGREGATION
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async def get_planner_dashboard(user_id: str) -> Dict[str, Any]:
     """

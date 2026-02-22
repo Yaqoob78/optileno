@@ -70,6 +70,20 @@ export default function Chat() {
   const isUltra = useUserStore((state) => state.isUltra);
   const userProfile = useUserStore((state) => state.profile);
 
+  useEffect(() => {
+    const prefill = localStorage.getItem('optileno_chat_prefill');
+    if (prefill && prefill.trim()) {
+      setInputValue(prefill.trim());
+      localStorage.removeItem('optileno_chat_prefill');
+    }
+
+    const preferredMode = localStorage.getItem('optileno_chat_mode');
+    if (preferredMode === 'CHAT' || preferredMode === 'PLAN' || preferredMode === 'ANALYZE' || preferredMode === 'TASK') {
+      setAiMode(preferredMode as AIMode);
+    }
+    localStorage.removeItem('optileno_chat_mode');
+  }, []);
+
   // Initialize Conversation if missing
   useEffect(() => {
     if (!activeConversation) {
@@ -376,6 +390,13 @@ export default function Chat() {
         case 'CREATE_HABIT':
           setToast({ message: `🔄 Habit created: ${action.result?.name || 'New Habit'}`, type: 'success' });
           // Refresh planner store to show new habit
+          usePlannerStore.getState().fetchHabits();
+          break;
+
+        case 'BREAKDOWN_GOAL':
+          setToast({ message: `🎯 Plan generated for ${action.result?.goal?.title || action.result?.title || 'goal'}`, type: 'success' });
+          usePlannerStore.getState().fetchGoals();
+          usePlannerStore.getState().fetchTasks();
           usePlannerStore.getState().fetchHabits();
           break;
 

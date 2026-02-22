@@ -51,6 +51,14 @@ class GoalOut(BaseModel):
     created_at: Optional[str] = None
 
 
+class BreakdownRequest(BaseModel):
+    auto_create_tasks: bool = True
+    auto_create_habits: bool = True
+    propose_deep_work: bool = True
+    preferred_task_time: Optional[str] = None
+    preferred_deep_work_time: Optional[str] = None
+
+
 # ── Endpoints ───────────────────────────────────────────────────────────
 
 @router.post("/", response_model=GoalOut, status_code=status.HTTP_201_CREATED)
@@ -84,6 +92,7 @@ async def get_goals(current_user: User = Depends(get_current_user)):
 @router.get("/timeline", response_model=List[GoalOut])
 async def get_goal_timeline(current_user: User = Depends(get_current_user)):
     """Get goals organized by timeline (sorted by target date)."""
+    require_ultra_feature(current_user, "goal_progress_detailed")
     return await planner_service.get_goal_timeline(str(current_user.id))
 
 
@@ -126,6 +135,7 @@ async def toggle_goal_tracking(
 @router.post("/{goal_id}/breakdown", response_model=dict)
 async def breakdown_goal(
     goal_id: str,
+    body: BreakdownRequest = Body(default=BreakdownRequest()),
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -134,7 +144,15 @@ async def breakdown_goal(
     """
     require_ultra_feature(current_user, "goal_progress_detailed")
 
-    result = await planner_service.breakdown_goal(str(current_user.id), goal_id)
+    result = await planner_service.breakdown_goal(
+        str(current_user.id),
+        goal_id,
+        auto_create_tasks=body.auto_create_tasks,
+        auto_create_habits=body.auto_create_habits,
+        propose_deep_work=body.propose_deep_work,
+        preferred_task_time=body.preferred_task_time,
+        preferred_deep_work_time=body.preferred_deep_work_time,
+    )
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
     return result

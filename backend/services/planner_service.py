@@ -259,6 +259,15 @@ class PlannerService:
         """
         try:
             async for db in get_db():
+                goal_id_raw = plan_data.get("goal_id")
+                goal_id_value: Optional[int] = None
+                if goal_id_raw not in (None, ""):
+                    try:
+                        goal_id_value = int(goal_id_raw)
+                    except (TypeError, ValueError):
+                        raise HTTPException(status_code=422, detail="goal_id must be a numeric identifier")
+                await self._enforce_goal_id_ultra(user_id, goal_id_value)
+
                 plan = Plan(
                     user_id=int(user_id),
                     name=plan_data.get("name", "AI Plan"),
@@ -268,6 +277,7 @@ class PlannerService:
                     duration_hours=plan_data.get("duration_hours"),
                     focus_areas=plan_data.get("focus_areas", []),
                     schedule=plan_data.get("schedule", {}),
+                    goal_id=goal_id_value,
                     recommendations=plan_data.get("recommendations", []),
                 )
 
@@ -314,6 +324,7 @@ class PlannerService:
                     "name": plan.name,
                     "description": plan.description,
                     "plan_type": plan.plan_type,
+                    "goal_id": str(plan.goal_id) if plan.goal_id else None,
                     "schedule": plan.schedule,
                     "created_at": plan.created_at.isoformat() if plan.created_at else None
                 }
@@ -384,6 +395,38 @@ class PlannerService:
         except Exception as e:
             logger.warning(f"Failed to fetch plan: {e}")
             return None
+
+    async def get_plan_history(self, user_id: str, limit: int = 50) -> list[dict[str, Any]]:
+        """Fetch plan history in descending creation order."""
+        from sqlalchemy import select
+
+        try:
+            async for db in get_db():
+                result = await db.execute(
+                    select(Plan)
+                    .where(Plan.user_id == int(user_id))
+                    .order_by(Plan.created_at.desc())
+                    .limit(limit)
+                )
+                plans = result.scalars().all()
+                history: list[dict[str, Any]] = []
+                for plan in plans:
+                    history.append(
+                        {
+                            "id": str(plan.id),
+                            "name": plan.name,
+                            "description": plan.description,
+                            "plan_type": plan.plan_type,
+                            "goal_id": str(plan.goal_id) if plan.goal_id else None,
+                            "date": plan.date.isoformat() if plan.date else None,
+                            "schedule": plan.schedule or {},
+                            "created_at": plan.created_at.isoformat() if plan.created_at else None,
+                        }
+                    )
+                return history
+        except Exception as exc:
+            logger.error("Failed to fetch plan history: %s", exc)
+            return []
 
     # ─────────────────────────────────────────────────────────────
     # GOALS CRUD
@@ -570,6 +613,72 @@ class PlannerService:
         except Exception as e:
             logger.error(f"Failed to update goal progress: {e}")
             return False
+
+    async def update_goal_progress(self, user_id: str, goal_id: str, progress: int) -> bool:
+        """Public goal progress updater used by API and AI tools."""
+        bounded_progress = min(100, max(0, int(progress)))
+        return await self.track_goal_progress(user_id, goal_id, 0, bounded_progress)
+
+    async def breakdown_goal(
+        self,
+        user_id: str,
+        goal_id: str,
+        auto_create_tasks: bool = True,
+        auto_create_habits: bool = True,
+        propose_deep_work: bool = True,
+        preferred_task_time: Optional[str] = None,
+        preferred_deep_work_time: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """
+        Break down an existing goal into tasks/habits/deep-work using the same AI cascade pipeline.
+        """
+        goals = await self.get_user_goals(user_id)
+        goal = next((g for g in goals if str(g.get("id")) == str(goal_id)), None)
+        if not goal:
+            return {"error": "Goal not found"}
+
+        target_date = goal.get("target_date")
+        remaining_days = 30
+        if target_date:
+            try:
+                parsed_target = datetime.fromisoformat(str(target_date).replace("Z", "+00:00"))
+                if parsed_target.tzinfo is None:
+                    parsed_target = parsed_target.replace(tzinfo=timezone.utc)
+                remaining_days = max(1, (parsed_target.astimezone(timezone.utc) - self._utc_now()).days)
+            except Exception:
+                remaining_days = 30
+
+        if remaining_days <= 7:
+            timeframe = "week"
+        elif remaining_days <= 45:
+            timeframe = "month"
+        elif remaining_days <= 120:
+            timeframe = "quarter"
+        else:
+            timeframe = "year"
+
+        from backend.ai.tools.goal_automation import create_goal_with_cascade
+
+        payload: dict[str, Any] = {
+            "title": goal.get("title", "Goal"),
+            "description": goal.get("description") or "",
+            "category": goal.get("category", "personal") or "personal",
+            "target_date": target_date,
+            "timeframe": timeframe,
+            "complexity": "medium",
+            "create_new_goal": False,
+            "existing_goal_id": str(goal.get("id")),
+            "auto_create_tasks": bool(auto_create_tasks),
+            "auto_create_habits": bool(auto_create_habits),
+            "propose_deep_work": bool(propose_deep_work),
+            "preferred_task_time": preferred_task_time,
+            "preferred_deep_work_time": preferred_deep_work_time,
+        }
+
+        result = await create_goal_with_cascade(user_id, payload)
+        if result.get("status") == "error":
+            return {"error": result.get("message", "Failed to break down goal")}
+        return result
 
     async def get_goal_timeline(self, user_id: str) -> list[dict[str, Any]]:
         """Get goals organized by timeline."""
@@ -1141,6 +1250,134 @@ class PlannerService:
     async def get_active_tasks(self, user_id: str) -> list:
         """Get pending tasks for AI tools."""
         return await self.get_tasks(user_id, status="todo")
+
+    async def get_all_tasks(self, user_id: str, limit: int = 200) -> list[dict[str, Any]]:
+        """Get recent tasks as dictionaries (legacy helper for AI tools)."""
+        tasks = await self.get_tasks(user_id, limit=limit, offset=0)
+        return [self._task_to_dict(task) if not isinstance(task, dict) else task for task in tasks]
+
+    async def find_task_by_title(self, user_id: str, title: str) -> str:
+        """Resolve a task id by exact or partial title match."""
+        from backend.db.models import Task
+        from sqlalchemy import select, func
+
+        normalized = (title or "").strip().lower()
+        if not normalized:
+            return ""
+
+        try:
+            async for db in get_db():
+                exact_result = await db.execute(
+                    select(Task)
+                    .where(Task.user_id == int(user_id), func.lower(Task.title) == normalized)
+                    .order_by(Task.created_at.desc())
+                    .limit(1)
+                )
+                task = exact_result.scalar_one_or_none()
+                if not task:
+                    fuzzy_result = await db.execute(
+                        select(Task)
+                        .where(Task.user_id == int(user_id), Task.title.ilike(f"%{title}%"))
+                        .order_by(Task.created_at.desc())
+                        .limit(1)
+                    )
+                    task = fuzzy_result.scalar_one_or_none()
+                return str(task.id) if task else ""
+        except Exception as exc:
+            logger.error("Failed to resolve task by title '%s': %s", title, exc)
+            return ""
+
+    async def get_recent_sessions(self, user_id: str, limit: int = 10) -> list[dict[str, Any]]:
+        """Get recent deep-work sessions for analytics insight generation."""
+        from sqlalchemy import select
+
+        try:
+            async for db in get_db():
+                result = await db.execute(
+                    select(Plan)
+                    .where(Plan.user_id == int(user_id), Plan.plan_type == "deep_work")
+                    .order_by(Plan.created_at.desc())
+                    .limit(limit)
+                )
+                sessions = result.scalars().all()
+                mapped: list[dict[str, Any]] = []
+                for session in sessions:
+                    schedule = session.schedule if isinstance(session.schedule, dict) else {}
+                    duration = schedule.get("actual_duration") or schedule.get("planned_duration")
+                    if duration is None and session.duration_hours is not None:
+                        duration = int(float(session.duration_hours) * 60)
+                    mapped.append(
+                        {
+                            "id": str(session.id),
+                            "status": schedule.get("status", "scheduled"),
+                            "duration": int(duration or 0),
+                            "goal_id": str(session.goal_id) if session.goal_id else None,
+                            "created_at": session.created_at.isoformat() if session.created_at else None,
+                            "date": session.date.isoformat() if session.date else None,
+                        }
+                    )
+                return mapped
+        except Exception as exc:
+            logger.error("Failed to fetch recent deep-work sessions: %s", exc)
+            return []
+
+    async def get_recent_plans(self, user_id: str, limit: int = 5) -> list[dict[str, Any]]:
+        """Get recent plans for analytics insight generation."""
+        from sqlalchemy import select
+
+        try:
+            async for db in get_db():
+                result = await db.execute(
+                    select(Plan)
+                    .where(Plan.user_id == int(user_id))
+                    .order_by(Plan.created_at.desc())
+                    .limit(limit)
+                )
+                plans = result.scalars().all()
+                return [
+                    {
+                        "id": str(plan.id),
+                        "name": plan.name,
+                        "plan_type": plan.plan_type,
+                        "goal_id": str(plan.goal_id) if plan.goal_id else None,
+                        "date": plan.date.isoformat() if plan.date else None,
+                        "created_at": plan.created_at.isoformat() if plan.created_at else None,
+                        "status": (plan.schedule or {}).get("status") if isinstance(plan.schedule, dict) else None,
+                    }
+                    for plan in plans
+                ]
+        except Exception as exc:
+            logger.error("Failed to fetch recent plans: %s", exc)
+            return []
+
+    async def get_habits_overview(self, user_id: str, timezone_name: Optional[str] = "UTC") -> dict[str, Any]:
+        """Aggregate habit metrics for analytics insight generation."""
+        habits = await self.get_user_habits(user_id, timezone_name=timezone_name)
+        today_key = self._date_key_in_timezone(self._utc_now(), timezone_name)
+        completed_today = 0
+        longest_streak = 0
+
+        for habit in habits:
+            longest_streak = max(longest_streak, int(habit.get("longestStreak", 0) or 0))
+            last_completed = habit.get("lastCompleted")
+            if isinstance(last_completed, str) and last_completed:
+                try:
+                    completed_key = self._date_key_in_timezone(
+                        datetime.fromisoformat(last_completed.replace("Z", "+00:00")),
+                        timezone_name,
+                    )
+                    if completed_key == today_key:
+                        completed_today += 1
+                except Exception:
+                    continue
+
+        active_habits = [h for h in habits if h.get("status") != "archived"]
+        return {
+            "total_habits": len(habits),
+            "active_habits": len(active_habits),
+            "completed_today": completed_today,
+            "longest_streak": longest_streak,
+        }
 
     async def complete_task(self, user_id: str, task_id: str):
         """Mark a task as completed."""

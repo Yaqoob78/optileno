@@ -70,6 +70,7 @@ try:
         "COMPLETE_HABIT": PlannerToolSet.complete_habit,
         "START_DEEP_WORK": PlannerToolSet.create_deep_work_session,  # Override legacy with pure creation
         "CREATE_GOAL_CASCADE": PlannerToolSet.create_goal_with_cascade,  # Override legacy
+        "BREAKDOWN_GOAL": PlannerToolSet.breakdown_goal,
     }
 
     # Register primary tools (will override any duplicates)

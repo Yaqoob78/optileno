@@ -177,11 +177,11 @@ class PlannerService {
   }
 
   async toggleGoalTracking(goalId: string): Promise<ApiResponse<any>> {
-    return api.post(`${this.basePath}/goals/${goalId}/toggle-tracking`, {});
+    return api.post(`/goals/${goalId}/toggle-tracking`, {});
   }
 
   async breakdownGoal(goalId: string): Promise<ApiResponse<any>> {
-    return api.post(`${this.basePath}/goals/${goalId}/breakdown`, {});
+    return api.post(`/goals/${goalId}/breakdown`, {});
   }
 
   // ── AI Goal Automation (NEW) ────────────────────────────────────

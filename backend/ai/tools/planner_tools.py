@@ -227,10 +227,12 @@ class PlannerToolSet:
         complexity: str = "medium",
         target_date: str = None,
         auto_create_tasks: bool = True,
-        auto_create_habits: bool = False,
+        auto_create_habits: bool = True,
         propose_deep_work: bool = True,
         preferred_task_time: str = None,
-        preferred_deep_work_time: str = None
+        preferred_deep_work_time: str = None,
+        create_new_goal: bool = True,
+        existing_goal_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Create a goal with AI-generated cascade of tasks and habits.
@@ -250,7 +252,9 @@ class PlannerToolSet:
              propose_deep_work = args.get("propose_deep_work", propose_deep_work)
              preferred_task_time = args.get("preferred_task_time", preferred_task_time)
              preferred_deep_work_time = args.get("preferred_deep_work_time", preferred_deep_work_time)
-             
+             create_new_goal = args.get("create_new_goal", create_new_goal)
+             existing_goal_id = args.get("existing_goal_id", existing_goal_id)
+              
         from backend.ai.tools.goal_automation import create_goal_with_cascade
         
         payload = {
@@ -264,7 +268,9 @@ class PlannerToolSet:
             "propose_deep_work": propose_deep_work,
             "target_date": target_date,
             "preferred_task_time": preferred_task_time,
-            "preferred_deep_work_time": preferred_deep_work_time
+            "preferred_deep_work_time": preferred_deep_work_time,
+            "create_new_goal": bool(create_new_goal),
+            "existing_goal_id": existing_goal_id,
         }
         
         result = await create_goal_with_cascade(user_id, payload)
@@ -273,6 +279,65 @@ class PlannerToolSet:
         if result.get("status") == "error":
              raise Exception(result.get("message", "Unknown error in goal cascade"))
         
+        return result
+
+    @staticmethod
+    async def breakdown_goal(
+        user_id: str,
+        goal_link: str,
+        auto_create_tasks: bool = True,
+        auto_create_habits: bool = True,
+        propose_deep_work: bool = True,
+        preferred_task_time: Optional[str] = None,
+        preferred_deep_work_time: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Break down an EXISTING goal into tasks/habits/deep-work.
+        Used for chat-driven breakdown after user manually adds a goal.
+        """
+        if isinstance(goal_link, dict):
+            args = goal_link
+            goal_link = str(args.get("goal_link", "")).strip()
+            auto_create_tasks = args.get("auto_create_tasks", auto_create_tasks)
+            auto_create_habits = args.get("auto_create_habits", auto_create_habits)
+            propose_deep_work = args.get("propose_deep_work", propose_deep_work)
+            preferred_task_time = args.get("preferred_task_time", preferred_task_time)
+            preferred_deep_work_time = args.get("preferred_deep_work_time", preferred_deep_work_time)
+
+        if not goal_link:
+            raise Exception("goal_link is required to break down an existing goal.")
+
+        user_goals = await planner_service.get_user_goals(user_id)
+        goal_match = next((g for g in user_goals if str(g.get("id")) == str(goal_link)), None)
+        if not goal_match:
+            goal_link_clean = str(goal_link).lower().strip()
+            goal_match = next(
+                (g for g in user_goals if str(g.get("title", "")).lower().strip() == goal_link_clean),
+                None,
+            )
+
+        if not goal_match:
+            raise Exception(f"Goal '{goal_link}' not found.")
+
+        from backend.ai.tools.goal_automation import create_goal_with_cascade
+
+        payload = {
+            "title": goal_match.get("title", "Existing Goal"),
+            "description": goal_match.get("description", "") or "",
+            "category": goal_match.get("category", "personal") or "personal",
+            "target_date": goal_match.get("target_date"),
+            "create_new_goal": False,
+            "existing_goal_id": str(goal_match.get("id")),
+            "auto_create_tasks": bool(auto_create_tasks),
+            "auto_create_habits": bool(auto_create_habits),
+            "propose_deep_work": bool(propose_deep_work),
+            "preferred_task_time": preferred_task_time,
+            "preferred_deep_work_time": preferred_deep_work_time,
+        }
+
+        result = await create_goal_with_cascade(user_id, payload)
+        if result.get("status") == "error":
+            raise Exception(result.get("message", "Unknown error while breaking down goal"))
         return result
 
     @staticmethod

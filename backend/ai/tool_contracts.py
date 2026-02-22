@@ -18,7 +18,6 @@ TIER_CAPABILITIES = {
         "GET_PLANNER_STATS",
         "GET_DAILY_ACHIEVEMENT_SCORE",
         "GET_GOAL_PROGRESS_REPORT",
-        "GET_GOAL_TIMELINE",
         "UPDATE_TASK_STATUS",
         "UPDATE_GOAL_PROGRESS",
         "COMPLETE_HABIT",
@@ -37,6 +36,7 @@ TIER_CAPABILITIES = {
         "GET_DAILY_ACHIEVEMENT_SCORE",
         "GET_GOAL_PROGRESS_REPORT",
         "GET_GOAL_TIMELINE",
+        "BREAKDOWN_GOAL",
         "UPDATE_TASK_STATUS",
         "UPDATE_GOAL_PROGRESS",
         "COMPLETE_HABIT",
@@ -114,8 +114,21 @@ class CreateGoalCascadeContract(BaseModel):
     complexity: str = "medium"
     target_date: Optional[str] = None
     auto_create_tasks: bool = True
-    auto_create_habits: bool = False
+    auto_create_habits: bool = True
     propose_deep_work: bool = True
+    create_new_goal: bool = True
+    existing_goal_id: Optional[str] = None
+    preferred_task_time: Optional[str] = None
+    preferred_deep_work_time: Optional[str] = None
+
+
+class BreakdownGoalContract(BaseModel):
+    goal_link: str = Field(..., min_length=1, description="Goal ID or exact title")
+    auto_create_tasks: bool = True
+    auto_create_habits: bool = True
+    propose_deep_work: bool = True
+    preferred_task_time: Optional[str] = None
+    preferred_deep_work_time: Optional[str] = None
 
 # Map tools to schemas
 CONTRACT_SCHEMATA = {
@@ -124,7 +137,8 @@ CONTRACT_SCHEMATA = {
     "CREATE_GOAL": CreateGoalContract,
     "START_DEEP_WORK": CreateDeepworkContract,
     "DELETE_TASK": DeleteTaskContract,
-    "CREATE_GOAL_CASCADE": CreateGoalCascadeContract
+    "CREATE_GOAL_CASCADE": CreateGoalCascadeContract,
+    "BREAKDOWN_GOAL": BreakdownGoalContract,
 }
 
 class ToolExecutionError(Exception):
@@ -171,8 +185,8 @@ def validate_tool_payload(tool_name: str, payload: Dict[str, Any], plan_tier: st
         # To handle aliases like habit name -> habit title
         if tool_name == "CREATE_HABIT" and "name" in payload and "title" not in payload:
             payload["title"] = payload.pop("name")
-        if tool_name == "CREATE_DEEP_WORK" and "duration" in payload and "duration_minutes" not in payload:
-             payload["duration_minutes"] = payload.pop("duration")
+        if tool_name in {"CREATE_DEEP_WORK", "START_DEEP_WORK"} and "duration" in payload and "duration_minutes" not in payload:
+            payload["duration_minutes"] = payload.pop("duration")
 
         validated = schema_cls(**payload)
         return validated.dict()

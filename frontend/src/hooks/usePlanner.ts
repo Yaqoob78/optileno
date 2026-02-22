@@ -53,6 +53,7 @@ interface UsePlannerReturn {
     complexity?: 'low' | 'medium' | 'high';
     auto_create_tasks?: boolean;
     auto_create_habits?: boolean;
+    propose_deep_work?: boolean;
   }) => Promise<{ success: boolean; goal?: any; tasks_created?: any[]; habits_suggested?: any[]; error?: string }>;
 
   // Convenience
@@ -427,6 +428,7 @@ export const usePlanner = (): UsePlannerReturn => {
     complexity?: 'low' | 'medium' | 'high';
     auto_create_tasks?: boolean;
     auto_create_habits?: boolean;
+    propose_deep_work?: boolean;
   }) => {
     try {
       const resp = await plannerApi.createGoalWithCascade(data);

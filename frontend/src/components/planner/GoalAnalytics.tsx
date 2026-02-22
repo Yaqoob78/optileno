@@ -4,6 +4,7 @@ import { Activity, Brain, CheckCircle, AlertTriangle, TrendingUp, BarChart2 } fr
 import { plannerApi } from '../../services/api/planner.service';
 import type { Goal } from '../../types/planner.types';
 import { useUserStore } from '../../stores/useUserStore';
+import { useNavigate } from 'react-router-dom';
 import '../../styles/components/planner/GoalAnalytics.css';
 
 interface GoalAnalyticsProps {
@@ -16,6 +17,7 @@ export const GoalAnalytics: React.FC<GoalAnalyticsProps> = ({ goal, onUpdate }) 
     const [breakdownLoading, setBreakdownLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const isUltra = useUserStore((state) => state.isUltra);
+    const navigate = useNavigate();
 
     const probabilityColors: Record<string, string> = {
         'Extremely High': '#10B981', // Green
@@ -47,22 +49,17 @@ export const GoalAnalytics: React.FC<GoalAnalyticsProps> = ({ goal, onUpdate }) 
     };
 
     const handleBreakdown = async () => {
+        if (!isUltra) {
+            setError('Goal breakdown is available for Ultra users.');
+            return;
+        }
         setBreakdownLoading(true);
         setError(null);
-        try {
-            const response = await plannerApi.breakdownGoal(goal.id);
-            if (response.data && !response.data.error) {
-                // Update goal suggestions locally
-                onUpdate({ ...goal, ai_suggestions: response.data });
-                alert("Goal broken down successfully! Check your tasks and habits.");
-            } else {
-                setError(response.data.error || 'Failed to breakdown goal');
-            }
-        } catch (err: any) {
-            setError(err.response?.data?.detail || 'An error occurred');
-        } finally {
-            setBreakdownLoading(false);
-        }
+        const prompt = `I manually added this goal: "${goal.title}". Please ask me 2-3 focused questions and then break it down into tasks, habits, and deep work for the goal timeline.`;
+        localStorage.setItem('optileno_chat_prefill', prompt);
+        localStorage.setItem('optileno_chat_mode', 'PLAN');
+        setBreakdownLoading(false);
+        navigate('/chat');
     };
 
     return (

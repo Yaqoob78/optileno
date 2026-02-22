@@ -1,6 +1,6 @@
 // frontend/src/pages/Planner/Planner.tsx
 import React, { useState, useEffect, useRef } from 'react';
-import { Calendar as CalendarIcon, Maximize2, Minimize2, Plus, X, Clock, Timer, Zap, TrendingUp, CheckCircle2, List, PenTool, Loader2 } from 'lucide-react';
+import { Calendar as CalendarIcon, Maximize2, Minimize2, Plus, X, Clock, Timer, Zap, TrendingUp, CheckCircle2, List, PenTool, Loader2, Repeat } from 'lucide-react';
 import { clsx } from "clsx";
 
 import { useTheme } from '../../hooks/useTheme';
@@ -103,6 +103,13 @@ export default function PlannerPage() {
   const [isNewTask, setIsNewTask] = useState(false);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
   const editModalRef = useRef<HTMLDivElement>(null);
+
+  // ── Recurrence Modal state ────────────────────────────────────────
+  const [isRepeatModalOpen, setIsRepeatModalOpen] = useState(false);
+  const [taskToRepeat, setTaskToRepeat] = useState<any>(null);
+  const [repeatConfig, setRepeatConfig] = useState({ type: 'daily', iterations: 7 });
+  const [isCreatingRecurrence, setIsCreatingRecurrence] = useState(false);
+  const [recurrenceError, setRecurrenceError] = useState<string | null>(null);
 
   // ── Effects ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -417,6 +424,91 @@ export default function PlannerPage() {
 
   const handleCompleteTask = (taskId: string) => {
     updateTask(taskId, { status: 'done' });
+  };
+
+  const handleOpenRepeatModal = (task: any) => {
+    if (!isUltra) {
+      alert("Task Recurrence is an Ultra feature. Please upgrade to unlock.");
+      return;
+    }
+    setTaskToRepeat(task);
+    setIsRepeatModalOpen(true);
+    setRecurrenceError(null);
+  };
+
+  const handleCreateRecurrence = async () => {
+    if (!taskToRepeat) return;
+    setIsCreatingRecurrence(true);
+    setRecurrenceError(null);
+    try {
+      let currentBaseDate = taskToRepeat.dueDate ? new Date(taskToRepeat.dueDate) : new Date();
+      if (isNaN(currentBaseDate.getTime())) currentBaseDate = new Date();
+
+      const { type, iterations } = repeatConfig;
+      const linkedGoalId = isUltra
+        ? (taskToRepeat.related_goal_id || taskToRepeat.goal_id || taskToRepeat.goalId || null)
+        : null;
+      const linkedGoal = linkedGoalId
+        ? goals.find((g) => String(g.id) === String(linkedGoalId))
+        : null;
+      const goalEndDate = linkedGoal?.target_date ? new Date(linkedGoal.target_date) : null;
+
+      let createdCount = 0;
+      let failedCount = 0;
+      let stoppedByGoalDeadline = false;
+
+      for (let i = 1; i <= iterations; i++) {
+        const nextDate = new Date(currentBaseDate);
+        if (type === 'daily') {
+          nextDate.setDate(nextDate.getDate() + i);
+        } else if (type === 'weekly') {
+          nextDate.setDate(nextDate.getDate() + (i * 7));
+        }
+
+        if (goalEndDate && !isNaN(goalEndDate.getTime()) && nextDate > goalEndDate) {
+          stoppedByGoalDeadline = true;
+          break;
+        }
+
+        const dateStr = getDateKeyInTimezone(nextDate, timezone);
+
+        const payload = {
+          title: taskToRepeat.title,
+          description: taskToRepeat.description || '',
+          priority: taskToRepeat.priority || 'medium',
+          status: 'todo',
+          due_local_date: dateStr,
+          due_local_time: taskToRepeat.startTime || '09:00',
+          timezone,
+          estimated_duration_minutes: taskToRepeat.duration || 60,
+          tags: taskToRepeat.tags || [],
+          category: taskToRepeat.category || 'work',
+          goal_id: linkedGoalId,
+        };
+
+        const result = await createTask(payload as any);
+        if (result.success) {
+          createdCount += 1;
+        } else {
+          failedCount += 1;
+        }
+      }
+
+      if (failedCount > 0) {
+        setRecurrenceError(`Created ${createdCount} tasks, ${failedCount} failed. Please review and retry if needed.`);
+      } else if (createdCount === 0 && stoppedByGoalDeadline) {
+        setRecurrenceError('No new tasks created because the linked goal deadline has been reached.');
+      } else {
+        setIsRepeatModalOpen(false);
+        setTaskToRepeat(null);
+        setTimeout(() => fetchTasks(), 500);
+      }
+
+    } catch (e: any) {
+      setRecurrenceError(e.message || "Failed to create recurrences");
+    } finally {
+      setIsCreatingRecurrence(false);
+    }
   };
 
   // ── Stats ─────────────────────────────────────────────────────────
@@ -874,10 +966,12 @@ export default function PlannerPage() {
                     <TaskCard
                       key={task.id || task._id || `task-${crypto.randomUUID()}`}
                       task={transformTaskForCard(task)}
-                      onEdit={() => handleEditTask(task)}
-                      onDelete={() => deleteTask(task.originalId || task.id)}
-                      onStartTask={() => handleStartTask(task.originalId || task.id)}
-                      onMarkComplete={() => handleCompleteTask(task.originalId || task.id)}
+                      onEdit={(t) => handleEditTask(t)}
+                      onDelete={(id) => deleteTask(id.toString())}
+                      onStartTask={(id) => handleStartTask(id.toString())}
+                      onMarkComplete={(id) => handleCompleteTask(id.toString())}
+                      onRepeat={(t) => handleOpenRepeatModal(t)}
+                      draggable
                       onAutoUpdateStatus={(id, status) => updateTask(String(id), { status: status as any })}
                     />
                   ));
@@ -975,6 +1069,77 @@ export default function PlannerPage() {
           />
         </div>
       </div>
+
+      {/* Recurrence Modal */}
+      <Modal
+        isOpen={isRepeatModalOpen}
+        onOpenChange={setIsRepeatModalOpen}
+        title="Set Recurrence"
+        maxWidth="sm"
+        footer={
+          <div className="flex gap-3 justify-end items-center">
+            <button
+              className="app-modal-btn app-modal-btn-secondary"
+              onClick={() => setIsRepeatModalOpen(false)}
+              disabled={isCreatingRecurrence}
+            >
+              Cancel
+            </button>
+            <button
+              className={`app-modal-btn app-modal-btn-primary ${isCreatingRecurrence ? 'opacity-50 cursor-not-allowed' : ''}`}
+              onClick={handleCreateRecurrence}
+              disabled={isCreatingRecurrence}
+            >
+              {isCreatingRecurrence ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  <span>Scheduling...</span>
+                </>
+              ) : (
+                <>
+                  <Repeat size={16} />
+                  <span>Create Tasks</span>
+                </>
+              )}
+            </button>
+          </div>
+        }
+      >
+        <div className="flex flex-col gap-4 pt-2">
+          {recurrenceError && <div className="text-red-500 bg-red-500/10 p-3 rounded-md border border-red-500/20 text-sm">{recurrenceError}</div>}
+          <div className="text-[var(--text-secondary)] text-sm leading-relaxed mb-2">
+            Schedule iterative copies of <strong>"{taskToRepeat?.title}"</strong> into your planner.
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-[var(--text-primary)]">Recurrence Schedule</label>
+            <select
+              value={repeatConfig.type}
+              onChange={(e) => setRepeatConfig(p => ({ ...p, type: e.target.value }))}
+              className="p-3 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] text-[var(--text-primary)] transition-all w-full"
+              disabled={isCreatingRecurrence}
+            >
+              <option value="daily">Daily Loop</option>
+              <option value="weekly">Weekly Loop</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-2 mt-2">
+            <label className="text-sm font-medium text-[var(--text-primary)]">Number of iterations</label>
+            <input
+              type="number"
+              min="1"
+              max="30"
+              value={repeatConfig.iterations}
+              onChange={(e) => setRepeatConfig(p => ({ ...p, iterations: parseInt(e.target.value) || 1 }))}
+              className="p-3 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] text-[var(--text-primary)] transition-all w-full"
+              disabled={isCreatingRecurrence}
+            />
+            <span className="text-xs text-[var(--text-tertiary)]">Max 30 forward iterations.</span>
+          </div>
+        </div>
+      </Modal>
+
     </ErrorBoundary>
   );
 }

@@ -4,7 +4,7 @@ import logging
 from datetime import date
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from backend.core.security import get_current_user
@@ -328,6 +328,7 @@ async def get_goals(current_user: User = Depends(get_current_user)):
 
 @router.get("/goals/timeline", response_model=List[Dict[str, Any]])
 async def get_goal_timeline(current_user: User = Depends(get_current_user)):
+    require_ultra_feature(current_user, "goal_progress_detailed")
     return await planner_service.get_goal_timeline(str(current_user.id))
 
 
@@ -380,16 +381,25 @@ class AIGoalRequest(BaseModel):
     complexity: Optional[str] = "medium"
     target_date: Optional[str] = None
     auto_create_tasks: Optional[bool] = True
-    auto_create_habits: Optional[bool] = False
+    auto_create_habits: Optional[bool] = True
     propose_deep_work: Optional[bool] = True
 
 
 @router.post("/ai/create-goal-with-cascade", status_code=status.HTTP_201_CREATED)
 async def ai_create_goal_with_cascade(
     request: AIGoalRequest,
+    x_leno_agentic_source: Optional[str] = Header(default=None, alias="X-Leno-Agentic-Source"),
     current_user: User = Depends(get_current_user),
 ):
     require_ultra_feature(current_user, "agentic_planner")
+    if (x_leno_agentic_source or "").strip().lower() != "chat":
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "AGENTIC_FLOW_REQUIRED",
+                "message": "Use Leno chat agentic mode for automatic goal breakdown.",
+            },
+        )
     from backend.ai.tools.goal_automation import create_goal_with_cascade
 
     result = await create_goal_with_cascade(user_id=str(current_user.id), payload=request.dict())

@@ -597,7 +597,13 @@ class DualAIClient:
     def _get_system_prompt_with_context(self, mode: str, context_prompt: str) -> str:
         """Build system prompt with FULL user context for AI agent."""
         
+        from datetime import datetime, timezone
+        now_str = datetime.now(timezone.utc).strftime("%A, %Y-%m-%d %H:%M UTC")
+        
         base_agent_prompt = """You are Leno, an AI productivity agent with FULL ACCESS to the user's data.
+
+## SYSTEM TIME:
+The current time is {now_str}. Never schedule events in the past.
 
 ## YOUR REAL-TIME KNOWLEDGE:
 {context}
@@ -619,6 +625,7 @@ class DualAIClient:
 3. **WHEN USER EXPLICITLY ASKS TO CREATE WITH FULL CONTEXT GATHERED**, you MUST generate a JSON action (see Output Format).
 4. **NEVER MENTION JSON IN CONVERSATION**: Do not say "Here is the JSON action" or "Here is the tool call". The JSON block is invisible to the user. Just speak naturally. Your JSON payloads must be appended secretly at the very end of your response.
 5. **Use REAL data** from the context above - reference specific goals, tasks by name.
+6. **GOAL BREAKDOWN POLICY**: Automatic task/habit/deep-work cascade must run through chat agentic flow only (not manual planner forms). For existing manual goals, use BREAKDOWN_GOAL.
 
 ## RESPONSE STYLE (CRITICAL):
 1. **ATTRACTIVE & ENGAGING COACH**: Be highly motivating, strategic, and inquisitive. Treat the user like a high-agency performer.
@@ -662,14 +669,20 @@ class DualAIClient:
 
 1. **CREATE_GOAL**
    - payload: {{ "title": "str", "description": "str", "category": "str", "preferred_task_time": "str (HH:MM 24-hour)", "preferred_deep_work_time": "str (HH:MM 24-hour)", "milestones": ["str"] }}
-   
-2. **CREATE_TASK**
+
+2. **CREATE_GOAL_CASCADE**
+   - payload: {{ "title": "str", "description": "str", "category": "str", "timeframe": "day/week/month/quarter", "complexity": "low/medium/high", "target_date": "str (optional)", "auto_create_tasks": true, "auto_create_habits": true/false, "propose_deep_work": true/false, "preferred_task_time": "HH:MM (optional)", "preferred_deep_work_time": "HH:MM (optional)" }}
+
+3. **BREAKDOWN_GOAL**
+   - payload: {{ "goal_link": "str (goal ID or exact title)", "auto_create_tasks": true, "auto_create_habits": true/false, "propose_deep_work": true/false, "preferred_task_time": "HH:MM (optional)", "preferred_deep_work_time": "HH:MM (optional)" }}
+
+4. **CREATE_TASK**
    - payload: {{ "title": "str", "duration_minutes": int, "priority": "high/medium/low", "due_date": "str (ISO formatted datetime)", "goal_link": "str (optional goal ID or title)" }}
 
-3. **CREATE_HABIT**
+5. **CREATE_HABIT**
    - payload: {{ "name": "str", "frequency": "daily/weekly", "category": "str", "goal_link": "str (optional)" }}
 
-4. **START_DEEP_WORK**
+6. **START_DEEP_WORK**
    - payload: {{ "duration_minutes": int, "focus_goal": "str", "scheduled_start": "str (ISO formatted datetime)" }}
 
 ## EXAMPLE INTERACTIONS:
@@ -723,6 +736,7 @@ Now help the user with their request. Use the real data above to give personaliz
         }
         
         return base_agent_prompt.format(
+            now_str=now_str,
             context=context_prompt,
             mode=mode + " - " + mode_additions.get(mode, "")
         )
@@ -852,7 +866,7 @@ Now help the user with their request. Use the real data above to give personaliz
         Backward-compatible v2 extractor.
         Keeps chat stable even if advanced extractor code is unavailable.
         """
-        _ = context  # Context is already embedded in prompt; keep signature compatibility.
+        import re
 
         intent, actions, _ = self._extract_intent_and_actions(
             user_message=user_message,
@@ -922,6 +936,86 @@ Now help the user with their request. Use the real data above to give personaliz
         delete_action = self._detect_delete_action(user_message)
         if delete_action and not any(a.get("type") == delete_action.get("type") for a in actions):
             actions.append(delete_action)
+
+        # Existing-goal breakdown fallback:
+        # If user asks to "break down" a goal, resolve it from context and run BREAKDOWN_GOAL.
+        breakdown_triggers = [
+            "break down",
+            "breakdown",
+            "roadmap",
+            "plan for this goal",
+            "split this goal",
+            "decompose this goal",
+            "generate plan for this goal",
+        ]
+        if (
+            any(trigger in user_lower for trigger in breakdown_triggers)
+            and not any(a.get("type") in {"BREAKDOWN_GOAL", "CREATE_GOAL_CASCADE"} for a in actions)
+        ):
+            goals_list: List[Dict[str, Any]] = []
+            try:
+                goals_blob = context.get("goals", {})
+                if isinstance(goals_blob, dict):
+                    raw = goals_blob.get("list", [])
+                    if isinstance(raw, list):
+                        goals_list = [g for g in raw if isinstance(g, dict)]
+            except Exception:
+                goals_list = []
+
+            goal_match: Optional[Dict[str, Any]] = None
+            # 1) numeric id match
+            for candidate_id in re.findall(r"\b\d+\b", user_message or ""):
+                goal_match = next(
+                    (g for g in goals_list if str(g.get("id", "")).strip() == str(candidate_id).strip()),
+                    None,
+                )
+                if goal_match:
+                    break
+
+            # 2) quoted exact title match
+            if not goal_match:
+                quoted_titles = re.findall(r"[\"']([^\"']{3,})[\"']", user_message or "")
+                for quoted in quoted_titles:
+                    needle = quoted.strip().lower()
+                    goal_match = next(
+                        (
+                            g
+                            for g in goals_list
+                            if str(g.get("title", "")).strip().lower() == needle
+                        ),
+                        None,
+                    )
+                    if goal_match:
+                        break
+
+            # 3) longest title containment match
+            if not goal_match and goals_list:
+                ranked_matches = []
+                for g in goals_list:
+                    title = str(g.get("title", "")).strip()
+                    if not title:
+                        continue
+                    title_lower = title.lower()
+                    if title_lower in user_lower:
+                        ranked_matches.append((len(title_lower), g))
+                if ranked_matches:
+                    ranked_matches.sort(key=lambda x: x[0], reverse=True)
+                    goal_match = ranked_matches[0][1]
+
+            if goal_match:
+                actions.append(
+                    {
+                        "type": "BREAKDOWN_GOAL",
+                        "payload": {
+                            "goal_link": str(goal_match.get("id") or goal_match.get("title") or ""),
+                            "auto_create_tasks": True,
+                            "auto_create_habits": True,
+                            "propose_deep_work": True,
+                        },
+                        "requires_confirmation": False,
+                    }
+                )
+                intent = "PLAN"
 
         return intent, actions, pending_confirmations
 
