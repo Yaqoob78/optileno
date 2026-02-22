@@ -198,7 +198,7 @@ export default function GoalTimeline() {
               onChange={e => setNewGoal({ ...newGoal, title: e.target.value })}
               placeholder="e.g., Run a Marathon"
               autoFocus
-              className="px-4 py-2.5 bg-black/20 hover:bg-black/40 focus:bg-black/60 border border-white/5 rounded-xl outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)]/30 backdrop-blur-sm"
+              className="px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -214,7 +214,7 @@ export default function GoalTimeline() {
             <select
               value={newGoal.category}
               onChange={e => setNewGoal({ ...newGoal, category: e.target.value })}
-              className="px-4 py-2.5 bg-black/20 hover:bg-black/40 focus:bg-black/60 border border-white/5 rounded-xl outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)]/30 backdrop-blur-sm"
+              className="px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm"
             >
               <option value="Personal">Personal</option>
               <option value="Work">Work</option>

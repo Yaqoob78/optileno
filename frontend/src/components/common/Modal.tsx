@@ -53,7 +53,7 @@ export const Modal = ({
                             "w-[95vw] sm:w-full max-h-[85dvh] sm:max-h-[85vh]",
                             maxWidthClass,
                             // Layout styling
-                            "bg-[var(--background-primary)]/80 sm:bg-[var(--background-primary)]/85 backdrop-blur-2xl sm:rounded-2xl border border-white/10 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] ring-1 ring-white/5",
+                            "bg-[var(--glass-bg)] backdrop-blur-3xl sm:rounded-2xl border border-[var(--glass-border)] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)]",
                             // Flex structure handling inner scrolling
                             "flex flex-col",
                             // Animations
@@ -63,7 +63,7 @@ export const Modal = ({
                     )}
                 >
                     {/* Header - Fixed to top, no shrink */}
-                    <div className="flex flex-col gap-1 p-5 sm:p-6 shrink-0 border-b border-white/5">
+                    <div className="flex flex-col gap-1 p-5 sm:p-6 shrink-0 border-b border-[var(--glass-border)]">
                         <div className="flex items-start justify-between">
                             <Dialog.Title className="text-lg font-semibold tracking-tight text-[var(--text-primary,#111827)]">
                                 {title}
@@ -87,7 +87,7 @@ export const Modal = ({
 
                     {/* Footer - Fixed to bottom, no shrink */}
                     {footer && (
-                        <div className="flex shrink-0 items-center justify-end p-5 sm:p-6 border-t border-white/5 rounded-b-2xl">
+                        <div className="flex shrink-0 items-center justify-end p-5 sm:p-6 border-t border-[var(--glass-border)] rounded-b-2xl">
                             {footer}
                         </div>
                     )}

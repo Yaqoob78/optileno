@@ -337,7 +337,7 @@ export default function HabitTracker({ habits: propsHabits }: HabitTrackerProps)
               onChange={e => setNewHabit({ ...newHabit, name: e.target.value })}
               placeholder="e.g., Meditation, Reading..."
               autoFocus
-              className="px-4 py-2.5 bg-black/20 hover:bg-black/40 focus:bg-black/60 border border-white/5 rounded-xl outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)]/30 backdrop-blur-sm"
+              className="px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -346,7 +346,7 @@ export default function HabitTracker({ habits: propsHabits }: HabitTrackerProps)
               value={newHabit.description}
               onChange={e => setNewHabit({ ...newHabit, description: e.target.value })}
               placeholder="Why do you want to build this habit?"
-              className="px-4 py-2.5 bg-black/20 hover:bg-black/40 focus:bg-black/60 border border-white/5 rounded-xl outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)]/30 backdrop-blur-sm min-h-[100px] resize-none"
+              className="px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm min-h-[100px] resize-none"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -356,8 +356,8 @@ export default function HabitTracker({ habits: propsHabits }: HabitTrackerProps)
                 <button
                   key={cat}
                   className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 border ${newHabit.category === cat
-                    ? 'bg-[var(--primary)]/20 border-[var(--primary)]/50 text-[var(--primary)] shadow-[0_0_15px_rgba(var(--primary),0.2)]'
-                    : 'bg-white/5 border-transparent text-[var(--text-secondary)] hover:bg-white/10'
+                    ? 'bg-[var(--background-secondary)] border-[var(--primary)] text-[var(--primary)] shadow-sm'
+                    : 'bg-black/5 dark:bg-white/5 border-transparent text-[var(--text-secondary)] hover:bg-black/10 dark:hover:bg-white/10'
                     }`}
                   onClick={() => setNewHabit({ ...newHabit, category: cat })}
                 >
@@ -372,7 +372,7 @@ export default function HabitTracker({ habits: propsHabits }: HabitTrackerProps)
               <select
                 value={newHabit.goalId || ''}
                 onChange={e => setNewHabit({ ...newHabit, goalId: e.target.value })}
-                className="px-4 py-2.5 bg-black/20 hover:bg-black/40 focus:bg-black/60 border border-white/5 rounded-xl outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)]/30 backdrop-blur-sm"
+                className="px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm"
               >
                 <option value="">No Link</option>
                 {goals.map(g => (
