@@ -1,0 +1,85 @@
+.app-modal-overlay {
+  background: rgba(2, 6, 23, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.app-modal-content {
+  background: var(--card-background, rgb(var(--color-bg-secondary)));
+  border: 1px solid var(--border-primary, rgba(var(--color-border-light), 0.55));
+  color: var(--text-primary, rgb(var(--color-text-primary)));
+  box-shadow: 0 28px 70px rgba(2, 6, 23, 0.5);
+}
+
+.app-modal-header {
+  border-bottom: 1px solid var(--border-primary, rgba(var(--color-border-light), 0.55));
+  background: var(--card-background, rgb(var(--color-bg-secondary)));
+}
+
+.app-modal-body {
+  background: var(--card-background, rgb(var(--color-bg-secondary)));
+}
+
+.app-modal-footer {
+  background: var(--card-background, rgb(var(--color-bg-secondary)));
+}
+
+.app-modal-footer > .w-full {
+  width: auto !important;
+  margin-left: auto;
+}
+
+.app-modal-close {
+  background: rgba(var(--color-bg-tertiary), 0.85);
+  border: 1px solid var(--border-primary, rgba(var(--color-border-light), 0.55));
+}
+
+.app-modal-close:hover {
+  background: rgba(var(--color-bg-tertiary), 1);
+}
+
+.app-modal-content input:not([type='range']),
+.app-modal-content textarea,
+.app-modal-content select {
+  background: rgba(var(--color-bg-primary), 0.95) !important;
+  border-color: var(--border-primary, rgba(var(--color-border-light), 0.55)) !important;
+  color: var(--text-primary, rgb(var(--color-text-primary))) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.app-modal-content input:not([type='range'])::placeholder,
+.app-modal-content textarea::placeholder {
+  color: var(--text-secondary, rgb(var(--color-text-secondary))) !important;
+}
+
+.app-modal-content .date-picker-trigger {
+  background: rgba(var(--color-bg-primary), 0.95) !important;
+  border-color: var(--border-primary, rgba(var(--color-border-light), 0.55)) !important;
+}
+
+.app-modal-content .date-picker-calendar {
+  background: rgb(var(--color-bg-secondary)) !important;
+  border-color: var(--border-primary, rgba(var(--color-border-light), 0.55)) !important;
+  box-shadow: 0 14px 30px rgba(2, 6, 23, 0.35);
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.app-modal-content .calendar-nav-btn {
+  background: rgba(var(--color-bg-primary), 0.9);
+  border-color: var(--border-primary, rgba(var(--color-border-light), 0.55));
+}
+
+.app-modal-content .calendar-day:hover:not(.disabled) {
+  background: rgba(var(--color-bg-tertiary), 0.9);
+}
+
+@media (max-width: 640px) {
+  .app-modal-content {
+    width: 94vw;
+    max-width: 94vw;
+    max-height: 88dvh;
+  }
+}

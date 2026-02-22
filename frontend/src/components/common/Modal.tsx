@@ -3,6 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import '../../styles/components/common/Modal.css';
 
 interface ModalProps {
     isOpen: boolean;
@@ -40,7 +41,7 @@ export const Modal = ({
         <Dialog.Root open={isOpen} onOpenChange={onOpenChange}>
             <Dialog.Portal>
                 {/* Overlay constraints: fixed inset-0, dark backdrop */}
-                <Dialog.Overlay className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm transition-all duration-300 data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=open]:animate-in data-[state=open]:fade-in" />
+                <Dialog.Overlay className="app-modal-overlay fixed inset-0 z-50 transition-all duration-300 data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=open]:animate-in data-[state=open]:fade-in" />
 
                 {/* Absolute Centering container. 
             Mobile behavior: Full width/height sheet with border radii adjustments. */}
@@ -49,22 +50,26 @@ export const Modal = ({
                     className={twMerge(
                         clsx(
                             // Layout rules for positioning
-                            "fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%]",
+                            "app-modal-content fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%]",
                             // Layout rules for size & dimensions
-                            "w-[92vw] max-w-[92vw] sm:w-full sm:max-w-md max-h-[85dvh] sm:max-h-[85vh]",
+                            "w-[92vw] max-h-[85dvh] sm:max-h-[85vh]",
                             maxWidthClass,
-                            "bg-[var(--glass-bg)] backdrop-blur-3xl rounded-2xl sm:rounded-2xl border border-[var(--glass-border)] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] overflow-hidden",
+                            "overflow-hidden",
+                            // Flex structure handling inner scrolling
+                            "flex flex-col",
+                            // Rounded corners
+                            "rounded-2xl",
                         ),
                         className
                     )}
                 >
                     {/* Header - Fixed to top, no shrink */}
-                    <div className="flex flex-col gap-1 p-5 sm:p-6 shrink-0 border-b border-[var(--glass-border)]">
+                    <div className="app-modal-header flex flex-col gap-1 p-5 sm:p-6 shrink-0">
                         <div className="flex items-start justify-between">
                             <Dialog.Title className="text-lg font-semibold tracking-tight text-[var(--text-primary,#111827)]">
                                 {title}
                             </Dialog.Title>
-                            <Dialog.Close className="rounded-full bg-white/5 p-1.5 opacity-70 transition-all hover:opacity-100 hover:bg-white/10 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
+                            <Dialog.Close className="app-modal-close rounded-full p-1.5 opacity-80 transition-all hover:opacity-100 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2 disabled:pointer-events-none">
                                 <X className="h-5 w-5 text-[var(--text-secondary,#6b7280)]" />
                                 <span className="sr-only">Close</span>
                             </Dialog.Close>
@@ -77,13 +82,13 @@ export const Modal = ({
                     </div>
 
                     {/* Internal Scrolling Body */}
-                    <div className="p-5 sm:p-6 overflow-y-auto flex-1 custom-scrollbar w-full">
+                    <div className="app-modal-body p-5 sm:p-6 overflow-y-auto flex-1 custom-scrollbar">
                         {children}
                     </div>
 
                     {/* Footer - Fixed to bottom, no shrink */}
                     {footer && (
-                        <div className="flex shrink-0 items-center justify-end p-5 sm:p-6 border-t border-[var(--glass-border)] rounded-b-2xl w-full">
+                        <div className="app-modal-footer flex shrink-0 items-center justify-end px-5 pb-4 pt-2 sm:px-6 sm:pb-5 sm:pt-3">
                             {footer}
                         </div>
                     )}
