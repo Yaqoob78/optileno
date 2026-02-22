@@ -243,36 +243,45 @@ async def generate_tasks_from_goal(
         
         # 3. Create Tasks in DB
         for i, task_def in enumerate(ai_tasks):
-            # Calculate due date based on "due_in_days" or distribute evenly
-            due_in = task_def.get("due_in_days", (i + 1) * 2)
-            due_date = datetime.utcnow() + timedelta(days=due_in)
-            
-            task_data = {
-                "title": task_def.get("title", f"Task for {goal_title}"),
-                "description": task_def.get("description", f"AI generated task for goal: {goal_title}"),
-                "priority": task_def.get("priority", "medium").lower(),
-                "category": category,
-                "estimated_minutes": task_def.get("estimated_minutes", 30),
-                "due_date": due_date.isoformat(),
-                "goal_id": goal_id, # Link directly
-                "tags": ["ai-generated", f"goal:{goal_id}", category],
-            }
-            
-            try:
-                task = await planner_service.create_task(user_id, task_data)
+            # Ensure due_in_days is a list to handle recurrence
+            due_in_days_val = task_def.get("due_in_days", (i + 1) * 2)
+            if not isinstance(due_in_days_val, list):
+                due_in_days_list = [due_in_days_val]
+            else:
+                due_in_days_list = due_in_days_val
+
+            for due_in in due_in_days_list:
+                try:
+                    due_date = datetime.utcnow() + timedelta(days=int(due_in))
+                except Exception:
+                    due_date = datetime.utcnow() + timedelta(days=(i + 1) * 2)
                 
-                if "error" in task:
-                    logger.error(f"Failed to create task: {task['error']}")
-                else:
-                    created_tasks.append(task)
+                task_data = {
+                    "title": task_def.get("title", f"Task for {goal_title}"),
+                    "description": task_def.get("description", f"AI generated task for goal: {goal_title}"),
+                    "priority": task_def.get("priority", "medium").lower(),
+                    "category": category,
+                    "estimated_minutes": task_def.get("estimated_minutes", 30),
+                    "due_date": due_date.isoformat(),
+                    "goal_id": goal_id, # Link directly
+                    "tags": ["ai-generated", f"goal:{goal_id}", category],
+                }
+                
+                try:
+                    task = await planner_service.create_task(user_id, task_data)
                     
-                    # Broadcast task creation
-                    try:
-                        await broadcast_task_created(int(user_id), task)
-                    except Exception:
-                        pass
-            except Exception as e:
-                logger.error(f"Failed to create individual task: {e}")
+                    if "error" in task:
+                        logger.error(f"Failed to create task: {task['error']}")
+                    else:
+                        created_tasks.append(task)
+                        
+                        # Broadcast task creation
+                        try:
+                            await broadcast_task_created(int(user_id), task)
+                        except Exception:
+                            pass
+                except Exception as e:
+                    logger.error(f"Failed to create individual task: {e}")
 
         # 4. Handle Habits from AI Breakdown (Optional: if we want to merge this logic here or keep separate)
         # The current calling function `create_goal_with_cascade` handles habits separately via `get_recommended_habits`.
@@ -479,32 +488,41 @@ async def create_goal_with_cascade(
             created_tasks = []
             
             for i, task_def in enumerate(ai_tasks):
-                # Calculate due date based on "due_in_days" or distribute evenly
-                due_in = task_def.get("due_in_days", (i + 1) * 2)
-                due_date = datetime.utcnow() + timedelta(days=due_in)
-                
-                task_data = {
-                    "title": task_def.get("title", f"Task for {title}"),
-                    "description": task_def.get("description", f"AI generated task for goal: {title}"),
-                    "priority": task_def.get("priority", "medium").lower(),
-                    "category": category,
-                    "estimated_minutes": task_def.get("estimated_minutes", 30),
-                    "due_date": due_date.isoformat(),
-                    "goal_id": goal_id, # Link directly
-                    "tags": ["ai-generated", f"goal:{goal_id}", category],
-                }
-                
-                try:
-                    task = await planner_service.create_task(user_id, task_data)
-                    if "error" not in task:
-                        created_tasks.append(task)
-                        # Broadcast task creation
-                        try:
-                            await broadcast_task_created(int(user_id), task)
-                        except Exception:
-                            pass
-                except Exception as e:
-                    logger.error(f"Failed to create individual task: {e}")
+                # Ensure due_in_days is a list to handle recurrence
+                due_in_days_val = task_def.get("due_in_days", (i + 1) * 2)
+                if not isinstance(due_in_days_val, list):
+                    due_in_days_list = [due_in_days_val]
+                else:
+                    due_in_days_list = due_in_days_val
+
+                for due_in in due_in_days_list:
+                    try:
+                        due_date = datetime.utcnow() + timedelta(days=int(due_in))
+                    except Exception:
+                        due_date = datetime.utcnow() + timedelta(days=(i + 1) * 2)
+                    
+                    task_data = {
+                        "title": task_def.get("title", f"Task for {title}"),
+                        "description": task_def.get("description", f"AI generated task for goal: {title}"),
+                        "priority": task_def.get("priority", "medium").lower(),
+                        "category": category,
+                        "estimated_minutes": task_def.get("estimated_minutes", 30),
+                        "due_date": due_date.isoformat(),
+                        "goal_id": goal_id, # Link directly
+                        "tags": ["ai-generated", f"goal:{goal_id}", category],
+                    }
+                    
+                    try:
+                        task = await planner_service.create_task(user_id, task_data)
+                        if "error" not in task:
+                            created_tasks.append(task)
+                            # Broadcast task creation
+                            try:
+                                await broadcast_task_created(int(user_id), task)
+                            except Exception:
+                                pass
+                    except Exception as e:
+                        logger.error(f"Failed to create individual task: {e}")
             
             result["tasks_created"] = created_tasks
         
@@ -532,17 +550,40 @@ async def create_goal_with_cascade(
             if should_propose:
                 result["deep_work_proposed"] = True
                 
-                # If explicit schedule requested or AI has strong recommendation
-                if payload.get("schedule_deep_work", False):
-                    # Use AI duration if available
-                    duration = 180
-                    if ai_deep_work and "duration_minutes" in ai_deep_work[0]:
-                        duration = ai_deep_work[0]["duration_minutes"]
+                # Check if explicit schedule requested or AI has strong recommendation
+                if payload.get("schedule_deep_work", False) or len(ai_deep_work) > 0:
+                    for dw_def in ai_deep_work:
+                        duration = dw_def.get("duration_minutes", 180)
+                        due_in_days_val = dw_def.get("due_in_days", [1])
                         
-                    session = await schedule_deep_work_block(
-                        user_id, goal_id, title, duration_minutes=duration
-                    )
-                    result["deep_work_session"] = session
+                        if not isinstance(due_in_days_val, list):
+                            due_in_days_val = [due_in_days_val]
+                        
+                        for due_in in due_in_days_val:
+                            try:
+                                start_time = datetime.utcnow() + timedelta(days=int(due_in))
+                            except Exception:
+                                start_time = datetime.utcnow() + timedelta(days=1)
+                                
+                            start_time = start_time.replace(hour=9, minute=0, second=0, microsecond=0)
+                            
+                            focus_goal = dw_def.get("focus_area", f"Deep focus around {title}")
+                            
+                            plan_data = {
+                                "name": "Deep Work Session",
+                                "description": focus_goal,
+                                "plan_type": "deep_work",
+                                "date": start_time,
+                                "duration_hours": duration / 60.0,
+                                "schedule": {
+                                    "type": "deep_work",
+                                    "duration_minutes": duration,
+                                    "status": "scheduled",
+                                    "scheduled_local_time": start_time.isoformat()
+                                }
+                            }
+                            session = await planner_service.create_plan(user_id, plan_data)
+                            result["deep_work_session"] = session # Storing last created session
         
         # Log analytics event
         await analytics_service.save_event({

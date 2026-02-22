@@ -551,26 +551,37 @@ class PlannerToolSet:
     ) -> Dict[str, Any]:
         """Prepare a deep work session (does NOT start the timer)"""
         
-        # Determine if it's scheduled or ad-hoc
         status = "scheduled" if scheduled_start else "pending"
         
-        # Prepare payload for the planner service
+        from datetime import datetime
+        import dateutil.parser
+        
+        dt = datetime.utcnow()
+        if scheduled_start:
+            try:
+                dt = dateutil.parser.isoparse(scheduled_start)
+            except Exception:
+                pass
+                
         payload = {
             "planned_duration_minutes": duration_minutes,
             "focus_goal": focus_goal,
             "notes": None,
             "status": status,
         }
-        
         if scheduled_start:
             payload["scheduled_local_time"] = scheduled_start
             
-        result = await planner_service.start_deep_work(user_id, payload)
+        plan_data = {
+            "name": "Deep Work Session",
+            "description": focus_goal,
+            "plan_type": "deep_work",
+            "date": dt,
+            "duration_hours": duration_minutes / 60.0,
+            "schedule": payload
+        }
         
-        # Override the status explicitly so it doesn't instantly start running
-        # This requires an update or we can just assume the service respects payload
-        if result and "schedule" in result:
-             result["schedule"]["status"] = status
+        result = await planner_service.create_plan(user_id, plan_data)
              
         # Log analytics event
         await analytics_service.save_event({

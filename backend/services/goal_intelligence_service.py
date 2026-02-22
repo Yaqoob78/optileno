@@ -35,25 +35,25 @@ class GoalIntelligenceService:
         Do NOT use a generic rigid template. Instead, deeply analyze the precise nature of the goal (e.g., highly academic like 'JEE Mains', physical like 'Marathon', or creative like 'Write a Novel') and tailor the exact number, frequency, and type of actions required exclusively for success in {duration_days} days.
         
         Create a precise execution engine containing:
-        1. **Tasks**: Specific, one-time actionable items. Generate exactly the right amount of key tasks required for the {duration_days} day timeframe.
-        2. **Habits**: Recurring daily actions required for compounding progress (e.g., 'consistency study habits', 'early wake ups'). Only suggest habits that make logical sense for this specific goal.
-        3. **Deep Work**: Focused, uninterrupted work blocks. Define the duration and frequency per week if this goal requires deep focus (like studying or coding). If the goal is purely physical/administrative and doesn't need deep work, omit it.
+        1. **Tasks**: Specific actionable items. For recurring tasks (e.g., "dribbling practice every monday"), you can specify an array of 'due_in_days' (e.g., [1, 8, 15, 22]) to schedule them across the {duration_days} days timeframe. Do not generate tasks past {duration_days} days.
+        2. **Habits**: Recurring daily actions required for compounding progress (e.g., 'consistency study habits'). Only suggest habits that make logical sense for this specific goal.
+        3. **Deep Work**: Focused, uninterrupted work blocks. Define the duration and the specific days ('due_in_days' array) if this goal requires deep focus. If not needed, omit it.
         
-        Analyze the time constraint carefully. If the duration is short (e.g., 30 days for a massive goal), the frequency and intensity of habits and deep work MUST be extremely high.
+        Analyze the time constraint carefully. Keep rest days in mind.
         
         Output valid JSON only:
         {{
             "tasks": [
-                {{"title": "Task Name", "estimated_minutes": 60, "priority": "high", "due_in_days": 1}}
+                {{"title": "Task Name", "estimated_minutes": 60, "priority": "high", "due_in_days": [1, 8, 15]}}
             ],
             "habits": [
                 {{"name": "Habit Name", "frequency": "daily"}}
             ],
             "deep_work": [
-                {{"focus_area": "Focus Area", "duration_minutes": 90, "frequency_per_week": 3, "notes": "Description"}}
+                {{"focus_area": "Focus Area", "duration_minutes": 90, "due_in_days": [3, 10, 17], "notes": "Description"}}
             ],
             "milestones": [
-                "Milestone 1 (Week 1)", "Milestone 2 (Week 2)"
+                "Milestone 1 (Week 1)"
             ]
         }}
         """
