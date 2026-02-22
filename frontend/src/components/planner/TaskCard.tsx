@@ -655,9 +655,9 @@ export default function TaskCard({
         maxWidth="sm"
         footer={
           <div className="flex gap-3 w-full justify-end">
-            <button className="px-4 py-2 rounded-lg font-medium text-[var(--color-text-secondary)] hover:bg-[var(--bg-secondary)] transition-colors" onClick={() => setIsRetryModalOpen(false)}>Close</button>
+            <button className="px-4 py-2 rounded-lg font-medium text-[var(--text-secondary)] hover:bg-[var(--background-secondary)] transition-colors" onClick={() => setIsRetryModalOpen(false)}>Close</button>
             <button
-              className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-[var(--brand-accent)] text-[var(--color-text-inverse)] hover:opacity-90 transition-opacity"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-[var(--primary)] text-[var(--text-on-primary)] hover:opacity-90 transition-opacity"
               onClick={handleConfirmRetry}
             >
               <Play size={14} /> Retry Now
@@ -665,8 +665,8 @@ export default function TaskCard({
           </div>
         }
       >
-        <div className="flex flex-col gap-4 text-[var(--color-text-secondary)] leading-relaxed">
-          <p>You missed the scheduled window for <span className="font-semibold text-[var(--color-text-primary)]">"{task.title}"</span>.</p>
+        <div className="flex flex-col gap-4 text-[var(--text-secondary)] leading-relaxed">
+          <p>You missed the scheduled window for <span className="font-semibold text-[var(--text-primary)]">"{task.title}"</span>.</p>
           <p className="text-sm opacity-80">Restarting will begin a new timer with the original duration.</p>
         </div>
       </Modal>

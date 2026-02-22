@@ -53,7 +53,7 @@ export const Modal = ({
                             "w-[95vw] sm:w-full max-h-[85dvh] sm:max-h-[85vh]",
                             maxWidthClass,
                             // Layout styling
-                            "bg-[var(--bg-primary,white)] sm:rounded-xl border border-[var(--border-color,#e5e7eb)] shadow-2xl",
+                            "bg-[var(--background-primary, #ffffff)] sm:rounded-xl border border-[var(--border-primary,#e5e7eb)] shadow-2xl",
                             // Flex structure handling inner scrolling
                             "flex flex-col",
                             // Animations
@@ -63,18 +63,18 @@ export const Modal = ({
                     )}
                 >
                     {/* Header - Fixed to top, no shrink */}
-                    <div className="flex flex-col gap-1 p-6 shrink-0 border-b border-[var(--border-color,#e5e7eb)]">
+                    <div className="flex flex-col gap-1 p-6 shrink-0 border-b border-[var(--border-primary,#e5e7eb)]">
                         <div className="flex items-start justify-between">
-                            <Dialog.Title className="text-lg font-semibold tracking-tight text-[var(--color-text-primary,#111827)]">
+                            <Dialog.Title className="text-lg font-semibold tracking-tight text-[var(--text-primary,#111827)]">
                                 {title}
                             </Dialog.Title>
-                            <Dialog.Close className="rounded-sm opacity-70 ring-offset-[var(--bg-primary,white)] transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-[var(--brand-accent)] focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
-                                <X className="h-5 w-5 text-[var(--color-text-secondary,#6b7280)]" />
+                            <Dialog.Close className="rounded-sm opacity-70 ring-offset-[var(--background-primary, #ffffff)] transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-[var(--primary,#f59e0b)] focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
+                                <X className="h-5 w-5 text-[var(--text-secondary,#6b7280)]" />
                                 <span className="sr-only">Close</span>
                             </Dialog.Close>
                         </div>
                         {description && (
-                            <Dialog.Description className="text-sm text-[var(--color-text-secondary,#6b7280)]">
+                            <Dialog.Description className="text-sm text-[var(--text-secondary,#6b7280)]">
                                 {description}
                             </Dialog.Description>
                         )}
@@ -87,7 +87,7 @@ export const Modal = ({
 
                     {/* Footer - Fixed to bottom, no shrink */}
                     {footer && (
-                        <div className="flex shrink-0 items-center justify-end p-6 border-t border-[var(--border-color,#e5e7eb)] bg-[var(--bg-secondary,#f9fafb)] rounded-b-xl">
+                        <div className="flex shrink-0 items-center justify-end p-6 border-t border-[var(--border-primary,#e5e7eb)] bg-[var(--background-secondary,#f9fafb)] rounded-b-xl">
                             {footer}
                         </div>
                     )}

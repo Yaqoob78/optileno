@@ -119,7 +119,7 @@ export default function PlannerDashboard({
       </div>
 
       {/* Motivation Section */}
-      <div className="motivation-section" style={{ marginTop: '1.5rem', padding: '1rem', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+      <div className="motivation-section" style={{ marginTop: '1.5rem', padding: '1rem', background: 'var(--background-secondary)', borderRadius: '12px', border: '1px solid var(--border-primary)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
           <Zap size={18} style={{ color: '#eab308' }} />
           <h4 style={{ fontWeight: 600, color: 'rgb(var(--color-text-primary))', margin: 0 }}>Keep the momentum!</h4>

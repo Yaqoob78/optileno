@@ -179,9 +179,9 @@ export default function GoalTimeline() {
         maxWidth="md"
         footer={
           <div className="flex gap-3 w-full justify-end">
-            <button className="px-4 py-2 rounded-lg font-medium text-[var(--color-text-secondary)] hover:bg-[var(--bg-secondary)] transition-colors" onClick={() => setIsModalOpen(false)}>Cancel</button>
+            <button className="px-4 py-2 rounded-lg font-medium text-[var(--text-secondary)] hover:bg-[var(--background-secondary)] transition-colors" onClick={() => setIsModalOpen(false)}>Cancel</button>
             <button
-              className="px-4 py-2 rounded-lg font-medium bg-[var(--brand-accent)] text-[var(--color-text-inverse)] hover:opacity-90 transition-opacity disabled:opacity-50"
+              className="px-4 py-2 rounded-lg font-medium bg-[var(--primary)] text-[var(--text-on-primary)] hover:opacity-90 transition-opacity disabled:opacity-50"
               onClick={handleSaveGoal}
               disabled={isSaving || !newGoal.title.trim()}
             >
@@ -192,17 +192,17 @@ export default function GoalTimeline() {
       >
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-[var(--color-text-secondary)]">Goal Title *</label>
+            <label className="text-sm font-medium text-[var(--text-secondary)]">Goal Title *</label>
             <input
               value={newGoal.title}
               onChange={e => setNewGoal({ ...newGoal, title: e.target.value })}
               placeholder="e.g., Run a Marathon"
               autoFocus
-              className="px-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg outline-none focus:border-[var(--brand-accent)] text-[var(--color-text-primary)]"
+              className="px-3 py-2 bg-[var(--background-secondary)] border border-[var(--border-primary)] rounded-lg outline-none focus:border-[var(--primary)] text-[var(--text-primary)]"
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-[var(--color-text-secondary)]">Target Date</label>
+            <label className="text-sm font-medium text-[var(--text-secondary)]">Target Date</label>
             <DatePicker
               value={newGoal.targetDate}
               onChange={(date) => setNewGoal({ ...newGoal, targetDate: date })}
@@ -210,11 +210,11 @@ export default function GoalTimeline() {
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-[var(--color-text-secondary)]">Category</label>
+            <label className="text-sm font-medium text-[var(--text-secondary)]">Category</label>
             <select
               value={newGoal.category}
               onChange={e => setNewGoal({ ...newGoal, category: e.target.value })}
-              className="px-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg outline-none focus:border-[var(--brand-accent)] text-[var(--color-text-primary)]"
+              className="px-3 py-2 bg-[var(--background-secondary)] border border-[var(--border-primary)] rounded-lg outline-none focus:border-[var(--primary)] text-[var(--text-primary)]"
             >
               <option value="Personal">Personal</option>
               <option value="Work">Work</option>
@@ -233,7 +233,7 @@ export default function GoalTimeline() {
       >
         {selectedGoal && (
           <div className="flex flex-col gap-4">
-            <p className="text-[var(--color-text-secondary)] leading-relaxed">
+            <p className="text-[var(--text-secondary)] leading-relaxed">
               {selectedGoal.description || 'No description provided.'}
             </p>
 
@@ -248,14 +248,14 @@ export default function GoalTimeline() {
               />
             </div>
 
-            <div className="flex flex-col gap-3 p-4 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-color)]">
-              <label className="font-medium text-[var(--color-text-primary)] flex justify-between">
+            <div className="flex flex-col gap-3 p-4 bg-[var(--background-secondary)] rounded-xl border border-[var(--border-primary)]">
+              <label className="font-medium text-[var(--text-primary)] flex justify-between">
                 <span>Update Progress</span>
-                <span className="text-[var(--brand-accent)]">{selectedGoal.current_progress || 0}%</span>
+                <span className="text-[var(--primary)]">{selectedGoal.current_progress || 0}%</span>
               </label>
               <input
                 type="range"
-                className="w-full accent-[var(--brand-accent)] h-2 rounded-lg appearance-none cursor-pointer"
+                className="w-full accent-[var(--primary)] h-2 rounded-lg appearance-none cursor-pointer"
                 min="0"
                 max="100"
                 value={selectedGoal.current_progress || 0}
