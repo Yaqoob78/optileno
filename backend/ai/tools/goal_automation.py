@@ -498,6 +498,14 @@ async def create_goal_with_cascade(
                 for due_in in due_in_days_list:
                     try:
                         due_date = datetime.utcnow() + timedelta(days=int(due_in))
+                        
+                        # Apply preferred time if provided
+                        preferred_time = payload.get("preferred_task_time")
+                        if preferred_time:
+                            parts = str(preferred_time).split(":")
+                            if len(parts) >= 2:
+                                due_date = due_date.replace(hour=int(parts[0]), minute=int(parts[1]), second=0, microsecond=0)
+                            
                     except Exception:
                         due_date = datetime.utcnow() + timedelta(days=(i + 1) * 2)
                     
@@ -565,7 +573,17 @@ async def create_goal_with_cascade(
                             except Exception:
                                 start_time = datetime.utcnow() + timedelta(days=1)
                                 
-                            start_time = start_time.replace(hour=9, minute=0, second=0, microsecond=0)
+                            dw_hour, dw_minute = 9, 0
+                            preferred_time = payload.get("preferred_deep_work_time")
+                            if preferred_time:
+                                parts = str(preferred_time).split(":")
+                                if len(parts) >= 2:
+                                    try:
+                                        dw_hour, dw_minute = int(parts[0]), int(parts[1])
+                                    except ValueError:
+                                        pass
+                                        
+                            start_time = start_time.replace(hour=dw_hour, minute=dw_minute, second=0, microsecond=0)
                             
                             focus_goal = dw_def.get("focus_area", f"Deep focus around {title}")
                             

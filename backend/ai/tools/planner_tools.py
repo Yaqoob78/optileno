@@ -228,7 +228,9 @@ class PlannerToolSet:
         target_date: str = None,
         auto_create_tasks: bool = True,
         auto_create_habits: bool = False,
-        propose_deep_work: bool = True
+        propose_deep_work: bool = True,
+        preferred_task_time: str = None,
+        preferred_deep_work_time: str = None
     ) -> Dict[str, Any]:
         """
         Create a goal with AI-generated cascade of tasks and habits.
@@ -246,6 +248,8 @@ class PlannerToolSet:
              auto_create_tasks = args.get("auto_create_tasks", auto_create_tasks)
              auto_create_habits = args.get("auto_create_habits", auto_create_habits)
              propose_deep_work = args.get("propose_deep_work", propose_deep_work)
+             preferred_task_time = args.get("preferred_task_time", preferred_task_time)
+             preferred_deep_work_time = args.get("preferred_deep_work_time", preferred_deep_work_time)
              
         from backend.ai.tools.goal_automation import create_goal_with_cascade
         
@@ -258,7 +262,9 @@ class PlannerToolSet:
             "auto_create_tasks": auto_create_tasks,
             "auto_create_habits": auto_create_habits,
             "propose_deep_work": propose_deep_work,
-            "target_date": target_date
+            "target_date": target_date,
+            "preferred_task_time": preferred_task_time,
+            "preferred_deep_work_time": preferred_deep_work_time
         }
         
         result = await create_goal_with_cascade(user_id, payload)

@@ -963,7 +963,7 @@ class PlannerService:
             "due_date": task.due_date.isoformat() if task.due_date else None,
             "tags": task.tags,
             "related_goal_id": str(task.goal_id) if task.goal_id else None,
-            "goal_title": task.goal.title if hasattr(task, 'goal') and task.goal else None,
+            "goal_title": task.goal.title if 'goal' in task.__dict__ and task.goal else None,
             "meta": task.meta or {},
             "created_at": task.created_at.isoformat() if task.created_at else None,
             "updated_at": task.updated_at.isoformat() if task.updated_at else None,
