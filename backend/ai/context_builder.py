@@ -15,6 +15,7 @@ from datetime import datetime, timedelta, timezone
 import logging
 
 from backend.db.database import get_db
+from backend.services.planner_service import planner_service
 from backend.db.models import (
     User, Task, Goal, Plan, 
     RealTimeMetrics, AnalyticsEvent, UserInsight, 
@@ -52,25 +53,317 @@ class AIContextBuilder:
                 logger.error(f"Failed to fetch context component '{key}': {e}")
                 return default
 
-        # Core planner data
-        context["goals"] = await fetch_safely("goals", self._get_goals_context(user_id), {"total": 0, "list": []})
-        context["goal_timeline"] = await fetch_safely("goal_timeline", self._get_goal_timeline(user_id), [])
-        context["tasks"] = await fetch_safely("tasks", self._get_tasks_context(user_id), {"total": 0, "pending": []})
-        context["habits"] = await fetch_safely("habits", self._get_habits_context(user_id), {"total": 0, "list": []})
-        context["goal_task_relationships"] = await fetch_safely("goal_task_relationships", self._get_goal_task_relationships(user_id), [])
+        now_utc = datetime.now(timezone.utc)
+        today = now_utc.date()
+        week_ago = now_utc - timedelta(days=7)
+        next_week = now_utc + timedelta(days=7)
 
-        # Analytics data (Likely source of errors if tables missing)
-        context["productivity"] = await fetch_safely("productivity", self._get_productivity_context(user_id), {})
-        context["patterns"] = await fetch_safely("patterns", self._get_patterns_context(user_id), [])
-        context["insights"] = await fetch_safely("insights", self._get_recent_insights(user_id), [])
-        context["daily_achievement_score"] = await fetch_safely("daily_achievement_score", self._get_daily_achievement_score_context(user_id), {})
+        # Core planner data is sourced from async planner service methods.
+        raw_goals = await fetch_safely("goals", planner_service.get_user_goals(user_id), [])
+        raw_timeline = await fetch_safely("goal_timeline", planner_service.get_goal_timeline(user_id), [])
+        raw_tasks = await fetch_safely("tasks", planner_service.get_tasks(user_id, limit=100), [])
+        raw_habits = await fetch_safely("habits", planner_service.get_user_habits(user_id), [])
 
-        # Timeline & history
-        context["recent_activity"] = await fetch_safely("recent_activity", self._get_recent_activity(user_id), [])
-        context["upcoming"] = await fetch_safely("upcoming", self._get_upcoming_items(user_id), {})
+        goals_data: List[Dict[str, Any]] = []
+        for goal in raw_goals:
+            progress = int(goal.get("current_progress") or goal.get("progress") or 0)
+            target_date_raw = goal.get("target_date")
+            days_remaining: Optional[int] = None
+            if target_date_raw:
+                try:
+                    target_dt = datetime.fromisoformat(str(target_date_raw).replace("Z", "+00:00"))
+                    if target_dt.tzinfo is None:
+                        target_dt = target_dt.replace(tzinfo=timezone.utc)
+                    days_remaining = (target_dt - now_utc).days
+                except Exception:
+                    days_remaining = None
 
-        # Summary stats (depends on mostly core tables)
-        context["summary"] = await fetch_safely("summary", self._get_summary_stats(user_id), {})
+            status = "active"
+            if progress >= 100:
+                status = "completed"
+            elif days_remaining is not None and days_remaining < 0:
+                status = "overdue"
+
+            goals_data.append(
+                {
+                    "id": goal.get("id"),
+                    "title": goal.get("title"),
+                    "description": goal.get("description"),
+                    "category": goal.get("category"),
+                    "progress": progress,
+                    "target_date": target_date_raw,
+                    "days_remaining": days_remaining,
+                    "milestones": goal.get("milestones") or [],
+                    "linked_tasks_count": 0,
+                    "completed_tasks_count": 0,
+                    "status": status,
+                    "ai_suggestions": goal.get("ai_suggestions") or [],
+                    "created_at": goal.get("created_at"),
+                }
+            )
+
+        context["goals"] = {
+            "total": len(goals_data),
+            "active": [g for g in goals_data if g["progress"] < 100],
+            "completed": [g for g in goals_data if g["progress"] >= 100],
+            "list": goals_data,
+        }
+
+        goal_timeline: List[Dict[str, Any]] = []
+        for goal in raw_timeline:
+            target_date_raw = goal.get("target_date")
+            if not target_date_raw:
+                continue
+            try:
+                target_dt = datetime.fromisoformat(str(target_date_raw).replace("Z", "+00:00"))
+                if target_dt.tzinfo is None:
+                    target_dt = target_dt.replace(tzinfo=timezone.utc)
+                days_remaining = (target_dt - now_utc).days
+            except Exception:
+                continue
+
+            urgency = "normal"
+            if days_remaining < 0:
+                urgency = "overdue"
+            elif days_remaining <= 3:
+                urgency = "critical"
+            elif days_remaining <= 7:
+                urgency = "soon"
+
+            goal_timeline.append(
+                {
+                    "goal_id": goal.get("id"),
+                    "title": goal.get("title"),
+                    "target_date": target_date_raw,
+                    "days_remaining": days_remaining,
+                    "progress": int(goal.get("current_progress") or goal.get("progress") or 0),
+                    "urgency": urgency,
+                }
+            )
+        context["goal_timeline"] = goal_timeline
+
+        pending: List[Dict[str, Any]] = []
+        in_progress: List[Dict[str, Any]] = []
+        completed_today: List[Dict[str, Any]] = []
+        overdue: List[Dict[str, Any]] = []
+        all_tasks_data: List[Dict[str, Any]] = []
+
+        for task in raw_tasks:
+            due_date = getattr(task, "due_date", None)
+            completed_at = getattr(task, "completed_at", None)
+            status = getattr(task, "status", "pending")
+            goal_obj = getattr(task, "goal", None)
+            goal_id = getattr(task, "goal_id", None)
+            associated_goal = None
+            if goal_obj is not None:
+                associated_goal = {
+                    "id": str(getattr(goal_obj, "id", "")),
+                    "title": getattr(goal_obj, "title", None),
+                    "progress": int(getattr(goal_obj, "current_progress", 0) or 0),
+                }
+            elif goal_id is not None:
+                associated_goal = {"id": str(goal_id), "title": None, "progress": 0}
+
+            task_data = {
+                "id": str(getattr(task, "id", "")),
+                "title": getattr(task, "title", None),
+                "description": getattr(task, "description", None),
+                "status": status,
+                "priority": getattr(task, "priority", None),
+                "category": getattr(task, "category", None),
+                "due_date": due_date.isoformat() if due_date else None,
+                "completed_at": completed_at.isoformat() if completed_at else None,
+                "estimated_minutes": getattr(task, "estimated_minutes", None),
+                "tags": getattr(task, "tags", []) or [],
+                "goal_id": str(goal_id) if goal_id is not None else None,
+                "associated_goal": associated_goal,
+            }
+            all_tasks_data.append(task_data)
+
+            if status == "pending":
+                if due_date and due_date.date() < today:
+                    overdue.append(task_data)
+                else:
+                    pending.append(task_data)
+            elif status == "in_progress":
+                in_progress.append(task_data)
+            elif status == "completed" and completed_at and completed_at.date() == today:
+                completed_today.append(task_data)
+
+        today_tasks = [
+            t for t in pending + in_progress
+            if t.get("due_date") and str(t["due_date"]).startswith(today.isoformat())
+        ]
+        context["tasks"] = {
+            "total": len(all_tasks_data),
+            "pending": pending[:20],
+            "in_progress": in_progress,
+            "completed_today": completed_today,
+            "overdue": overdue,
+            "today": today_tasks,
+            "counts": {
+                "pending": len(pending),
+                "in_progress": len(in_progress),
+                "completed_today": len(completed_today),
+                "overdue": len(overdue),
+            },
+        }
+
+        habits_data: List[Dict[str, Any]] = []
+        for habit in raw_habits:
+            habits_data.append(
+                {
+                    "id": habit.get("id"),
+                    "name": habit.get("name"),
+                    "description": habit.get("description"),
+                    "frequency": habit.get("frequency", "daily"),
+                    "streak": habit.get("currentStreak", 0),
+                    "best_streak": habit.get("longestStreak", 0),
+                    "completed_today": False,
+                    "last_completed": habit.get("lastCompleted"),
+                    "total_completions": len(habit.get("history", []) or []),
+                    "category": habit.get("category", "General"),
+                }
+            )
+
+        completed_habits_today = [
+            h for h in habits_data if str(h.get("last_completed") or "").startswith(today.isoformat())
+        ]
+        for habit in habits_data:
+            habit["completed_today"] = habit in completed_habits_today
+
+        context["habits"] = {
+            "total": len(habits_data),
+            "list": habits_data,
+            "completed_today": len(completed_habits_today),
+            "due_today": max(0, len(habits_data) - len(completed_habits_today)),
+            "active_streaks": len([h for h in habits_data if (h.get("streak") or 0) > 0]),
+            "longest_streak": max((h.get("streak") or 0 for h in habits_data), default=0),
+            "average_streak": (
+                sum(h.get("streak", 0) for h in habits_data) / len(habits_data)
+                if habits_data else 0
+            ),
+        }
+
+        goal_task_relationships: List[Dict[str, Any]] = []
+        for goal in goals_data:
+            goal_id = str(goal.get("id"))
+            linked_tasks = [t for t in all_tasks_data if str(t.get("goal_id")) == goal_id]
+            completed_count = len([t for t in linked_tasks if t.get("status") == "completed"])
+            pending_count = len([t for t in linked_tasks if t.get("status") == "pending"])
+            in_progress_count = len([t for t in linked_tasks if t.get("status") == "in_progress"])
+
+            completion_rate = (completed_count / len(linked_tasks)) if linked_tasks else 0.0
+            relationship_status = "no_tasks_yet"
+            if linked_tasks:
+                if completion_rate >= 0.75:
+                    relationship_status = "on_track"
+                elif completion_rate >= 0.4:
+                    relationship_status = "slightly_behind"
+                else:
+                    relationship_status = "at_risk"
+
+            goal_task_relationships.append(
+                {
+                    "goal_id": goal.get("id"),
+                    "goal_title": goal.get("title"),
+                    "goal_description": goal.get("description"),
+                    "goal_category": goal.get("category"),
+                    "goal_target_date": goal.get("target_date"),
+                    "goal_progress": goal.get("progress", 0),
+                    "total_tasks": len(linked_tasks),
+                    "completed_tasks": completed_count,
+                    "pending_tasks": pending_count,
+                    "in_progress_tasks": in_progress_count,
+                    "tasks": linked_tasks,
+                    "completion_rate": completion_rate,
+                    "status": relationship_status,
+                }
+            )
+        context["goal_task_relationships"] = goal_task_relationships
+
+        # Lightweight analytics defaults keep chat stable even if optional analytics tables are absent.
+        context["productivity"] = {}
+        context["patterns"] = []
+        context["insights"] = []
+        context["daily_achievement_score"] = await fetch_safely(
+            "daily_achievement_score",
+            self._get_daily_achievement_score_context(user_id),
+            {},
+        )
+
+        upcoming_tasks: List[Dict[str, Any]] = []
+        for task in all_tasks_data:
+            due_raw = task.get("due_date")
+            if not due_raw or task.get("status") not in {"pending", "in_progress"}:
+                continue
+            try:
+                due_dt = datetime.fromisoformat(str(due_raw).replace("Z", "+00:00"))
+                if due_dt.tzinfo is None:
+                    due_dt = due_dt.replace(tzinfo=timezone.utc)
+            except Exception:
+                continue
+            if now_utc <= due_dt <= next_week:
+                upcoming_tasks.append(
+                    {
+                        "id": task.get("id"),
+                        "title": task.get("title"),
+                        "due_date": due_raw,
+                        "priority": task.get("priority"),
+                    }
+                )
+
+        upcoming_goals: List[Dict[str, Any]] = []
+        for goal in goals_data:
+            if goal.get("progress", 0) >= 100:
+                continue
+            target_raw = goal.get("target_date")
+            if not target_raw:
+                continue
+            try:
+                target_dt = datetime.fromisoformat(str(target_raw).replace("Z", "+00:00"))
+                if target_dt.tzinfo is None:
+                    target_dt = target_dt.replace(tzinfo=timezone.utc)
+            except Exception:
+                continue
+            if now_utc <= target_dt <= next_week:
+                upcoming_goals.append(
+                    {
+                        "id": goal.get("id"),
+                        "title": goal.get("title"),
+                        "target_date": target_raw,
+                        "progress": goal.get("progress", 0),
+                    }
+                )
+
+        context["recent_activity"] = []
+        context["upcoming"] = {
+            "tasks": upcoming_tasks,
+            "goal_deadlines": upcoming_goals,
+        }
+        completed_this_week = 0
+        for task in all_tasks_data:
+            if task.get("status") != "completed" or not task.get("completed_at"):
+                continue
+            try:
+                completed_at = datetime.fromisoformat(str(task["completed_at"]).replace("Z", "+00:00"))
+                if completed_at.tzinfo is None:
+                    completed_at = completed_at.replace(tzinfo=timezone.utc)
+            except Exception:
+                continue
+            if completed_at >= week_ago:
+                completed_this_week += 1
+
+        context["summary"] = {
+            "total_goals": len(goals_data),
+            "active_goals": len([g for g in goals_data if g.get("progress", 0) < 100]),
+            "total_tasks": len(all_tasks_data),
+            "pending_tasks": len([t for t in all_tasks_data if t.get("status") == "pending"]),
+            "completed_this_week": completed_this_week,
+            "current_date": today.isoformat(),
+            "current_time": now_utc.strftime("%H:%M"),
+            "day_of_week": now_utc.strftime("%A"),
+        }
 
         return context
 

@@ -837,6 +837,145 @@ Now help the user with their request. Use the real data above to give personaliz
             return intent, actions, []
 
         return intent, actions, []
+
+    async def _extract_intent_and_actions_v2(
+        self,
+        user_message: str,
+        ai_response: str,
+        mode: str,
+        context: Dict[str, Any],
+        request_id: str = "",
+        plan_tier: str = "unknown",
+    ) -> tuple:
+        """
+        Backward-compatible v2 extractor.
+        Keeps chat stable even if advanced extractor code is unavailable.
+        """
+        _ = context  # Context is already embedded in prompt; keep signature compatibility.
+
+        intent, actions, _ = self._extract_intent_and_actions(
+            user_message=user_message,
+            ai_response=ai_response,
+            mode=mode,
+        )
+        pending_confirmations: List[Dict[str, Any]] = []
+
+        user_lower = (user_message or "").lower()
+        confirmation_keywords = [
+            "yes",
+            "sure",
+            "okay",
+            "ok",
+            "yep",
+            "yeah",
+            "go ahead",
+            "do it",
+            "confirm",
+            "proceed",
+        ]
+        rejection_keywords = [
+            "no",
+            "cancel",
+            "don't",
+            "stop",
+            "nevermind",
+            "nope",
+            "not now",
+            "skip",
+        ]
+        is_confirmation = any(kw in user_lower for kw in confirmation_keywords)
+        is_rejection = any(kw in user_lower for kw in rejection_keywords)
+
+        if is_confirmation or is_rejection:
+            try:
+                user_pending = await ai_agent_actions.get_pending_actions(self.user_id)
+            except Exception as exc:
+                logger.error(f"Failed to fetch pending actions for confirmation flow: {exc}")
+                user_pending = []
+
+            if user_pending:
+                if is_confirmation:
+                    intent = "CONFIRM_ACTION"
+                    confirmed_actions: List[Dict[str, Any]] = []
+                    for pending in user_pending:
+                        result = await ai_agent_actions.confirm_action(
+                            pending["action_id"],
+                            self.user_id,
+                            plan_tier=plan_tier,
+                            request_id=f"{request_id}:confirm:{pending['action_id']}",
+                        )
+                        confirmed_actions.append(
+                            {
+                                "type": pending.get("action_type"),
+                                "status": result.get("status"),
+                                "result": result,
+                            }
+                        )
+                    return intent, confirmed_actions, pending_confirmations
+
+                intent = "REJECT_ACTION"
+                for pending in user_pending:
+                    await ai_agent_actions.reject_action(pending["action_id"], self.user_id)
+                return intent, [], pending_confirmations
+
+        delete_action = self._detect_delete_action(user_message)
+        if delete_action and not any(a.get("type") == delete_action.get("type") for a in actions):
+            actions.append(delete_action)
+
+        return intent, actions, pending_confirmations
+
+    def _detect_delete_action(self, user_message: str) -> Optional[Dict[str, Any]]:
+        """Detect explicit delete/remove commands for tasks, goals, habits."""
+        import re
+
+        text = (user_message or "").strip()
+        if not text:
+            return None
+
+        lower = text.lower()
+        if not any(k in lower for k in ["delete", "remove", "archive"]):
+            return None
+
+        def extract_name(kind: str) -> Optional[str]:
+            pattern = rf"(?:delete|remove|archive)\s+(?:the\s+)?{kind}\s+['\"]?([^'\"\n\r]+?)['\"]?(?:\s*$)"
+            match = re.search(pattern, text, re.IGNORECASE)
+            if not match:
+                return None
+            return (match.group(1) or "").strip()
+
+        def build_action(kind: str) -> Optional[Dict[str, Any]]:
+            name = extract_name(kind)
+            if not name:
+                return None
+            payload: Dict[str, Any] = {}
+            if name.isdigit():
+                payload[f"{kind}_id"] = name
+            else:
+                payload["title"] = name
+            return {"type": f"DELETE_{kind.upper()}", "payload": payload}
+
+        for kind in ["task", "goal", "habit"]:
+            if kind in lower:
+                action = build_action(kind)
+                if action:
+                    return action
+        return None
+
+    def _get_ui_hints(self, intent: str) -> Dict[str, Any]:
+        """Get UI hints based on intent for frontend rendering."""
+        hints = {
+            "CREATE_TASK": {"showTaskForm": True, "highlight": "planner"},
+            "START_DEEP_WORK": {"showTimer": True, "highlight": "deepwork"},
+            "ANALYZE": {"showAnalytics": True, "highlight": "analytics"},
+            "PLAN": {"showPlanner": True, "highlight": "planner"},
+            "SUGGEST_GOAL": {"showConfirmation": True, "type": "goal"},
+            "SUGGEST_TASK": {"showConfirmation": True, "type": "task"},
+            "SUGGEST_HABIT": {"showConfirmation": True, "type": "habit"},
+            "GOAL_STATUS": {"highlight": "planner", "scrollTo": "goals"},
+            "TASK_STATUS": {"highlight": "planner", "scrollTo": "tasks"},
+            "HABIT_STATUS": {"highlight": "planner", "scrollTo": "habits"},
+        }
+        return hints.get(intent, {})
     
 
     async def generate_response(self, message: str) -> str:
