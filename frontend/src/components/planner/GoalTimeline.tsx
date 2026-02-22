@@ -229,7 +229,7 @@ export default function GoalTimeline() {
         isOpen={isDetailsOpen && !!selectedGoal}
         onOpenChange={setIsDetailsOpen}
         title={selectedGoal?.title || 'Goal Details'}
-        maxWidth="lg"
+        maxWidth="md"
       >
         {selectedGoal && (
           <div className="flex flex-col gap-4">

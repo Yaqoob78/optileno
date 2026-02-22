@@ -54,7 +54,7 @@ export const Modal = ({
                             "w-[95vw] sm:w-full max-h-[85dvh] sm:max-h-[85vh]",
                             maxWidthClass,
                             // Layout styling
-                            "app-modal-surface rounded-3xl border border-[var(--border-primary)] shadow-[0_24px_70px_-20px_rgba(0,0,0,0.65)] overflow-hidden",
+                            "app-modal-surface rounded-2xl border shadow-[0_24px_70px_-20px_rgba(0,0,0,0.65)] overflow-hidden",
                             // Flex structure handling inner scrolling
                             "flex flex-col",
                             // Animations
@@ -64,12 +64,12 @@ export const Modal = ({
                     )}
                 >
                     {/* Header - Fixed to top, no shrink */}
-                    <div className="app-modal-header flex flex-col gap-1 p-5 sm:p-6 shrink-0 border-b border-[var(--border-primary)]">
+                    <div className="app-modal-header flex flex-col gap-1 p-5 sm:p-6 shrink-0 border-b">
                         <div className="flex items-start justify-between">
                             <Dialog.Title className="text-lg font-semibold tracking-tight text-[var(--text-primary,#111827)]">
                                 {title}
                             </Dialog.Title>
-                            <Dialog.Close className="app-modal-close rounded-full border border-[var(--border-primary)] p-1.5 opacity-90 transition-all hover:opacity-100 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-0 disabled:pointer-events-none">
+                            <Dialog.Close className="app-modal-close rounded-full border p-1.5 opacity-90 transition-all hover:opacity-100 hover:scale-105 focus:outline-none disabled:pointer-events-none">
                                 <X className="h-5 w-5 text-[var(--text-secondary,#6b7280)]" />
                                 <span className="sr-only">Close</span>
                             </Dialog.Close>
@@ -88,7 +88,7 @@ export const Modal = ({
 
                     {/* Footer - Fixed to bottom, no shrink */}
                     {footer && (
-                        <div className="app-modal-footer flex shrink-0 items-center justify-end p-5 sm:p-6 border-t border-[var(--border-primary)]">
+                        <div className="app-modal-footer flex shrink-0 items-center justify-end p-5 sm:p-6 border-t">
                             {footer}
                         </div>
                     )}
