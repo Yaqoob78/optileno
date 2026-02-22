@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from 'framer-motion';
 import { X, Maximize2 } from 'lucide-react';
 
@@ -108,48 +109,51 @@ export const Interactive3DCard: React.FC<Interactive3DCardProps> = ({ fileName, 
                 </motion.div>
             </div>
 
-            <AnimatePresence>
-                {isOpen && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[999999] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 sm:p-8"
-                        onClick={() => setIsOpen(false)}
-                    >
-                        <button
-                            className="absolute top-6 right-6 z-[9999999] bg-white/10 hover:bg-white/20 p-3 rounded-full text-white transition-colors"
-                            onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}
-                        >
-                            <X size={24} />
-                        </button>
-
+            {typeof document !== 'undefined' && createPortal(
+                <AnimatePresence>
+                    {isOpen && (
                         <motion.div
-                            ref={modalRef}
-                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-                            animate={{ scale: 1, opacity: 1, y: 0 }}
-                            exit={{ scale: 0.95, opacity: 0, y: 20 }}
-                            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                            className="relative w-full max-w-[90vw] max-h-[90vh] flex items-center justify-center"
-                            style={{ perspective: 1500 }}
-                            onMouseMove={handleModalMouseMove}
-                            onMouseLeave={handleModalMouseLeave}
-                            onClick={(e) => e.stopPropagation()} // Prevent clicking image from closing
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-[999999] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 sm:p-8"
+                            onClick={() => setIsOpen(false)}
                         >
-                            <motion.img
-                                src={`/${fileName}`}
-                                alt={title}
-                                className="w-full h-auto max-h-[90vh] object-contain rounded-xl shadow-[0_0_100px_rgba(59,130,246,0.3)] ring-1 ring-white/10"
-                                style={{
-                                    rotateX: modalRotateX,
-                                    rotateY: modalRotateY,
-                                    transformStyle: 'preserve-3d'
-                                }}
-                            />
+                            <button
+                                className="absolute top-6 right-6 z-[9999999] bg-white/10 hover:bg-white/20 p-3 rounded-full text-white transition-colors"
+                                onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}
+                            >
+                                <X size={24} />
+                            </button>
+
+                            <motion.div
+                                ref={modalRef}
+                                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                                animate={{ scale: 1, opacity: 1, y: 0 }}
+                                exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                                className="relative w-full max-w-[90vw] max-h-[90vh] flex items-center justify-center"
+                                style={{ perspective: 1500 }}
+                                onMouseMove={handleModalMouseMove}
+                                onMouseLeave={handleModalMouseLeave}
+                                onClick={(e) => e.stopPropagation()} // Prevent clicking image from closing
+                            >
+                                <motion.img
+                                    src={`/${fileName}`}
+                                    alt={title}
+                                    className="w-full h-auto max-h-[90vh] object-contain rounded-xl shadow-[0_0_100px_rgba(59,130,246,0.3)] ring-1 ring-white/10"
+                                    style={{
+                                        rotateX: modalRotateX,
+                                        rotateY: modalRotateY,
+                                        transformStyle: 'preserve-3d'
+                                    }}
+                                />
+                            </motion.div>
                         </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
         </>
     );
 };
