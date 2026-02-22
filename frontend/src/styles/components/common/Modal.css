@@ -357,6 +357,123 @@
   color: rgb(var(--color-text-primary, 241 245 249));
 }
 
+.app-modal-content select {
+  cursor: pointer;
+  border-width: 1.5px !important;
+  letter-spacing: 0.01em;
+}
+
+.app-modal-content select:focus {
+  transform: translateY(-1px);
+}
+
+.app-modal-content input[type='time'],
+.app-modal-content input[type='date'] {
+  color-scheme: dark;
+}
+
+.app-modal-content input[type='time']::-webkit-calendar-picker-indicator,
+.app-modal-content input[type='date']::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.92;
+  filter: sepia(100%) saturate(650%) hue-rotate(340deg) brightness(0.95);
+}
+
+.planner-task-modal-shell {
+  --primary: #16a34a;
+  --primary-hover: #15803d;
+  --color-primary: 22 163 74;
+}
+
+.habit-modal-shell {
+  --primary: #f97316;
+  --primary-hover: #ea580c;
+  --color-primary: 249 115 22;
+}
+
+.goal-modal-shell {
+  --primary: #1e3a8a;
+  --primary-hover: #1d4ed8;
+  --color-primary: 30 58 138;
+}
+
+.planner-task-modal-shell .app-modal-header {
+  background: linear-gradient(180deg, rgba(21, 128, 61, 0.16), rgba(var(--color-bg-secondary, 31 41 55), 1));
+}
+
+.habit-modal-shell .app-modal-header {
+  background: linear-gradient(180deg, rgba(249, 115, 22, 0.17), rgba(var(--color-bg-secondary, 31 41 55), 1));
+}
+
+.goal-modal-shell .app-modal-header {
+  background: linear-gradient(180deg, rgba(30, 64, 175, 0.2), rgba(var(--color-bg-secondary, 31 41 55), 1));
+}
+
+.planner-task-modal-shell .planner-modal-select,
+.habit-modal-shell .habit-modal-goal-select,
+.goal-modal-shell .goal-modal-select {
+  border-width: 1.5px !important;
+}
+
+.planner-task-modal-shell .planner-modal-select-category {
+  border-color: rgba(16, 185, 129, 0.62) !important;
+  box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.14);
+}
+
+.planner-task-modal-shell .planner-modal-select-goal {
+  border-color: rgba(59, 130, 246, 0.62) !important;
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.16);
+}
+
+.planner-task-modal-shell .planner-modal-select-priority {
+  border-color: rgba(234, 179, 8, 0.62) !important;
+  box-shadow: inset 0 0 0 1px rgba(234, 179, 8, 0.16);
+}
+
+.planner-task-modal-shell .planner-modal-select-energy {
+  border-color: rgba(236, 72, 153, 0.58) !important;
+  box-shadow: inset 0 0 0 1px rgba(236, 72, 153, 0.16);
+}
+
+.planner-task-modal-shell .planner-modal-time-input,
+.planner-task-modal-shell .planner-modal-duration-input {
+  border-width: 1.5px !important;
+  border-color: rgba(14, 165, 233, 0.56) !important;
+}
+
+.planner-task-modal-shell .planner-modal-time-input:focus,
+.planner-task-modal-shell .planner-modal-duration-input:focus {
+  box-shadow:
+    0 0 0 3px rgba(14, 165, 233, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+.planner-task-modal-shell #task-time::-webkit-calendar-picker-indicator {
+  filter: sepia(100%) saturate(720%) hue-rotate(305deg) brightness(0.98);
+}
+
+.goal-modal-shell .goal-modal-date-picker .date-picker-trigger {
+  border-color: rgba(59, 130, 246, 0.56);
+  background: rgba(15, 23, 42, 0.9);
+}
+
+.goal-modal-shell .goal-modal-date-picker .date-picker-trigger .icon {
+  color: #60a5fa;
+}
+
+.goal-modal-shell .goal-modal-date-picker .date-picker-trigger:hover {
+  border-color: rgba(96, 165, 250, 0.8);
+}
+
+.goal-modal-shell .goal-modal-date-picker .calendar-day.selected {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  box-shadow: 0 8px 16px rgba(37, 99, 235, 0.32);
+}
+
+.goal-modal-shell .goal-modal-date-picker .calendar-day.today {
+  color: #60a5fa;
+}
+
 .app-modal-content input[type='range'] {
   appearance: none;
   -webkit-appearance: none;

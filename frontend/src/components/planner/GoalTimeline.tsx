@@ -176,6 +176,7 @@ export default function GoalTimeline() {
         isOpen={isModalOpen}
         onOpenChange={setIsModalOpen}
         title="Set New Goal"
+        className="goal-modal-shell"
         maxWidth="sm"
         footer={
           <div className="flex gap-3 justify-end">
@@ -198,7 +199,7 @@ export default function GoalTimeline() {
               onChange={e => setNewGoal({ ...newGoal, title: e.target.value })}
               placeholder="e.g., Run a Marathon"
               autoFocus
-              className="px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm"
+              className="goal-modal-input px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -207,6 +208,7 @@ export default function GoalTimeline() {
               value={newGoal.targetDate}
               onChange={(date) => setNewGoal({ ...newGoal, targetDate: date })}
               placeholder="Select target date"
+              className="goal-modal-date-picker"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -214,7 +216,7 @@ export default function GoalTimeline() {
             <select
               value={newGoal.category}
               onChange={e => setNewGoal({ ...newGoal, category: e.target.value })}
-              className="px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm"
+              className="goal-modal-select px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm"
             >
               <option value="Personal">Personal</option>
               <option value="Work">Work</option>
@@ -229,6 +231,7 @@ export default function GoalTimeline() {
         isOpen={isDetailsOpen && !!selectedGoal}
         onOpenChange={setIsDetailsOpen}
         title={selectedGoal?.title || 'Goal Details'}
+        className="goal-modal-shell"
         maxWidth="md"
       >
         {selectedGoal && (

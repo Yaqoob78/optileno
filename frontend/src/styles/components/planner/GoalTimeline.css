@@ -776,3 +776,25 @@
   }
 
 }
+
+/* ===== Goal Accent Overrides ===== */
+.add-goal-btn {
+  background: linear-gradient(135deg, #1e3a8a, #1d4ed8) !important;
+  border-color: rgba(59, 130, 246, 0.5) !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 20px rgba(30, 64, 175, 0.32) !important;
+}
+
+.add-goal-btn:hover {
+  background: linear-gradient(135deg, #1e40af, #2563eb) !important;
+  box-shadow: 0 12px 24px rgba(30, 64, 175, 0.38) !important;
+}
+
+.goal-modal-shell .goal-modal-input,
+.goal-modal-shell .goal-modal-select {
+  border-width: 1.5px !important;
+}
+
+.goal-modal-shell .goal-modal-select {
+  border-color: rgba(59, 130, 246, 0.58) !important;
+}

@@ -1209,3 +1209,64 @@
   box-shadow: 0 4px 10px rgba(var(--color-primary), 0.3);
 }
 
+/* ===== Planner Polish Overrides ===== */
+.add-task-btn,
+.add-first-task-btn {
+  background: linear-gradient(135deg, #16a34a, #15803d) !important;
+  border: 1px solid rgba(21, 128, 61, 0.62) !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 20px rgba(22, 163, 74, 0.3) !important;
+}
+
+.add-task-btn:hover,
+.add-first-task-btn:hover {
+  background: linear-gradient(135deg, #22c55e, #15803d) !important;
+  box-shadow: 0 13px 24px rgba(22, 163, 74, 0.36) !important;
+}
+
+.planner-task-modal {
+  gap: 14px;
+}
+
+.planner-task-modal .planner-task-form-group {
+  background: linear-gradient(
+    155deg,
+    rgba(var(--color-bg-tertiary), 0.48),
+    rgba(var(--color-bg-secondary), 0.32)
+  );
+  border: 1px solid rgba(var(--color-border-light), 0.34);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.planner-task-modal .planner-task-form-group label {
+  margin-bottom: 7px;
+  color: rgb(var(--color-text-primary));
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+
+.planner-task-modal .planner-task-label-icon {
+  color: #34d399;
+}
+
+.planner-task-modal .planner-task-form-row {
+  align-items: stretch;
+}
+
+.planner-task-modal .planner-task-day-picker-row {
+  gap: 8px;
+}
+
+.planner-task-modal .planner-task-day-pill {
+  min-height: 42px;
+}
+
+.planner-task-modal-shell .planner-modal-select {
+  font-weight: 600;
+}
+
+.planner-task-modal-shell .planner-modal-select-recurrence {
+  border-color: rgba(16, 185, 129, 0.58) !important;
+}
+

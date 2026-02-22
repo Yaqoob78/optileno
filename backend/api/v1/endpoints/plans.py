@@ -193,7 +193,7 @@ async def schedule_deep_work(
 
 
 class CompleteDeepWorkRequest(BaseModel):
-    actual_duration_minutes: int = Field(..., ge=1, le=480, description="Actual duration")
+    actual_duration_minutes: int = Field(..., ge=1, le=720, description="Actual duration")
 
 @router.post("/deep-work/{session_id}/complete", response_model=DeepWorkOut)
 async def complete_deep_work(

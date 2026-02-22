@@ -1904,3 +1904,37 @@
     padding: var(--space-2);
   }
 }
+
+/* ===== Habit Accent Overrides ===== */
+.new-habit-btn {
+  border-style: solid !important;
+  border-color: rgba(249, 115, 22, 0.58) !important;
+  background: linear-gradient(135deg, #f97316, #ea580c) !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 20px rgba(249, 115, 22, 0.28) !important;
+}
+
+.new-habit-btn:hover {
+  background: linear-gradient(135deg, #fb923c, #ea580c) !important;
+  box-shadow: 0 12px 24px rgba(249, 115, 22, 0.34) !important;
+}
+
+.habit-modal-shell .habit-modal-input,
+.habit-modal-shell .habit-modal-textarea,
+.habit-modal-shell .habit-modal-goal-select {
+  border-width: 1.5px !important;
+}
+
+.habit-modal-shell .habit-modal-goal-select {
+  border-color: rgba(249, 115, 22, 0.58) !important;
+}
+
+.habit-modal-shell .habit-modal-category-btn {
+  border-color: rgba(251, 146, 60, 0.48);
+}
+
+.habit-modal-shell .habit-modal-category-btn.is-selected {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.45), rgba(234, 88, 12, 0.42));
+  border-color: rgba(251, 146, 60, 0.86);
+  box-shadow: 0 10px 20px rgba(249, 115, 22, 0.3);
+}

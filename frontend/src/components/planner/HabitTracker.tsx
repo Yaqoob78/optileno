@@ -315,6 +315,7 @@ export default function HabitTracker({ habits: propsHabits }: HabitTrackerProps)
         isOpen={showNewHabitModal}
         onOpenChange={setShowNewHabitModal}
         title="New Daily Habit"
+        className="habit-modal-shell"
         maxWidth="sm"
         footer={
           <div className="flex gap-3 justify-end">
@@ -337,7 +338,7 @@ export default function HabitTracker({ habits: propsHabits }: HabitTrackerProps)
               onChange={e => setNewHabit({ ...newHabit, name: e.target.value })}
               placeholder="e.g., Meditation, Reading..."
               autoFocus
-              className="px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm"
+              className="habit-modal-input px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -346,7 +347,7 @@ export default function HabitTracker({ habits: propsHabits }: HabitTrackerProps)
               value={newHabit.description}
               onChange={e => setNewHabit({ ...newHabit, description: e.target.value })}
               placeholder="Why do you want to build this habit?"
-              className="px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm min-h-[100px] resize-none"
+              className="habit-modal-textarea px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm min-h-[100px] resize-none"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -370,7 +371,7 @@ export default function HabitTracker({ habits: propsHabits }: HabitTrackerProps)
               <select
                 value={newHabit.goalId || ''}
                 onChange={e => setNewHabit({ ...newHabit, goalId: e.target.value })}
-                className="px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm"
+                className="habit-modal-goal-select px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm"
               >
                 <option value="">No Link</option>
                 {goals.map(g => (

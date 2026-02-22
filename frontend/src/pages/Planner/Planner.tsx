@@ -1,7 +1,6 @@
 // frontend/src/pages/Planner/Planner.tsx
 import React, { useState, useEffect, useRef } from 'react';
-import { Calendar as CalendarIcon, Maximize2, Minimize2, Plus, X, Clock, Timer, Zap, TrendingUp, CheckCircle2, List, PenTool, Loader2, Repeat } from 'lucide-react';
-import { clsx } from "clsx";
+import { Calendar as CalendarIcon, Maximize2, Minimize2, Plus, Timer, CheckCircle2, List, Loader2, Repeat } from 'lucide-react';
 
 import { useTheme } from '../../hooks/useTheme';
 import { usePlanner } from '../../hooks/usePlanner';
@@ -10,7 +9,6 @@ import { useNavStatePreservation } from '../../hooks/useNavStatePreservation';
 import { useUserStore } from '../../stores/useUserStore';
 import { useSettingsStore } from '../../stores/useSettingsStore';
 import { ErrorBoundary } from "../../components/common/ErrorBoundary";
-import { Lock } from 'lucide-react';
 import { LockedFeature } from '../../components/common/LockedFeature';
 import { OnboardingFlow } from '../../components/planner/OnboardingFlow';
 import {
@@ -62,8 +60,6 @@ export default function PlannerPage() {
 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [maximizedView, setMaximizedView] = useState(false);
-  const [filterStatus, setFilterStatus] = useState<string>('todo');
-  const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
 
   // ── NEW STATES FOR FIXING ISSUES ─────────────────────────────
   const [isSaving, setIsSaving] = useState(false);
@@ -75,7 +71,6 @@ export default function PlannerPage() {
     tasks,
     goals,
     habits,
-    activeDeepWork,
     dailyDeepWorkCount,
     isLoading,
     error,
@@ -86,12 +81,6 @@ export default function PlannerPage() {
     updateTask,
     startTask,
     deleteTask,
-    startDeepWork,
-    completeDeepWork,
-    pauseDeepWork,
-    resumeDeepWork,
-    cancelDeepWork,
-    isDeepWorkActive,
     forceRefresh
   } = usePlanner();
 
@@ -256,7 +245,6 @@ export default function PlannerPage() {
         goal_id: isUltra ? data.goalId : null,
       } as any);
       if (result.success) {
-        setIsNewTaskOpen(false);
         setIsEditing(false);
         setEditForm(null);
         // Refresh tasks list
@@ -518,14 +506,6 @@ export default function PlannerPage() {
   // ── Stats ─────────────────────────────────────────────────────────
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter(t => t.status === 'done').length;
-
-  const filteredTasks = tasks.filter(t => {
-    if (filterStatus === 'todo') return t.status === 'todo';
-    if (filterStatus === 'in-progress') return t.status === 'in-progress';
-    if (filterStatus === 'done') return t.status === 'done';
-    return true;
-  });
-
   // ── Transform API tasks to TaskCard format ────────────────────────
   const transformTaskForCard = (task: any) => {
     // Debug log to inspect incoming task data
@@ -628,6 +608,7 @@ export default function PlannerPage() {
           isOpen={isEditing && !!editForm}
           onOpenChange={(open) => { if (!open) handleCancelEdit(); }}
           title={isNewTask ? 'Create New Task' : 'Edit Task'}
+          className="planner-task-modal-shell"
           maxWidth="sm"
           footer={
             <div className="flex gap-3 justify-end">
@@ -770,7 +751,7 @@ export default function PlannerPage() {
                         return { ...prev, startTime: newTime, dueDate: updatedDueDate };
                       });
                     }}
-                    className="px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm w-full"
+                    className="planner-modal-time-input px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm w-full"
                     disabled={isSaving}
                   />
                 </div>
@@ -786,7 +767,7 @@ export default function PlannerPage() {
                     onChange={(e) => setEditForm(prev => prev ? { ...prev, duration: Number(e.target.value) || 60 } : null)}
                     min={5}
                     step={5}
-                    className="px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm w-full"
+                    className="planner-modal-duration-input px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm w-full"
                     disabled={isSaving}
                   />
                 </div>
@@ -812,7 +793,7 @@ export default function PlannerPage() {
                         return { ...prev, ...updates };
                       });
                     }}
-                    className="px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm w-full"
+                    className="planner-modal-select planner-modal-select-category px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm w-full"
                     disabled={isSaving}
                   >
                     <option value="" disabled>-- Select Category --</option>
@@ -836,7 +817,7 @@ export default function PlannerPage() {
                       id="task-goal-select"
                       value={editForm.goalId || ''}
                       onChange={(e) => setEditForm({ ...editForm, goalId: e.target.value })}
-                      className="px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm w-full"
+                      className="planner-modal-select planner-modal-select-goal px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm w-full"
                       disabled={isSaving}
                     >
                       <option value="">-- Choose a Goal --</option>
@@ -859,7 +840,7 @@ export default function PlannerPage() {
                       id="task-priority"
                       value={editForm.priority || 'medium'}
                       onChange={(e) => setEditForm(prev => prev ? { ...prev, priority: e.target.value as any } : null)}
-                      className="px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm w-full"
+                      className="planner-modal-select planner-modal-select-priority px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm w-full"
                       disabled={isSaving}
                     >
                       <option value="low">Low</option>
@@ -881,7 +862,7 @@ export default function PlannerPage() {
                         setIsEnergyTouched(true);
                         setEditForm(prev => prev ? { ...prev, energy: e.target.value as any } : null);
                       }}
-                      className="px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm w-full"
+                      className="planner-modal-select planner-modal-select-energy px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm w-full"
                       disabled={isSaving}
                     >
                       <option value="high">High ⚡</option>
@@ -990,55 +971,6 @@ export default function PlannerPage() {
               {isUltra ? (
                 <>
                   <DeepWorkBlock currentTime={currentTime} />
-                  {/* Leno indicator */}
-                  {activeDeepWork && (activeDeepWork.status === 'active' || activeDeepWork.status === 'paused') && (
-                    <div className="ai-status-block">
-                      <div className="ai-active-notice" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        <div>
-                          <strong>{activeDeepWork.status === 'active' ? 'Deep Work Active' : 'Deep Work Paused'}</strong>
-                          <br />
-                          Started: {new Date(activeDeepWork.startTime || activeDeepWork.started_at || Date.now()).toLocaleTimeString()}
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
-                          {activeDeepWork.status === 'active' ? (
-                            <button
-                              className="planner-inline-btn cancel"
-                              style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', flex: 1 }}
-                              onClick={() => pauseDeepWork()}
-                            >
-                              Pause
-                            </button>
-                          ) : (
-                            <button
-                              className="planner-inline-btn submit"
-                              style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', flex: 1 }}
-                              onClick={() => resumeDeepWork()}
-                            >
-                              Resume
-                            </button>
-                          )}
-                          <button
-                            className="planner-inline-btn submit"
-                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', flex: 1 }}
-                            onClick={() => {
-                              // basic complete assumption; real implementation probably calculates actual duration diff
-                              completeDeepWork(activeDeepWork.duration || 60);
-                            }}
-                          >
-                            Finish
-                          </button>
-                          <button
-                            className="planner-inline-btn cancel"
-                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', color: 'var(--color-danger)' }}
-                            onClick={() => cancelDeepWork()}
-                            title="Cancel session"
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                   <div className="panel-divider" />
                   <GoalTimeline />
                 </>
@@ -1079,6 +1011,7 @@ export default function PlannerPage() {
         isOpen={isRepeatModalOpen}
         onOpenChange={setIsRepeatModalOpen}
         title="Set Recurrence"
+        className="planner-task-modal-shell"
         maxWidth="sm"
         footer={
           <div className="flex gap-3 justify-end items-center">
@@ -1120,7 +1053,7 @@ export default function PlannerPage() {
             <select
               value={repeatConfig.type}
               onChange={(e) => setRepeatConfig(p => ({ ...p, type: e.target.value }))}
-              className="p-3 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] text-[var(--text-primary)] transition-all w-full"
+              className="planner-modal-select planner-modal-select-recurrence p-3 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] text-[var(--text-primary)] transition-all w-full"
               disabled={isCreatingRecurrence}
             >
               <option value="daily">Daily Loop</option>
@@ -1147,3 +1080,5 @@ export default function PlannerPage() {
     </ErrorBoundary>
   );
 }
+
+

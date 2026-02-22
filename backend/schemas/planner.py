@@ -206,7 +206,7 @@ class TaskOut(TaskBase):
 # ── Deep Work Session Schemas ──────────────────────────────────────────
 
 class DeepWorkBase(BaseModel):
-    planned_duration_minutes: int = Field(..., ge=5, le=480, description="Planned focus time in minutes")
+    planned_duration_minutes: int = Field(..., ge=5, le=720, description="Planned focus time in minutes")
     focus_goal: Optional[str] = Field(None, max_length=300)
     notes: Optional[str] = Field(None, max_length=1000)
     goal_id: Optional[int | str] = None
@@ -223,7 +223,7 @@ class DeepWorkScheduleCreate(BaseModel):
     days_of_week: List[int] = Field(..., min_length=1, max_length=7, description="0=Sun .. 6=Sat")
     local_dates: Optional[List[date]] = None
     start_time: str = Field(..., description="Local HH:MM")
-    duration_minutes: int = Field(..., ge=5, le=480)
+    duration_minutes: int = Field(..., ge=5, le=720)
     timezone: str = Field(..., min_length=1, max_length=64)
     focus_goal: Optional[str] = Field(None, max_length=300)
     notes: Optional[str] = Field(None, max_length=1000)
