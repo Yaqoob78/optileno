@@ -166,7 +166,6 @@
 /* Keep internal classes used by Planner and DeepWorkBlock */
 .modal-body {
   padding: var(--space-5);
-  background: #0f172a;
   overflow-y: auto;
   flex: 1;
 }
@@ -240,8 +239,6 @@
   display: flex;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  background: linear-gradient(135deg, transparent 0%, rgba(30, 41, 59, 0.3) 100%);
   flex-shrink: 0;
 }
 
@@ -734,7 +731,6 @@
 }
 
 [data-theme="dark"] .modal-header {
-  background: #0f172a;
   border-color: rgba(255, 255, 255, 0.1);
 }
 
@@ -769,7 +765,6 @@
 }
 
 [data-theme="dark"] .modal-actions {
-  background: #0f172a;
   border-color: rgba(255, 255, 255, 0.1);
 }
 
