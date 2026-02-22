@@ -176,7 +176,7 @@ export default function GoalTimeline() {
         isOpen={isModalOpen}
         onOpenChange={setIsModalOpen}
         title="Set New Goal"
-        maxWidth="md"
+        maxWidth="sm"
         footer={
           <div className="flex gap-3 w-full justify-end">
             <button className="px-4 py-2 rounded-lg font-medium text-[var(--text-secondary)] hover:bg-[var(--background-secondary)] transition-colors" onClick={() => setIsModalOpen(false)}>Cancel</button>

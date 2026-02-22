@@ -315,7 +315,7 @@ export default function HabitTracker({ habits: propsHabits }: HabitTrackerProps)
         isOpen={showNewHabitModal}
         onOpenChange={setShowNewHabitModal}
         title="New Daily Habit"
-        maxWidth="md"
+        maxWidth="sm"
         footer={
           <div className="flex gap-3 w-full justify-end">
             <button className="px-4 py-2 rounded-lg font-medium text-[var(--text-secondary)] hover:bg-[var(--background-secondary)] transition-colors" onClick={() => setShowNewHabitModal(false)}>Cancel</button>
