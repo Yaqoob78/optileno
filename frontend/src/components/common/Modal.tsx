@@ -45,6 +45,7 @@ export const Modal = ({
                 {/* Absolute Centering container. 
             Mobile behavior: Full width/height sheet with border radii adjustments. */}
                 <Dialog.Content
+                    aria-describedby={undefined}
                     className={twMerge(
                         clsx(
                             // Layout rules for positioning
