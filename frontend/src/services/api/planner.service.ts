@@ -31,10 +31,13 @@ export interface TaskUpdate extends Partial<TaskCreate> {
 }
 
 export interface DeepWorkStart {
-  plannedDurationMinutes: number;
+  plannedDurationMinutes?: number;
+  planned_duration_minutes?: number;
   focusGoal?: string;
+  focus_goal?: string;
   notes?: string;
   goalId?: string;
+  goal_id?: string | number | null;
 }
 
 export interface DeepWorkScheduleRequest {
@@ -124,6 +127,10 @@ class PlannerService {
     return api.post<DeepWorkSession>(`${this.basePath}/deep-work/start`, data);
   }
 
+  async startScheduledDeepWork(sessionId: string): Promise<ApiResponse<DeepWorkSession>> {
+    return api.post<DeepWorkSession>(`${this.basePath}/deep-work/${sessionId}/start`, {});
+  }
+
   async completeDeepWork(data: DeepWorkComplete): Promise<ApiResponse<DeepWorkSession>> {
     return api.post<DeepWorkSession>(`${this.basePath}/deep-work/${data.sessionId}/complete`, {
       actual_duration_minutes: data.actualDurationMinutes
@@ -148,6 +155,18 @@ class PlannerService {
 
   async scheduleDeepWork(data: DeepWorkScheduleRequest): Promise<ApiResponse<DeepWorkSession[]>> {
     return api.post<DeepWorkSession[]>(`${this.basePath}/deep-work/schedule`, data);
+  }
+
+  async getScheduledDeepWork(params?: {
+    includeMissed?: boolean;
+    daysAhead?: number;
+  }): Promise<ApiResponse<DeepWorkSession[]>> {
+    return api.get<DeepWorkSession[]>(`${this.basePath}/deep-work/schedule`, {
+      params: {
+        include_missed: params?.includeMissed ?? true,
+        days_ahead: params?.daysAhead ?? 14,
+      },
+    });
   }
 
   // ── Goals ────────────────────────────────────────────────────────

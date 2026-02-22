@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Brain, Calendar, Clock, Coffee, Lock, Pause, Play, Timer, X, CheckCircle2 } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { AlertCircle, Brain, Calendar, Clock, Coffee, Lock, Pause, Play, Timer, X } from 'lucide-react';
 import { usePlanner } from '../../hooks/usePlanner';
+import type { DeepWorkSession } from '../../services/api/planner.service';
 import { useSettingsStore } from '../../stores/useSettingsStore';
 import { useUserStore } from '../../stores/useUserStore';
 import {
@@ -30,7 +31,9 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
   const {
     goals,
     scheduleDeepWork,
+    fetchScheduledDeepWork,
     startDeepWork,
+    startScheduledDeepWork,
     activeDeepWork,
     pauseDeepWork,
     resumeDeepWork,
@@ -47,10 +50,14 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isStartingNow, setIsStartingNow] = useState(false);
+  const [isSessionActionBusy, setIsSessionActionBusy] = useState(false);
+  const [isAutoCompleting, setIsAutoCompleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [startNowError, setStartNowError] = useState<string | null>(null);
-  const [scheduledBlocks, setScheduledBlocks] = useState<Array<any>>([]);
+  const [scheduledBlocks, setScheduledBlocks] = useState<DeepWorkSession[]>([]);
+  const [isScheduleLoading, setIsScheduleLoading] = useState(false);
   const [isStartModalOpen, setIsStartModalOpen] = useState(false);
+  const [selectedScheduledSessionId, setSelectedScheduledSessionId] = useState<string | null>(null);
   const [startNowHours, setStartNowHours] = useState(2);
   const [startNowGoalId, setStartNowGoalId] = useState('');
   const [startNowNotes, setStartNowNotes] = useState('');
@@ -65,6 +72,53 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
     if (!activeDeepWork) return null;
     return activeDeepWork.status === 'active' || activeDeepWork.status === 'paused' ? activeDeepWork : null;
   }, [activeDeepWork]);
+
+  const selectedScheduledSession = useMemo(
+    () => scheduledBlocks.find((session) => session.id === selectedScheduledSessionId) || null,
+    [scheduledBlocks, selectedScheduledSessionId],
+  );
+  const isScheduledStartMode = !!selectedScheduledSession;
+
+  const resetBreakState = useCallback(() => {
+    setIsBreakPromptOpen(false);
+    setIsBreakActive(false);
+    setBreakTimerSeconds(0);
+    setHandledBreakMarkers([]);
+  }, []);
+
+  const openStartModalForImmediate = () => {
+    setSelectedScheduledSessionId(null);
+    setStartNowHours(2);
+    setStartNowGoalId('');
+    setStartNowNotes('');
+    setStartNowError(null);
+    setIsStartModalOpen(true);
+  };
+
+  const openStartModalForScheduled = (session: DeepWorkSession) => {
+    const durationMinutes = Math.max(60, Math.min(720, Number(session.planned_duration_minutes || 60)));
+    setSelectedScheduledSessionId(session.id);
+    setStartNowHours(Math.max(1, Math.min(12, Math.round(durationMinutes / 60))));
+    setStartNowGoalId(session.goal_id ? String(session.goal_id) : '');
+    setStartNowNotes(session.notes || '');
+    setStartNowError(null);
+    setIsStartModalOpen(true);
+  };
+
+  const loadScheduledBlocks = useCallback(async () => {
+    if (!isUltra) {
+      setScheduledBlocks([]);
+      return;
+    }
+    setIsScheduleLoading(true);
+    const result = await fetchScheduledDeepWork({ includeMissed: true, daysAhead: 14 });
+    if (result.success && result.sessions) {
+      setScheduledBlocks(result.sessions);
+    } else if (result.error) {
+      setError(result.error);
+    }
+    setIsScheduleLoading(false);
+  }, [fetchScheduledDeepWork, isUltra]);
 
   const getSessionStartMs = (session: typeof activeSession): number => {
     if (!session) return Date.now();
@@ -133,6 +187,45 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
     [selectedDays, timezone],
   );
 
+  const scheduledReminderCards = useMemo(() => {
+    const nowMs = currentTime.getTime();
+    return scheduledBlocks
+      .map((session) => {
+        const plannedMinutes = Math.max(60, Math.min(720, Number(session.planned_duration_minutes || 60)));
+        const scheduledStartMs = session.scheduled_start_at ? new Date(session.scheduled_start_at).getTime() : Number.NaN;
+        const windowEndMs = Number.isNaN(scheduledStartMs) ? Number.NaN : scheduledStartMs + plannedMinutes * 60 * 1000;
+        const dueNow =
+          session.status === 'scheduled' &&
+          !Number.isNaN(scheduledStartMs) &&
+          nowMs >= scheduledStartMs &&
+          (!Number.isNaN(windowEndMs) ? nowMs < windowEndMs : true);
+        const locallyMissed =
+          session.status === 'scheduled' &&
+          !Number.isNaN(windowEndMs) &&
+          nowMs >= windowEndMs;
+        const normalizedStatus = session.status === 'missed' || locallyMissed ? 'missed' : session.status;
+        const scheduledStart = session.scheduled_start_at ? new Date(session.scheduled_start_at) : null;
+
+        return {
+          ...session,
+          plannedMinutes,
+          dueNow,
+          normalizedStatus,
+          sortTimestamp: Number.isNaN(scheduledStartMs) ? Number.MAX_SAFE_INTEGER : scheduledStartMs,
+          displayDate: scheduledStart ? formatLocalDateLabel(getDateKeyInTimezone(scheduledStart, timezone), timezone) : 'Scheduled',
+          displayTime: scheduledStart
+            ? new Intl.DateTimeFormat(undefined, {
+                timeZone: timezone,
+                hour: 'numeric',
+                minute: '2-digit',
+              }).format(scheduledStart)
+            : '--:--',
+        };
+      })
+      .filter((session) => session.normalizedStatus === 'scheduled' || session.normalizedStatus === 'missed')
+      .sort((a, b) => a.sortTimestamp - b.sortTimestamp);
+  }, [currentTime, scheduledBlocks, timezone]);
+
   const toggleDay = (dayValue: number) => {
     setSelectedDays((prev) => {
       if (prev.includes(dayValue)) {
@@ -174,59 +267,78 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
     }
 
     setScheduledBlocks(result.sessions);
+    void loadScheduledBlocks();
     setNotes('');
   };
 
   const handleStartNow = async () => {
     setStartNowError(null);
-    const plannedMinutes = Math.max(60, Math.min(720, startNowHours * 60));
     setIsStartingNow(true);
     try {
-      const result = await startDeepWork({
-        plannedDurationMinutes: plannedMinutes,
-        goalId: startNowGoalId || undefined,
-        notes: startNowNotes.trim() || undefined,
-      });
-      if (!result.success) {
-        setStartNowError(result.error || 'Failed to start deep work session.');
-        return;
+      if (isScheduledStartMode && selectedScheduledSessionId) {
+        const result = await startScheduledDeepWork(selectedScheduledSessionId);
+        if (!result.success) {
+          setStartNowError(result.error || 'Failed to start scheduled deep work session.');
+          void loadScheduledBlocks();
+          return;
+        }
+      } else {
+        const plannedMinutes = Math.max(60, Math.min(720, startNowHours * 60));
+        const result = await startDeepWork({
+          plannedDurationMinutes: plannedMinutes,
+          goalId: startNowGoalId || undefined,
+          notes: startNowNotes.trim() || undefined,
+        });
+        if (!result.success) {
+          setStartNowError(result.error || 'Failed to start deep work session.');
+          return;
+        }
       }
+
+      void loadScheduledBlocks();
       setIsStartModalOpen(false);
       setStartNowNotes('');
       setStartNowGoalId('');
       setStartNowHours(2);
-      setIsBreakPromptOpen(false);
-      setIsBreakActive(false);
-      setBreakTimerSeconds(0);
-      setHandledBreakMarkers([]);
+      setSelectedScheduledSessionId(null);
+      resetBreakState();
     } finally {
       setIsStartingNow(false);
     }
   };
 
   const handlePauseSession = async () => {
-    await pauseDeepWork();
+    setError(null);
+    setIsSessionActionBusy(true);
+    const result = await pauseDeepWork();
+    if (!result.success) {
+      setError(result.error || 'Unable to pause the deep work session.');
+    }
+    setIsSessionActionBusy(false);
   };
 
   const handleResumeSession = async () => {
-    await resumeDeepWork();
-  };
-
-  const handleFinishSession = async () => {
-    const actualMinutes = Math.max(1, Math.min(720, Math.round(elapsedSeconds / 60)));
-    await completeDeepWork(actualMinutes);
-    setIsBreakPromptOpen(false);
-    setIsBreakActive(false);
-    setBreakTimerSeconds(0);
-    setHandledBreakMarkers([]);
+    setError(null);
+    setIsSessionActionBusy(true);
+    const result = await resumeDeepWork();
+    if (!result.success) {
+      setError(result.error || 'Unable to resume the deep work session.');
+    }
+    setIsSessionActionBusy(false);
   };
 
   const handleCancelSession = async () => {
-    await cancelDeepWork();
-    setIsBreakPromptOpen(false);
-    setIsBreakActive(false);
-    setBreakTimerSeconds(0);
-    setHandledBreakMarkers([]);
+    setError(null);
+    setIsSessionActionBusy(true);
+    const result = await cancelDeepWork();
+    if (!result.success) {
+      setError(result.error || 'Unable to cancel the deep work session.');
+      setIsSessionActionBusy(false);
+      return;
+    }
+    resetBreakState();
+    setIsSessionActionBusy(false);
+    void loadScheduledBlocks();
   };
 
   const startBreak = (minutes: number) => {
@@ -237,14 +349,29 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
 
   const handleSkipBreak = async () => {
     setIsBreakPromptOpen(false);
-    await resumeDeepWork();
+    const result = await resumeDeepWork();
+    if (!result.success) {
+      setError(result.error || 'Unable to resume after break.');
+    }
   };
 
   const handleEndBreak = async () => {
     setIsBreakActive(false);
     setBreakTimerSeconds(0);
-    await resumeDeepWork();
+    const result = await resumeDeepWork();
+    if (!result.success) {
+      setError(result.error || 'Unable to resume after break.');
+    }
   };
+
+  useEffect(() => {
+    if (!isUltra) return;
+    void loadScheduledBlocks();
+    const interval = window.setInterval(() => {
+      void loadScheduledBlocks();
+    }, 30_000);
+    return () => window.clearInterval(interval);
+  }, [isUltra, loadScheduledBlocks]);
 
   useEffect(() => {
     if (!activeSession) return;
@@ -256,10 +383,8 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
 
   useEffect(() => {
     if (!activeSession) {
-      setHandledBreakMarkers([]);
-      setIsBreakPromptOpen(false);
-      setIsBreakActive(false);
-      setBreakTimerSeconds(0);
+      setIsAutoCompleting(false);
+      resetBreakState();
       return;
     }
     const elapsedMinutes = Math.floor(getElapsedSeconds(activeSession, Date.now()) / 60);
@@ -268,10 +393,8 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
       initializedMarkers.push(marker);
     }
     setHandledBreakMarkers(initializedMarkers);
-    setIsBreakPromptOpen(false);
-    setIsBreakActive(false);
-    setBreakTimerSeconds(0);
-  }, [activeSession?.id]);
+    resetBreakState();
+  }, [activeSession?.id, resetBreakState]);
 
   useEffect(() => {
     if (!activeSession || activeSession.status !== 'active') return;
@@ -283,7 +406,12 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
 
     setHandledBreakMarkers((prev) => [...prev, elapsedMinutes]);
     setIsBreakPromptOpen(true);
-    void pauseDeepWork();
+    void (async () => {
+      const result = await pauseDeepWork();
+      if (!result.success) {
+        setError(result.error || 'Unable to pause session for break.');
+      }
+    })();
   }, [
     activeSession,
     elapsedSeconds,
@@ -291,6 +419,33 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
     isBreakActive,
     isBreakPromptOpen,
     pauseDeepWork,
+  ]);
+
+  useEffect(() => {
+    if (!activeSession || activeSession.status !== 'active') return;
+    if (remainingSeconds > 0 || isAutoCompleting) return;
+
+    setIsAutoCompleting(true);
+    void (async () => {
+      const actualMinutes = Math.max(1, Math.min(720, Math.round(elapsedSeconds / 60)));
+      const result = await completeDeepWork(actualMinutes);
+      if (!result.success) {
+        setError(result.error || 'Failed to auto-complete deep work session.');
+        setIsAutoCompleting(false);
+        return;
+      }
+      resetBreakState();
+      setIsAutoCompleting(false);
+      void loadScheduledBlocks();
+    })();
+  }, [
+    activeSession,
+    completeDeepWork,
+    elapsedSeconds,
+    isAutoCompleting,
+    loadScheduledBlocks,
+    remainingSeconds,
+    resetBreakState,
   ]);
 
   useEffect(() => {
@@ -337,11 +492,8 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
         <button
           type="button"
           className="deepwork-start-now-btn"
-          onClick={() => {
-            setStartNowError(null);
-            setIsStartModalOpen(true);
-          }}
-          disabled={!!activeSession}
+          onClick={openStartModalForImmediate}
+          disabled={!!activeSession || isSessionActionBusy || isAutoCompleting}
         >
           <Play size={14} />
           <span>{activeSession ? 'Session Running' : 'Start Now'}</span>
@@ -356,10 +508,8 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
             <button
               type="button"
               className="start-btn"
-              onClick={() => {
-                setStartNowError(null);
-                setIsStartModalOpen(true);
-              }}
+              onClick={openStartModalForImmediate}
+              disabled={isSessionActionBusy || isAutoCompleting}
             >
               <Play size={16} />
               <span>Start Deep Work</span>
@@ -384,24 +534,38 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
             </div>
             <div className="timer-controls">
               {activeSession.status === 'active' ? (
-                <button type="button" className="timer-btn" onClick={handlePauseSession}>
+                <button
+                  type="button"
+                  className="timer-btn"
+                  onClick={handlePauseSession}
+                  disabled={isSessionActionBusy || isAutoCompleting}
+                >
                   <Pause size={14} />
-                  <span>Pause</span>
+                  <span>{isSessionActionBusy ? 'Pausing...' : 'Pause'}</span>
                 </button>
               ) : (
-                <button type="button" className="timer-btn" onClick={handleResumeSession}>
+                <button
+                  type="button"
+                  className="timer-btn"
+                  onClick={handleResumeSession}
+                  disabled={isSessionActionBusy || isAutoCompleting}
+                >
                   <Play size={14} />
-                  <span>Resume</span>
+                  <span>{isSessionActionBusy ? 'Resuming...' : 'Resume'}</span>
                 </button>
               )}
-              <button type="button" className="timer-btn complete" onClick={handleFinishSession}>
-                <CheckCircle2 size={14} />
-                <span>Finish</span>
-              </button>
-              <button type="button" className="timer-btn cancel" onClick={handleCancelSession}>
+              <button
+                type="button"
+                className="timer-btn cancel"
+                onClick={handleCancelSession}
+                disabled={isSessionActionBusy || isAutoCompleting}
+              >
                 <X size={14} />
-                <span>Cancel</span>
+                <span>{isSessionActionBusy ? 'Cancelling...' : 'Cancel'}</span>
               </button>
+            </div>
+            <div className="timer-auto-finish-note">
+              {isAutoCompleting ? 'Finishing session...' : 'Session auto-finishes when timer reaches 00:00.'}
             </div>
           </div>
         )}
@@ -433,7 +597,9 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
         <div className="break-warning">
           <Coffee size={16} />
           <span>Break running: {formatClock(breakTimerSeconds)}</span>
-          <button type="button" className="timer-btn" onClick={handleEndBreak}>Resume Early</button>
+          <button type="button" className="timer-btn" onClick={handleEndBreak} disabled={isSessionActionBusy || isAutoCompleting}>
+            Resume Early
+          </button>
         </div>
       )}
 
@@ -533,28 +699,35 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
         </button>
       </div>
 
-      {scheduledBlocks.length > 0 && (
+      {(isScheduleLoading || scheduledReminderCards.length > 0) && (
         <div className="completed-sessions">
           <h4>Scheduled Blocks</h4>
+          {isScheduleLoading && <div className="session-loading">Refreshing schedule...</div>}
           <div className="sessions-list">
-            {scheduledBlocks.map((session) => {
-              const startedAt = session.started_at ? new Date(session.started_at) : null;
-              const localDate = startedAt ? getDateKeyInTimezone(startedAt, timezone) : '';
-              const startTimeLabel =
-                startedAt
-                  ? new Intl.DateTimeFormat(undefined, {
-                      timeZone: timezone,
-                      hour: 'numeric',
-                      minute: '2-digit',
-                    }).format(startedAt)
-                  : startTime;
+            {scheduledReminderCards.map((session) => {
+              const isMissed = session.normalizedStatus === 'missed';
+              const isDueNow = session.dueNow && !isMissed;
+              const canStartFromReminder = isDueNow && !activeSession && !isSessionActionBusy && !isAutoCompleting;
               return (
-                <div key={session.id} className="session-item">
-                  <span>
-                    {localDate ? formatLocalDateLabel(localDate, timezone) : 'Scheduled'} at {startTimeLabel}
-                    {' '}({session.planned_duration_minutes || durationMinutes} min)
+                <button
+                  key={session.id}
+                  type="button"
+                  className={`session-item ${isDueNow ? 'due-now' : ''} ${isMissed ? 'missed' : ''} ${canStartFromReminder ? 'clickable' : ''}`}
+                  disabled={!canStartFromReminder}
+                  onClick={() => openStartModalForScheduled(session)}
+                >
+                  <span className="session-item-title">
+                    {(isDueNow || isMissed) && <AlertCircle size={14} />}
+                    {isDueNow
+                      ? 'Due now - tap to start'
+                      : isMissed
+                        ? 'Missed deep work - penalty applied'
+                        : 'Scheduled deep work'}
                   </span>
-                </div>
+                  <span className="session-item-meta">
+                    {session.displayDate} at {session.displayTime} ({session.plannedMinutes} min)
+                  </span>
+                </button>
               );
             })}
           </div>
@@ -563,15 +736,24 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
 
       <Modal
         isOpen={isStartModalOpen}
-        onOpenChange={setIsStartModalOpen}
-        title="Start Deep Work"
+        onOpenChange={(open) => {
+          setIsStartModalOpen(open);
+          if (!open) {
+            setSelectedScheduledSessionId(null);
+            setStartNowError(null);
+          }
+        }}
+        title={isScheduledStartMode ? 'Start Scheduled Deep Work' : 'Start Deep Work'}
         className="deepwork-modal-shell"
         maxWidth="sm"
         footer={
           <div className="flex gap-3 justify-end">
             <button
               className="app-modal-btn app-modal-btn-secondary"
-              onClick={() => setIsStartModalOpen(false)}
+              onClick={() => {
+                setIsStartModalOpen(false);
+                setSelectedScheduledSessionId(null);
+              }}
               disabled={isStartingNow}
             >
               Cancel
@@ -581,7 +763,7 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
               onClick={handleStartNow}
               disabled={isStartingNow}
             >
-              {isStartingNow ? 'Starting...' : 'Start Session'}
+              {isStartingNow ? 'Starting...' : isScheduledStartMode ? 'Start Scheduled Session' : 'Start Session'}
             </button>
           </div>
         }
@@ -589,14 +771,29 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
         <div className="deepwork-start-modal">
           {startNowError && <div className="deepwork-form-error">{startNowError}</div>}
 
+          {isScheduledStartMode && selectedScheduledSession && (
+            <div className="deepwork-scheduled-note">
+              Scheduled for {selectedScheduledSession.scheduled_start_at
+                ? new Intl.DateTimeFormat(undefined, {
+                    timeZone: timezone,
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                  }).format(new Date(selectedScheduledSession.scheduled_start_at))
+                : 'this slot'}
+            </div>
+          )}
+
           <div className="deepwork-form-group">
-            <label>Session Duration (1-12 hours)</label>
+            <label>{isScheduledStartMode ? 'Scheduled Duration' : 'Session Duration (1-12 hours)'}</label>
             <div className="deepwork-hour-picker">
               <button
                 type="button"
                 className="hour-step-btn"
                 onClick={() => setStartNowHours((prev) => Math.max(1, prev - 1))}
-                disabled={startNowHours <= 1 || isStartingNow}
+                disabled={isScheduledStartMode || startNowHours <= 1 || isStartingNow}
               >
                 -
               </button>
@@ -605,7 +802,7 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
                 type="button"
                 className="hour-step-btn"
                 onClick={() => setStartNowHours((prev) => Math.min(12, prev + 1))}
-                disabled={startNowHours >= 12 || isStartingNow}
+                disabled={isScheduledStartMode || startNowHours >= 12 || isStartingNow}
               >
                 +
               </button>
@@ -616,9 +813,13 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
               max={12}
               value={startNowHours}
               onChange={(event) => setStartNowHours(Number(event.target.value))}
-              disabled={isStartingNow}
+              disabled={isScheduledStartMode || isStartingNow}
             />
-            <div className="deepwork-duration-hint">{startNowHours * 60} minutes focus time</div>
+            <div className="deepwork-duration-hint">
+              {isScheduledStartMode
+                ? `${selectedScheduledSession?.planned_duration_minutes || startNowHours * 60} minutes (locked by schedule)`
+                : `${startNowHours * 60} minutes focus time`}
+            </div>
           </div>
 
           <div className="deepwork-form-group">
@@ -627,7 +828,7 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
               className="deepwork-select"
               value={startNowGoalId}
               onChange={(event) => setStartNowGoalId(event.target.value)}
-              disabled={isStartingNow}
+              disabled={isStartingNow || isScheduledStartMode}
             >
               <option value="">No specific goal</option>
               {goals.map((goal) => (
@@ -645,7 +846,7 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
               rows={3}
               value={startNowNotes}
               onChange={(event) => setStartNowNotes(event.target.value)}
-              disabled={isStartingNow}
+              disabled={isStartingNow || isScheduledStartMode}
             />
           </div>
         </div>

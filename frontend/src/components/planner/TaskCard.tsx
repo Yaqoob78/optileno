@@ -106,9 +106,11 @@ export default function TaskCard({
 
   const statusConfig: Record<string, { color: string; label: string; icon: React.ReactNode }> = {
     completed: { color: 'status-completed', label: 'Completed', icon: <CheckCircle size={12} /> },
+    done: { color: 'status-completed', label: 'Completed', icon: <CheckCircle size={12} /> },
     'in-progress': { color: 'status-in-progress', label: 'In Progress', icon: <Play size={12} /> },
     'in_progress': { color: 'status-in-progress', label: 'In Progress', icon: <Play size={12} /> }, // Handle backend var
     scheduled: { color: 'status-scheduled', label: 'Scheduled', icon: <Clock size={12} /> },
+    todo: { color: 'status-scheduled', label: 'Scheduled', icon: <Clock size={12} /> },
     pending: { color: 'status-scheduled', label: 'Pending', icon: <Clock size={12} /> }, // Map pending to scheduled style
     planned: { color: 'status-planned', label: 'Planned', icon: <Target size={12} /> },
     overdue: { color: 'status-overdue', label: 'Overdue', icon: <AlertCircle size={12} /> },
@@ -141,15 +143,28 @@ export default function TaskCard({
     };
   }, [showActions]);
 
+  const parseTaskDueDate = (value?: string | Date | null): Date | null => {
+    if (!value) return null;
+    if (value instanceof Date) {
+      return Number.isNaN(value.getTime()) ? null : value;
+    }
+
+    const raw = String(value).trim();
+    const hasTimePart = raw.includes('T');
+    const hasZoneSuffix = /([zZ]|[+\-]\d{2}:\d{2})$/.test(raw);
+    const normalized = hasTimePart && !hasZoneSuffix ? `${raw}Z` : raw;
+    const parsed = new Date(normalized);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+
+    const fallback = new Date(raw);
+    return Number.isNaN(fallback.getTime()) ? null : fallback;
+  };
+
   // Helper: Get the actual Date object for this task's scheduled day.
   //   If task has a dueDate, use that day. Otherwise fall back to today.
   const getTaskDate = (): Date => {
-    if (task.dueDate) {
-      try {
-        const d = new Date(task.dueDate);
-        if (!isNaN(d.getTime())) return d;
-      } catch { /* fall through */ }
-    }
+    const parsed = parseTaskDueDate(task.dueDate);
+    if (parsed) return parsed;
     return new Date();
   };
 
@@ -201,14 +216,10 @@ export default function TaskCard({
       startTimeMs = d.getTime();
     } else if (task.dueDate) {
       // If no explicit startTime but we have a dueDate, use the dueDate time
-      try {
-        const d = new Date(task.dueDate);
-        if (!isNaN(d.getTime())) {
-          startTimeMs = d.getTime();
-        } else {
-          startTimeMs = currentTimeMs;
-        }
-      } catch {
+      const parsed = parseTaskDueDate(task.dueDate);
+      if (parsed) {
+        startTimeMs = parsed.getTime();
+      } else {
         startTimeMs = currentTimeMs;
       }
     } else {
@@ -301,19 +312,25 @@ export default function TaskCard({
       return;
     }
 
-    // B. In Progress (Auto-Start)
+    // B. Active Window
     if (currentTimeMs < scheduledEndTimeMs) {
       const diffMs = scheduledEndTimeMs - currentTimeMs;
       const h = Math.floor(diffMs / (1000 * 60 * 60));
       const m = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
       const s = Math.floor((diffMs % (1000 * 60)) / 1000);
-      setTimeRemaining(`${h}h ${m}m ${s}s left`);
+
+      // Only show "In Progress" when task is explicitly started.
+      if (currentStatus === 'in-progress') {
+        setTimeRemaining(`${h}h ${m}m ${s}s left`);
+        setShowMarkComplete(false); // Strict
+        return;
+      }
+
+      setTimeRemaining(`Scheduled: ${h}h ${m}m left`);
       setShowMarkComplete(false); // Strict
 
-      // Auto-update status if needed
-      if (currentStatus !== 'in-progress') {
-        setCurrentStatus('in-progress');
-        // Optionally sync to backend: if (onAutoUpdateStatus) onAutoUpdateStatus(...)
+      if (currentStatus !== 'scheduled') {
+        setCurrentStatus('scheduled');
       }
       return;
     }
@@ -345,8 +362,8 @@ export default function TaskCard({
 
   const formatTime = (startTime?: string, duration?: number) => {
     if (task.dueDate && duration !== undefined) {
-      const start = new Date(task.dueDate);
-      if (!Number.isNaN(start.getTime())) {
+      const start = parseTaskDueDate(task.dueDate);
+      if (start) {
         const end = new Date(start.getTime() + duration * 60 * 1000);
         const formatter = new Intl.DateTimeFormat(undefined, {
           timeZone: timezone,

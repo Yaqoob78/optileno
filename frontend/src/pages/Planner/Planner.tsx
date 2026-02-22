@@ -204,6 +204,26 @@ export default function PlannerPage() {
   };
 
   // ── Task CRUD handlers ────────────────────────────────────────────
+  // Backend may return naive ISO strings (without timezone suffix).
+  // We normalize those as UTC to preserve exact selected time in UI.
+  const parseTaskDate = (value?: string | Date | null): Date | null => {
+    if (!value) return null;
+    if (value instanceof Date) {
+      return Number.isNaN(value.getTime()) ? null : value;
+    }
+
+    const raw = String(value).trim();
+    const hasTimePart = raw.includes('T');
+    const hasZoneSuffix = /([zZ]|[+\-]\d{2}:\d{2})$/.test(raw);
+    const normalized = hasTimePart && !hasZoneSuffix ? `${raw}Z` : raw;
+
+    const parsed = new Date(normalized);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+
+    const fallback = new Date(raw);
+    return Number.isNaN(fallback.getTime()) ? null : fallback;
+  };
+
   const handleAddTask = () => {
     const now = new Date();
     const hours = now.getHours().toString().padStart(2, '0');
@@ -262,21 +282,17 @@ export default function PlannerPage() {
   const handleEditTask = (task: any) => {
     setIsEnergyTouched(true); // Don't auto-estimate for existing tasks
     const dueDateVal = task.dueDate || task.due_date;
+    const parsedDueDate = parseTaskDate(dueDateVal);
     // Extract the  scheduled day from the existing dueDate
     let scheduledDay: number | undefined = undefined;
-    if (dueDateVal) {
-      try {
-        const d = new Date(dueDateVal);
-        if (!isNaN(d.getTime())) {
-          scheduledDay = getWeekdayIndexInTimezone(d, timezone);
-        }
-      } catch { /* ignore */ }
+    if (parsedDueDate) {
+      scheduledDay = getWeekdayIndexInTimezone(parsedDueDate, timezone);
     }
     setEditForm({
       id: task.id,
       title: task.title,
       description: task.description,
-      startTime: task.startTime || (dueDateVal ? getTimeHHMMInTimezone(new Date(dueDateVal), timezone) : undefined),
+      startTime: task.startTime || (parsedDueDate ? getTimeHHMMInTimezone(parsedDueDate, timezone) : undefined),
       duration: task.duration || task.estimatedDurationMinutes,
       energy: task.energy || 'medium',
       status: task.status,
@@ -284,7 +300,7 @@ export default function PlannerPage() {
       priority: task.priority,
       tags: task.tags,
       notes: task.notes,
-      dueDate: dueDateVal ? getDateKeyInTimezone(new Date(dueDateVal), timezone) : undefined,
+      dueDate: parsedDueDate ? getDateKeyInTimezone(parsedDueDate, timezone) : undefined,
       goalId: task.related_goal_id, // Map backend field
       scheduledDay: scheduledDay,
     });
@@ -508,60 +524,42 @@ export default function PlannerPage() {
   const completedTasks = tasks.filter(t => t.status === 'done').length;
   // ── Transform API tasks to TaskCard format ────────────────────────
   const transformTaskForCard = (task: any) => {
-    // Debug log to inspect incoming task data
-    console.log("TaskCard Transform Input:", task);
-
-    // Handle both snake_case (backend) and camelCase (frontend)
     const dueDateVal = task.dueDate || task.due_date;
+    const parsedDueDate = parseTaskDate(dueDateVal);
 
-    // Explicitly check for 0 or null before falling back
     let rawDuration = task.estimated_duration_minutes;
     if (rawDuration === undefined || rawDuration === null) rawDuration = task.estimatedDurationMinutes;
     if (rawDuration === undefined || rawDuration === null) rawDuration = task.estimated_minutes;
     if (rawDuration === undefined || rawDuration === null) rawDuration = task.duration;
-
-    // If rawDuration is 0, keep it (though min is usually 5). If undefined/null, use 60.
     const durationVal = (rawDuration !== undefined && rawDuration !== null) ? rawDuration : 60;
 
-    // Parse start time from dueDate or use default
-    let startTime: string | undefined = undefined;
-    if (dueDateVal) {
-      try {
-        const dateValue = new Date(dueDateVal);
-        startTime = getTimeHHMMInTimezone(dateValue, timezone);
-      } catch (e) {
-        console.warn('Invalid date format:', dueDateVal);
-      }
-    }
+    const startTime = parsedDueDate ? getTimeHHMMInTimezone(parsedDueDate, timezone) : undefined;
 
-    // Ensure all required fields exist with defaults
-    const transformedTask = {
-      ...task, // Spread original task FIRST to prevent overwriting our normalized values
-      id: task.id || task._id || `temp-${crypto.randomUUID()}`, // Robust fallback
-      originalId: String(task.id || task._id), // Keep original string ID for API calls
+    const normalizedStatus = (() => {
+      const rawStatus = String(task.status || 'planned');
+      if (rawStatus === 'done' || rawStatus === 'completed') return 'completed';
+      if (rawStatus === 'pending' || rawStatus === 'todo') return 'scheduled';
+      if (rawStatus === 'in_progress') return 'in-progress';
+      return rawStatus;
+    })();
+
+    return {
+      ...task,
+      id: task.id || task._id || `temp-${crypto.randomUUID()}`,
+      originalId: String(task.id || task._id),
       title: task.title || 'New Task',
-      startTime: startTime,
-      dueDate: dueDateVal || null, // Pass the actual scheduled date to TaskCard for accurate timing
+      startTime,
+      dueDate: parsedDueDate ? parsedDueDate.toISOString() : null,
       duration: durationVal,
       energy: (task.energy || 'medium') as 'low' | 'medium' | 'high',
       category: (task.category || 'work') as 'work' | 'meeting' | 'break' | 'health' | 'learning' | 'routine' | 'personal',
       priority: (task.priority || 'medium') as 'low' | 'medium' | 'high' | 'urgent',
-      status: (task.status || 'planned') as 'todo' | 'in-progress' | 'done' | 'planned' | 'overdue',
+      status: normalizedStatus as 'completed' | 'in-progress' | 'scheduled' | 'planned' | 'overdue' | 'failed' | 'pending' | 'todo',
       tags: Array.isArray(task.tags) ? task.tags : [],
       description: task.description || '',
       subtasks: Array.isArray(task.subtasks) ? task.subtasks : [],
       notes: task.notes || ''
     };
-
-    // Debug log for originalId preservation
-    if (transformedTask.originalId !== String(task.id || task._id)) {
-      console.warn('⚠️ originalId may have been overwritten:', {
-        intended: String(task.id || task._id),
-        actual: transformedTask.originalId
-      });
-    }
-
-    return transformedTask;
   };
 
   return (
@@ -1080,5 +1078,6 @@ export default function PlannerPage() {
     </ErrorBoundary>
   );
 }
+
 
 

@@ -1387,37 +1387,146 @@ class PlannerService:
     # DEEP WORK CRUD
     # ─────────────────────────────────────────────────────────────
 
+    def _deep_work_schedule(self, session: Any) -> dict[str, Any]:
+        if isinstance(getattr(session, "schedule", None), dict):
+            return dict(session.schedule)
+        return {}
+
+    def _parse_deep_work_datetime(self, value: Any) -> Optional[datetime]:
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return self._ensure_utc(value)
+        if isinstance(value, str):
+            try:
+                return self._ensure_utc(datetime.fromisoformat(value.replace("Z", "+00:00")))
+            except Exception:
+                return None
+        return None
+
+    def _planned_deep_work_minutes(self, schedule: dict[str, Any]) -> int:
+        raw = schedule.get("planned_duration")
+        if raw is None:
+            raw = schedule.get("planned_duration_minutes")
+        try:
+            minutes = int(raw)
+        except Exception:
+            minutes = 60
+        return max(1, min(720, minutes))
+
+    def _scheduled_window_end_utc(self, schedule: dict[str, Any]) -> Optional[datetime]:
+        scheduled_start = self._parse_deep_work_datetime(schedule.get("scheduled_start_at"))
+        if not scheduled_start:
+            return None
+        return scheduled_start + timedelta(minutes=self._planned_deep_work_minutes(schedule))
+
+    async def _track_missed_deep_work(
+        self,
+        user_id: str,
+        session_id: str,
+        schedule: dict[str, Any],
+    ) -> None:
+        penalty_points = int(schedule.get("penalty_points") or 8)
+        try:
+            await realtime_analytics.track_event(
+                user_id=int(user_id),
+                event_type="deep_work_missed",
+                metadata={
+                    "session_id": session_id,
+                    "penalty_points": penalty_points,
+                    "scheduled_start_at": schedule.get("scheduled_start_at"),
+                    "planned_duration_minutes": self._planned_deep_work_minutes(schedule),
+                    "reason": schedule.get("missed_reason") or "window_expired",
+                },
+            )
+        except Exception as exc:
+            logger.error("Failed to track deep_work_missed for session %s: %s", session_id, exc)
+
+    async def _mark_session_missed(
+        self,
+        db: Any,
+        session: Any,
+        now_utc: datetime,
+        *,
+        reason: str = "window_expired",
+    ) -> tuple[dict[str, Any], bool]:
+        schedule = self._deep_work_schedule(session)
+        if schedule.get("status") == "missed":
+            return schedule, False
+
+        schedule["status"] = "missed"
+        schedule["missed_at"] = now_utc.isoformat()
+        schedule["missed_reason"] = reason
+        if not schedule.get("penalty_applied"):
+            schedule["penalty_applied"] = True
+            schedule["penalty_points"] = int(schedule.get("penalty_points") or 8)
+            penalty_just_applied = True
+        else:
+            schedule["penalty_points"] = int(schedule.get("penalty_points") or 8)
+            penalty_just_applied = False
+
+        session.schedule = schedule
+        await db.flush()
+        return schedule, penalty_just_applied
+
+    def _auto_complete_active_if_elapsed(
+        self,
+        session: Any,
+        schedule: dict[str, Any],
+        now_utc: datetime,
+    ) -> Optional[dict[str, Any]]:
+        if schedule.get("status") != "active":
+            return None
+
+        started_at = self._parse_deep_work_datetime(schedule.get("started_at")) or self._parse_deep_work_datetime(session.date)
+        if not started_at:
+            return None
+
+        total_elapsed_seconds = int((now_utc - started_at).total_seconds())
+        pause_seconds = max(0, int(schedule.get("accumulated_pause_seconds", 0) or 0))
+        active_elapsed_seconds = max(0, total_elapsed_seconds - pause_seconds)
+
+        planned_seconds = self._planned_deep_work_minutes(schedule) * 60
+        if active_elapsed_seconds < planned_seconds:
+            return None
+
+        schedule["status"] = "completed"
+        schedule["completed_at"] = now_utc.isoformat()
+        schedule["actual_duration"] = max(1, int(active_elapsed_seconds / 60))
+        return schedule
+
     async def start_deep_work(self, user_id: str, data: Any) -> Any:
-        """Start an IMMEDIATE deep work session."""
+        """Start an immediate deep work session."""
         from backend.db.models import Plan
         from sqlalchemy import select
-        
+
         try:
             async for db in get_db():
-                # OVERLAPPING CONFLICT RULE 3: Only ONE Active/Paused session
                 result = await db.execute(
                     select(Plan).where(
                         Plan.user_id == int(user_id),
-                        Plan.plan_type == "deep_work"
+                        Plan.plan_type == "deep_work",
                     ).order_by(Plan.created_at.desc())
                 )
                 sessions = result.scalars().all()
                 for session in sessions:
-                    sched = session.schedule if isinstance(session.schedule, dict) else {}
-                    if sched.get("status") in ["active", "paused"]:
+                    schedule = self._deep_work_schedule(session)
+                    if schedule.get("status") in {"active", "paused"}:
                         return {"error": "You already have an active or paused deep work session."}
-                
+
                 input_data = data.dict() if hasattr(data, "dict") else data
-                goal_id = input_data.get("goal_id")
+                goal_id = input_data.get("goal_id", input_data.get("goalId"))
                 await self._enforce_goal_id_ultra(user_id, goal_id)
-                
-                planned_dur = input_data.get("planned_duration_minutes")
-                if planned_dur is None or int(planned_dur) < 60:
-                    planned_dur = 60
-                
-                # We do NOT use explicit scheduling for this, start it right now
-                now_utc = datetime.now(timezone.utc)
-                
+
+                try:
+                    planned_duration = int(
+                        input_data.get("planned_duration_minutes", input_data.get("plannedDurationMinutes"))
+                    )
+                except Exception:
+                    planned_duration = 60
+                planned_duration = max(60, min(720, planned_duration))
+
+                now_utc = self._utc_now()
                 new_session = Plan(
                     user_id=int(user_id),
                     name="Deep Work",
@@ -1425,20 +1534,20 @@ class PlannerService:
                     date=now_utc,
                     goal_id=int(goal_id) if goal_id not in (None, "") else None,
                     schedule={
-                        "planned_duration": planned_dur,
-                        "focus_goal": input_data.get("focus_goal"),
+                        "planned_duration": planned_duration,
+                        "focus_goal": input_data.get("focus_goal", input_data.get("focusGoal")),
                         "notes": input_data.get("notes"),
                         "status": "active",
                         "started_at": now_utc.isoformat(),
-                        "accumulated_pause_seconds": 0
-                    }
+                        "accumulated_pause_seconds": 0,
+                    },
                 )
                 db.add(new_session)
                 await db.commit()
                 await db.refresh(new_session)
                 return self._map_to_deep_work_out(new_session)
-        except Exception as e:
-            logger.error(f"Failed to start deep work: {e}")
+        except Exception as exc:
+            logger.error("Failed to start deep work: %s", exc, exc_info=True)
             return None
 
     async def schedule_deep_work(self, user_id: str, data: Any) -> list[Any]:
@@ -1518,6 +1627,142 @@ class PlannerService:
             logger.error("Failed to schedule deep work: %s", exc)
             raise HTTPException(status_code=500, detail="Failed to schedule deep work")
 
+    async def get_scheduled_deep_work(
+        self,
+        user_id: str,
+        *,
+        include_missed: bool = True,
+        days_ahead: int = 14,
+    ) -> list[Any]:
+        """List scheduled deep work sessions and optionally recent missed sessions."""
+        from backend.db.models import Plan
+        from sqlalchemy import select
+
+        now_utc = self._utc_now()
+        days_ahead = max(1, min(30, int(days_ahead)))
+        upcoming_cutoff = now_utc + timedelta(days=days_ahead)
+        recent_missed_cutoff = now_utc - timedelta(days=2)
+
+        try:
+            async for db in get_db():
+                result = await db.execute(
+                    select(Plan).where(
+                        Plan.user_id == int(user_id),
+                        Plan.plan_type == "deep_work",
+                    ).order_by(Plan.date.asc(), Plan.created_at.asc())
+                )
+                sessions = result.scalars().all()
+
+                newly_missed_for_tracking: list[tuple[str, dict[str, Any]]] = []
+                touched = False
+                output: list[Any] = []
+
+                for session in sessions:
+                    schedule = self._deep_work_schedule(session)
+                    status = schedule.get("status")
+
+                    if status == "scheduled":
+                        window_end = self._scheduled_window_end_utc(schedule)
+                        if window_end and now_utc >= window_end:
+                            schedule, penalty_just_applied = await self._mark_session_missed(db, session, now_utc)
+                            touched = True
+                            status = "missed"
+                            if penalty_just_applied:
+                                newly_missed_for_tracking.append((str(session.id), schedule))
+
+                    if status == "scheduled":
+                        scheduled_start = self._parse_deep_work_datetime(schedule.get("scheduled_start_at")) or self._parse_deep_work_datetime(session.date)
+                        if scheduled_start and scheduled_start <= upcoming_cutoff:
+                            output.append(session)
+                        continue
+
+                    if include_missed and status == "missed":
+                        missed_at = self._parse_deep_work_datetime(schedule.get("missed_at")) or self._scheduled_window_end_utc(schedule)
+                        if missed_at and missed_at >= recent_missed_cutoff:
+                            output.append(session)
+
+                if touched:
+                    await db.commit()
+                    for session in output:
+                        await db.refresh(session)
+
+                for missed_session_id, missed_schedule in newly_missed_for_tracking:
+                    await self._track_missed_deep_work(user_id, missed_session_id, missed_schedule)
+
+                return [self._map_to_deep_work_out(session) for session in output]
+        except Exception as exc:
+            logger.error("Failed to fetch scheduled deep work: %s", exc, exc_info=True)
+            return []
+
+    async def start_scheduled_deep_work(self, user_id: str, session_id: str) -> Any:
+        """Start a scheduled deep work session when its window is due."""
+        from backend.db.models import Plan
+        from sqlalchemy import select
+
+        now_utc = self._utc_now()
+        try:
+            async for db in get_db():
+                result = await db.execute(
+                    select(Plan).where(
+                        Plan.id == int(session_id),
+                        Plan.user_id == int(user_id),
+                        Plan.plan_type == "deep_work",
+                    )
+                )
+                session = result.scalar_one_or_none()
+                if not session:
+                    return None
+
+                schedule = self._deep_work_schedule(session)
+                if schedule.get("status") != "scheduled":
+                    return {"error": "Only scheduled deep work sessions can be started this way."}
+
+                scheduled_start = self._parse_deep_work_datetime(schedule.get("scheduled_start_at")) or self._parse_deep_work_datetime(session.date)
+                if scheduled_start and now_utc < scheduled_start:
+                    return {"error": "This deep work block is not due yet."}
+
+                window_end = self._scheduled_window_end_utc(schedule)
+                if window_end and now_utc >= window_end:
+                    updated_schedule, penalty_just_applied = await self._mark_session_missed(
+                        db,
+                        session,
+                        now_utc,
+                        reason="not_started_in_window",
+                    )
+                    await db.commit()
+                    await db.refresh(session)
+                    if penalty_just_applied:
+                        await self._track_missed_deep_work(user_id, str(session.id), updated_schedule)
+                    return {"error": "Scheduled window has passed. Session marked as missed."}
+
+                conflict_result = await db.execute(
+                    select(Plan).where(
+                        Plan.user_id == int(user_id),
+                        Plan.plan_type == "deep_work",
+                    ).order_by(Plan.created_at.desc())
+                )
+                for candidate in conflict_result.scalars().all():
+                    if int(candidate.id) == int(session.id):
+                        continue
+                    candidate_schedule = self._deep_work_schedule(candidate)
+                    if candidate_schedule.get("status") in {"active", "paused"}:
+                        return {"error": "You already have an active or paused deep work session."}
+
+                schedule["status"] = "active"
+                schedule["started_at"] = now_utc.isoformat()
+                schedule["paused_at"] = None
+                schedule["accumulated_pause_seconds"] = max(0, int(schedule.get("accumulated_pause_seconds", 0) or 0))
+                schedule["started_from_schedule"] = True
+                session.date = now_utc
+                session.schedule = schedule
+
+                await db.commit()
+                await db.refresh(session)
+                return self._map_to_deep_work_out(session)
+        except Exception as exc:
+            logger.error("Failed to start scheduled deep work %s: %s", session_id, exc, exc_info=True)
+            return None
+
     async def complete_deep_work(self, user_id: str, session_id: str, actual_duration_minutes: int) -> Any:
         """Complete a deep work session."""
         from backend.db.models import Plan
@@ -1536,24 +1781,38 @@ class PlannerService:
                 if not session:
                     return None
                 
-                schedule = dict(session.schedule) if session.schedule else {}
-                
+                schedule = self._deep_work_schedule(session)
+                status = schedule.get("status")
+                if status == "completed":
+                    return self._map_to_deep_work_out(session)
+                if status in {"cancelled", "missed"}:
+                    return {"error": f"Cannot complete a {status} deep work session."}
+
                 # If they try to complete a scheduled session that was never started
-                if schedule.get("status") == "scheduled":
-                     schedule["status"] = "missed"
-                     session.schedule = schedule
-                     await db.commit()
-                     return {"error": "Cannot complete a session that hasn't started."}
-                
-                now_utc = datetime.now(timezone.utc)
+                if status == "scheduled":
+                    updated_schedule, penalty_just_applied = await self._mark_session_missed(
+                        db,
+                        session,
+                        self._utc_now(),
+                        reason="completed_without_start",
+                    )
+                    await db.commit()
+                    await db.refresh(session)
+                    if penalty_just_applied:
+                        await self._track_missed_deep_work(user_id, str(session.id), updated_schedule)
+                    return {"error": "Cannot complete a session that has not started."}
+
+                if status not in {"active", "paused"}:
+                    return {"error": "Only active or paused sessions can be completed."}
+
+                now_utc = self._utc_now()
                 schedule["status"] = "completed"
                 schedule["completed_at"] = now_utc.isoformat()
                 
                 # Invariant Enforcement: Actual duration MUST be exactly the difference MINUS pause time
                 # We default to actual_duration_minutes if missing started_at, but we prefer strict math.
-                started_at_str = schedule.get("started_at")
-                if started_at_str:
-                    started_time = datetime.fromisoformat(started_at_str).replace(tzinfo=timezone.utc)
+                started_time = self._parse_deep_work_datetime(schedule.get("started_at")) or self._parse_deep_work_datetime(session.date)
+                if started_time:
                     total_seconds_lived = (now_utc - started_time).total_seconds()
                     pause_seconds = int(schedule.get("accumulated_pause_seconds", 0))
                     net_active_minutes = max(0, int((total_seconds_lived - pause_seconds) / 60.0))
@@ -1603,14 +1862,22 @@ class PlannerService:
         from backend.db.models import Plan
         from sqlalchemy import select
         async for db in get_db():
-            result = await db.execute(select(Plan).where(Plan.id == int(session_id), Plan.user_id == int(user_id)))
+            result = await db.execute(
+                select(Plan).where(
+                    Plan.id == int(session_id),
+                    Plan.user_id == int(user_id),
+                    Plan.plan_type == "deep_work",
+                )
+            )
             session = result.scalar_one_or_none()
-            if not session: return None
-            sched = dict(session.schedule)
-            if sched.get("status") != "active": return {"error": "Can only pause 'active' sessions."}
-            sched["status"] = "paused"
-            sched["paused_at"] = datetime.now(timezone.utc).isoformat()
-            session.schedule = sched
+            if not session:
+                return None
+            schedule = self._deep_work_schedule(session)
+            if schedule.get("status") != "active":
+                return {"error": "Can only pause active sessions."}
+            schedule["status"] = "paused"
+            schedule["paused_at"] = self._utc_now().isoformat()
+            session.schedule = schedule
             await db.commit()
             await db.refresh(session)
             return self._map_to_deep_work_out(session)
@@ -1619,22 +1886,31 @@ class PlannerService:
         from backend.db.models import Plan
         from sqlalchemy import select
         async for db in get_db():
-            result = await db.execute(select(Plan).where(Plan.id == int(session_id), Plan.user_id == int(user_id)))
+            result = await db.execute(
+                select(Plan).where(
+                    Plan.id == int(session_id),
+                    Plan.user_id == int(user_id),
+                    Plan.plan_type == "deep_work",
+                )
+            )
             session = result.scalar_one_or_none()
-            if not session: return None
-            sched = dict(session.schedule)
-            if sched.get("status") != "paused": return {"error": "Can only resume 'paused' sessions."}
+            if not session:
+                return None
+            schedule = self._deep_work_schedule(session)
+            if schedule.get("status") != "paused":
+                return {"error": "Can only resume paused sessions."}
             
-            paused_at_str = sched.get("paused_at")
+            paused_at_str = schedule.get("paused_at")
             if paused_at_str:
-                paused_time = datetime.fromisoformat(paused_at_str).replace(tzinfo=timezone.utc)
-                now_time = datetime.now(timezone.utc)
-                pause_delta = int((now_time - paused_time).total_seconds())
-                sched["accumulated_pause_seconds"] = int(sched.get("accumulated_pause_seconds", 0)) + pause_delta
+                paused_time = self._parse_deep_work_datetime(paused_at_str)
+                if paused_time:
+                    now_time = self._utc_now()
+                    pause_delta = int((now_time - paused_time).total_seconds())
+                    schedule["accumulated_pause_seconds"] = int(schedule.get("accumulated_pause_seconds", 0)) + pause_delta
                 
-            sched["status"] = "active"
-            sched["paused_at"] = None
-            session.schedule = sched
+            schedule["status"] = "active"
+            schedule["paused_at"] = None
+            session.schedule = schedule
             await db.commit()
             await db.refresh(session)
             return self._map_to_deep_work_out(session)
@@ -1643,22 +1919,33 @@ class PlannerService:
         from backend.db.models import Plan
         from sqlalchemy import select
         async for db in get_db():
-            result = await db.execute(select(Plan).where(Plan.id == int(session_id), Plan.user_id == int(user_id)))
+            result = await db.execute(
+                select(Plan).where(
+                    Plan.id == int(session_id),
+                    Plan.user_id == int(user_id),
+                    Plan.plan_type == "deep_work",
+                )
+            )
             session = result.scalar_one_or_none()
-            if not session: return None
-            sched = dict(session.schedule)
-            sched["status"] = "cancelled"
-            session.schedule = sched
+            if not session:
+                return None
+            schedule = self._deep_work_schedule(session)
+            if schedule.get("status") in {"completed", "cancelled"}:
+                return {"error": "This deep work session cannot be cancelled."}
+            schedule["status"] = "cancelled"
+            schedule["cancelled_at"] = self._utc_now().isoformat()
+            session.schedule = schedule
             await db.commit()
             await db.refresh(session)
             return self._map_to_deep_work_out(session)
 
     async def get_active_deep_work(self, user_id: str) -> Optional[Any]:
-        """Get active deep work session."""
+        """Get active or paused deep work session and clean stale schedule states."""
         from backend.db.models import Plan
         from sqlalchemy import select
         
         try:
+            now_utc = self._utc_now()
             async for db in get_db():
                 result = await db.execute(
                     select(Plan).where(
@@ -1667,31 +1954,123 @@ class PlannerService:
                     ).order_by(Plan.created_at.desc())
                 )
                 sessions = result.scalars().all()
+                touched = False
+                newly_missed_for_tracking: list[tuple[str, dict[str, Any]]] = []
+                auto_completed_for_tracking: list[tuple[str, int]] = []
+
                 for session in sessions:
-                    schedule = session.schedule if isinstance(session.schedule, dict) else {}
-                    if schedule.get("status") == "active":
+                    schedule = self._deep_work_schedule(session)
+                    status = schedule.get("status")
+
+                    if status == "scheduled":
+                        window_end = self._scheduled_window_end_utc(schedule)
+                        if window_end and now_utc >= window_end:
+                            updated_schedule, penalty_just_applied = await self._mark_session_missed(db, session, now_utc)
+                            touched = True
+                            if penalty_just_applied:
+                                newly_missed_for_tracking.append((str(session.id), updated_schedule))
+                        continue
+
+                    if status == "active":
+                        maybe_completed_schedule = self._auto_complete_active_if_elapsed(session, schedule, now_utc)
+                        if maybe_completed_schedule is not None:
+                            session.schedule = maybe_completed_schedule
+                            touched = True
+                            auto_completed_for_tracking.append(
+                                (str(session.id), int(maybe_completed_schedule.get("actual_duration", 0) or 0))
+                            )
+                            continue
+
+                        if touched:
+                            await db.commit()
+                            await db.refresh(session)
+
+                        for missed_session_id, missed_schedule in newly_missed_for_tracking:
+                            await self._track_missed_deep_work(user_id, missed_session_id, missed_schedule)
+                        for completed_session_id, completed_minutes in auto_completed_for_tracking:
+                            try:
+                                await realtime_analytics.track_event(
+                                    user_id=int(user_id),
+                                    event_type="deep_work_session",
+                                    metadata={
+                                        "session_id": completed_session_id,
+                                        "duration": completed_minutes,
+                                        "interruptions": 0,
+                                        "quality_score": 0,
+                                        "auto_completed": True,
+                                    },
+                                )
+                            except Exception as exc:
+                                logger.error("Failed to track auto-completed deep work %s: %s", completed_session_id, exc)
                         return self._map_to_deep_work_out(session)
+
+                    if status == "paused":
+                        if touched:
+                            await db.commit()
+                            await db.refresh(session)
+
+                        for missed_session_id, missed_schedule in newly_missed_for_tracking:
+                            await self._track_missed_deep_work(user_id, missed_session_id, missed_schedule)
+                        for completed_session_id, completed_minutes in auto_completed_for_tracking:
+                            try:
+                                await realtime_analytics.track_event(
+                                    user_id=int(user_id),
+                                    event_type="deep_work_session",
+                                    metadata={
+                                        "session_id": completed_session_id,
+                                        "duration": completed_minutes,
+                                        "interruptions": 0,
+                                        "quality_score": 0,
+                                        "auto_completed": True,
+                                    },
+                                )
+                            except Exception as exc:
+                                logger.error("Failed to track auto-completed deep work %s: %s", completed_session_id, exc)
+                        return self._map_to_deep_work_out(session)
+
+                if touched:
+                    await db.commit()
+
+                for missed_session_id, missed_schedule in newly_missed_for_tracking:
+                    await self._track_missed_deep_work(user_id, missed_session_id, missed_schedule)
+
+                for completed_session_id, completed_minutes in auto_completed_for_tracking:
+                    try:
+                        await realtime_analytics.track_event(
+                            user_id=int(user_id),
+                            event_type="deep_work_session",
+                            metadata={
+                                "session_id": completed_session_id,
+                                "duration": completed_minutes,
+                                "interruptions": 0,
+                                "quality_score": 0,
+                                "auto_completed": True,
+                            },
+                        )
+                    except Exception as exc:
+                        logger.error("Failed to track auto-completed deep work %s: %s", completed_session_id, exc)
+
                 return None
-        except Exception:
+        except Exception as exc:
+            logger.error("Failed to fetch active deep work for user %s: %s", user_id, exc, exc_info=True)
             return None
 
     def _map_to_deep_work_out(self, session: Any) -> Any:
         """Helper to map Plan model to DeepWorkOut shape."""
-        schedule = session.schedule or {}
+        schedule = self._deep_work_schedule(session)
         
         def safe_iso(dt_str):
-            if not dt_str: return None
-            return datetime.fromisoformat(dt_str)
+            return self._parse_deep_work_datetime(dt_str)
 
         return {
             "id": str(session.id),
             "user_id": str(session.user_id),
-            "planned_duration_minutes": schedule.get("planned_duration", 0),
+            "planned_duration_minutes": self._planned_deep_work_minutes(schedule),
             "focus_goal": schedule.get("focus_goal"),
             "notes": schedule.get("notes"),
             "goal_id": str(session.goal_id) if session.goal_id else None,
             "scheduled_start_at": safe_iso(schedule.get("scheduled_start_at")),
-            "started_at": safe_iso(schedule.get("started_at")) or (session.date if schedule.get("status") in ("active", "completed") else None),
+            "started_at": safe_iso(schedule.get("started_at")) or (session.date if schedule.get("status") in ("active", "paused", "completed") else None),
             "paused_at": safe_iso(schedule.get("paused_at")),
             "completed_at": safe_iso(schedule.get("completed_at")),
             "ended_at": safe_iso(schedule.get("completed_at")), 

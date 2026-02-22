@@ -39,6 +39,8 @@ interface UsePlannerReturn {
     notes?: string;
     goal_id?: string | number | null;
   }) => Promise<{ success: boolean; sessions?: DeepWorkSession[]; error?: string }>;
+  fetchScheduledDeepWork: (params?: { includeMissed?: boolean; daysAhead?: number }) => Promise<{ success: boolean; sessions?: DeepWorkSession[]; error?: string }>;
+  startScheduledDeepWork: (sessionId: string) => Promise<{ success: boolean; session?: DeepWorkSession; error?: string }>;
   completeDeepWork: (actualMinutes: number) => Promise<{ success: boolean; error?: string }>;
   pauseDeepWork: () => Promise<{ success: boolean; session?: DeepWorkSession; error?: string }>;
   resumeDeepWork: () => Promise<{ success: boolean; session?: DeepWorkSession; error?: string }>;
@@ -316,7 +318,7 @@ export const usePlanner = (): UsePlannerReturn => {
         focus_goal: data.focusGoal,
         notes: data.notes,
         goal_id: data.goalId,
-      } as any);
+      });
       if (res.success && res.data) {
         setActiveDeepWork(res.data);
         return { success: true, session: res.data };
@@ -346,6 +348,31 @@ export const usePlanner = (): UsePlannerReturn => {
       return { success: false, error: err.message };
     }
   }, []);
+
+  const fetchScheduledDeepWork = useCallback(async (params?: { includeMissed?: boolean; daysAhead?: number }) => {
+    try {
+      const res = await plannerApi.getScheduledDeepWork(params);
+      if (res.success && res.data) {
+        return { success: true, sessions: res.data };
+      }
+      return { success: false, error: res.error?.message };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }, []);
+
+  const startScheduledDeepWork = useCallback(async (sessionId: string) => {
+    try {
+      const res = await plannerApi.startScheduledDeepWork(sessionId);
+      if (res.success && res.data) {
+        setActiveDeepWork(res.data);
+        return { success: true, session: res.data };
+      }
+      return { success: false, error: res.error?.message };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }, [setActiveDeepWork]);
 
   const completeDeepWork = useCallback(async (actualMinutes: number) => {
     if (!activeDeepWork?.id) return { success: false, error: 'No active session' };
@@ -579,6 +606,8 @@ export const usePlanner = (): UsePlannerReturn => {
     deleteGoal,
     startDeepWork,
     scheduleDeepWork,
+    fetchScheduledDeepWork,
+    startScheduledDeepWork,
     completeDeepWork,
     pauseDeepWork,
     resumeDeepWork,

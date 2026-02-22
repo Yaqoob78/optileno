@@ -85,7 +85,7 @@ class RealTimeAnalyticsTracker:
             return 'goal'
         elif event_type in ['habit_completed', 'habit_streak']:
             return 'habit'
-        elif event_type in ['focus_session', 'deep_work_session']:
+        elif event_type in ['focus_session', 'deep_work_session', 'deep_work_missed']:
             return 'focus'
         else:
             return 'other'
@@ -136,6 +136,9 @@ class RealTimeAnalyticsTracker:
 
             interruptions = metadata.get('interruptions', 0) if metadata else 0
             snapshot.interruptions += interruptions
+        elif event_type == 'deep_work_missed':
+            # Treat a missed scheduled deep-work block as a reliability lapse.
+            snapshot.interruptions += 1
 
         snapshot.updated_at = datetime.now()
 
@@ -189,6 +192,20 @@ class RealTimeAnalyticsTracker:
             (snapshot.interruptions / 10) * 30 +  # High interruptions = stress
             (snapshot.tasks_created - snapshot.tasks_completed) * 2  # Backlog = pressure
         ))
+
+        # Apply missed deep-work penalty (scheduled but not started in its window)
+        missed_result = await db.execute(
+            select(func.count()).where(
+                AnalyticsEvent.user_id == user_id,
+                func.date(AnalyticsEvent.timestamp) == today,
+                AnalyticsEvent.event_type == 'deep_work_missed',
+            )
+        )
+        missed_deep_work = int(missed_result.scalar() or 0)
+        if missed_deep_work > 0:
+            productivity = max(0, productivity - (missed_deep_work * 6))
+            focus = max(0, focus - (missed_deep_work * 8))
+            burnout = min(100, burnout + (missed_deep_work * 4))
 
         # Update snapshot with calculated scores
         snapshot.productivity_score = productivity

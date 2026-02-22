@@ -192,6 +192,40 @@ async def schedule_deep_work(
     )
 
 
+@router.get("/deep-work/schedule", response_model=List[DeepWorkOut])
+async def get_scheduled_deep_work(
+    include_missed: bool = Query(True, description="Include recently missed scheduled sessions"),
+    days_ahead: int = Query(14, ge=1, le=30),
+    current_user: User = Depends(get_current_user),
+):
+    require_ultra_feature(current_user, "deepwork_scheduling")
+    return await planner_service.get_scheduled_deep_work(
+        user_id=str(current_user.id),
+        include_missed=include_missed,
+        days_ahead=days_ahead,
+    )
+
+
+@router.post("/deep-work/{session_id}/start", response_model=DeepWorkOut)
+async def start_scheduled_deep_work(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    require_ultra_feature(current_user, "deepwork_scheduling")
+    session = await planner_service.start_scheduled_deep_work(
+        user_id=str(current_user.id),
+        session_id=session_id,
+    )
+    if not session:
+        raise HTTPException(status_code=404, detail="Scheduled session not found")
+    if isinstance(session, dict) and "error" in session:
+        raise HTTPException(status_code=400, detail=session["error"])
+
+    session_payload = session if isinstance(session, dict) else session.dict()
+    await broadcast_deep_work_started(current_user.id, session_payload)
+    return session
+
+
 class CompleteDeepWorkRequest(BaseModel):
     actual_duration_minutes: int = Field(..., ge=1, le=720, description="Actual duration")
 
