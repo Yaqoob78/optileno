@@ -913,13 +913,8 @@ class PlannerService:
                 await db.commit()
                 await db.refresh(task)
                 
-                # Reload task to get complete task data (without goal relationship to avoid schema issues)
-                from sqlalchemy import select
-                
-                result = await db.execute(
-                    select(Task).where(Task.id == task.id)
-                )
-                task = result.scalar_one()
+                # We don't need to do a fresh select to get the ID, we already did db.refresh(task)
+                # However if we need to eager load goal, we would do it here. But _task_to_dict uses goal_id.
                 
                 # Broadcast task creation
                 try:
