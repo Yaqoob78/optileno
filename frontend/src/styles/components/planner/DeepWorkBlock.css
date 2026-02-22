@@ -451,7 +451,7 @@
     gap: var(--space-4);
   }
 
-  .modal-actions {
+  .deepwork-legacy-modal-actions {
     flex-direction: column;
   }
 
@@ -504,7 +504,7 @@
 }
 
 /* Modal Start Button */
-.modal-btn.primary {
+.deepwork-legacy-modal-btn.primary {
   background: linear-gradient(135deg,
       #1e40af 0%,
       #3b82f6 50%,

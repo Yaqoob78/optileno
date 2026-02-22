@@ -128,8 +128,8 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
         </div>
       </div>
 
-      <div className="modal-body" style={{ paddingTop: 0 }}>
-        {error && <div className="modal-error-notice">{error}</div>}
+      <div className="planner-panel-body" style={{ paddingTop: 0 }}>
+        {error && <div className="planner-form-error">{error}</div>}
 
         <div className="form-group">
           <label>
@@ -213,7 +213,7 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
         </div>
 
         <button
-          className="modal-btn submit"
+          className="planner-inline-btn submit"
           style={{ width: '100%' }}
           onClick={handleSchedule}
           disabled={isSubmitting}

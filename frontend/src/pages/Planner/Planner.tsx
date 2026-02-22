@@ -564,7 +564,7 @@ export default function PlannerPage() {
         >
           {editForm && (
             <div className="flex flex-col gap-5 pt-2">
-              {saveError && <div className="modal-error-notice">{saveError}</div>}
+              {saveError && <div className="planner-form-error">{saveError}</div>}
 
               <div className="form-group">
                 <label htmlFor="task-title">
@@ -904,7 +904,7 @@ export default function PlannerPage() {
                         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
                           {activeDeepWork.status === 'active' ? (
                             <button
-                              className="modal-btn cancel"
+                              className="planner-inline-btn cancel"
                               style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', flex: 1 }}
                               onClick={() => pauseDeepWork()}
                             >
@@ -912,7 +912,7 @@ export default function PlannerPage() {
                             </button>
                           ) : (
                             <button
-                              className="modal-btn submit"
+                              className="planner-inline-btn submit"
                               style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', flex: 1 }}
                               onClick={() => resumeDeepWork()}
                             >
@@ -920,7 +920,7 @@ export default function PlannerPage() {
                             </button>
                           )}
                           <button
-                            className="modal-btn submit"
+                            className="planner-inline-btn submit"
                             style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', flex: 1 }}
                             onClick={() => {
                               // basic complete assumption; real implementation probably calculates actual duration diff
@@ -930,7 +930,7 @@ export default function PlannerPage() {
                             Finish
                           </button>
                           <button
-                            className="modal-btn cancel"
+                            className="planner-inline-btn cancel"
                             style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', color: 'var(--color-danger)' }}
                             onClick={() => cancelDeepWork()}
                             title="Cancel session"

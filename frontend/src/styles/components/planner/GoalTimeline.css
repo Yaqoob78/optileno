@@ -542,7 +542,7 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .goal-modal {
+  .goal-legacy-modal {
     padding: var(--space-6);
     margin: var(--space-4);
   }
@@ -670,7 +670,7 @@
 }
 
 /* Form group label with icon */
-.form-group label {
+.goal-legacy-form-group label {
   display: flex;
   align-items: center;
   gap: 6px;

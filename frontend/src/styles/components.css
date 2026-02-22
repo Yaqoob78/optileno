@@ -184,8 +184,8 @@
   border: var(--border-width) solid rgba(var(--color-gray-700), 0.3);
 }
 
-/* === MODALS === */
-.modal-overlay {
+/* === LEGACY MODALS (unused, kept namespaced to avoid collisions) === */
+.legacy-modal-overlay {
   position: fixed;
   inset: 0;
   display: flex;
@@ -197,7 +197,7 @@
   z-index: var(--z-modal);
 }
 
-.modal-content {
+.legacy-modal-content {
   position: relative;
   background: rgb(var(--color-bg-primary));
   border: var(--border-width) solid rgba(var(--color-border-light), 0.3);
