@@ -534,7 +534,7 @@ export default function PlannerPage() {
           title={isNewTask ? 'Create New Task' : 'Edit Task'}
           maxWidth="sm"
           footer={
-            <div className="flex gap-3 w-full justify-end">
+            <div className="flex gap-3 justify-end">
               <button
                 className="px-4 py-2.5 rounded-xl font-medium text-[var(--text-secondary)] hover:bg-white/5 border border-transparent hover:border-white/10 transition-all duration-200"
                 onClick={handleCancelEdit}
@@ -978,5 +978,4 @@ export default function PlannerPage() {
     </ErrorBoundary>
   );
 }
-
 

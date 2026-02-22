@@ -194,14 +194,22 @@ body {
 }
 
 .app-modal-header,
-.app-modal-body,
-.app-modal-footer {
+.app-modal-body {
   background: var(--background-secondary);
 }
 
 .app-modal-header,
 .app-modal-footer {
   border-color: var(--border-primary);
+}
+
+.app-modal-footer {
+  background: transparent;
+}
+
+.app-modal-footer > .w-full {
+  width: auto !important;
+  margin-left: auto;
 }
 
 .app-modal-close {

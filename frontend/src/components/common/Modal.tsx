@@ -88,7 +88,7 @@ export const Modal = ({
 
                     {/* Footer - Fixed to bottom, no shrink */}
                     {footer && (
-                        <div className="app-modal-footer flex shrink-0 items-center justify-end px-5 pb-5 pt-3 sm:px-6 sm:pb-6 sm:pt-4">
+                        <div className="app-modal-footer flex shrink-0 items-center justify-end px-5 pb-4 pt-1 sm:px-6 sm:pb-5 sm:pt-2">
                             {footer}
                         </div>
                     )}

@@ -654,7 +654,7 @@ export default function TaskCard({
         title="Retry Task?"
         maxWidth="sm"
         footer={
-          <div className="flex gap-3 w-full justify-end">
+          <div className="flex gap-3 justify-end">
             <button className="px-4 py-2 rounded-lg font-medium text-[var(--text-secondary)] hover:bg-[var(--background-secondary)] transition-colors" onClick={() => setIsRetryModalOpen(false)}>Close</button>
             <button
               className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-[var(--primary)] text-[var(--text-on-primary)] hover:opacity-90 transition-opacity"

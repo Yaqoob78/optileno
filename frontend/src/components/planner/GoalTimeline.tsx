@@ -178,7 +178,7 @@ export default function GoalTimeline() {
         title="Set New Goal"
         maxWidth="sm"
         footer={
-          <div className="flex gap-3 w-full justify-end">
+          <div className="flex gap-3 justify-end">
             <button className="px-4 py-2 rounded-lg font-medium text-[var(--text-secondary)] hover:bg-[var(--background-secondary)] transition-colors" onClick={() => setIsModalOpen(false)}>Cancel</button>
             <button
               className="px-4 py-2 rounded-lg font-medium bg-[var(--primary)] text-[var(--text-on-primary)] hover:opacity-90 transition-opacity disabled:opacity-50"
