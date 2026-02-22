@@ -172,3 +172,29 @@ body {
 }
 
 /* REMOVE ALL OTHER :root blocks and theme definitions - they're in themes.css */
+
+/* Opaque modal surface for planner dialogs */
+.app-modal-surface {
+  background: var(--background-secondary);
+  border-color: var(--border-primary);
+}
+
+.app-modal-surface input:not([type='range']),
+.app-modal-surface textarea,
+.app-modal-surface select {
+  background: var(--background-primary) !important;
+  border-color: var(--border-primary) !important;
+  color: var(--text-primary) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.app-modal-surface input:not([type='range'])::placeholder,
+.app-modal-surface textarea::placeholder {
+  color: var(--text-secondary) !important;
+}
+
+.app-modal-surface select option {
+  background: var(--background-primary);
+  color: var(--text-primary);
+}

@@ -40,7 +40,7 @@ export const Modal = ({
         <Dialog.Root open={isOpen} onOpenChange={onOpenChange}>
             <Dialog.Portal>
                 {/* Overlay constraints: fixed inset-0, dark backdrop */}
-                <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md transition-all duration-300 data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=open]:animate-in data-[state=open]:fade-in" />
+                <Dialog.Overlay className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm transition-all duration-300 data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=open]:animate-in data-[state=open]:fade-in" />
 
                 {/* Absolute Centering container. 
             Mobile behavior: Full width/height sheet with border radii adjustments. */}
@@ -54,7 +54,7 @@ export const Modal = ({
                             "w-[95vw] sm:w-full max-h-[85dvh] sm:max-h-[85vh]",
                             maxWidthClass,
                             // Layout styling
-                            "bg-[var(--glass-bg)] backdrop-blur-3xl sm:rounded-2xl border border-[var(--glass-border)] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)]",
+                            "app-modal-surface bg-[var(--background-secondary)] sm:rounded-2xl border border-[var(--border-primary)] shadow-[0_24px_70px_-20px_rgba(0,0,0,0.65)] overflow-hidden",
                             // Flex structure handling inner scrolling
                             "flex flex-col",
                             // Animations
@@ -64,12 +64,12 @@ export const Modal = ({
                     )}
                 >
                     {/* Header - Fixed to top, no shrink */}
-                    <div className="flex flex-col gap-1 p-5 sm:p-6 shrink-0 border-b border-[var(--glass-border)]">
+                    <div className="flex flex-col gap-1 p-5 sm:p-6 shrink-0 border-b border-[var(--border-primary)] bg-[var(--background-secondary)]">
                         <div className="flex items-start justify-between">
                             <Dialog.Title className="text-lg font-semibold tracking-tight text-[var(--text-primary,#111827)]">
                                 {title}
                             </Dialog.Title>
-                            <Dialog.Close className="rounded-full bg-white/5 p-1.5 opacity-70 transition-all hover:opacity-100 hover:bg-white/10 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
+                            <Dialog.Close className="rounded-full border border-[var(--border-primary)] bg-[var(--background-tertiary)] p-1.5 opacity-80 transition-all hover:opacity-100 hover:bg-[var(--background-primary)] hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-0 disabled:pointer-events-none">
                                 <X className="h-5 w-5 text-[var(--text-secondary,#6b7280)]" />
                                 <span className="sr-only">Close</span>
                             </Dialog.Close>
@@ -82,13 +82,13 @@ export const Modal = ({
                     </div>
 
                     {/* Internal Scrolling Body */}
-                    <div className="p-5 sm:p-6 overflow-y-auto flex-1 custom-scrollbar">
+                    <div className="p-5 sm:p-6 overflow-y-auto flex-1 custom-scrollbar bg-[var(--background-secondary)]">
                         {children}
                     </div>
 
                     {/* Footer - Fixed to bottom, no shrink */}
                     {footer && (
-                        <div className="flex shrink-0 items-center justify-end p-5 sm:p-6 border-t border-[var(--glass-border)] rounded-b-2xl">
+                        <div className="flex shrink-0 items-center justify-end p-5 sm:p-6 border-t border-[var(--border-primary)] bg-[var(--background-secondary)] rounded-b-2xl">
                             {footer}
                         </div>
                     )}
