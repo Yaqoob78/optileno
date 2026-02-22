@@ -189,11 +189,11 @@
   font-size: var(--text-sm);
 }
 
-.form-group {
+.planner-task-modal .planner-task-form-group {
   margin-bottom: var(--space-4);
 }
 
-.form-group label {
+.planner-task-modal .planner-task-form-group label {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -203,33 +203,11 @@
   color: #94a3b8;
 }
 
-.label-icon {
+.planner-task-modal .planner-task-label-icon {
   font-size: 14px;
 }
 
-.task-input,
-.task-textarea,
-.task-select {
-  width: 100%;
-  padding: 10px 14px;
-  background: rgba(30, 41, 59, 0.8);
-  border: 1px solid rgba(100, 116, 139, 0.3);
-  border-radius: var(--radius-lg);
-  font-size: 14px;
-  color: #f1f5f9;
-  transition: all 0.2s ease;
-}
-
-.task-input:focus,
-.task-textarea:focus,
-.task-select:focus {
-  outline: none;
-  border-color: #3b82f6;
-  background: rgba(30, 41, 59, 1);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.form-row {
+.planner-task-modal .planner-task-form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-4);
@@ -286,12 +264,12 @@
 }
 
 /* ── Day Picker ────────────────────────────────────────── */
-.day-picker-row {
+.planner-task-modal .planner-task-day-picker-row {
   display: flex;
   gap: 6px;
 }
 
-.day-pill {
+.planner-task-modal .planner-task-day-pill {
   position: relative;
   flex: 1;
   padding: 8px 0;
@@ -307,13 +285,13 @@
   letter-spacing: 0.3px;
 }
 
-.day-pill:hover:not(:disabled) {
+.planner-task-modal .planner-task-day-pill:hover:not(:disabled) {
   background: rgba(99, 102, 241, 0.12);
   border-color: rgba(99, 102, 241, 0.35);
   color: #c7d2fe;
 }
 
-.day-pill.selected {
+.planner-task-modal .planner-task-day-pill.selected {
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(67, 56, 202, 0.25));
   border-color: #6366f1;
   color: #e0e7ff;
@@ -321,14 +299,14 @@
 }
 
 /* Deep-work modal uses violet accent */
-.deepwork-modal .day-pill.selected {
+.deepwork-modal .planner-task-day-pill.selected {
   background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(124, 58, 237, 0.25));
   border-color: #8b5cf6;
   color: #ede9fe;
   box-shadow: 0 0 12px rgba(139, 92, 246, 0.2);
 }
 
-.day-pill.today::after {
+.planner-task-modal .planner-task-day-pill.today::after {
   content: '';
   position: absolute;
   bottom: 3px;
@@ -340,16 +318,16 @@
   background: #22d3ee;
 }
 
-.day-pill.selected.today::after {
+.planner-task-modal .planner-task-day-pill.selected.today::after {
   background: #e0e7ff;
 }
 
-.day-pill:disabled {
+.planner-task-modal .planner-task-day-pill:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
-.day-picker-hint {
+.planner-task-modal .planner-task-day-picker-hint {
   display: block;
   margin-top: 8px;
   font-size: 12px;
@@ -358,7 +336,7 @@
   letter-spacing: 0.2px;
 }
 
-.deepwork-modal .day-picker-hint {
+.deepwork-modal .planner-task-day-picker-hint {
   color: #8b5cf6;
 }
 
@@ -625,17 +603,17 @@
   color: #dc2626;
 }
 
-[data-theme="light"] .form-group input,
-[data-theme="light"] .form-group select,
-[data-theme="light"] .form-group textarea {
+[data-theme="light"] .planner-task-modal input,
+[data-theme="light"] .planner-task-modal select,
+[data-theme="light"] .planner-task-modal textarea {
   background: white;
   border-color: #e2e8f0;
   color: #2d3748;
 }
 
-[data-theme="light"] .form-group input:focus,
-[data-theme="light"] .form-group select:focus,
-[data-theme="light"] .form-group textarea:focus {
+[data-theme="light"] .planner-task-modal input:focus,
+[data-theme="light"] .planner-task-modal select:focus,
+[data-theme="light"] .planner-task-modal textarea:focus {
   background: white;
   border-color: rgb(var(--color-primary));
 }
@@ -749,17 +727,17 @@
   color: #fca5a5;
 }
 
-[data-theme="dark"] .form-group input,
-[data-theme="dark"] .form-group select,
-[data-theme="dark"] .form-group textarea {
+[data-theme="dark"] .planner-task-modal input,
+[data-theme="dark"] .planner-task-modal select,
+[data-theme="dark"] .planner-task-modal textarea {
   background: #0f172a;
   border-color: rgba(255, 255, 255, 0.1);
   color: #e2e8f0;
 }
 
-[data-theme="dark"] .form-group input:focus,
-[data-theme="dark"] .form-group select:focus,
-[data-theme="dark"] .form-group textarea:focus {
+[data-theme="dark"] .planner-task-modal input:focus,
+[data-theme="dark"] .planner-task-modal select:focus,
+[data-theme="dark"] .planner-task-modal textarea:focus {
   background: #0f172a;
   border-color: rgb(var(--color-primary));
 }
@@ -943,9 +921,9 @@
 .planner-header,
 .tasks-section,
 .planner-legacy-edit-modal,
-.form-group input,
-.form-group select,
-.form-group textarea,
+.planner-task-modal input,
+.planner-task-modal select,
+.planner-task-modal textarea,
 .cancel-btn,
 .save-btn,
 .maximize-btn,

@@ -202,20 +202,20 @@
   color: rgb(var(--color-text-tertiary));
 }
 
-.progress-percent {
+.goal-timeline .progress-percent {
   font-size: var(--text-sm);
   font-weight: var(--font-semibold);
   color: rgb(var(--color-text-primary));
 }
 
-.progress-bar {
+.goal-timeline .progress-bar {
   height: 6px;
   background: rgba(var(--color-bg-tertiary), 0.7);
   border-radius: var(--radius-full);
   overflow: hidden;
 }
 
-.progress-fill {
+.goal-timeline .progress-fill {
   height: 100%;
   background: linear-gradient(90deg,
       rgb(var(--color-primary)),
@@ -442,20 +442,20 @@
   transform: translateY(-1px);
 }
 
-.progress-section {
+.goal-timeline .progress-section {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-top: 8px;
 }
 
-.progress-slider {
+.goal-timeline .progress-slider {
   flex: 1;
   accent-color: #3b82f6;
   cursor: pointer;
 }
 
-.progress-percent {
+.goal-timeline .progress-percent {
   font-size: 16px;
   font-weight: 700;
   color: #3b82f6;
@@ -488,7 +488,7 @@
   line-height: 1.6;
 }
 
-.priority-badge {
+.goal-timeline .priority-badge {
   display: inline-block;
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-full);
@@ -498,42 +498,42 @@
   letter-spacing: 0.5px;
 }
 
-.priority-badge.priority-urgent {
+.goal-timeline .priority-badge.priority-urgent {
   background: rgba(var(--color-danger), 0.1);
   color: rgb(var(--color-danger));
   border: 1px solid rgba(var(--color-danger), 0.3);
 }
 
-.priority-badge.priority-high {
+.goal-timeline .priority-badge.priority-high {
   background: rgba(var(--color-warning), 0.1);
   color: rgb(var(--color-warning));
   border: 1px solid rgba(var(--color-warning), 0.3);
 }
 
-.priority-badge.priority-medium {
+.goal-timeline .priority-badge.priority-medium {
   background: rgba(var(--color-secondary), 0.1);
   color: rgb(var(--color-secondary));
   border: 1px solid rgba(var(--color-secondary), 0.3);
 }
 
-.priority-badge.priority-low {
+.goal-timeline .priority-badge.priority-low {
   background: rgba(var(--color-success), 0.1);
   color: rgb(var(--color-success));
   border: 1px solid rgba(var(--color-success), 0.3);
 }
 
-.progress-section {
+.goal-timeline .progress-section {
   display: flex;
   align-items: center;
   gap: var(--space-3);
 }
 
-.progress-section .progress-bar {
+.goal-timeline .progress-section .progress-bar {
   flex: 1;
   height: 8px;
 }
 
-.progress-section .progress-percent {
+.goal-timeline .progress-section .progress-percent {
   font-size: var(--text-base);
   font-weight: var(--font-semibold);
   min-width: 50px;

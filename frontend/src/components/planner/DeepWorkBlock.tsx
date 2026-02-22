@@ -129,21 +129,21 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
       </div>
 
       <div className="planner-panel-body" style={{ paddingTop: 0 }}>
-        {error && <div className="planner-form-error">{error}</div>}
+        {error && <div className="deepwork-form-error">{error}</div>}
 
-        <div className="form-group">
+        <div className="deepwork-form-group">
           <label>
             <Calendar size={16} style={{ marginRight: '8px' }} />
             Select Day(s) in Next 7 Days
           </label>
-          <div className="day-picker-row">
+          <div className="deepwork-day-picker-row">
             {DAYS.map((day) => {
               const isSelected = selectedDays.includes(day.value);
               return (
                 <button
                   key={day.value}
                   type="button"
-                  className={`day-pill${isSelected ? ' selected' : ''}`}
+                  className={`deepwork-day-pill${isSelected ? ' selected' : ''}`}
                   onClick={() => toggleDay(day.value)}
                 >
                   {day.label}
@@ -152,7 +152,7 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
             })}
           </div>
           {dayPreview.length > 0 && (
-            <div className="day-picker-hint" style={{ display: 'grid', gap: '0.25rem' }}>
+            <div className="deepwork-day-picker-hint" style={{ display: 'grid', gap: '0.25rem' }}>
               {dayPreview.map((label) => (
                 <span key={label}>{label}</span>
               ))}
@@ -160,24 +160,24 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
           )}
         </div>
 
-        <div className="form-row">
-          <div className="form-group">
+        <div className="deepwork-form-row">
+          <div className="deepwork-form-group">
             <label>
               <Clock size={16} style={{ marginRight: '8px' }} />
               Start Time
             </label>
             <input
               type="time"
-              className="task-input"
+              className="deepwork-input"
               value={startTime}
               onChange={(event) => setStartTime(event.target.value)}
             />
           </div>
-          <div className="form-group">
+          <div className="deepwork-form-group">
             <label>Duration (minutes)</label>
             <input
               type="number"
-              className="task-input"
+              className="deepwork-input"
               min={5}
               max={480}
               value={durationMinutes}
@@ -186,10 +186,10 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
           </div>
         </div>
 
-        <div className="form-group">
+        <div className="deepwork-form-group">
           <label>Goal (Optional)</label>
           <select
-            className="task-select"
+            className="deepwork-select"
             value={selectedGoalId}
             onChange={(event) => setSelectedGoalId(event.target.value)}
           >
@@ -202,10 +202,10 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
           </select>
         </div>
 
-        <div className="form-group">
+        <div className="deepwork-form-group">
           <label>Notes (Optional)</label>
           <textarea
-            className="task-textarea"
+            className="deepwork-textarea"
             rows={2}
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
@@ -213,7 +213,7 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
         </div>
 
         <button
-          className="planner-inline-btn submit"
+          className="deepwork-submit-btn"
           style={{ width: '100%' }}
           onClick={handleSchedule}
           disabled={isSubmitting}

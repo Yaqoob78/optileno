@@ -74,11 +74,7 @@
 }
 
 .app-modal-body {
-  background: linear-gradient(
-    180deg,
-    rgba(var(--color-bg-secondary, 31 41 55), 0.34) 0%,
-    rgba(var(--color-bg-primary, 15 23 42), 0.58) 100%
-  );
+  background: transparent;
 }
 
 .app-modal-body::-webkit-scrollbar {
@@ -100,12 +96,8 @@
 }
 
 .app-modal-footer {
-  border-top: 1px solid rgba(var(--color-border-light, 71 85 105), 0.4);
-  background: linear-gradient(
-    180deg,
-    rgba(var(--color-bg-secondary, 31 41 55), 0.84) 0%,
-    rgba(var(--color-bg-primary, 15 23 42), 0.96) 100%
-  );
+  border-top: 1px solid rgba(var(--color-border-light, 71 85 105), 0.24);
+  background: transparent;
 }
 
 .app-modal-footer button {
@@ -317,10 +309,19 @@
 
   .app-modal-footer {
     padding-bottom: 14px;
+    padding-top: 10px;
+  }
+
+  .app-modal-footer > div {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
   }
 
   .app-modal-btn {
-    min-width: 104px;
+    min-width: 0;
+    width: 100%;
   }
 }
 

@@ -363,7 +363,7 @@
   background: rgb(var(--color-secondary));
 }
 
-.priority-badge {
+.task-card .priority-badge {
   display: flex;
   align-items: center;
   gap: var(--space-1);
@@ -374,31 +374,31 @@
   border: 1px solid;
 }
 
-.priority-badge.priority-urgent {
+.task-card .priority-badge.priority-urgent {
   background: rgba(var(--color-danger), 0.1);
   color: rgb(var(--color-danger));
   border-color: rgba(var(--color-danger), 0.2);
 }
 
-.priority-badge.priority-high {
+.task-card .priority-badge.priority-high {
   background: rgba(var(--color-warning), 0.1);
   color: rgb(var(--color-warning));
   border-color: rgba(var(--color-warning), 0.2);
 }
 
-.priority-badge.priority-medium {
+.task-card .priority-badge.priority-medium {
   background: rgba(var(--color-accent), 0.1);
   color: rgb(var(--color-accent));
   border-color: rgba(var(--color-accent), 0.2);
 }
 
-.priority-badge.priority-low {
+.task-card .priority-badge.priority-low {
   background: rgba(var(--color-secondary), 0.1);
   color: rgb(var(--color-secondary));
   border-color: rgba(var(--color-secondary), 0.2);
 }
 
-.priority-label {
+.task-card .priority-label {
   text-transform: capitalize;
 }
 
@@ -407,7 +407,7 @@
   margin-bottom: var(--space-3);
 }
 
-.section-label {
+.task-card .section-label {
   display: flex;
   align-items: center;
   gap: var(--space-2);

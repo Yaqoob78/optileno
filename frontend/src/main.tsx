@@ -10,6 +10,7 @@ import "./styles/global.css";
 import "./styles/themes.css";
 import "./styles/components.css";
 import "./styles/animations.css";
+import "./styles/components/common/Modal.css";
 
 installApiFetchProxy();
 

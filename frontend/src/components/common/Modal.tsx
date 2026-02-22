@@ -3,7 +3,6 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import '../../styles/components/common/Modal.css';
 
 interface ModalProps {
     isOpen: boolean;
@@ -27,13 +26,13 @@ export const Modal = ({
     className
 }: ModalProps) => {
     const maxWidthClass = {
-        'sm': 'max-w-sm',
-        'md': 'max-w-md',
-        'lg': 'max-w-lg',
-        'xl': 'max-w-xl',
-        '2xl': 'max-w-2xl',
-        '3xl': 'max-w-3xl',
-        '4xl': 'max-w-4xl',
+        'sm': 'max-w-[430px]',
+        'md': 'max-w-[540px]',
+        'lg': 'max-w-[680px]',
+        'xl': 'max-w-[820px]',
+        '2xl': 'max-w-[980px]',
+        '3xl': 'max-w-[1120px]',
+        '4xl': 'max-w-[1280px]',
         'full': 'max-w-[90vw]',
     }[maxWidth];
 

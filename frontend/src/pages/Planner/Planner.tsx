@@ -563,12 +563,12 @@ export default function PlannerPage() {
           }
         >
           {editForm && (
-            <div className="flex flex-col gap-5 pt-2">
+            <div className="planner-task-modal flex flex-col gap-5 pt-2">
               {saveError && <div className="planner-form-error">{saveError}</div>}
 
-              <div className="form-group">
+              <div className="planner-task-form-group">
                 <label htmlFor="task-title">
-                  <span className="label-icon">📝</span>
+                  <span className="planner-task-label-icon">📝</span>
                   Task Title *
                 </label>
                 <input
@@ -593,9 +593,9 @@ export default function PlannerPage() {
                 />
               </div>
 
-              <div className="form-group">
+              <div className="planner-task-form-group">
                 <label htmlFor="task-description">
-                  <span className="label-icon">📄</span>
+                  <span className="planner-task-label-icon">📄</span>
                   Description
                 </label>
                 <textarea
@@ -610,12 +610,12 @@ export default function PlannerPage() {
               </div>
 
               {/* ── Day Picker ── */}
-              <div className="form-group">
+              <div className="planner-task-form-group">
                 <label>
-                  <span className="label-icon">📅</span>
+                  <span className="planner-task-label-icon">📅</span>
                   Schedule Day
                 </label>
-                <div className="day-picker-row">
+                <div className="planner-task-day-picker-row">
                   {DAY_LABELS.map((label, idx) => {
                     const isSelected = editForm.scheduledDay === idx;
                     const isToday = getWeekdayIndexInTimezone(new Date(), timezone) === idx;
@@ -623,7 +623,7 @@ export default function PlannerPage() {
                       <button
                         key={label}
                         type="button"
-                        className={`day-pill${isSelected ? ' selected' : ''}${isToday ? ' today' : ''}`}
+                        className={`planner-task-day-pill${isSelected ? ' selected' : ''}${isToday ? ' today' : ''}`}
                         disabled={isSaving}
                         onClick={() => {
                           setEditForm(prev => prev ? {
@@ -639,7 +639,7 @@ export default function PlannerPage() {
                   })}
                 </div>
                 {editForm.scheduledDay != null && (
-                  <span className="day-picker-hint">
+                  <span className="planner-task-day-picker-hint">
                     {(() => {
                       const dayYmd = getNextLocalDateForWeekday(timezone, editForm.scheduledDay);
                       const todayYmd = getDateKeyInTimezone(new Date(), timezone);
@@ -653,10 +653,10 @@ export default function PlannerPage() {
                 )}
               </div>
 
-              <div className="form-row">
-                <div className="form-group">
+              <div className="planner-task-form-row">
+                <div className="planner-task-form-group">
                   <label htmlFor="task-time">
-                    <span className="label-icon">⏰</span>
+                    <span className="planner-task-label-icon">⏰</span>
                     Start Time
                   </label>
                   <input
@@ -678,9 +678,9 @@ export default function PlannerPage() {
                     disabled={isSaving}
                   />
                 </div>
-                <div className="form-group">
+                <div className="planner-task-form-group">
                   <label htmlFor="task-duration">
-                    <span className="label-icon">⏱️</span>
+                    <span className="planner-task-label-icon">⏱️</span>
                     Duration (min)
                   </label>
                   <input
@@ -696,10 +696,10 @@ export default function PlannerPage() {
                 </div>
               </div>
 
-              <div className="form-row">
-                <div className="form-group">
+              <div className="planner-task-form-row">
+                <div className="planner-task-form-group">
                   <label htmlFor="task-category">
-                    <span className="label-icon">🏷️</span>
+                    <span className="planner-task-label-icon">🏷️</span>
                     Category
                   </label>
                   <select
@@ -731,9 +731,9 @@ export default function PlannerPage() {
                 </div>
 
                 {isUltra && editForm.category === 'goal' && (
-                  <div className="form-group" style={{ marginTop: '0.5rem' }}>
+                  <div className="planner-task-form-group" style={{ marginTop: '0.5rem' }}>
                     <label htmlFor="task-goal-select">
-                      <span className="label-icon">🎯</span>
+                      <span className="planner-task-label-icon">🎯</span>
                       Select Goal
                     </label>
                     <select
@@ -753,10 +753,10 @@ export default function PlannerPage() {
                   </div>
                 )}
 
-                <div className="form-row">
-                  <div className="form-group">
+                <div className="planner-task-form-row">
+                  <div className="planner-task-form-group">
                     <label htmlFor="task-priority">
-                      <span className="label-icon">⚡</span>
+                      <span className="planner-task-label-icon">⚡</span>
                       Priority
                     </label>
                     <select
@@ -773,9 +773,9 @@ export default function PlannerPage() {
                     </select>
                   </div>
 
-                  <div className="form-group">
+                  <div className="planner-task-form-group">
                     <label htmlFor="task-energy">
-                      <span className="label-icon">🔋</span>
+                      <span className="planner-task-label-icon">🔋</span>
                       Energy
                     </label>
                     <select
@@ -796,9 +796,9 @@ export default function PlannerPage() {
                 </div>
               </div>
 
-              <div className="form-group">
+              <div className="planner-task-form-group">
                 <label htmlFor="task-tags">
-                  <span className="label-icon">#</span>
+                  <span className="planner-task-label-icon">#</span>
                   Tags (comma separated)
                 </label>
                 <input
