@@ -84,12 +84,13 @@ class GoalIntelligenceService:
 
     async def update_goal_probability(self, user_id: str, goal_id: str) -> None:
         """
-        Calculates and updates success probability for a tracked goal.
-        Logic:
-        - Consistency = (Completed Items / Total Due Items) * 100
-        - Weights: Tasks (40%), Habits (40%), Deep Work (20%)
+        Calculates and updates success probability for a tracked goal using advanced logic.
+        Differentiates between highly precise AI-Agentic Goals and manual user Goals.
         """
         try:
+            from datetime import timezone
+            now_utc = datetime.now(timezone.utc)
+            
             async for db in get_db():
                 # 1. Get Goal
                 result = await db.execute(select(Goal).where(Goal.id == int(goal_id), Goal.user_id == int(user_id)))
@@ -97,205 +98,198 @@ class GoalIntelligenceService:
                 if not goal or not goal.is_tracked:
                     return
 
-                # 2. Get Linked Items
-                # Tasks
-                task_stats = await self._get_task_stats(db, user_id, goal_id)
-                # Habits (Plans with type='habit' linked to goal)
-                habit_stats = await self._get_habit_stats(db, user_id, goal_id)
-                # Deep Work (Plans with type='deep_work' linked to goal)
-                dw_stats = await self._get_deep_work_stats(db, user_id, goal_id)
+                # 2. Get all Linked Items
+                task_res = await db.execute(select(Task).where(Task.goal_id == int(goal_id), Task.user_id == int(user_id)))
+                all_tasks = task_res.scalars().all()
 
-                # 3. Calculate Scores
-                task_score = task_stats['consistency']
-                habit_score = habit_stats['consistency']
-                dw_score = dw_stats['consistency']
-                
-                # Weighted Average
-                # If a category has no items, distribute weight to others
-                weights = {'task': 0.4, 'habit': 0.4, 'dw': 0.2}
-                
-                # Adjust weights if empty
-                active_weights = 0
-                if task_stats['total'] > 0: active_weights += weights['task']
-                if habit_stats['total'] > 0: active_weights += weights['habit']
-                if dw_stats['total'] > 0: active_weights += weights['dw']
-                
-                final_consistency = 0
-                if active_weights > 0:
-                    raw_score = 0
-                    if task_stats['total'] > 0: raw_score += task_score * weights['task']
-                    if habit_stats['total'] > 0: raw_score += habit_score * weights['habit']
-                    if dw_stats['total'] > 0: raw_score += dw_score * weights['dw']
-                    
-                    final_consistency = (raw_score / active_weights)
-                else:
-                    # No data yet -> Medium baseline
-                    final_consistency = 50.0
+                habit_res = await db.execute(select(Plan).where(Plan.goal_id == int(goal_id), Plan.user_id == int(user_id), Plan.plan_type == 'habit'))
+                all_habits = habit_res.scalars().all()
 
-                # 4. Map to Label
-                label = self._get_probability_label(final_consistency)
-                
-                # 5. Update Goal Probability & Progress
-                old_progress = goal.current_progress or 0
-                
-                # "Real Measure of Progress": Weighted average of Tasks (Actions), Habits (Consistency), Deep Work (Focus)
-                # Weights: Tasks (50%), Habits (30%), Deep Work (20%)
-                # Only active if items exist in that category.
-                
-                weights = {'task': 0.5, 'habit': 0.3, 'dw': 0.2}
-                numerator = 0
-                denominator = 0
-                
-                if task_stats['total'] > 0:
-                    numerator += task_stats['consistency'] * weights['task']
-                    denominator += weights['task']
-                
-                if habit_stats['total'] > 0:
-                    numerator += habit_stats['consistency'] * weights['habit']
-                    denominator += weights['habit']
-                    
-                if dw_stats['total'] > 0:
-                    numerator += dw_stats['consistency'] * weights['dw']
-                    denominator += weights['dw']
-                    
-                if denominator > 0:
-                    new_progress = int(numerator / denominator)
-                else:
-                    # Fallback if no linked items yet
-                    new_progress = old_progress
-                    
-                goal.current_progress = new_progress
-                
-                goal.probability_status = label
-                goal.last_analyzed_at = datetime.utcnow()
-                await db.commit()
-                
-                logger.info(f"Updated Goal {goal_id}: Prob={label}, Progress={goal.current_progress}%")
+                dw_res = await db.execute(select(Plan).where(Plan.goal_id == int(goal_id), Plan.user_id == int(user_id), Plan.plan_type == 'deep_work'))
+                all_dw = dw_res.scalars().all()
 
-                # 6. Broadcast Real-time Updates
+                # 3. Determine if Goal is AI Agentic
+                # AI tasks are tagged with "ai-generated".
+                is_ai_agentic = any("ai-generated" in (t.tags or []) for t in all_tasks)
+
+                # 4. Compute Metrics
                 try:
-                    from backend.realtime.socket_manager import broadcast_goal_updated, broadcast_goal_progress_changed
+                    old_progress = goal.current_progress or 0
                     
-                    # Broadcast generic update
-                    # Re-construct goal dict manually or use a helper
-                    goal_dict = {
-                        "id": str(goal.id),
-                        "title": goal.title,
-                        "description": goal.description,
-                        "category": goal.category,
-                        "target_date": goal.target_date.isoformat() if goal.target_date else None,
-                        "current_progress": goal.current_progress,
-                        "milestones": goal.milestones,
-                        "probability_status": goal.probability_status,
-                        "created_at": goal.created_at.isoformat() if goal.created_at else None,
-                    }
-                    await broadcast_goal_updated(int(user_id), goal_dict)
+                    if is_ai_agentic:
+                        prob_score, new_progress = self._calculate_ai_agentic_metrics(goal, all_tasks, all_habits, all_dw, now_utc)
+                    else:
+                        prob_score, new_progress = self._calculate_manual_metrics(goal, all_tasks, all_habits, all_dw, now_utc)
+
+                    # Ensure bounds
+                    new_progress = max(0, min(100, int(new_progress)))
+                    prob_score = max(0.0, min(100.0, float(prob_score)))
                     
-                    # Broadcast specific progress change if it changed
-                    if goal.current_progress != old_progress:
-                        await broadcast_goal_progress_changed(int(user_id), {
-                            "goal_id": str(goal.id),
-                            "progress": goal.current_progress,
-                            "previous_progress": old_progress
-                        })
+                    label = self._get_probability_label(prob_score)
+
+                    # Update Goal
+                    goal.current_progress = new_progress
+                    goal.probability_status = label
+                    goal.last_analyzed_at = now_utc
+                    await db.commit()
+
+                    logger.info(f"Updated Goal {goal_id}: Type={'AI' if is_ai_agentic else 'Manual'}, Prob={label} ({prob_score:.1f}%), Progress={new_progress}%")
+
+                    # 5. Broadcast Real-time Updates
+                    try:
+                        from backend.realtime.socket_manager import broadcast_goal_updated, broadcast_goal_progress_changed
                         
-                except Exception as e:
-                    logger.error(f"Failed to broadcast goal updates: {e}")
+                        goal_dict = {
+                            "id": str(goal.id),
+                            "title": goal.title,
+                            "description": goal.description,
+                            "category": goal.category,
+                            "target_date": goal.target_date.isoformat() if goal.target_date else None,
+                            "current_progress": goal.current_progress,
+                            "milestones": goal.milestones,
+                            "probability_status": goal.probability_status,
+                            "created_at": goal.created_at.isoformat() if goal.created_at else None,
+                        }
+                        await broadcast_goal_updated(int(user_id), goal_dict)
+                        
+                        if goal.current_progress != old_progress:
+                            await broadcast_goal_progress_changed(int(user_id), {
+                                "goal_id": str(goal.id),
+                                "progress": goal.current_progress,
+                                "previous_progress": old_progress
+                            })
+                    except Exception as e:
+                        logger.error(f"Failed to broadcast goal updates: {e}")
+
+                except Exception as eval_err:
+                    logger.error(f"Error during AI/Manual math evaluation for {goal_id}: {eval_err}")
 
         except Exception as e:
-            logger.error(f"Failed to update probability for goal {goal_id}: {e}")
+            logger.error(f"Failed to process probability for goal {goal_id}: {e}")
 
-    async def _get_task_stats(self, db, user_id, goal_id) -> Dict[str, Any]:
-        """Consistency of tasks linked to goal."""
-        result = await db.execute(
-            select(Task).where(Task.goal_id == int(goal_id), Task.user_id == int(user_id))
-        )
-        tasks = result.scalars().all()
-        if not tasks: return {'total': 0, 'consistency': 0}
+    def _calculate_ai_agentic_metrics(self, goal: Goal, tasks: List[Task], habits: List[Plan], dw: List[Plan], now_utc: datetime) -> tuple[float, int]:
+        """Highly precise mathematical model for AI-generated goals facing strict deadlines."""
+        total_tasks = len(tasks)
+        completed_tasks = sum(1 for t in tasks if str(t.status).lower() in ['completed', 'done'])
         
-        completed = sum(1 for t in tasks if t.status == 'completed')
-        # Only count tasks that are DUE (or completed). Future tasks shouldn't drag down score?
-        # User said "misses most low probability". "Misses" implies due.
-        # Simple Logic: Completed / (Completed + Overdue + InProgress/Due)
-        # For now, Total = All tasks that are NOT scheduled in future?
-        # Let's use All Tasks for simplicity or simple ratio of Completed/Total
-        
-        consistency = (completed / len(tasks)) * 100
-        return {'total': len(tasks), 'consistency': consistency}
+        # 1. Progress: AI sets exact tasks -> rigid exact completion ratio.
+        progress = int((completed_tasks / total_tasks * 100) if total_tasks > 0 else 0)
 
-    async def _get_habit_stats(self, db, user_id, goal_id) -> Dict[str, Any]:
-        """Consistency of habits linked to goal."""
-        # Habits are Plans. We need to check execution history.
-        # But 'Plan' table just stores definition? 
-        # Actually `Plan` stores schedule state like `streak` and `completed_today`.
-        # To get historical consistency, we'd need a separate HabitLog table (which doesn't exist yet?)
-        # Or parse `streak` / `target`.
-        # User said "habits missed on 2-3 days".
-        # Assuming `Plan` model is the habit.
-        # We can use `streak` as a proxy? Or `consistency` field if it exists?
-        # `Plan` has `schedule` JSON.
-        result = await db.execute(
-            select(Plan).where(
-                Plan.goal_id == int(goal_id), 
-                Plan.user_id == int(user_id),
-                Plan.plan_type == 'habit'
-            )
-        )
-        habits = result.scalars().all()
-        if not habits: return {'total': 0, 'consistency': 0}
+        # 2. Task Reliability Velocity (strict penalties for missed scheduled items)
+        due_tasks = [t for t in tasks if t.due_date and t.due_date.replace(tzinfo=timezone.utc) <= now_utc]
+        completed_due = sum(1 for t in due_tasks if str(t.status).lower() in ['completed', 'done'])
         
-        # Calculate average streak relative to age? 
-        # For now, let's assume if streak > 3 it's "Good".
-        # Or if `schedule['completed_today']`?
-        # Let's use a placeholder logic: 
-        # "Excellent" if streak > 7. "Medium" if streak > 3.
-        # This is weak but matches schema constraints.
-        total_score = 0
-        for h in habits:
-            streak = h.schedule.get('streak', 0)
-            if streak >= 21: total_score += 100
-            elif streak >= 7: total_score += 80
-            elif streak >= 3: total_score += 60
-            elif streak >= 1: total_score += 40
-            else: total_score += 20
+        if due_tasks:
+            task_score = (completed_due / len(due_tasks)) * 100
+            overdue = len(due_tasks) - completed_due
+            # Severe penalty for overdue tasks on AI scheduled timelines (5% per missed task)
+            if overdue > 0:
+                task_score = max(0, task_score - (overdue * 5.0))
+        else:
+            # Baseline if nothing is due yet
+            task_score = 100.0 if completed_tasks > 0 else 50.0 
             
-        return {'total': len(habits), 'consistency': total_score / len(habits)}
+        # 3. Habit Flow (High velocity expected)
+        habit_score = 50.0
+        if habits:
+            total_h_score = 0
+            for h in habits:
+                streak = h.schedule.get('streak', 0) if isinstance(h.schedule, dict) else 0
+                # AI habits expect rapid momentum. A streak of 7 is considered 100% efficient.
+                total_h_score += min(100.0, (streak / 7.0) * 100)
+            habit_score = total_h_score / len(habits)
 
-    async def _get_deep_work_stats(self, db, user_id, goal_id) -> Dict[str, Any]:
-        """Consistency of Deep Work linked to goal."""
-        # Deep Work sessions are historical Plans.
-        result = await db.execute(
-            select(Plan).where(
-                Plan.goal_id == int(goal_id),
-                Plan.user_id == int(user_id),
-                Plan.plan_type == 'deep_work'
-            )
-        )
-        sessions = result.scalars().all()
-        if not sessions: return {'total': 0, 'consistency': 0}
+        # 4. Deep Work Architecture
+        dw_score = 50.0
+        if dw:
+            completed_dw = sum(1 for d in dw if isinstance(d.schedule, dict) and str(d.schedule.get('status')).lower() in ['completed', 'done'])
+            dw_score = (completed_dw / len(dw)) * 100
+
+        # Weighted Probability AI: Execution Heavy (Tasks: 55%, Habits: 30%, DW: 15%)
+        weights, final_score = 0.0, 0.0
         
-        # Just having sessions is good?
-        # User said "shows good consistency".
-        # If dates are regular?
-        # For now, assuming existence of sessions implies execution.
-        # Score = 100 if > 0 sessions recently? 
-        # Let's return 100 for now if they exist. Deep work is hard to "miss" if it's not pre-scheduled as a non-Plan entity.
-        # Actually user said "ai will schedule deepwork... user has to complete".
-        # This implies Deep Work is SCHEDULED in future.
-        # If `Plan` has `status`?
-        # `start_deep_work` creates a Plan with status='active'. `complete_deep_work` updates it.
-        # So we check completed vs total.
+        if tasks:
+            final_score += task_score * 0.55
+            weights += 0.55
+        if habits:
+            final_score += habit_score * 0.30
+            weights += 0.30
+        if dw:
+            final_score += dw_score * 0.15
+            weights += 0.15
+            
+        if weights == 0:
+            return 50.0, progress
+            
+        return final_score / weights, progress
+
+    def _calculate_manual_metrics(self, goal: Goal, tasks: List[Task], habits: List[Plan], dw: List[Plan], now_utc: datetime) -> tuple[float, int]:
+        """Fluid probabilistic logic for user-managed goals prioritizing momentum over exact rigidity."""
+        total_tasks = len(tasks)
+        completed_tasks = sum(1 for t in tasks if str(t.status).lower() in ['completed', 'done'])
         
-        completed = sum(1 for s in sessions if s.schedule.get('status') == 'completed')
-        consistency = (completed / len(sessions)) * 100
-        return {'total': len(sessions), 'consistency': consistency}
+        # 1. Progress: Inherits previous context or purely tasks if tracked.
+        if total_tasks > 0:
+            progress = int(completed_tasks / total_tasks * 100)
+        else:
+            progress = goal.current_progress or 0
+
+        # 2. Task Momentum
+        due_tasks = [t for t in tasks if t.due_date and t.due_date.replace(tzinfo=timezone.utc) <= now_utc]
+        completed_due = sum(1 for t in due_tasks if str(t.status).lower() in ['completed', 'done'])
+        
+        task_score = 50.0
+        if due_tasks:
+            # Base completion logic
+            base_score = (completed_due / len(due_tasks)) * 100
+            overdue = len(due_tasks) - completed_due
+            # Soft penalty for manual goals
+            task_score = max(0, base_score - (overdue * 2.0))
+        elif total_tasks > 0:
+            # Credit momentum for completing tasks even before they are due
+            task_score = min(100.0, 50.0 + (completed_tasks * 10.0))
+
+        # 3. Habit Consistency
+        habit_score = 50.0
+        if habits:
+            total_h_score = 0
+            for h in habits:
+                streak = h.schedule.get('streak', 0) if isinstance(h.schedule, dict) else 0
+                # Manual lifestyle habits scale out (21 days for 100%)
+                total_h_score += min(100.0, (streak / 21.0) * 100)
+            habit_score = total_h_score / len(habits)
+
+        # 4. Deep Work Engagement
+        dw_score = 50.0
+        if dw:
+            completed_dw = sum(1 for d in dw if isinstance(d.schedule, dict) and str(d.schedule.get('status')).lower() in ['completed', 'done'])
+            dw_score = (completed_dw / len(dw)) * 100
+
+        # Weighted Probability Manual: Lifestyle Balance (Tasks: 40%, Habits: 40%, DW: 20%)
+        weights, final_score = 0.0, 0.0
+        
+        if tasks:
+            final_score += task_score * 0.40
+            weights += 0.40
+        if habits:
+            final_score += habit_score * 0.40
+            weights += 0.40
+        if dw:
+            final_score += dw_score * 0.20
+            weights += 0.20
+            
+        if weights == 0:
+            return 50.0, progress
+            
+        return final_score / weights, progress
 
     def _get_probability_label(self, score: float) -> str:
-        if score >= 90: return "Extremely High"
-        if score >= 75: return "Very High"
-        if score >= 60: return "High"
-        if score >= 40: return "Medium"
-        if score >= 20: return "Low"
+        """Categorize mathematical output into UX strings."""
+        if score >= 88: return "Extremely High"
+        if score >= 72: return "Very High"
+        if score >= 55: return "High"
+        if score >= 35: return "Medium"
+        if score >= 15: return "Low"
         return "Very Low"
 
 goal_intelligence_service = GoalIntelligenceService()
