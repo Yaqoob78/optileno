@@ -162,104 +162,34 @@ class AIResponseFormatter:
     def sanitize_response(response_text: str) -> str:
         """
         Remove raw JSON and technical artifacts from responses while preserving Markdown.
-        Uses a robust stack-based approach to identify and remove JSON blocks.
+        Uses a robust approach to identify and remove JSON blocks.
         """
         import re
 
-        # 1. Remove Markdown Code Blocks (e.g. ```json ... ```)
-        # We do this first because they are easy to identify
-        # Handle inline blocks where newlines might be missing or collapsed
-        response_text = re.sub(r'```(?:\s*json)?.*?```', '', response_text, flags=re.DOTALL | re.IGNORECASE)
+        # 1. Strip all markdown code blocks (```json ... ```)
+        cleaned_text = re.sub(r'```(?:json)?.*?```', '', response_text, flags=re.DOTALL | re.IGNORECASE)
 
-        # 2. Stack-Based JSON Removal
-        # This handles nested objects/arrays that regex struggles with.
-        # We look for the outermost { ... } or [ ... ] and remove them if they look like JSON data.
-        
-        def remove_json_structures(text):
-            # We will rebuild text without the JSON parts
-            output = []
-            i = 0
-            n = len(text)
-            
-            while i < n:
-                char = text[i]
-                
-                # Check for start of potential JSON object/array
-                if char in ('{', '['):
-                    # Attempt to parse this block to see if it's valid JSON-like structure
-                    stack = [char]
-                    j = i + 1
-                    is_in_string = False
-                    string_char = None
-                    
-                    while j < n and stack:
-                        c = text[j]
-                        
-                        # Handle strings (ignore braces inside strings)
-                        if c in ('"', "'") and (j == 0 or text[j-1] != '\\'):
-                            if not is_in_string:
-                                is_in_string = True
-                                string_char = c
-                            elif c == string_char:
-                                is_in_string = False
-                                string_char = None
-                        
-                        if not is_in_string:
-                            if c == '{' or c == '[':
-                                stack.append(c)
-                            elif c == '}' or c == ']':
-                                if not stack:
-                                    break # Should not happen if logic is correct
-                                last = stack[-1]
-                                if (c == '}' and last == '{') or (c == ']' and last == '['):
-                                    stack.pop()
-                                else:
-                                    # Mismatched braces - probably not JSON or broken JSON
-                                    # We treat it as normal text
-                                    break
-                        j += 1
-                    
-                    if not stack:
-                        # We found a complete block from i to j-1
-                        block = text[i:j]
-                        # Heuristic: Is this likely to be an API payload or a JSON object dump?
-                        # Check if it has quoted keys (e.g. "key":)
-                        if '"' in block and ':' in block:
-                             # It has quotes and colons, likely JSON.
-                             # We can try to be safer by checking if it parses as JSON? 
-                             # Or just trust that we identified a block.
-                             
-                             # Let's check for at least ONE quoted key pattern like "key":
-                             import re
-                             if re.search(r'"[^"]+"\s*:', block):
-                                 # It has a JSON-key structure. Remove it.
-                                 i = j
-                                 continue
-                
-                # If not skipped, append current char
-                output.append(char)
-                i += 1
-            
-            return "".join(output)
+        # 2. Strip raw JSON blocks that might be missing markdown bounds
+        # We look for something that strongly resembles our system payloads
+        json_pattern = r'\{[\s\S]*?"intent"[\s\S]*?"actions"[\s\S]*?\}'
+        cleaned_text = re.sub(json_pattern, '', cleaned_text, flags=re.IGNORECASE)
 
-        cleaned_text = remove_json_structures(response_text)
-
-        # 3. Cleanup Residual Artifacts
-        artifacts_to_remove = [
-            r'"intent":\s*"[^"]*"',
-            r'"actions":\s*\[[^\]]*\]',
-            r'"payload":\s*\{[^}]*\}',
-            r'"requires_confirmation":\s*(true|false)', 
-            r'undefined',
-            r'null',
-            r'NaN'
+        # 3. Cleanup residual conversational artifacts where AI mentions JSON
+        conversational_artifacts = [
+            r'Here\'?s? (is )?(the|a) JSON.*?:?',
+            r'I\'ll.*?JSON.*?:?',
+            r'Here is the JSON action:?',
+            r'the JSON block.*?:?',
+            r'Outputting JSON.*?:?'
         ]
-        
-        for artifact in artifacts_to_remove:
+        for artifact in conversational_artifacts:
             cleaned_text = re.sub(artifact, '', cleaned_text, flags=re.IGNORECASE)
 
-        # 4. Fix Formatting (Preserve Markdown)
-        # Remove multiple empty lines but KEEP single newlines for lists/paragraphs
+        # 4. Remove dangling empty braces or brackets
+        cleaned_text = re.sub(r'\{\s*\}', '', cleaned_text)
+        cleaned_text = re.sub(r'\[\s*\]', '', cleaned_text)
+        
+        # 5. Fix formatting (Preserve Markdown)
         cleaned_text = re.sub(r'\n{3,}', '\n\n', cleaned_text)
         cleaned_text = cleaned_text.strip()
         
