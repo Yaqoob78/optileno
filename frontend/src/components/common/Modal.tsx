@@ -51,9 +51,9 @@ export const Modal = ({
                             // Layout rules for positioning
                             "fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%]",
                             // Layout rules for size & dimensions
-                            "w-[95vw] sm:w-full max-h-[85dvh] sm:max-h-[85vh]",
+                            "w-[92vw] max-w-[92vw] sm:w-full sm:max-w-md max-h-[85dvh] sm:max-h-[85vh]",
                             maxWidthClass,
-                            "bg-[var(--glass-bg)] backdrop-blur-3xl sm:rounded-2xl border border-[var(--glass-border)] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] overflow-hidden",
+                            "bg-[var(--glass-bg)] backdrop-blur-3xl rounded-2xl sm:rounded-2xl border border-[var(--glass-border)] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] overflow-hidden",
                         ),
                         className
                     )}
