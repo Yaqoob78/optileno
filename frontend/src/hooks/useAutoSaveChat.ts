@@ -10,7 +10,7 @@ export const useAutoSaveChat = (interval = 5000) => {
   const activeConversation = useChatStore((state) => state.activeConversation);
   const conversations = useChatStore((state) => state.conversations);
   const profile = useUserStore((state) => state.profile);
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedRef = useRef<string>('');
 
   useEffect(() => {

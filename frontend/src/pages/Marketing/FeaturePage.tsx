@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, type ReactElement } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, BarChart3, Bot, CalendarCheck2, LayoutDashboard, Target } from "lucide-react";
 import "./feature-page.css";
@@ -17,7 +17,7 @@ interface FeaturePageProps {
 type FeatureConfig = {
   title: string;
   subtitle: string;
-  icon: JSX.Element;
+  icon: ReactElement;
   eyebrow: string;
   bullets: string[];
   metaTitle: string;

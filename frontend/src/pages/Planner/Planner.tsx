@@ -451,7 +451,9 @@ export default function PlannerPage() {
       const linkedGoal = linkedGoalId
         ? goals.find((g) => String(g.id) === String(linkedGoalId))
         : null;
-      const goalEndDate = linkedGoal?.target_date ? new Date(linkedGoal.target_date) : null;
+      const goalEndDateKey = linkedGoal?.target_date
+        ? getDateKeyInTimezone(new Date(linkedGoal.target_date), timezone)
+        : null;
 
       let createdCount = 0;
       let failedCount = 0;
@@ -465,12 +467,11 @@ export default function PlannerPage() {
           nextDate.setDate(nextDate.getDate() + (i * 7));
         }
 
-        if (goalEndDate && !isNaN(goalEndDate.getTime()) && nextDate > goalEndDate) {
+        const dateStr = getDateKeyInTimezone(nextDate, timezone);
+        if (goalEndDateKey && dateStr > goalEndDateKey) {
           stoppedByGoalDeadline = true;
           break;
         }
-
-        const dateStr = getDateKeyInTimezone(nextDate, timezone);
 
         const payload = {
           title: taskToRepeat.title,
@@ -499,6 +500,9 @@ export default function PlannerPage() {
       } else if (createdCount === 0 && stoppedByGoalDeadline) {
         setRecurrenceError('No new tasks created because the linked goal deadline has been reached.');
       } else {
+        if (createdCount > 0 && stoppedByGoalDeadline) {
+          alert(`Created ${createdCount} tasks until the linked goal deadline.`);
+        }
         setIsRepeatModalOpen(false);
         setTaskToRepeat(null);
         setTimeout(() => fetchTasks(), 500);

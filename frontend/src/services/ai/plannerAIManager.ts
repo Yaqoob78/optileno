@@ -84,7 +84,7 @@ export class PlannerAIManager {
 
       return {
         success: true,
-        data: result.data || result
+        data: result
       };
     } catch (error: any) {
       console.error('[PlannerAI] Failed to create task:', error);
@@ -149,7 +149,7 @@ export class PlannerAIManager {
 
       return {
         success: true,
-        data: result.data || result
+        data: result
       };
     } catch (error: any) {
       console.error('[PlannerAI] Failed to create goal:', error);
@@ -210,7 +210,7 @@ export class PlannerAIManager {
 
       return {
         success: true,
-        data: result.data || result
+        data: result
       };
     } catch (error: any) {
       console.error('[PlannerAI] Failed to create habit:', error);

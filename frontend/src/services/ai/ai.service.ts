@@ -5,6 +5,7 @@ import type { Goal, Task, Habit } from '../../types/planner.types';
 import { useAnalyticsStore } from '../../stores/analytics.store';
 import { useSettingsStore } from "../../stores/useSettingsStore";
 import { useUserStore } from "../../stores/useUserStore";
+import type { TaskStatus } from '../../types/planner.types';
 
 /**
  * Unified AI response shape (from backend).
@@ -30,6 +31,15 @@ export interface AIUnifiedResponse {
  * This is the central hub for AI-driven planner automation.
  */
 class AIService {
+  private mapTaskStatus(status: unknown): TaskStatus {
+    const normalized = String(status || '').toLowerCase();
+    if (normalized === 'done' || normalized === 'completed') return 'done';
+    if (normalized === 'in-progress' || normalized === 'in_progress') return 'in-progress';
+    if (normalized === 'planned') return 'planned';
+    if (normalized === 'overdue') return 'overdue';
+    return 'todo';
+  }
+
   handleAIResponse(response: AIUnifiedResponse): void {
     if (!response || !Array.isArray(response.actions)) {
       console.warn('Invalid AI response format');
@@ -69,7 +79,7 @@ class AIService {
                   id: taskData.id || `task_${Date.now()}_${Math.random()}`,
                   title: taskData.title,
                   description: taskData.description || '',
-                  status: 'pending',
+                  status: this.mapTaskStatus(taskData.status),
                   priority: taskData.priority || 'medium',
                   category: taskData.category || 'general',
                   tags: taskData.tags || [],
@@ -145,7 +155,7 @@ class AIService {
               id: taskData.id || `task_${Date.now()}`,
               title: taskData.title,
               description: taskData.description || '',
-              status: taskData.status || 'pending',
+              status: this.mapTaskStatus(taskData.status),
               priority: taskData.priority || 'medium',
               category: taskData.category || 'general',
               tags: taskData.tags || [],
@@ -169,7 +179,7 @@ class AIService {
         case 'PLANNER_COMPLETE_TASK':
           if (result?.task_id || payload?.task_id) {
             const taskId = result?.task_id || payload.task_id;
-            plannerStore.updateTask(taskId, { status: 'completed', completedAt: new Date() });
+            plannerStore.updateTask(taskId, { status: 'done', completedAt: new Date() });
           }
           break;
 

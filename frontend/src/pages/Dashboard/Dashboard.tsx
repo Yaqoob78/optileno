@@ -66,7 +66,7 @@ export default function Dashboard() {
 
   // Determine Task Counts (Real-time from store)
   const totalTasks = plannerTasks.length;
-  const completedTasks = plannerTasks.filter(t => t.status === 'completed').length;
+  const completedTasks = plannerTasks.filter(t => t.status === 'done').length;
 
   // Action to fetch analytics if stale
   const fetchAnalytics = useAnalyticsStore((state) => state.fetchAnalytics);

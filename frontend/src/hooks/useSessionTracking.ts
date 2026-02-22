@@ -38,7 +38,7 @@ const writeStoredMinutes = (key: string, minutes: number) => {
 export const useSessionTracking = (enabled = true) => {
   const { profile, updateProfile, isAuthenticated } = useUserStore();
   const sessionStartRef = useRef<Date>(new Date());
-  const updateIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const updateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const currentDayRef = useRef<string>(getDateKey());
   const lastTickRef = useRef<number>(Date.now());
   const statsRef = useRef(profile.stats);

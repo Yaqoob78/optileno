@@ -1,8 +1,25 @@
 import '@testing-library/jest-dom';
-import { TextDecoder, TextEncoder } from 'util';
 
-(global as any).TextEncoder = TextEncoder;
-(global as any).TextDecoder = TextDecoder;
+if (!(globalThis as any).TextEncoder) {
+  class TestTextEncoder {
+    encode(input: string = ''): Uint8Array {
+      const values = Array.from(input).map((char) => char.charCodeAt(0));
+      return new Uint8Array(values);
+    }
+  }
+  (globalThis as any).TextEncoder = TestTextEncoder;
+}
+
+if (!(globalThis as any).TextDecoder) {
+  class TestTextDecoder {
+    decode(input?: ArrayBuffer | ArrayBufferView | null): string {
+      if (!input) return '';
+      const bytes = input instanceof ArrayBuffer ? new Uint8Array(input) : new Uint8Array((input as any).buffer);
+      return String.fromCharCode(...Array.from(bytes));
+    }
+  }
+  (globalThis as any).TextDecoder = TestTextDecoder;
+}
 
 // Mock Socket.IO
 jest.mock('socket.io-client', () => {
@@ -38,7 +55,7 @@ Object.defineProperty(window.HTMLElement.prototype, 'scrollIntoView', {
   value: jest.fn(),
 });
 
-global.IntersectionObserver = class IntersectionObserver {
+(globalThis as any).IntersectionObserver = class IntersectionObserver {
   constructor() {}
   disconnect() {}
   observe() {}

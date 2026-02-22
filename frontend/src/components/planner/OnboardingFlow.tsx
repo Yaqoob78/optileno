@@ -66,8 +66,8 @@ export const OnboardingFlow: React.FC = () => {
             }}
             title={
                 step === 1 ? "Welcome to Optileno" :
-                    step === 2 ? "Leno AI is Planning..." :
-                        "Your Planner is Ready"
+                    step === 2 ? "Preparing Leno Chat..." :
+                        "Ready To Plan"
             }
             maxWidth="md"
             footer={null} // We manage our own custom footer buttons inside the body
@@ -130,7 +130,7 @@ export const OnboardingFlow: React.FC = () => {
                             </div>
                         </div>
                         <div className="text-center">
-                            <h3 className="text-lg font-bold text-[var(--text-primary)] mb-2">Analyzing your goal...</h3>
+                            <h3 className="text-lg font-bold text-[var(--text-primary)] mb-2">Preparing your goal...</h3>
                             <p className="text-[var(--text-secondary)] text-sm max-w-[280px] mx-auto">
                                 Preparing your goal briefing for Leno chat agentic planning.
                             </p>

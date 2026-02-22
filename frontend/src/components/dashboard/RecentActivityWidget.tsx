@@ -22,7 +22,7 @@ export default function RecentActivityWidget() {
 
     // Add completed tasks
     tasks
-      ?.filter(t => t.status === 'completed')
+      ?.filter(t => t.status === 'done')
       ?.slice(0, 3)
       ?.forEach(task => {
         recentActivities.push({
