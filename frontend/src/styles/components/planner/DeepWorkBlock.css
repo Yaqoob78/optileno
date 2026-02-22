@@ -93,8 +93,9 @@
 .deepwork-day-pill {
   position: relative;
   flex: 1;
-  padding: 8px 0;
-  font-size: 12px;
+  min-height: 44px;
+  padding: 10px 0;
+  font-size: 13px;
   font-weight: 600;
   text-align: center;
   color: rgb(var(--color-text-secondary));
@@ -116,7 +117,9 @@
   background: linear-gradient(135deg, rgba(var(--color-secondary), 0.5), rgba(var(--color-accent), 0.45));
   border-color: rgba(var(--color-secondary), 0.88);
   color: rgb(var(--color-gray-50));
-  box-shadow: 0 0 14px rgba(var(--color-secondary), 0.32);
+  box-shadow:
+    0 0 14px rgba(var(--color-secondary), 0.32),
+    0 8px 16px rgba(var(--color-secondary), 0.24);
 }
 
 .deepwork-day-pill:disabled {

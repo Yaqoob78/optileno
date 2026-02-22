@@ -297,12 +297,26 @@
 .app-modal-content input:not([type='range']),
 .app-modal-content textarea,
 .app-modal-content select {
+  min-height: 50px;
+  padding: 12px 14px !important;
+  border-radius: 14px !important;
+  font-size: 0.95rem !important;
+  line-height: 1.35;
   background: rgb(var(--color-bg-primary, 15 23 42)) !important;
   border-color: rgba(var(--color-border-light, 71 85 105), 0.62) !important;
   color: rgb(var(--color-text-primary, 241 245 249)) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  border-width: 1px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 1px 0 rgba(2, 6, 23, 0.35);
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+}
+
+.app-modal-content input:not([type='range']):hover,
+.app-modal-content textarea:hover,
+.app-modal-content select:hover {
+  border-color: rgba(var(--color-primary, 245 158 11), 0.56) !important;
 }
 
 .app-modal-content input:not([type='range']):focus,
@@ -314,9 +328,28 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
 }
 
+.app-modal-content textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
 .app-modal-content input:not([type='range'])::placeholder,
 .app-modal-content textarea::placeholder {
   color: rgba(var(--color-text-secondary, 148 163 184), 0.92) !important;
+}
+
+.app-modal-content select {
+  padding-right: 40px !important;
+  background-image:
+    linear-gradient(45deg, transparent 50%, rgba(var(--color-text-secondary, 148 163 184), 0.95) 50%),
+    linear-gradient(135deg, rgba(var(--color-text-secondary, 148 163 184), 0.95) 50%, transparent 50%);
+  background-position:
+    calc(100% - 16px) 50%,
+    calc(100% - 11px) 50%;
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .app-modal-content select option {
