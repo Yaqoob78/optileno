@@ -2,12 +2,10 @@
 
 .goal-analytics-container {
     padding: 16px;
-    background: rgba(255, 255, 255, 0.05);
-    /* Fallback or overlay */
+    background: rgb(var(--color-bg-secondary));
     border-radius: 12px;
     margin-top: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
+    border: 1px solid rgba(var(--color-border-light), 0.55);
 }
 
 .analytics-header {
@@ -29,22 +27,22 @@
 
 .status-badge {
     font-size: 11px;
-    background: rgba(139, 92, 246, 0.2);
-    color: #A78BFA;
+    background: rgba(var(--color-primary), 0.18);
+    color: rgb(var(--color-primary));
     padding: 2px 8px;
     border-radius: 12px;
-    font-weight: 500;
-    border: 1px solid rgba(139, 92, 246, 0.3);
+    font-weight: 600;
+    border: 1px solid rgba(var(--color-primary), 0.4);
 }
 
 .error-message {
-    color: #EF4444;
+    color: rgb(var(--color-danger));
     font-size: 12px;
     margin-bottom: 12px;
     display: flex;
     align-items: center;
     gap: 4px;
-    background: rgba(239, 68, 68, 0.1);
+    background: rgba(var(--color-danger), 0.15);
     padding: 8px;
     border-radius: 6px;
 }
@@ -52,17 +50,20 @@
 .tracking-cta {
     text-align: center;
     padding: 12px;
+    background: rgb(var(--color-bg-tertiary));
+    border: 1px solid rgba(var(--color-border-light), 0.5);
+    border-radius: 10px;
 }
 
 .tracking-cta p {
     font-size: 13px;
-    color: #9CA3AF;
+    color: rgb(var(--color-text-secondary));
     margin-bottom: 12px;
     line-height: 1.5;
 }
 
 .primary-btn {
-    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+    background: linear-gradient(135deg, rgb(var(--color-primary)) 0%, rgb(var(--color-primary-dark)) 100%);
     border: none;
     color: white;
     padding: 8px 16px;
@@ -86,9 +87,9 @@
 .probability-card {
     margin-bottom: 16px;
     padding: 12px;
-    background: rgba(0, 0, 0, 0.2);
+    background: rgb(var(--color-bg-primary));
     border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(var(--color-border-light), 0.52);
 }
 
 .probability-header {
@@ -99,7 +100,7 @@
 
 .probability-label {
     font-size: 12px;
-    color: #D1D5DB;
+    color: rgb(var(--color-text-secondary));
 }
 
 .probability-value {
@@ -110,7 +111,7 @@
 .probability-bar-track {
     margin-top: 8px;
     height: 6px;
-    background: #374151;
+    background: rgb(var(--color-bg-tertiary));
     border-radius: 3px;
     overflow: hidden;
 }
@@ -123,7 +124,7 @@
 
 .probability-description {
     font-size: 11px;
-    color: #6B7280;
+    color: rgb(var(--color-text-tertiary));
     margin-top: 6px;
 }
 
@@ -146,35 +147,35 @@
 }
 
 .action-btn.generate {
-    background: rgba(59, 130, 246, 0.15);
-    color: #60A5FA;
-    border: 1px solid rgba(59, 130, 246, 0.3);
+    background: rgba(var(--color-primary), 0.18);
+    color: rgb(var(--color-primary));
+    border: 1px solid rgba(var(--color-primary), 0.45);
 }
 
 .action-btn.generate:hover {
-    background: rgba(59, 130, 246, 0.25);
+    background: rgba(var(--color-primary), 0.28);
 }
 
 .action-btn.stop {
-    background: transparent;
-    color: #9CA3AF;
-    border: 1px solid #4B5563;
+    background: rgb(var(--color-bg-primary));
+    color: rgb(var(--color-text-secondary));
+    border: 1px solid rgba(var(--color-border-light), 0.58);
 }
 
 .action-btn.stop:hover {
-    background: rgba(255, 255, 255, 0.05);
-    color: #D1D5DB;
+    background: rgb(var(--color-bg-tertiary));
+    color: rgb(var(--color-text-primary));
 }
 
 .ai-suggestions {
     margin-top: 12px;
     padding-top: 12px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid rgba(var(--color-border-light), 0.45);
 }
 
 .suggestions-header {
     font-size: 12px;
-    color: #D1D5DB;
+    color: rgb(var(--color-text-secondary));
     margin-bottom: 4px;
     display: block;
 }
@@ -187,18 +188,20 @@
 
 .badge-tasks {
     font-size: 11px;
-    background: rgba(16, 185, 129, 0.2);
-    color: #34D399;
+    background: rgba(var(--color-success), 0.25);
+    color: rgb(var(--color-success));
     padding: 2px 6px;
     border-radius: 4px;
+    border: 1px solid rgba(var(--color-success), 0.35);
 }
 
 .badge-habits {
     font-size: 11px;
-    background: rgba(236, 72, 153, 0.2);
-    color: #F472B6;
+    background: rgba(var(--color-secondary), 0.24);
+    color: rgb(var(--color-secondary));
     padding: 2px 6px;
     border-radius: 4px;
+    border: 1px solid rgba(var(--color-secondary), 0.34);
 }
 
 /* ===== RESPONSIVE DESIGN ===== */

@@ -34,8 +34,8 @@
   border-radius: 18px;
   background: linear-gradient(
     155deg,
-    rgba(var(--color-bg-secondary, 31 41 55), 0.99) 0%,
-    rgba(var(--color-bg-primary, 15 23 42), 0.99) 100%
+    rgb(var(--color-bg-secondary, 31 41 55)) 0%,
+    rgb(var(--color-bg-primary, 15 23 42)) 100%
   );
   border: 1px solid rgba(var(--color-border-light, 71 85 105), 0.56);
   color: rgb(var(--color-text-primary, 241 245 249));
@@ -122,8 +122,8 @@
   border-bottom: 1px solid rgba(var(--color-border-light, 71 85 105), 0.44);
   background: linear-gradient(
     180deg,
-    rgba(var(--color-bg-tertiary, 51 65 85), 0.88) 0%,
-    rgba(var(--color-bg-secondary, 31 41 55), 0.7) 100%
+    rgb(var(--color-bg-tertiary, 51 65 85)) 0%,
+    rgb(var(--color-bg-secondary, 31 41 55)) 100%
   );
 }
 
@@ -186,7 +186,7 @@
   padding: 20px 22px;
   overflow-y: auto;
   flex: 1;
-  background: transparent;
+  background: rgb(var(--color-bg-primary, 15 23 42));
 }
 
 .app-modal-body::-webkit-scrollbar {
@@ -210,7 +210,7 @@
 .app-modal-footer {
   padding: 10px 22px 18px;
   border-top: 1px solid rgba(var(--color-border-light, 71 85 105), 0.24);
-  background: transparent;
+  background: rgb(var(--color-bg-secondary, 31 41 55));
   flex-shrink: 0;
 }
 
@@ -384,6 +384,24 @@
 .app-modal-content .calendar-day.selected {
   background: linear-gradient(135deg, var(--primary, #f59e0b), var(--primary-hover, #d97706));
   box-shadow: 0 8px 16px rgba(var(--color-primary, 245 158 11), 0.32);
+}
+
+/* Force modal internal cards/boxes to solid dark surfaces */
+.app-modal-content .goal-analytics-container,
+.app-modal-content .goal-details-analytics,
+.app-modal-content .goal-details-description,
+.app-modal-content .goal-analytics-container .probability-card,
+.app-modal-content .goal-analytics-container .tracking-cta,
+.app-modal-content .goal-analytics-container .ai-suggestions {
+  background: rgb(var(--color-bg-tertiary, 51 65 85)) !important;
+  border-color: rgba(var(--color-border-light, 71 85 105), 0.55) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.app-modal-content .goal-analytics-container .action-btn.stop {
+  background: rgb(var(--color-bg-primary, 15 23 42));
+  border-color: rgba(var(--color-border-light, 71 85 105), 0.6);
 }
 
 .app-modal-content .modal-content,

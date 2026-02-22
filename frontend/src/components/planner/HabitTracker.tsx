@@ -355,10 +355,8 @@ export default function HabitTracker({ habits: propsHabits }: HabitTrackerProps)
               {['Wellness', 'Health', 'Learning', 'Productivity', 'Fitness'].map(cat => (
                 <button
                   key={cat}
-                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 border ${newHabit.category === cat
-                    ? 'bg-[var(--background-secondary)] border-[var(--primary)] text-[var(--primary)] shadow-sm'
-                    : 'bg-black/5 dark:bg-white/5 border-transparent text-[var(--text-secondary)] hover:bg-black/10 dark:hover:bg-white/10'
-                    }`}
+                  type="button"
+                  className={`habit-modal-category-btn ${newHabit.category === cat ? 'is-selected' : ''}`}
                   onClick={() => setNewHabit({ ...newHabit, category: cat })}
                 >
                   {cat}

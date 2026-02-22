@@ -277,8 +277,8 @@
   font-weight: 600;
   text-align: center;
   color: #94a3b8;
-  background: rgba(30, 41, 59, 0.6);
-  border: 1px solid rgba(100, 116, 139, 0.25);
+  background: rgb(var(--color-bg-tertiary, 51 65 85));
+  border: 1px solid rgba(var(--color-border-light, 71 85 105), 0.55);
   border-radius: var(--radius-lg);
   cursor: pointer;
   transition: all 0.2s ease;
@@ -286,16 +286,20 @@
 }
 
 .planner-task-modal .planner-task-day-pill:hover:not(:disabled) {
-  background: rgba(99, 102, 241, 0.12);
-  border-color: rgba(99, 102, 241, 0.35);
-  color: #c7d2fe;
+  background: rgb(var(--color-bg-secondary, 31 41 55));
+  border-color: rgba(var(--color-primary, 245 158 11), 0.55);
+  color: rgb(var(--color-text-primary, 241 245 249));
 }
 
 .planner-task-modal .planner-task-day-pill.selected {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(67, 56, 202, 0.25));
-  border-color: #6366f1;
-  color: #e0e7ff;
-  box-shadow: 0 0 12px rgba(99, 102, 241, 0.2);
+  background: linear-gradient(
+    135deg,
+    rgba(var(--color-primary, 245 158 11), 0.36),
+    rgba(var(--color-primary-dark, 217 119 6), 0.3)
+  );
+  border-color: rgba(var(--color-primary, 245 158 11), 0.82);
+  color: rgb(var(--color-gray-50, 248 250 252));
+  box-shadow: 0 0 14px rgba(var(--color-primary, 245 158 11), 0.24);
 }
 
 /* Deep-work modal uses violet accent */
@@ -332,7 +336,7 @@
   margin-top: 8px;
   font-size: 12px;
   font-weight: 500;
-  color: #6366f1;
+  color: rgb(var(--color-primary, 245 158 11));
   letter-spacing: 0.2px;
 }
 

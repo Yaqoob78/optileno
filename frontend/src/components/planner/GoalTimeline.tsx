@@ -232,13 +232,13 @@ export default function GoalTimeline() {
         maxWidth="md"
       >
         {selectedGoal && (
-          <div className="flex flex-col gap-4">
-            <p className="text-[var(--text-secondary)] leading-relaxed">
+          <div className="goal-details-modal-content">
+            <p className="goal-details-description">
               {selectedGoal.description || 'No description provided.'}
             </p>
 
             {/* Goal Intelligence & Analytics */}
-            <div className="my-2">
+            <div className="goal-details-analytics">
               <GoalAnalytics
                 goal={selectedGoal}
                 onUpdate={(updatedGoal) => {
@@ -248,14 +248,14 @@ export default function GoalTimeline() {
               />
             </div>
 
-            <div className="flex flex-col gap-3">
-              <label className="font-medium text-[var(--text-primary)] flex justify-between">
+            <div className="goal-details-progress">
+              <label className="goal-details-progress-label">
                 <span>Update Progress</span>
-                <span className="text-[var(--primary)]">{selectedGoal.current_progress || 0}%</span>
+                <span className="goal-details-progress-value">{selectedGoal.current_progress || 0}%</span>
               </label>
               <input
                 type="range"
-                className="w-full accent-[var(--primary)] h-2 bg-[var(--background-primary)] rounded-lg appearance-none cursor-pointer transition-all"
+                className="goal-details-progress-slider"
                 min="0"
                 max="100"
                 value={selectedGoal.current_progress || 0}

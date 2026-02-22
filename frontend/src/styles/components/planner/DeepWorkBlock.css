@@ -98,8 +98,8 @@
   font-weight: 600;
   text-align: center;
   color: rgb(var(--color-text-secondary));
-  background: rgba(var(--color-bg-tertiary), 0.7);
-  border: 1px solid rgba(var(--color-border-light), 0.35);
+  background: rgb(var(--color-bg-tertiary));
+  border: 1px solid rgba(var(--color-border-light), 0.58);
   border-radius: var(--radius-lg);
   cursor: pointer;
   transition: all 0.2s ease;
@@ -107,16 +107,16 @@
 }
 
 .deepwork-day-pill:hover:not(:disabled) {
-  background: rgba(var(--color-secondary), 0.16);
-  border-color: rgba(var(--color-secondary), 0.45);
+  background: rgb(var(--color-bg-secondary));
+  border-color: rgba(var(--color-secondary), 0.66);
   color: rgb(var(--color-text-primary));
 }
 
 .deepwork-day-pill.selected {
-  background: linear-gradient(135deg, rgba(var(--color-secondary), 0.34), rgba(var(--color-accent), 0.3));
-  border-color: rgba(var(--color-secondary), 0.75);
+  background: linear-gradient(135deg, rgba(var(--color-secondary), 0.5), rgba(var(--color-accent), 0.45));
+  border-color: rgba(var(--color-secondary), 0.88);
   color: rgb(var(--color-gray-50));
-  box-shadow: 0 0 12px rgba(var(--color-secondary), 0.24);
+  box-shadow: 0 0 14px rgba(var(--color-secondary), 0.32);
 }
 
 .deepwork-day-pill:disabled {
