@@ -148,9 +148,12 @@ export const useSessionTracking = (enabled = true) => {
         return;
       }
 
-      const elapsedMinutes = Math.max(
-        1,
-        Math.floor((now.getTime() - lastTickRef.current) / 1000 / 60)
+      const timeDiffMs = now.getTime() - lastTickRef.current;
+      // Cap elapsed minutes at 2. If it's more than 2, it means the browser tab was suspended or the device went to sleep.
+      // We don't want to count sleep time as active usage time.
+      const elapsedMinutes = Math.min(
+        2,
+        Math.max(1, Math.floor(timeDiffMs / 1000 / 60))
       );
       lastTickRef.current = now.getTime();
 

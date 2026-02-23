@@ -400,7 +400,13 @@ class TemporalPerformanceService:
                 
                 # Check if completed
                 if session.schedule and isinstance(session.schedule, dict):
-                    if session.schedule.get('completed', False):
+                    status = str(session.schedule.get('status') or '').strip().lower()
+                    is_completed = bool(
+                        session.schedule.get('completed', False)
+                        or status == 'completed'
+                        or session.schedule.get('completed_at')
+                    )
+                    if is_completed:
                         hourly_success[hour]["completed"] += 1
 
         # Calculate windows

@@ -10,7 +10,6 @@ interface PlannerDashboardProps {
   tasksLeft?: number;
   totalHabits?: number;
   completedHabits?: number;
-  deepWorkSessions?: number;
   continuousHabits?: number;
   totalGoals?: number;
 }
@@ -22,7 +21,6 @@ export default function PlannerDashboard({
   tasksLeft = 0,
   totalHabits = 0,
   completedHabits = 0,
-  deepWorkSessions = 0,
   continuousHabits = 0,
   totalGoals = 0
 }: PlannerDashboardProps) {
@@ -60,13 +58,6 @@ export default function PlannerDashboard({
       icon: Flame,
       color: "purple",
       description: "Daily routine"
-    },
-    {
-      label: "Deep Work",
-      value: `${deepWorkSessions}`,
-      icon: Brain,
-      color: "info",
-      description: "Sessions today"
     },
     {
       label: "Goals",
@@ -118,20 +109,7 @@ export default function PlannerDashboard({
         })}
       </div>
 
-      {/* Motivation Section */}
-      <div className="motivation-section" style={{ marginTop: '1.5rem', padding: '1rem', background: 'var(--background-secondary)', borderRadius: '12px', border: '1px solid var(--border-primary)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-          <Zap size={18} style={{ color: '#eab308' }} />
-          <h4 style={{ fontWeight: 600, color: 'rgb(var(--color-text-primary))', margin: 0 }}>Keep the momentum!</h4>
-        </div>
-        <p style={{ fontSize: '0.875rem', color: 'rgb(var(--color-text-secondary))', lineHeight: 1.6, margin: 0 }}>
-          "Small steps every day add up to big results. Focus on one task at a time."
-        </p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem', fontSize: '0.75rem', color: 'rgb(var(--color-text-secondary))', opacity: 0.8 }}>
-          <TrendingUp size={12} />
-          <span>You have {deepWorkSessions} deep work sessions today!</span>
-        </div>
-      </div>
+      {/* Header and Stats are above */}
     </div>
   );
 }

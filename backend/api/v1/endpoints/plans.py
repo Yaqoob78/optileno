@@ -383,6 +383,7 @@ async def update_goal_progress(
     progress: int = Query(..., ge=0, le=100),
     current_user: User = Depends(get_current_user),
 ):
+    require_ultra_feature(current_user, "goal_progress_detailed")
     success = await planner_service.update_goal_progress(
         user_id=str(current_user.id),
         goal_id=goal_id,

@@ -22,6 +22,7 @@ from backend.db.models import (
     ChatSession,
     Goal,
 )
+from backend.services.deep_work_utils import extract_deep_work_session_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -326,25 +327,27 @@ class BehaviorTimelineService:
         result: Dict[str, Dict[str, Any]] = {}
 
         deepwork_res = await db.execute(
-            select(
-                func.date(Plan.date).label("d"),
-                func.count(Plan.id).label("sessions"),
-                func.sum(func.coalesce(Plan.duration_hours, 0.0)).label("hours_sum"),
-            )
-            .where(
+            select(Plan).where(
                 Plan.user_id == user_id,
                 Plan.plan_type == "deep_work",
                 func.date(Plan.date) >= start,
                 func.date(Plan.date) <= end,
             )
-            .group_by(func.date(Plan.date))
         )
-        for row in deepwork_res.fetchall():
-            key = self._row_date_key(row.d)
-            if key:
-                result.setdefault(key, {})
-                result[key]["deep_work_sessions"] = int(row.sessions or 0)
-                result[key]["deep_work_minutes"] = int(float(row.hours_sum or 0.0) * 60)
+        for plan in deepwork_res.scalars().all():
+            if not getattr(plan, "date", None):
+                continue
+            metrics = extract_deep_work_session_metrics(plan)
+            if not metrics["include_for_analytics"] or metrics["effective_minutes"] <= 0:
+                continue
+            key = self._row_date_key(plan.date)
+            if not key:
+                continue
+            result.setdefault(key, {})
+            result[key]["deep_work_sessions"] = int(result[key].get("deep_work_sessions", 0)) + 1
+            result[key]["deep_work_minutes"] = int(result[key].get("deep_work_minutes", 0)) + int(
+                metrics["effective_minutes"]
+            )
 
         habit_res = await db.execute(
             select(Plan).where(Plan.user_id == user_id, Plan.plan_type == "habit")

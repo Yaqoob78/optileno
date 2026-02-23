@@ -1,7 +1,7 @@
 /* Ultra Premium Minimal Dashboard */
 
 /* Theme Variables */
-:root {
+.dashboard-container {
   /* Light Theme */
   --bg-primary: #f5f8fc;
   --bg-secondary: #fbfcff;
@@ -13,7 +13,6 @@
   --border-color: #dbe3ee;
   --border-light: #e9eff7;
 
-  /* Colors */
   /* Colors - Warm Shift */
   --primary: #f59e0b;
   /* Amber 500 */
@@ -51,7 +50,7 @@
   --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
-[data-theme="dark"] {
+[data-theme="dark"] .dashboard-container {
   --bg-primary: #0a0a0f;
   --bg-secondary: #151522;
   --bg-tertiary: #1e1e2d;

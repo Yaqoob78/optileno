@@ -100,7 +100,7 @@ class BigFiveService:
         result = await db.execute(
             select(
                 func.count(Task.id).label("total"),
-                func.sum(case([(Task.status == 'completed', 1)], else_=0)).label("completed")
+                func.sum(case((Task.status == 'completed', 1), else_=0)).label("completed")
             ).where(
                 Task.user_id == user_id,
                 Task.created_at >= start,
@@ -169,7 +169,7 @@ class BigFiveService:
         result = await db.execute(
             select(
                 func.count(UserInsight.id).label("total"),
-                func.sum(case([(UserInsight.read_at.isnot(None), 1)], else_=0)).label("read")
+                func.sum(case((UserInsight.read_at.isnot(None), 1), else_=0)).label("read")
             ).where(
                 UserInsight.user_id == user_id,
                 UserInsight.generated_at >= start,

@@ -27,6 +27,7 @@ from backend.db.models import (
     Task,
     UserInsight,
 )
+from backend.services.deep_work_utils import extract_deep_work_session_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -167,10 +168,20 @@ class StrategicInsightService:
                 Plan.date <= now,
             )
         )
-        deep_work_sessions = dw_result.scalars().all()
-        dw_7d = [s for s in deep_work_sessions if s.date and s.date >= week_start]
-        dw_minutes_30d = sum(int((s.duration_hours or 0) * 60) for s in deep_work_sessions)
-        dw_minutes_7d = sum(int((s.duration_hours or 0) * 60) for s in dw_7d)
+        deep_work_sessions_all = dw_result.scalars().all()
+        deep_work_sessions: List[Plan] = []
+        dw_7d: List[Plan] = []
+        dw_minutes_30d = 0
+        dw_minutes_7d = 0
+        for session in deep_work_sessions_all:
+            metrics = extract_deep_work_session_metrics(session)
+            if not metrics["include_for_analytics"] or metrics["effective_minutes"] <= 0:
+                continue
+            deep_work_sessions.append(session)
+            dw_minutes_30d += int(metrics["effective_minutes"])
+            if session.date and session.date >= week_start:
+                dw_7d.append(session)
+                dw_minutes_7d += int(metrics["effective_minutes"])
 
         # ── Habits ───────────────────────────────────────────────
         habit_result = await db.execute(

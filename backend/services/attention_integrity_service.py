@@ -83,6 +83,75 @@ class AttentionIntegrityService:
         except Exception:
             return None
 
+    @staticmethod
+    def _to_positive_minutes(value: Any) -> Optional[float]:
+        """Parse numeric minute-like values from JSON payloads."""
+        if value is None:
+            return None
+        try:
+            if isinstance(value, str):
+                match = re.search(r"-?\d+(?:\.\d+)?", value.strip())
+                if not match:
+                    return None
+                parsed = float(match.group(0))
+            else:
+                parsed = float(value)
+        except Exception:
+            return None
+        if parsed <= 0:
+            return None
+        return parsed
+
+    def _first_valid_minutes(self, payload: Dict[str, Any], keys: List[str]) -> Optional[float]:
+        for key in keys:
+            value = self._to_positive_minutes(payload.get(key))
+            if value is not None:
+                return value
+        return None
+
+    def _extract_deep_work_session_metrics(self, session: Plan) -> Dict[str, Any]:
+        schedule = session.schedule if isinstance(session.schedule, dict) else {}
+        status = str(schedule.get("status") or "").strip().lower()
+
+        planned = self._first_valid_minutes(
+            schedule,
+            ["planned_duration", "planned_duration_minutes", "planned_minutes", "duration_minutes"],
+        )
+        actual = self._first_valid_minutes(
+            schedule,
+            ["actual_duration", "actual_duration_minutes", "actual_minutes", "tracked_minutes"],
+        )
+
+        # Legacy support: only use duration_hours if it's explicitly set, not the model default fallback.
+        duration_hours = self._to_positive_minutes(session.duration_hours)
+        if duration_hours is not None and abs(duration_hours - 8.0) > 1e-6:
+            legacy_minutes = duration_hours * 60.0
+            if planned is None:
+                planned = legacy_minutes
+            if actual is None and (status == "completed" or schedule.get("completed_at")):
+                actual = legacy_minutes
+
+        if planned is None and actual is not None:
+            planned = actual
+        if actual is None and planned is not None and (status == "completed" or schedule.get("completed_at")):
+            actual = planned
+
+        planned_minutes = float(max(0.0, min(720.0, planned or 0.0)))
+        actual_minutes = float(max(0.0, min(720.0, actual or 0.0)))
+        interruptions = int(self._to_positive_minutes(schedule.get("interruptions")) or 0)
+        has_execution_evidence = actual_minutes > 0 or status == "completed" or bool(schedule.get("completed_at"))
+
+        # Exclude future/never-started sessions from quality scoring and minute totals.
+        include = has_execution_evidence and status not in {"scheduled", "cancelled", "missed"}
+
+        return {
+            "status": status,
+            "planned_minutes": planned_minutes,
+            "actual_minutes": actual_minutes,
+            "interruptions": max(0, interruptions),
+            "include": include,
+        }
+
     def _keyword_hits(self, text: str, markers: set[str]) -> int:
         tokens = set(re.findall(r"[a-z]{3,}", (text or "").lower()))
         return sum(1 for marker in markers if marker in tokens or marker in text.lower())
@@ -404,19 +473,20 @@ class AttentionIntegrityService:
         total_minutes = 0.0
         planned_minutes = 0.0
         interruption_events = 0
+        valid_sessions = 0
         for s in sessions:
-            schedule = s.schedule or {}
-            planned = (
-                schedule.get("planned_duration")
-                or schedule.get("planned_minutes")
-                or (float(s.duration_hours or 0.0) * 60.0)
-            )
-            actual = (
-                schedule.get("actual_duration")
-                or schedule.get("actual_minutes")
-                or (float(s.duration_hours or 0.0) * 60.0)
-            )
-            interruptions = int(schedule.get("interruptions", 0) or 0)
+            metrics = self._extract_deep_work_session_metrics(s)
+            if not metrics["include"]:
+                continue
+
+            planned = metrics["planned_minutes"]
+            actual = metrics["actual_minutes"]
+            interruptions = metrics["interruptions"]
+
+            if actual <= 0:
+                continue
+
+            valid_sessions += 1
             interruption_events += max(0, interruptions)
             total_minutes += max(float(actual), 0.0)
             planned_minutes += max(float(planned), 0.0)
@@ -431,7 +501,7 @@ class AttentionIntegrityService:
         score = sum(session_scores) / len(session_scores) if session_scores else 0.0
         return {
             "score": round(score, 2),
-            "sessions": len(sessions),
+            "sessions": valid_sessions,
             "total_minutes": int(total_minutes),
             "planned_minutes": int(planned_minutes),
             "interruption_events": interruption_events,
@@ -690,10 +760,12 @@ class AttentionIntegrityService:
         )
         deep_work_sessions = result.scalars().all()
 
-        total_minutes = sum(
-            int((p.duration_hours or 0) * 60) 
-            for p in deep_work_sessions
-        )
+        total_minutes = 0
+        for session in deep_work_sessions:
+            metrics = self._extract_deep_work_session_metrics(session)
+            if not metrics["include"] or metrics["actual_minutes"] <= 0:
+                continue
+            total_minutes += int(metrics["actual_minutes"])
 
         return total_minutes
 
@@ -915,33 +987,34 @@ class AttentionIntegrityService:
         """Get comprehensive focus statistics for the stats panel."""
         try:
             today = date.today()
-            current_focus = await self.calculate_attention_integrity(user_id, today)
-            weekly_scores: List[Dict[str, Any]] = []
-            for i in range(7):
+            daily_results: Dict[int, Dict[str, Any]] = {}
+            for i in range(60):
                 target_date = today - timedelta(days=i)
-                result = await self.calculate_attention_integrity(user_id, target_date)
-                weekly_scores.append({"date": target_date, "score": result["score"]})
+                daily_results[i] = await self.calculate_attention_integrity(user_id, target_date)
 
-            prev_week_scores: List[float] = []
-            for i in range(7, 14):
-                target_date = today - timedelta(days=i)
-                result = await self.calculate_attention_integrity(user_id, target_date)
-                if result["score"] is not None:
-                    prev_week_scores.append(result["score"])
-
-            monthly_scores: List[float] = []
-            for i in range(30):
-                target_date = today - timedelta(days=i)
-                result = await self.calculate_attention_integrity(user_id, target_date)
-                if result["score"] is not None:
-                    monthly_scores.append(result["score"])
-
-            prev_month_scores: List[float] = []
-            for i in range(30, 60):
-                target_date = today - timedelta(days=i)
-                result = await self.calculate_attention_integrity(user_id, target_date)
-                if result["score"] is not None:
-                    prev_month_scores.append(result["score"])
+            current_focus = daily_results[0]
+            weekly_scores: List[Dict[str, Any]] = [
+                {
+                    "date": today - timedelta(days=i),
+                    "score": daily_results[i].get("score"),
+                }
+                for i in range(7)
+            ]
+            prev_week_scores: List[float] = [
+                float(daily_results[i]["score"])
+                for i in range(7, 14)
+                if daily_results[i].get("score") is not None
+            ]
+            monthly_scores: List[float] = [
+                float(daily_results[i]["score"])
+                for i in range(30)
+                if daily_results[i].get("score") is not None
+            ]
+            prev_month_scores: List[float] = [
+                float(daily_results[i]["score"])
+                for i in range(30, 60)
+                if daily_results[i].get("score") is not None
+            ]
 
             active_week_scores = [s for s in weekly_scores if s["score"] is not None]
             weekly_avg = round(sum(s["score"] for s in active_week_scores) / len(active_week_scores), 1) if active_week_scores else 0

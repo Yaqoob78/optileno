@@ -433,7 +433,7 @@ class PlannerService:
     # ─────────────────────────────────────────────────────────────
     
     async def create_goal(self, user_id: str, goal_data: dict[str, Any]) -> dict[str, Any]:
-        """Create a new goal."""
+        """Create a new goal with optional V2 profile fields."""
         from backend.db.models import Goal
         from datetime import timezone, datetime
         
@@ -455,6 +455,11 @@ class PlannerService:
                         logger.warning(f"Failed to parse target_date '{target_date_val}': default None")
                         target_date_val = None
 
+                # Compute horizon_days if target_date given
+                horizon_days = goal_data.get("horizon_days")
+                if not horizon_days and target_date_val:
+                    horizon_days = max(1, (target_date_val - self._utc_now()).days)
+
                 goal = Goal(
                     user_id=int(user_id),
                     title=goal_data.get("title", "New Goal"),
@@ -466,6 +471,15 @@ class PlannerService:
                     ai_suggestions=goal_data.get("ai_suggestions", []),
                     is_tracked=goal_data.get("is_tracked", False),
                     probability_status=goal_data.get("probability_status", "Medium"),
+                    # V2 profile fields
+                    scoring_version=goal_data.get("scoring_version", "v2"),
+                    goal_type=goal_data.get("goal_type") or goal_data.get("category", "custom"),
+                    horizon_days=horizon_days,
+                    primary_metric_name=goal_data.get("primary_metric_name"),
+                    primary_metric_unit=goal_data.get("primary_metric_unit"),
+                    baseline_value=goal_data.get("baseline_value"),
+                    target_value=goal_data.get("target_value"),
+                    trajectory_type=goal_data.get("trajectory_type", "linear"),
                 )
                 db.add(goal)
                 await db.commit()
@@ -488,6 +502,9 @@ class PlannerService:
                         "target_date": t_date_str,
                         "current_progress": goal.current_progress,
                         "milestones": goal.milestones,
+                        "scoring_version": goal.scoring_version,
+                        "goal_type": goal.goal_type,
+                        "trajectory_type": goal.trajectory_type,
                         "created_at": goal.created_at.isoformat() if goal.created_at else None,
                     }
                     await broadcast_goal_created(int(user_id), goal_dict)
@@ -500,12 +517,17 @@ class PlannerService:
             return {"error": str(e)}
 
     async def get_user_goals(self, user_id: str) -> list[dict[str, Any]]:
-        """Get all goals for a user."""
-        from backend.db.models import Goal
+        """Get all goals for a user. Gates detailed metrics for non-ultra."""
+        from backend.db.models import Goal, User
         from sqlalchemy import select
         
         try:
             async for db in get_db():
+                # Check ultra
+                usr_res = await db.execute(select(User).where(User.id == int(user_id)))
+                usr = usr_res.scalar()
+                is_ultra = usr.plan_type == 'ULTRA' if usr else False
+
                 result = await db.execute(
                     select(Goal).where(Goal.user_id == int(user_id)).order_by(Goal.created_at.desc())
                 )
@@ -521,8 +543,8 @@ class PlannerService:
                         "current_progress": g.current_progress,
                         "milestones": g.milestones,
                         "ai_suggestions": g.ai_suggestions,
-                        "is_tracked": g.is_tracked,
-                        "probability_status": g.probability_status,
+                        "is_tracked": g.is_tracked if is_ultra else False,
+                        "probability_status": g.probability_status if is_ultra else "Medium",
                         "created_at": g.created_at.isoformat() if g.created_at else None,
                     }
                     for g in goals
@@ -533,29 +555,54 @@ class PlannerService:
 
     async def toggle_goal_tracking(self, user_id: str, goal_id: str) -> dict[str, Any]:
         """Toggle goal tracking (Max 3 active)."""
+        from backend.db.models import Goal, User
+        from sqlalchemy import select, func
+        
         try:
             async for db in get_db():
+                # Enforce ultra only
+                usr_res = await db.execute(select(User).where(User.id == int(user_id)))
+                usr = usr_res.scalar()
+                if not usr or usr.plan_type != 'ULTRA':
+                    return {"error": "Advanced goal tracking is only available on the ULTRA plan."}
+
                 result = await db.execute(select(Goal).where(Goal.id == int(goal_id), Goal.user_id == int(user_id)))
                 goal = result.scalar_one_or_none()
                 
                 if not goal:
                     return {"error": "Goal not found"}
                 
-                # For now, just return success without tracking logic
-                # TODO: Implement tracking when database schema is updated
-                return {
-                    "goal_id": goal_id, 
-                    "message": "Goal tracking temporarily disabled due to database schema update"
-                }
+                if not goal.is_tracked:
+                    # check how many are tracked
+                    tracked_res = await db.execute(select(func.count(Goal.id)).where(Goal.user_id == int(user_id), Goal.is_tracked == True))
+                    if tracked_res.scalar() >= 3:
+                        return {"error": "Maximum of 3 goals can be tracked simultaneously."}
+                    goal.is_tracked = True
+                else:
+                    goal.is_tracked = False
+                    
+                await db.commit()
+                return {"goal_id": goal_id, "is_tracked": goal.is_tracked}
         except Exception as e:
             logger.error(f"Failed to toggle tracking: {e}")
             return {"error": str(e)}
 
     async def track_goal_progress(self, user_id: str, goal_id: str, old_progress: int, new_progress: int) -> bool:
-        """Update goal progress."""
-        from backend.db.models import Goal
-        from sqlalchemy import select, update
+        """Update goal progress manually (fallback if no linked items) or via engine.
         
+        Requires ULTRA plan. Explorer users are blocked at the service level.
+        """
+        from backend.db.models import Goal, User
+        from sqlalchemy import select
+
+        # ── ULTRA gate (service-level bypass prevention) ─────────
+        if not await self._is_ultra_user_by_id(user_id):
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=403,
+                detail={"code": "PLAN_UPGRADE_REQUIRED", "feature": "goal_progress_detailed"},
+            )
+
         try:
             async for db in get_db():
                 # Get current progress before updating
@@ -567,15 +614,33 @@ class PlannerService:
                 if not goal:
                     return False
                 
-                old_progress = goal.current_progress or 0
                 new_progress = min(100, max(0, new_progress))
                 
-                await db.execute(
-                    update(Goal)
-                    .where(Goal.id == int(goal_id), Goal.user_id == int(user_id))
-                    .values(current_progress=new_progress)
-                )
-                await db.commit()
+                # First save manual update so engine can use it as fallback if 0 linked items
+                goal.current_progress = new_progress
+                await db.flush()
+                
+                usr_res = await db.execute(select(User).where(User.id == int(user_id)))
+                usr = usr_res.scalar()
+                is_ultra = usr.plan_type == 'ULTRA' if usr else False
+
+                scoring_version = str(getattr(goal, "scoring_version", "v1") or "v1").lower()
+                if scoring_version == "v2":
+                    from backend.services.goal_progress_engine_v2 import GoalProgressEngineV2
+                    await GoalProgressEngineV2.calculate(
+                        db,
+                        int(goal_id),
+                        int(user_id),
+                        is_ultra=is_ultra,
+                        save_snapshot=True,
+                    )
+                    await db.commit()
+                    await db.refresh(goal)
+                else:
+                    from backend.services.goal_progress_engine import GoalProgressEngine
+                    await GoalProgressEngine.calculate_progress(
+                        db, int(goal_id), int(user_id), is_ultra=is_ultra
+                    )
                 
                 # 🔥 ANALYTICS TRACKING: Track goal progress
                 try:
@@ -615,7 +680,18 @@ class PlannerService:
             return False
 
     async def update_goal_progress(self, user_id: str, goal_id: str, progress: int) -> bool:
-        """Public goal progress updater used by API and AI tools."""
+        """Public goal progress updater used by API and AI tools.
+        
+        Requires ULTRA plan. Explorer users are blocked at the service level.
+        """
+        # ULTRA enforcement is applied inside track_goal_progress,
+        # but we also check here for a fast-fail on direct callers.
+        if not await self._is_ultra_user_by_id(user_id):
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=403,
+                detail={"code": "PLAN_UPGRADE_REQUIRED", "feature": "goal_progress_detailed"},
+            )
         bounded_progress = min(100, max(0, int(progress)))
         return await self.track_goal_progress(user_id, goal_id, 0, bounded_progress)
 
@@ -630,7 +706,8 @@ class PlannerService:
         preferred_deep_work_time: Optional[str] = None,
     ) -> dict[str, Any]:
         """
-        Break down an existing goal into tasks/habits/deep-work using the same AI cascade pipeline.
+        Break down an existing goal into tasks/habits/deep-work using AI cascade.
+        Persists GoalComponent definitions for V2 scoring.
         """
         goals = await self.get_user_goals(user_id)
         goal = next((g for g in goals if str(g.get("id")) == str(goal_id)), None)
@@ -678,7 +755,112 @@ class PlannerService:
         result = await create_goal_with_cascade(user_id, payload)
         if result.get("status") == "error":
             return {"error": result.get("message", "Failed to break down goal")}
+
+        # ── V2: Persist GoalComponent definitions from cascade result ──
+        await self._persist_breakdown_components(user_id, goal_id, result)
+
         return result
+
+    async def _persist_breakdown_components(
+        self,
+        user_id: str,
+        goal_id: str,
+        cascade_result: dict[str, Any],
+    ) -> None:
+        """Take the cascade result and persist GoalComponent rows for V2 scoring.
+
+        Uses a single batch query to check existing components instead of N+1.
+        """
+        from backend.db.models import GoalComponent
+        from sqlalchemy import select
+
+        try:
+            async for db in get_db():
+                gid = int(goal_id)
+
+                # Batch pre-fetch: get all existing components for this goal
+                existing_rows = (await db.execute(
+                    select(GoalComponent.source_id, GoalComponent.component_type)
+                    .where(GoalComponent.goal_id == gid)
+                )).all()
+                existing_keys = {(row[0], row[1]) for row in existing_rows}
+
+                added = 0
+
+                # Tasks
+                for task_info in cascade_result.get("tasks_created", []):
+                    tid = task_info.get("id") or task_info.get("task_id")
+                    if not tid:
+                        continue
+                    if (int(tid), "task") in existing_keys:
+                        continue
+                    db.add(GoalComponent(
+                        goal_id=gid,
+                        component_type="task",
+                        source_id=int(tid),
+                        weight=1.0,
+                        target_total=1.0,
+                        current_total=0.0,
+                        required=str(task_info.get("priority", "")).lower() in ("high", "urgent"),
+                        quality_weight=1.0,
+                        overdue_penalty_per_day=0.02,
+                    ))
+                    added += 1
+
+                # Habits
+                for habit_info in cascade_result.get("habits_created", []):
+                    hid = habit_info.get("id") or habit_info.get("habit_id")
+                    if not hid:
+                        continue
+                    if (int(hid), "habit") in existing_keys:
+                        continue
+                    db.add(GoalComponent(
+                        goal_id=gid,
+                        component_type="habit",
+                        source_id=int(hid),
+                        weight=0.8,
+                        target_total=30.0,
+                        current_total=0.0,
+                        required=False,
+                        quality_weight=1.0,
+                        overdue_penalty_per_day=0.0,
+                    ))
+                    added += 1
+
+                # Deep work
+                for dw_info in cascade_result.get("deep_work_sessions", []):
+                    did = dw_info.get("id") or dw_info.get("session_id")
+                    if not did:
+                        continue
+                    if (int(did), "deep_work") in existing_keys:
+                        continue
+                    db.add(GoalComponent(
+                        goal_id=gid,
+                        component_type="deep_work",
+                        source_id=int(did),
+                        weight=1.2,
+                        target_total=1.0,
+                        current_total=0.0,
+                        required=False,
+                        quality_weight=1.0,
+                        overdue_penalty_per_day=0.01,
+                    ))
+                    added += 1
+
+                if added > 0:
+                    logger.info(f"Persisted {added} breakdown components for goal {goal_id}")
+
+                await db.commit()
+
+                # Trigger initial V2 recalc
+                try:
+                    from backend.services.goal_lifecycle import recompute_if_linked
+                    await recompute_if_linked(db, int(user_id), gid)
+                except Exception as e:
+                    logger.error(f"V2 lifecycle recompute after breakdown failed: {e}")
+
+        except Exception as e:
+            logger.error(f"Failed to persist breakdown components for goal {goal_id}: {e}")
 
     async def get_goal_timeline(self, user_id: str) -> list[dict[str, Any]]:
         """Get goals organized by timeline."""
@@ -847,8 +1029,16 @@ class PlannerService:
                         await goal_intelligence_service.update_goal_probability(user_id, str(plan.goal_id))
                     except Exception as e:
                         logger.error(f"Failed to update goal probability from habit tracker: {e}")
-                
-                return {"streak": new_streak, "best_streak": longest_streak, "habit_id": habit_id}
+
+                    # 🔄 V2 LIFECYCLE: sync habit component + recompute
+                    try:
+                        from backend.services.goal_lifecycle import sync_habit_component, recompute_if_linked
+                        await sync_habit_component(db, plan.goal_id, int(habit_id), float(new_streak))
+                        await recompute_if_linked(db, int(user_id), plan.goal_id)
+                    except Exception as e:
+                        logger.error(f"V2 lifecycle recompute failed on track_habit: {e}")
+            
+            return {"streak": new_streak, "best_streak": longest_streak, "habit_id": habit_id}
         except Exception as e:
             logger.error(f"Failed to track habit: {e}")
             return {"error": str(e), "streak": 0}
@@ -903,6 +1093,14 @@ class PlannerService:
                     })
                 except Exception as e:
                     logger.error(f"Failed to broadcast habit creation: {e}")
+
+                # 🔄 V2 LIFECYCLE: recompute goal progress if linked
+                if plan.goal_id:
+                    try:
+                        from backend.services.goal_lifecycle import recompute_if_linked
+                        await recompute_if_linked(db, int(user_id), plan.goal_id)
+                    except Exception as e:
+                        logger.error(f"V2 lifecycle recompute failed on create_habit: {e}")
 
                 return {
                     "id": str(plan.id),
@@ -1051,6 +1249,14 @@ class PlannerService:
                     logger.info(f"Tracked task_created event for task {task.id}")
                 except Exception as e:
                     logger.error(f"Failed to track analytics event: {e}")
+
+                # 🔄 V2 LIFECYCLE: recompute goal progress if linked
+                if task.goal_id:
+                    try:
+                        from backend.services.goal_lifecycle import recompute_if_linked
+                        await recompute_if_linked(db, int(user_id), task.goal_id)
+                    except Exception as e:
+                        logger.error(f"V2 lifecycle recompute failed on create_task: {e}")
 
                 return self._task_to_dict(task)
         except Exception as e:
@@ -1219,12 +1425,18 @@ class PlannerService:
                 # 🧠 GOAL INTELLIGENCE: Update probability if linked to a goal
                 if task.goal_id:
                     try:
-                        # Avoid circular import
                         from backend.services.goal_intelligence_service import goal_intelligence_service
-                        # Run in background or await directly? Await for now to ensure consistency.
                         await goal_intelligence_service.update_goal_probability(user_id, str(task.goal_id))
                     except Exception as e:
                         logger.error(f"Failed to update goal probability for task {task_id}: {e}")
+
+                    # 🔄 V2 LIFECYCLE: sync component + recompute
+                    try:
+                        from backend.services.goal_lifecycle import sync_task_component, recompute_if_linked
+                        await sync_task_component(db, task.goal_id, int(task_id), task.status or "pending")
+                        await recompute_if_linked(db, int(user_id), task.goal_id)
+                    except Exception as e:
+                        logger.error(f"V2 lifecycle recompute failed on update_task: {e}")
                 
                 return task
         except Exception as e:
@@ -1232,17 +1444,37 @@ class PlannerService:
             return None
 
     async def delete_task(self, user_id: str, task_id: str) -> bool:
-        """Delete a task."""
+        """Delete a task and recompute linked goal progress."""
         from backend.db.models import Task
-        from sqlalchemy import delete
+        from sqlalchemy import delete, select
         
         try:
             async for db in get_db():
+                # Fetch goal_id before deletion
+                task_row = (await db.execute(
+                    select(Task.goal_id).where(Task.id == int(task_id), Task.user_id == int(user_id))
+                )).first()
+                linked_goal_id = task_row[0] if task_row else None
+
                 result = await db.execute(
                     delete(Task).where(Task.id == int(task_id), Task.user_id == int(user_id))
                 )
+                if result.rowcount == 0:
+                    return False
+
+                # 🔄 V2 LIFECYCLE: remove component + recompute
+                if linked_goal_id:
+                    try:
+                        from backend.services.goal_lifecycle import (
+                            remove_component_for_source, recompute_if_linked,
+                        )
+                        await remove_component_for_source(db, linked_goal_id, int(task_id), "task")
+                        await recompute_if_linked(db, int(user_id), linked_goal_id)
+                    except Exception as e:
+                        logger.error(f"V2 lifecycle recompute failed on delete_task: {e}")
+
                 await db.commit()
-                return result.rowcount > 0
+                return True
         except Exception as e:
             logger.error(f"Failed to delete task {task_id}: {e}")
             return False
@@ -1290,6 +1522,7 @@ class PlannerService:
     async def get_recent_sessions(self, user_id: str, limit: int = 10) -> list[dict[str, Any]]:
         """Get recent deep-work sessions for analytics insight generation."""
         from sqlalchemy import select
+        from backend.services.deep_work_utils import extract_deep_work_session_metrics
 
         try:
             async for db in get_db():
@@ -1303,9 +1536,10 @@ class PlannerService:
                 mapped: list[dict[str, Any]] = []
                 for session in sessions:
                     schedule = session.schedule if isinstance(session.schedule, dict) else {}
+                    metrics = extract_deep_work_session_metrics(session)
                     duration = schedule.get("actual_duration") or schedule.get("planned_duration")
-                    if duration is None and session.duration_hours is not None:
-                        duration = int(float(session.duration_hours) * 60)
+                    if duration is None:
+                        duration = int(metrics["effective_minutes"] or metrics["planned_minutes"] or 0)
                     mapped.append(
                         {
                             "id": str(session.id),
@@ -2086,13 +2320,23 @@ class PlannerService:
         return session is not None
 
     async def delete_goal(self, user_id: str, goal_id: str) -> bool:
-        """Delete a goal."""
-        from backend.db.models import Goal
+        """Delete a goal and all associated V2 components/snapshots."""
+        from backend.db.models import Goal, GoalComponent, GoalProgressSnapshot
         from sqlalchemy import delete
         
         try:
             async for db in get_db():
-                # Verify ownership and existence
+                # Cascade-delete V2 data first
+                try:
+                    await db.execute(
+                        delete(GoalProgressSnapshot).where(GoalProgressSnapshot.goal_id == int(goal_id))
+                    )
+                    await db.execute(
+                        delete(GoalComponent).where(GoalComponent.goal_id == int(goal_id))
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to clean up V2 data for goal {goal_id}: {e}")
+
                 result = await db.execute(
                     delete(Goal).where(Goal.id == int(goal_id), Goal.user_id == int(user_id))
                 )
@@ -2103,13 +2347,22 @@ class PlannerService:
             return False
 
     async def delete_habit(self, user_id: str, habit_id: str) -> bool:
-        """Delete a habit."""
+        """Delete a habit and recompute linked goal progress."""
         from backend.db.models import Plan
-        from sqlalchemy import delete
+        from sqlalchemy import delete, select
         
         try:
-            # Habits are stored in plans table with plan_type='habit'
             async for db in get_db():
+                # Fetch goal_id before deletion
+                plan_row = (await db.execute(
+                    select(Plan.goal_id).where(
+                        Plan.id == int(habit_id),
+                        Plan.user_id == int(user_id),
+                        Plan.plan_type == 'habit',
+                    )
+                )).first()
+                linked_goal_id = plan_row[0] if plan_row else None
+
                 result = await db.execute(
                     delete(Plan).where(
                         Plan.id == int(habit_id), 
@@ -2117,8 +2370,22 @@ class PlannerService:
                         Plan.plan_type == 'habit'
                     )
                 )
+                if result.rowcount == 0:
+                    return False
+
+                # 🔄 V2 LIFECYCLE: remove component + recompute
+                if linked_goal_id:
+                    try:
+                        from backend.services.goal_lifecycle import (
+                            remove_component_for_source, recompute_if_linked,
+                        )
+                        await remove_component_for_source(db, linked_goal_id, int(habit_id), "habit")
+                        await recompute_if_linked(db, int(user_id), linked_goal_id)
+                    except Exception as e:
+                        logger.error(f"V2 lifecycle recompute failed on delete_habit: {e}")
+
                 await db.commit()
-                return result.rowcount > 0
+                return True
         except Exception as e:
             logger.error(f"Failed to delete habit {habit_id}: {e}")
             return False

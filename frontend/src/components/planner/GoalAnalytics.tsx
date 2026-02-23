@@ -32,6 +32,10 @@ export const GoalAnalytics: React.FC<GoalAnalyticsProps> = ({ goal, onUpdate }) 
     const color = probabilityColors[currentProbability] || '#FBBF24';
 
     const handleToggleTracking = async () => {
+        if (!isUltra) {
+            setError('Goal tracking analytics are available for Ultra users.');
+            return;
+        }
         setLoading(true);
         setError(null);
         try {
@@ -94,9 +98,9 @@ export const GoalAnalytics: React.FC<GoalAnalyticsProps> = ({ goal, onUpdate }) 
                     <button
                         className="primary-btn"
                         onClick={handleToggleTracking}
-                        disabled={loading}
+                        disabled={loading || !isUltra}
                     >
-                        {loading ? 'Activating...' : 'Analyze with AI'}
+                        {!isUltra ? 'Ultra Only' : loading ? 'Activating...' : 'Analyze with AI'}
                     </button>
                 </div>
             ) : (
@@ -184,7 +188,7 @@ export const GoalAnalytics: React.FC<GoalAnalyticsProps> = ({ goal, onUpdate }) 
                         <button
                             className="action-btn stop"
                             onClick={handleToggleTracking}
-                            disabled={loading}
+                            disabled={loading || !isUltra}
                         >
                             Stop Tracking
                         </button>

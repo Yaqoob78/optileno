@@ -7,11 +7,12 @@ Calculates comprehensive focus metrics based on Focus Heatmap data and deep work
 from datetime import datetime, timedelta, date, time
 from typing import Dict, Any, List, Optional
 import logging
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.db.database import get_db
-from backend.db.models import FocusScore, Plan, AnalyticsEvent, Task
+from backend.db.models import FocusScore, Plan, AnalyticsEvent
+from backend.services.deep_work_utils import extract_deep_work_session_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -126,10 +127,12 @@ class FocusScoreService:
         )
         deep_work_sessions = result.scalars().all()
 
-        total_minutes = sum(
-            int((p.duration_hours or 0) * 60) 
-            for p in deep_work_sessions
-        )
+        total_minutes = 0
+        for session in deep_work_sessions:
+            metrics = extract_deep_work_session_metrics(session)
+            if not metrics["include_for_analytics"] or metrics["effective_minutes"] <= 0:
+                continue
+            total_minutes += int(metrics["effective_minutes"])
 
         return total_minutes
 
@@ -183,6 +186,9 @@ class FocusScoreService:
         # Calculate quality from session metadata
         quality_scores = []
         for session in sessions:
+            metrics = extract_deep_work_session_metrics(session)
+            if not metrics["include_for_analytics"] or metrics["effective_minutes"] <= 0:
+                continue
             if session.schedule and isinstance(session.schedule, dict):
                 # Check for quality indicators in metadata
                 quality = session.schedule.get('quality', 0.5)
@@ -222,7 +228,14 @@ class FocusScoreService:
             return 0
 
         # Analyze time distribution
-        session_hours = [s.date.hour for s in sessions if s.date]
+        session_hours = []
+        for session in sessions:
+            if not session.date:
+                continue
+            metrics = extract_deep_work_session_metrics(session)
+            if not metrics["include_for_analytics"] or metrics["effective_minutes"] <= 0:
+                continue
+            session_hours.append(session.date.hour)
         
         if len(session_hours) < 2:
             # Single session = moderate consistency
@@ -260,8 +273,12 @@ class FocusScoreService:
             return 0
 
         peak_sessions = 0
+        decent_sessions = 0
         for session in sessions:
-            duration_hours = session.duration_hours or 0
+            metrics = extract_deep_work_session_metrics(session)
+            if not metrics["include_for_analytics"] or metrics["effective_minutes"] <= 0:
+                continue
+            duration_hours = float(metrics["effective_minutes"]) / 60.0
             quality = 0.5
             
             if session.schedule and isinstance(session.schedule, dict):
@@ -270,6 +287,8 @@ class FocusScoreService:
             # Peak session: 60+ minutes with 80%+ quality
             if duration_hours >= 1.0 and quality >= 0.8:
                 peak_sessions += 1
+            elif duration_hours >= 0.5:
+                decent_sessions += 1
 
         # Score based on number of peak sessions
         if peak_sessions >= 3:
@@ -280,10 +299,6 @@ class FocusScoreService:
             return 50
         else:
             # Partial credit for any decent session
-            decent_sessions = sum(
-                1 for s in sessions 
-                if (s.duration_hours or 0) >= 0.5
-            )
             return min(40, decent_sessions * 15)
 
     async def _calculate_distraction_resistance(self, db: Session, user_id: int, target_date: date) -> float:

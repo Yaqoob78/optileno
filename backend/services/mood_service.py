@@ -12,12 +12,10 @@ ALGORITHM:
 from datetime import datetime, timedelta, date, time
 from typing import Dict, Any, List, Optional
 import logging
-import random
 from sqlalchemy import select, func, and_
 
 from backend.db.database import get_db
 from backend.db.models import Task, Plan, AnalyticsEvent
-from backend.services.analytics_service import analytics_service
 
 logger = logging.getLogger(__name__)
 
@@ -284,32 +282,18 @@ class MoodService:
     async def _calculate_temporal_adjustment(self, user_id: int) -> float:
         """
         4. Temporal Pattern Score (10% weight equivalent impact)
-        Adjust based on individual chronotype instead of hardcoded windows.
+        Apply a lightweight time-of-day adjustment.
         """
         try:
-            # Import locally to avoid circular imports if any
-            # (Though in Python imports are usually fine if structured well)
-            # Assuming logic matches existing codebase
-            from backend.services.time_intelligence_service import time_intelligence_service # Fixed import name if needed
-            
-            # Detect user's natural rhythm
-            # Note: Ensure time_intelligence_service has detect_chronotype method
-            # If not, we might need a fallback.
-            # Checking previous file view, logic seemed to rely on it.
-            
-            # For robustness, let's stick to the previous implementation or safe fallback
-            # But making it slightly less punishing
-            
             current_hour = datetime.now().hour
             
             # Late night adjustment
             if current_hour >= 23 or current_hour < 5:
-                return -10 # Less punishment (was -15)
+                return -10
             
-            # Simple heuristic if service fails or is complex
-            if 9 <= current_hour <= 12: # Morning peak
+            if 9 <= current_hour <= 12:
                 return 10
-            if 14 <= current_hour <= 16: # Afternoon dip
+            if 14 <= current_hour <= 16:
                 return -5
                 
             return 0
@@ -324,29 +308,13 @@ class MoodService:
 
     async def _check_frustration(self, user_id: int) -> bool:
         """Check for frustration indicators."""
-        # Query recent messages for frustration keywords
         try:
             async for db in get_db():
                 start_time = datetime.utcnow() - timedelta(minutes=30)
                 result = await db.execute(
-                    select(AnalyticsEvent.metadata).where( # Note: Check if it's 'metadata' or 'meta' - previous code used metadata in this method?
-                         # The file view showed 'AnalyticsEvent.metadata' in _check_frustration but 'AnalyticsEvent.meta' in _calculate_chat_sentiment.
-                         # This inconsistency suggests one might be wrong or the model has both.
-                         # Looking at the original file content (lines 286), it used 'AnalyticsEvent.metadata'.
-                         # Looking at line 161, it used 'AnalyticsEvent.meta'.
-                         # I should probably check the model definition to be sure, but for now I will stick to what was there.
-                         # BUT, wait, line 161 had a comment "# Fixed column name from metadata to meta", which implies I might have fixed it in a previous turn or it was already like that.
-                         # Actually, in the view_file output:
-                         # 161: select(AnalyticsEvent.meta).where( # Fixed column name from metadata to meta
-                         # 286: select(AnalyticsEvent.metadata).where(
-                         # I should probably standardize. 'meta' seems more likely if 'metadata' was "fixed" to it.
-                         # However, if I change it and it's wrong, I break it.
-                         # Let's verify the model if possible, or just leave it as is if it was working? 
-                         # No, I should fix it. I'll use 'meta' if that's the "fixed" one.
-                         AnalyticsEvent.meta 
-                    ).where(
+                    select(AnalyticsEvent.meta).where(
                         AnalyticsEvent.user_id == user_id,
-                        AnalyticsEvent.event_type == 'message_received', # Fixed from 'event' to 'event_type' to match schema likely
+                        AnalyticsEvent.event_type == 'message_received',
                         AnalyticsEvent.timestamp >= start_time
                     ).limit(5)
                 )

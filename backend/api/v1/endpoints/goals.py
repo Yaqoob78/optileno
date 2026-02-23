@@ -45,8 +45,8 @@ class GoalOut(BaseModel):
     
     # AI Fields
     ai_suggestions: dict = {}
-    # is_tracked: bool = False  # Commented out for database compatibility
-    # probability_status: str = "Medium"  # Commented out for database compatibility
+    is_tracked: bool = False
+    probability_status: str = "Medium"
     
     created_at: Optional[str] = None
 
@@ -102,7 +102,8 @@ async def update_goal_progress(
     progress: int = Body(..., ge=0, le=100, embed=True),
     current_user: User = Depends(get_current_user)
 ):
-    """Update the progress of a goal."""
+    """Update the progress of a goal. Requires ULTRA plan."""
+    require_ultra_feature(current_user, "goal_progress_detailed")
     success = await planner_service.update_goal_progress(
         str(current_user.id), 
         goal_id, 

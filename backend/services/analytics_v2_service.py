@@ -24,6 +24,7 @@ from backend.db.models import (
     Task,
     User,
 )
+from backend.services.deep_work_utils import extract_deep_work_session_metrics
 
 
 @dataclass
@@ -103,7 +104,7 @@ class AnalyticsV2Service:
             )
         )
         plan_rows = await db.execute(
-            select(Plan.date).where(
+            select(Plan).where(
                 Plan.user_id == user_id,
                 Plan.plan_type == "deep_work",
                 Plan.date >= window.period_start,
@@ -124,9 +125,13 @@ class AnalyticsV2Service:
         for dt in task_rows.scalars().all():
             if dt:
                 days.add(dt.date())
-        for dt in plan_rows.scalars().all():
-            if dt:
-                days.add(dt.date())
+        for plan in plan_rows.scalars().all():
+            if not getattr(plan, "date", None):
+                continue
+            metrics = extract_deep_work_session_metrics(plan)
+            if not metrics["include_for_analytics"] or metrics["effective_minutes"] <= 0:
+                continue
+            days.add(plan.date.date())
         for dt in chat_rows.scalars().all():
             if dt:
                 days.add(dt.date())
@@ -203,7 +208,14 @@ class AnalyticsV2Service:
             )
         )
         deep_work_sessions = deep_work_rows.scalars().all()
-        deep_work_minutes = sum(int((item.duration_hours or 0) * 60) for item in deep_work_sessions)
+        deep_work_minutes = 0
+        deep_work_completed_sessions = 0
+        for item in deep_work_sessions:
+            metrics = extract_deep_work_session_metrics(item)
+            if not metrics["include_for_analytics"] or metrics["effective_minutes"] <= 0:
+                continue
+            deep_work_minutes += int(metrics["effective_minutes"])
+            deep_work_completed_sessions += 1
 
         habits_rows = await db.execute(
             select(Plan).where(
@@ -274,7 +286,7 @@ class AnalyticsV2Service:
             "high_energy_completed": int(high_energy_completed),
             "on_time_completed": int(on_time_completed),
             "deep_work_minutes": int(deep_work_minutes),
-            "deep_work_sessions": len(deep_work_sessions),
+            "deep_work_sessions": int(deep_work_completed_sessions),
             "habits_total": int(habits_total),
             "habits_completed": int(habits_completed),
             "chat_requests": int(chat_requests),
@@ -851,8 +863,11 @@ class AnalyticsV2Service:
             deep_dates: List[date] = []
             for deep in linked_deep:
                 dt = self._safe_dt(deep.date, window.period_start)
+                metrics = extract_deep_work_session_metrics(deep)
+                if not metrics["include_for_analytics"] or metrics["effective_minutes"] <= 0:
+                    continue
                 if dt >= goal_now - timedelta(days=3):
-                    recent_deep_minutes += max(float(deep.duration_hours or 0.0) * 60.0, 0.0)
+                    recent_deep_minutes += float(metrics["effective_minutes"])
                 deep_dates.append(dt.date())
             actual_pace = (recent_deep_minutes / 60.0) / 3.0
             pace_ratio = actual_pace / max(required_pace, 1e-3)
@@ -894,6 +909,9 @@ class AnalyticsV2Service:
                     if created_dt >= window.period_start:
                         activity_dates.append(created_dt.date())
             for deep in linked_deep:
+                metrics = extract_deep_work_session_metrics(deep)
+                if not metrics["include_for_analytics"] or metrics["effective_minutes"] <= 0:
+                    continue
                 activity_dates.append(self._safe_dt(deep.date, window.period_start).date())
             for habit in linked_habits:
                 schedule = habit.schedule if isinstance(habit.schedule, dict) else {}
@@ -944,8 +962,11 @@ class AnalyticsV2Service:
             previous_deep_minutes = 0.0
             for deep in linked_deep:
                 ddt = self._safe_dt(deep.date, window.period_start)
+                metrics = extract_deep_work_session_metrics(deep)
+                if not metrics["include_for_analytics"] or metrics["effective_minutes"] <= 0:
+                    continue
                 if goal_now - timedelta(days=10) <= ddt < goal_now - timedelta(days=3):
-                    previous_deep_minutes += max(float(deep.duration_hours or 0.0) * 60.0, 0.0)
+                    previous_deep_minutes += float(metrics["effective_minutes"])
             previous_signal += (previous_deep_minutes / 60.0) * 1.4
             recent_signal += habit_completions_7d * 0.25
 
@@ -1222,28 +1243,38 @@ class AnalyticsV2Service:
                 }
 
             # ── 1. Daily Intent Detection ────────────────────────────
-            intent_info = self._resolve_daily_intent(usage)
+            range_days = 1 if window.time_range == "daily" else (7 if window.time_range == "weekly" else 30)
+            
+            # We create a daily-scaled representation of inputs so that a whole week of tasks
+            # doesn't break the single-day grading curve.
+            scaled_usage = dict(usage)
+            for k in ["tasks_created", "tasks_completed", "goal_linked_completed", 
+                      "high_energy_completed", "on_time_completed", "deep_work_minutes", 
+                      "chat_requests"]:
+                scaled_usage[k] = scaled_usage[k] // range_days
+
+            intent_info = self._resolve_daily_intent(scaled_usage)
             weights = intent_info["weights"]
 
             # ── 2. Impact Points (replaces ratio trap) ───────────────
             task_points = self._task_impact_points(
-                usage["tasks_completed"], 
-                usage.get("goal_linked_completed", 0),
-                usage.get("high_energy_completed", 0),
-                usage.get("on_time_completed", 0),
-                usage.get("tasks_created", 0)
+                scaled_usage["tasks_completed"], 
+                scaled_usage.get("goal_linked_completed", 0),
+                scaled_usage.get("high_energy_completed", 0),
+                scaled_usage.get("on_time_completed", 0),
+                scaled_usage.get("tasks_created", 0)
             )
             habit_points = self._habit_impact_points(
                 usage["habits_completed"], usage["habits_total"], usage.get("active_streaks", 0), usage.get("habits_missed", 0)
             )
-            deep_work_points = self._deep_work_impact_points(usage["deep_work_minutes"])
+            deep_work_points = self._deep_work_impact_points(scaled_usage["deep_work_minutes"])
 
             goal_progress = float(goals["score"] or 0.0)
 
             # Engagement: chat + active minutes (minor signal)
-            active_minutes = usage["deep_work_minutes"] + (usage["tasks_completed"] * 8) + (usage["chat_requests"] * 1.5)
+            active_minutes = scaled_usage["deep_work_minutes"] + (scaled_usage["tasks_completed"] * 8) + (scaled_usage["chat_requests"] * 1.5)
             engagement = _clamp(
-                (min(usage["chat_requests"], 30) / 30.0) * 30.0
+                (min(scaled_usage["chat_requests"], 30) / 30.0) * 30.0
                 + (min(active_minutes, 150) / 150.0) * 70.0
             )
 
@@ -1448,13 +1479,17 @@ class AnalyticsV2Service:
             async for db in get_db():
                 usage = await self._usage_inputs(db, user.id, window)
                 goals = await self._goal_progress_summary(db, user.id, window)
+                
+                range_days = 1 if window.time_range == "daily" else (7 if window.time_range == "weekly" else 30)
 
                 task_component = 0.0
                 if usage["tasks_created"] > 0:
                     task_component = _clamp((usage["tasks_completed"] / usage["tasks_created"]) * 100.0)
                 elif usage["tasks_completed"] > 0:
                     task_component = 80.0
-                deep_work_component = _clamp((usage["deep_work_minutes"] / 120.0) * 100.0)
+                
+                scaled_dw = usage["deep_work_minutes"] / max(range_days, 1)
+                deep_work_component = _clamp((scaled_dw / 120.0) * 100.0)
                 goal_alignment = float(goals["score"] or 0.0)
                 derived_score = _clamp(deep_work_component * 0.55 + task_component * 0.30 + goal_alignment * 0.15)
 
@@ -1485,7 +1520,7 @@ class AnalyticsV2Service:
             daily_volume = (usage["deep_work_minutes"] + completed * 10) / max(range_days, 1)
             workload_strain = _clamp(
                 workload_ratio * 25.0
-                + (15 if usage["deep_work_minutes"] > 240 else 0)
+                + (15 if (usage["deep_work_minutes"] / max(range_days, 1)) > 240 else 0)
                 + (min(daily_volume / 120.0, 1.0) * 20.0)  # volume pressure
             )
 
@@ -1740,43 +1775,35 @@ class AnalyticsV2Service:
             }
 
     async def ai_intelligence(self, user: User, time_range: str) -> Dict[str, Any]:
-        """V3 AI Intelligence Score — 6 pure-logic dimensions.
-
-        Measures how intelligently a user operates within the system.
-        Every signal is derived from observable, verifiable behaviour.
-        No bias, no static frozen data, no inflated ratios.
-        """
+        """V3 AI Intelligence Score — 6 pure-logic dimensions."""
         window = await self.resolve_window(user, time_range)
         async for db in get_db():
             usage = await self._usage_inputs(db, user.id, window)
             goals = await self._goal_progress_summary(db, user.id, window)
             range_days = 1 if window.time_range == "daily" else (7 if window.time_range == "weekly" else 30)
+            
+            # Fix scaling bug by creating a normalized daily average
+            # (Allows metrics evaluated by daily thresholds to work gracefully)
+            tasks_created = usage["tasks_created"] // range_days
+            goal_linked = usage["goal_linked_completed"] // range_days
+            completed = usage["tasks_completed"] // range_days
+            dw_minutes = usage["deep_work_minutes"] // range_days
+            chat_count = usage["chat_requests"] // range_days
+
+            has_goals = goals["score"] is not None
 
             # ════════════════════════════════════════════════════════
             # DIM 1 — Strategic Planning  (20%)
-            #   "Are you planning with intent, or just dumping tasks?"
-            #   Measures: goal-alignment, deep work scheduling,
-            #             planning volume (with diminishing returns).
             # ════════════════════════════════════════════════════════
-            tasks_created = usage["tasks_created"]
-            goal_linked = usage["goal_linked_completed"]
-            has_goals = goals["score"] is not None
-
-            # Volume with diminishing returns (log curve caps at ~20 tasks)
             volume_signal = min(math.log2(max(tasks_created, 1) + 1) / math.log2(21), 1.0) * 30.0
 
-            # Goal alignment: what % of completed tasks were linked to a goal?
-            completed = usage["tasks_completed"]
             if completed > 0:
                 alignment_ratio = min(goal_linked / completed, 1.0)
                 goal_alignment_signal = alignment_ratio * 35.0
             else:
                 goal_alignment_signal = 0.0
 
-            # Deep work scheduling (did you plan deep work, not just tasks?)
             deep_work_signal = min(usage["deep_work_sessions"] / max(range_days, 1), 2.0) / 2.0 * 20.0
-
-            # Goal existence bonus (small — just having goals shows strategic thinking)
             goal_existence_signal = 15.0 if has_goals else 0.0
 
             strategic_planning = _clamp(
@@ -1785,45 +1812,31 @@ class AnalyticsV2Service:
 
             # ════════════════════════════════════════════════════════
             # DIM 2 — Execution Intelligence  (25%)
-            #   "Are you getting meaningful things done?"
-            #   Uses Impact Points (same system as Productivity V3),
-            #   NOT ratios. No punishment for ambitious planning.
             # ════════════════════════════════════════════════════════
-            # Impact points per action (same as productivity_score V3)
             task_points = min(completed, 15) * 6.0
             if completed > 15:
-                task_points += (completed - 15) * 2.0  # diminishing
+                task_points += (completed - 15) * 2.0
 
             habit_points = min(usage["habits_completed"], 8) * 4.0
 
-            dw_hours = usage["deep_work_minutes"] / 60.0
+            dw_hours = dw_minutes / 60.0
             deep_work_points = min(dw_hours, 4.0) * 10.0
             if dw_hours > 4.0:
-                deep_work_points += (dw_hours - 4.0) * 3.0  # diminishing
+                deep_work_points += (dw_hours - 4.0) * 3.0
 
-            # Goal-linked bonus (multiplier for strategic completion)
             goal_bonus = goal_linked * 3.0
 
             raw_execution = task_points + habit_points + deep_work_points + goal_bonus
-            # Normalise against a "great day" baseline of 120 points
             execution_intelligence = _clamp((raw_execution / 120.0) * 100.0)
 
             # ════════════════════════════════════════════════════════
             # DIM 3 — AI Collaboration  (15%)
-            #   "How effectively are you leveraging the AI?"
-            #   Chat-to-action conversion, insight adoption, and
-            #   AI-created task follow-through.
             # ════════════════════════════════════════════════════════
-            chat_count = usage["chat_requests"]
-
-            # Chat-to-action conversion: tasks created within the same window
-            # as chat interactions → proxy for "AI helped you plan"
             if chat_count > 0 and tasks_created > 0:
-                # Higher ratio = user is turning conversations into plans
                 conversion_ratio = min(tasks_created / chat_count, 2.0) / 2.0
                 chat_action_signal = conversion_ratio * 40.0
             elif chat_count > 0:
-                chat_action_signal = 10.0  # chatted but took no action
+                chat_action_signal = 10.0
             else:
                 chat_action_signal = 0.0
 

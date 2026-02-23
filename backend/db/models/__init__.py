@@ -1,5 +1,6 @@
 from sqlalchemy import (
     Column,
+    Date,
     Integer,
     String,
     Float,
@@ -8,6 +9,8 @@ from sqlalchemy import (
     Text,
     JSON,
     ForeignKey,
+    Index,
+    UniqueConstraint,
 )
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -68,6 +71,11 @@ class Task(Base):
     """User tasks with AI scheduling and tracking."""
 
     __tablename__ = "tasks"
+
+    __table_args__ = (
+        Index('ix_tasks_user_status_due', 'user_id', 'status', 'due_date'),
+        Index('ix_tasks_user_goal', 'user_id', 'goal_id'),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True)
@@ -235,11 +243,106 @@ class Goal(Base):
     probability_status = Column(String, default="Medium")  # Very Low, Low, Medium, High, Very High, Extremely High
     last_analyzed_at = Column(DateTime(timezone=True))
 
+    # ── V2 Typed Scoring Model ──────────────────────────────────────────
+    scoring_version = Column(String, default="v2", nullable=False, server_default="v2")
+    goal_type = Column(
+        String, nullable=True,
+        comment="fitness, learning, project, financial, creative, habit, exam, custom",
+    )
+    horizon_days = Column(Integer, nullable=True, comment="Total days from creation to target_date")
+    primary_metric_name = Column(String, nullable=True, comment="e.g. weight, pages, revenue")
+    primary_metric_unit = Column(String, nullable=True, comment="e.g. kg, pages, USD")
+    baseline_value = Column(Float, nullable=True, comment="Starting metric value")
+    target_value = Column(Float, nullable=True, comment="Target metric value")
+    trajectory_type = Column(
+        String, default="linear", nullable=False, server_default="linear",
+        comment="linear, front_loaded, back_loaded, milestone",
+    )
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
     tasks = relationship("Task", back_populates="goal")
     plans = relationship("Plan", back_populates="goal")
+    components = relationship("GoalComponent", back_populates="goal", cascade="all, delete-orphan")
+    progress_snapshots = relationship("GoalProgressSnapshot", back_populates="goal", cascade="all, delete-orphan")
+
+
+# ==================================================
+# GOAL COMPONENT
+# ==================================================
+class GoalComponent(Base):
+    """Weighted sub-components that drive goal progress calculation.
+    
+    Each goal can have multiple components (tasks, habits, deep work,
+    milestones, or custom metrics) with individual weights so that the
+    scoring engine can produce a category-aware composite score.
+    """
+
+    __tablename__ = "goal_components"
+
+    __table_args__ = (
+        Index("ix_goal_components_goal_type", "goal_id", "component_type"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    goal_id = Column(Integer, ForeignKey("goals.id", ondelete="CASCADE"), nullable=False, index=True)
+    component_type = Column(
+        String, nullable=False,
+        comment="task, habit, deep_work, milestone, metric",
+    )
+    source_id = Column(Integer, nullable=True, comment="FK to tasks.id / plans.id (nullable for metric type)")
+    weight = Column(Float, nullable=False, default=1.0, comment="Relative weight in composite score")
+    target_total = Column(Float, nullable=False, default=0.0, comment="Target value for this component")
+    current_total = Column(Float, nullable=False, default=0.0, comment="Current accumulated value")
+    start_date = Column(Date, nullable=True)
+    due_date = Column(Date, nullable=True)
+    required = Column(Boolean, nullable=False, default=False, comment="Must complete for goal to succeed")
+    quality_weight = Column(Float, nullable=False, default=1.0, comment="Quality multiplier (0-2)")
+    overdue_penalty_per_day = Column(Float, nullable=False, default=0.0, comment="Score penalty per overdue day")
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    goal = relationship("Goal", back_populates="components")
+
+
+# ==================================================
+# GOAL PROGRESS SNAPSHOT (daily)
+# ==================================================
+class GoalProgressSnapshot(Base):
+    """Daily snapshot of goal scoring dimensions.
+    
+    Enables trend analysis, trajectory visualization, and confidence
+    tracking without recomputing from raw events every time.
+    """
+
+    __tablename__ = "goal_progress_snapshots"
+
+    __table_args__ = (
+        Index("ix_gps_goal_date", "goal_id", "date", unique=True),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    goal_id = Column(Integer, ForeignKey("goals.id", ondelete="CASCADE"), nullable=False, index=True)
+    date = Column(Date, nullable=False)
+
+    # Scoring dimensions (0-100)
+    completion_score = Column(Float, nullable=False, default=0.0)
+    pace_score = Column(Float, nullable=False, default=0.0)
+    quality_score = Column(Float, nullable=False, default=0.0)
+    risk_score = Column(Float, nullable=False, default=0.0)
+
+    # Derived aggregates
+    success_probability = Column(Float, nullable=False, default=0.0, comment="0-100 probability")
+    confidence = Column(Float, nullable=False, default=0.2, comment="0-1 confidence in the probability")
+
+    # Expandable metadata
+    meta = Column(JSON, default=dict, comment="Breakdown, component scores, anomalies")
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    goal = relationship("Goal", back_populates="progress_snapshots")
 
 
 # ==================================================
@@ -716,6 +819,8 @@ __all__ = [
     "ChatMessage",
     "StressLog",
     "Goal",
+    "GoalComponent",
+    "GoalProgressSnapshot",
     "FocusScore",
     "BigFiveTest",
     # Add analytics models
@@ -725,8 +830,8 @@ __all__ = [
     "BehavioralPattern",
     "AIAnalysis",
     "UserAnalytics",
-    "DailyAnalytics",  # NEW
-    "AIIntelligenceScore",  # NEW
+    "DailyAnalytics",
+    "AIIntelligenceScore",
     "RefreshToken",
     "PasswordResetToken",
     # Phase 3 models

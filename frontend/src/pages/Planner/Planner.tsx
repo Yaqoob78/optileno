@@ -997,7 +997,6 @@ export default function PlannerPage() {
               const d = new Date(h.lastCompleted);
               return getDateKeyInTimezone(d, timezone) === getDateKeyInTimezone(new Date(), timezone);
             }).length}
-            deepWorkSessions={dailyDeepWorkCount}
             continuousHabits={habits.filter(h => h.currentStreak > 3).length}
             totalGoals={goals.length}
           />

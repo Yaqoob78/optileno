@@ -258,10 +258,12 @@ class EnhancedGoalAnalyticsService:
             )
             tasks = tasks_result.scalars().all()
 
-            # Filter by goal tag (JSON array search)
+            goal_tag = f"goal:{goal_id}".lower()
             linked = []
             for task in tasks:
-                if task.tags and str(task.tags).find(f"goal:{goal_id}") != -1:
+                tags = task.tags if isinstance(task.tags, list) else []
+                has_goal_tag = any(str(tag).strip().lower() == goal_tag for tag in tags)
+                if task.goal_id == goal_id or has_goal_tag:
                     linked.append(task)
             return linked
         except Exception as e:
@@ -301,8 +303,10 @@ class EnhancedGoalAnalyticsService:
             streak = schedule.get("streak", 0)
             completed_count = schedule.get("completedCount", 0)
 
-            # Score based on real-time consistency
-            score = min(100, streak * 10 + completed_count * 2)
+            # More stable contribution curve for long-running habits.
+            streak_score = min(70, float(streak or 0) * 4.0)
+            completion_score = min(30, float(completed_count or 0) * 1.5)
+            score = min(100, streak_score + completion_score)
             habit_scores.append({
                 "name": habit.name,
                 "streak": streak,
@@ -336,9 +340,12 @@ class EnhancedGoalAnalyticsService:
         else:
             velocity_factor = 1.0
 
-        # Factor 3: Recent activity trend
-        # This would normally come from recent activity data
-        trend_factor = 1.0  # Placeholder - would be calculated from recent activity
+        # Factor 3: Trend proxy from pace delta (no placeholder constants)
+        if required_velocity > 0:
+            pace_delta = (velocity - required_velocity) / required_velocity
+        else:
+            pace_delta = 0.0
+        trend_factor = max(0.5, min(1.2, 0.8 + (pace_delta * 0.25) + ((progress_factor - 0.5) * 0.1)))
 
         # Combine factors
         probability = (progress_factor * 0.4 + velocity_factor * 0.4 + trend_factor * 0.2) * 100
@@ -827,9 +834,15 @@ class EnhancedGoalAnalyticsService:
         Update goal progress in real-time based on user behavior.
         This method should be called whenever goal-related events occur.
         """
+        from backend.services.goal_progress_engine import GoalProgressEngine
+        from backend.db.models import User
         try:
             # Get the goal to update
             async for db in get_db():
+                usr_res = await db.execute(select(User).where(User.id == int(user_id)))
+                usr = usr_res.scalar()
+                is_ultra = usr.plan_type == 'ULTRA' if usr else False
+
                 goal_result = await db.execute(
                     select(Goal).where(Goal.id == int(goal_id))
                 )
@@ -839,48 +852,38 @@ class EnhancedGoalAnalyticsService:
                     logger.warning(f"Goal {goal_id} not found for user {user_id}")
                     return
                 
-                # Calculate new progress based on actual behavior
-                linked_tasks = await self._get_linked_tasks(db, goal.id, user_id)
-                if linked_tasks:
-                    completed_tasks = [t for t in linked_tasks if t.status == 'completed']
-                    new_progress = (len(completed_tasks) / len(linked_tasks)) * 100
-                    
-                    # Update the goal's progress
-                    goal.current_progress = max(goal.current_progress or 0, round(new_progress))
-                    goal.updated_at = datetime.utcnow()
-                    
-                    await db.commit()
-                    
-                    # Log the analytics event
-                    analytics_event = AnalyticsEvent(
-                        user_id=int(user_id),
-                        event_type=f"goal_progress_updated_realtime",
-                        event_source="system",
-                        category="goals",
-                        timestamp=datetime.utcnow(),
-                        meta={
-                            "goal_id": goal_id,
-                            "new_progress": goal.current_progress,
-                            "trigger_event": event_type,
-                            "event_data": event_data
-                        },
-                        raw_data={"event_type": event_type, "user_id": user_id, "goal_id": goal_id}
-                    )
-                    db.add(analytics_event)
-                    await db.commit()
-                    
-                    # Broadcast the update to real-time systems
-                    try:
-                        from backend.realtime.socket_manager import broadcast_analytics_update
-                        await broadcast_analytics_update(int(user_id), {
-                            "type": "goal_progress_updated",
-                            "goal_id": goal_id,
-                            "progress": goal.current_progress,
-                            "timestamp": datetime.utcnow().isoformat()
-                        })
-                    except ImportError:
-                        # Socket manager not available, skip broadcasting
-                        pass
+                new_prog_obj = await GoalProgressEngine.calculate_progress(db, int(goal_id), int(user_id), is_ultra=is_ultra)
+                
+                # Log the analytics event
+                analytics_event = AnalyticsEvent(
+                    user_id=int(user_id),
+                    event_type=f"goal_progress_updated_realtime",
+                    event_source="system",
+                    category="goals",
+                    timestamp=datetime.utcnow(),
+                    meta={
+                        "goal_id": goal_id,
+                        "new_progress": goal.current_progress,
+                        "trigger_event": event_type,
+                        "event_data": event_data
+                    },
+                    raw_data={"event_type": event_type, "user_id": user_id, "goal_id": goal_id}
+                )
+                db.add(analytics_event)
+                await db.commit()
+                
+                # Broadcast the update to real-time systems
+                try:
+                    from backend.realtime.socket_manager import broadcast_analytics_update
+                    await broadcast_analytics_update(int(user_id), {
+                        "type": "goal_progress_updated",
+                        "goal_id": goal_id,
+                        "progress": goal.current_progress,
+                        "timestamp": datetime.utcnow().isoformat()
+                    })
+                except ImportError:
+                    # Socket manager not available, skip broadcasting
+                    pass
                         
         except Exception as e:
             logger.error(f"Error updating real-time goal progress: {e}", exc_info=True)
