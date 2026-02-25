@@ -1,25 +1,29 @@
-﻿import React, { useRef, useEffect } from 'react';
+﻿import React, { useRef, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, useReducedMotion, type Variants } from 'framer-motion';
 import {
   ArrowRight,
   Bot,
   BrainCircuit,
-  Briefcase,
   Building2,
+  Briefcase,
   Calendar,
   BarChart2,
   CheckCircle,
   Clock,
-  Sparkles,
-  Layers,
-  Workflow,
-  ArrowUpRight,
+  TrendingUp,
+  Zap,
+  Target,
+  Timer,
+  ChevronDown,
+  Plus,
+  Minus,
 } from 'lucide-react';
 import { Logo } from '../../components/common/Logo';
 import { Interactive3DCard } from '../../components/landing/Interactive3DCard';
 import './landing.css';
 
+/* ─── Types ─── */
 type Feature = {
   title: string;
   description: string;
@@ -50,32 +54,46 @@ type UseCaseGroup = {
   entries: string[];
 };
 
+type Testimonial = {
+  author: string;
+  initials: string;
+  title: string;
+  quote: string;
+  gradientFrom: string;
+  gradientTo: string;
+};
 
+type FAQItem = {
+  question: string;
+  answer: string;
+};
+
+/* ─── Data ─── */
 
 const FEATURES: Feature[] = [
   {
-    title: 'AI Workflow Engine',
-    description: 'Turn ambitions into daily tasks with clear priorities.',
+    title: 'Goal → Tasks in seconds',
+    description: 'Tell Leno your goal. Get a prioritized task list instantly.',
     icon: <Bot size={20} />,
   },
   {
-    title: 'Precision Planner',
-    description: 'Sync your tasks, habits, and focus sprints seamlessly.',
+    title: 'One view. Zero chaos.',
+    description: 'Tasks, habits, and focus blocks in a single daily view.',
     icon: <Calendar size={20} />,
   },
   {
-    title: 'Behavioral Insights',
-    description: 'Track real metrics like focus score and burnout risk.',
+    title: 'Know when you\'re about to crash.',
+    description: 'Track your focus score, burnout risk, and peak productive hours.',
     icon: <BarChart2 size={20} />,
   },
   {
-    title: 'Execution Reliability',
-    description: 'Fast feedback loops, state sync, and predictable outcomes.',
+    title: 'Ship more. Miss less.',
+    description: 'Real-time sync and feedback loops to keep every task on track.',
     icon: <CheckCircle size={20} />,
   },
   {
-    title: 'Deep Work Flow',
-    description: 'Built-in focus timers to maximize output and shield attention.',
+    title: 'Protected deep work time.',
+    description: 'Built-in focus timers that shield your attention when it matters most.',
     icon: <Clock size={20} />,
   },
 ];
@@ -165,56 +183,81 @@ const USE_CASE_GROUPS: UseCaseGroup[] = [
   },
 ];
 
-type Testimonial = {
-  author: string;
-  title: string;
-  quote: string;
-  avatarUrl: string;
-};
-
 const TESTIMONIALS: Testimonial[] = [
   {
-    author: "Alex Morgan",
-    title: "SaaS Founder",
-    quote: "\"Before Optileno, I was losing 15+ hours a week context-switching between tools. Now, Leno handles task breakdown and my execution speed is flawless. Best investment yet.\"",
-    avatarUrl: "https://i.pravatar.cc/150?u=optileno1"
+    author: 'Alex M.',
+    initials: 'AM',
+    title: 'SaaS Founder',
+    quote: '"Before Optileno, I was losing 15+ hours a week context-switching between tools. Now, Leno handles task breakdown and my execution speed is flawless."',
+    gradientFrom: '#60a5fa',
+    gradientTo: '#3b82f6',
   },
   {
-    author: "Jordan Lee",
-    title: "Agency Owner",
-    quote: "\"The Burnout Prediction alone justified the cost. It literally stopped me from crashing during our biggest launch week. A deeply intelligent operating system for serious work.\"",
-    avatarUrl: "https://i.pravatar.cc/150?u=optileno2"
+    author: 'Jordan L.',
+    initials: 'JL',
+    title: 'Agency Owner',
+    quote: '"The Burnout Prediction alone justified the cost. It literally stopped me from crashing during our biggest launch week. A deeply intelligent operating system."',
+    gradientFrom: '#fbbf24',
+    gradientTo: '#d97706',
   },
   {
-    author: "Sarah Jenkins",
-    title: "Senior Executive",
-    quote: "\"This isn't another glorified to-do list. The way it synchronizes goals with daily focus sprints forces you to execute on what actually moves the needle.\"",
-    avatarUrl: "https://i.pravatar.cc/150?u=optileno3"
-  }
-];
-
-const HERO_METRICS = [
-  {
-    icon: <Layers size={18} />,
-    label: 'Unified Planning Surface',
-  },
-  {
-    icon: <Workflow size={18} />,
-    label: 'Operational AI Guidance',
-  },
-  {
-    icon: <Sparkles size={18} />,
-    label: 'Decision-Grade Analytics',
-  },
-  {
-    icon: <BrainCircuit size={18} />,
-    label: 'Adaptive Intelligence Layer',
+    author: 'Sarah J.',
+    initials: 'SJ',
+    title: 'Senior Executive',
+    quote: '"This isn\'t another glorified to-do list. The way it synchronizes goals with daily focus sprints forces you to execute on what actually moves the needle."',
+    gradientFrom: '#34d399',
+    gradientTo: '#059669',
   },
 ];
 
-const HERO_TITLE = 'Double your execution speed with an AI operating system.';
+const FAQ_ITEMS: FAQItem[] = [
+  {
+    question: 'How is Optileno different from Notion or Todoist?',
+    answer: 'Optileno isn\'t a blank canvas or a simple checklist. It\'s an AI execution layer that breaks your goals into daily tasks, manages deep work sessions, and tracks behavioral patterns like burnout risk — all in one system. You don\'t organize. You execute.',
+  },
+  {
+    question: 'Is my data safe?',
+    answer: 'Yes. All data is encrypted in transit and at rest. We use industry-standard security practices and never sell your data. Your productivity intelligence stays yours.',
+  },
+  {
+    question: 'What happens after the 3-day free trial?',
+    answer: 'You choose a plan that fits your needs. No surprise charges — you\'ll get a clear reminder before your trial ends. If you don\'t upgrade, your account stays accessible with limited features.',
+  },
+  {
+    question: 'Can I use Optileno on mobile?',
+    answer: 'Yes. Optileno is fully responsive and works on any device. Your daily plan, focus sessions, and AI assistant are always accessible.',
+  },
+  {
+    question: 'How fast can I get started?',
+    answer: 'Under 90 seconds. Sign up, tell Leno your top goal, and you\'ll have a prioritized daily plan before you finish your coffee.',
+  },
+  {
+    question: 'Can I cancel anytime?',
+    answer: 'Absolutely. No contracts, no lock-in. Cancel from your settings in two clicks.',
+  },
+];
+
+const HERO_STATS = [
+  {
+    icon: <TrendingUp size={18} />,
+    label: '↑ 2.3x Task Completion',
+  },
+  {
+    icon: <Zap size={18} />,
+    label: '↓ 67% Context Switching',
+  },
+  {
+    icon: <Timer size={18} />,
+    label: '90-sec First Planned Day',
+  },
+  {
+    icon: <Target size={18} />,
+    label: 'Live Focus Score Tracking',
+  },
+];
+
+const HERO_TITLE = 'Stop planning. Start finishing.';
 const HERO_TITLE_WORDS = HERO_TITLE.split(' ');
-const HERO_PILLS = ['Goals', 'Tasks', 'Planner', 'Leno AI', 'Habits', 'Analytics'];
 
 const WAVE_PATHS = Array.from({ length: 42 }).map((_, i) => {
   const y = 40 + i * 26;
@@ -225,17 +268,41 @@ const WAVE_PATHS = Array.from({ length: 42 }).map((_, i) => {
   return `M -100 ${y} C 480 ${cy1}, 1020 ${cy2}, 1600 ${cy3}`;
 });
 
+/* ─── FAQ Accordion Item ─── */
+function FAQAccordion({ item, index }: { item: FAQItem; index: number }) {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <div className={`faq-item ${isOpen ? 'faq-open' : ''}`}>
+      <button
+        className="faq-question"
+        onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+        id={`faq-q-${index}`}
+      >
+        <span>{item.question}</span>
+        {isOpen ? <Minus size={18} /> : <Plus size={18} />}
+      </button>
+      <div className="faq-answer" role="region" aria-labelledby={`faq-q-${index}`}>
+        {isOpen && <p>{item.answer}</p>}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Component ─── */
+
 export default function Landing() {
   const navigate = useNavigate();
   const shouldReduceMotion = useReducedMotion();
   const sceneRef = useRef<HTMLDivElement>(null);
+  const [showStickyBar, setShowStickyBar] = useState(false);
 
   useEffect(() => {
     let animationFrameId: number;
     let time = 0;
 
     const renderWaves = () => {
-      time += 0.003; // Controls how fast the waves undulate
+      time += 0.003;
       if (!sceneRef.current) return;
 
       const basePaths = sceneRef.current.querySelectorAll('.waves-base path');
@@ -270,9 +337,17 @@ export default function Landing() {
       sceneRef.current.style.setProperty('--mouse-y', `${y}px`);
     };
 
+    /* Sticky CTA bar: appears after 40% scroll */
+    const handleScroll = () => {
+      const scrollPct = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
+      setShowStickyBar(scrollPct > 0.15 && scrollPct < 0.9);
+    };
+
     window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('scroll', handleScroll);
       cancelAnimationFrame(animationFrameId);
     };
   }, []);
@@ -306,7 +381,7 @@ export default function Landing() {
       visible: {
         transition: {
           delayChildren: shouldReduceMotion ? 0 : 0.08,
-          staggerChildren: shouldReduceMotion ? 0 : 0.045,
+          staggerChildren: shouldReduceMotion ? 0 : 0.065,
         },
       },
     }),
@@ -363,6 +438,7 @@ export default function Landing() {
         </div>
       </div>
 
+      {/* ─── Nav ─── */}
       <nav className="landing-nav">
         <div className="nav-container">
           <div className="nav-logo">
@@ -370,17 +446,30 @@ export default function Landing() {
             <span className="logo-text">Optileno</span>
           </div>
           <div className="nav-actions">
-            <button className="nav-btn-secondary btn-premium" onClick={() => navigate('/register')}>Try Optileno For Free</button>
-            <button className="nav-btn-secondary btn-premium" onClick={() => navigate('/chat-leno')}>Leno AI Free Chat</button>
             <button className="nav-link btn-premium" onClick={() => navigate('/login')}>Login</button>
-            <button className="nav-btn-primary btn-premium" onClick={() => navigate('/register')}>Get Access</button>
+            <button className="nav-btn-primary nav-cta-gold btn-premium" onClick={() => navigate('/register')}>
+              Start Free Trial
+              <ArrowRight size={16} />
+            </button>
           </div>
         </div>
       </nav>
 
-      <main className="hero-section">
-        <h1 className="visually-hidden">10x Your Productivity With The Ultimate AI Operating System</h1>
+      {/* ─── Sticky Mid-Page CTA Bar ─── */}
+      <div className={`sticky-cta-bar ${showStickyBar ? 'sticky-visible' : ''}`}>
+        <div className="sticky-cta-inner">
+          <span className="sticky-cta-text">Ready to start executing?</span>
+          <button className="sticky-cta-btn btn-premium" onClick={() => navigate('/register')}>
+            Start Free Trial
+            <ArrowRight size={15} />
+          </button>
+        </div>
+      </div>
 
+      <main className="hero-section">
+        <h1 className="visually-hidden">Stop Planning Start Finishing — AI Execution Layer for Ambitious Operators</h1>
+
+        {/* ─── Hero Content ─── */}
         <motion.section
           className="hero-content"
           initial="hidden"
@@ -389,10 +478,10 @@ export default function Landing() {
           custom={0.02}
         >
           <motion.span className="kicker" variants={revealVariants} custom={0.08}>
-            AI Productivity Platform For The AI Era
+            Free 3-day trial · No card required
           </motion.span>
 
-          <motion.h1
+          <motion.h2
             className="hero-title"
             variants={titleContainerVariants}
             initial="hidden"
@@ -404,37 +493,26 @@ export default function Landing() {
                 {word}
               </motion.span>
             ))}
-          </motion.h1>
+          </motion.h2>
 
           <motion.p className="hero-subtitle" variants={revealVariants} custom={0.16}>
-            Unify your workflow with intelligent planning, proactive deep work blocks, and
-            behavioral analytics to execute faster.
+            Optileno turns your goals into daily execution with AI planning,
+            focus sessions, and behavioral analytics — so nothing slips.
           </motion.p>
 
-          <div className="hero-pill-row" aria-label="Core Optileno capabilities">
-            {HERO_PILLS.map((pill, index) => (
-              <motion.span
-                key={pill}
-                className="hero-pill"
-                variants={revealVariants}
-                initial="hidden"
-                animate="visible"
-                custom={0.2 + index * 0.04}
-              >
-                {pill}
-              </motion.span>
-            ))}
-          </div>
+          <motion.p className="hero-social-proof" variants={revealVariants} custom={0.2}>
+            Trusted by founders, agency owners, and operators shipping real products.
+          </motion.p>
 
           <div className="hero-stats">
-            {HERO_METRICS.map((metric, index) => (
+            {HERO_STATS.map((metric, index) => (
               <motion.div
                 className="stat-card"
                 key={metric.label}
                 variants={revealVariants}
                 initial="hidden"
                 animate="visible"
-                custom={0.28 + index * 0.05}
+                custom={0.24 + index * 0.05}
               >
                 {metric.icon}
                 <span>{metric.label}</span>
@@ -442,22 +520,29 @@ export default function Landing() {
             ))}
           </div>
 
-          <motion.div className="cta-wrapper hero-cta-stack" variants={revealVariants} custom={0.48}>
-            <button className="cta-button btn-premium" onClick={() => navigate('/register')}>
-              Try Optileno For Free
+          <motion.div className="cta-wrapper hero-cta-stack" variants={revealVariants} custom={0.44}>
+            <button className="cta-button cta-gold btn-premium" onClick={() => navigate('/register')}>
+              Start Free Trial
               <ArrowRight size={18} />
             </button>
-            <button className="cta-button-secondary btn-premium" onClick={() => navigate('/chat-leno')}>
-              Leno AI Free Chat
-            </button>
-            <button className="cta-button-tertiary btn-premium" onClick={() => navigate('/dashboard-preview')}>
+            <button className="cta-button-secondary btn-premium" onClick={() => navigate('/dashboard-preview')}>
               See Dashboard Preview
-              <ArrowUpRight size={16} />
             </button>
-            <p className="cta-note">3-day free trial. Built for serious execution teams and ambitious individuals.</p>
+            <p className="cta-note">Free for 3 days. No credit card. Full access.</p>
+          </motion.div>
+
+          {/* Scroll indicator */}
+          <motion.div
+            className="scroll-indicator"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.2, duration: 0.6 }}
+          >
+            <ChevronDown size={22} />
           </motion.div>
         </motion.section>
 
+        {/* ─── Screens ─── */}
         <motion.section
           className="screens-section"
           aria-label="Product screenshots"
@@ -488,6 +573,7 @@ export default function Landing() {
           ))}
         </motion.section>
 
+        {/* ─── Features ─── */}
         <motion.section
           className="features-section"
           aria-label="Platform features"
@@ -497,7 +583,7 @@ export default function Landing() {
           variants={revealVariants}
           custom={0.04}
         >
-          <h2>Built for measurable output, not vanity metrics</h2>
+          <h2>Everything you need to go from idea → executed</h2>
           <div className="features-grid">
             {FEATURES.map((feature, index) => (
               <motion.article
@@ -517,6 +603,7 @@ export default function Landing() {
           </div>
         </motion.section>
 
+        {/* ─── Capabilities ─── */}
         <motion.section
           className="capabilities-section"
           aria-label="Platform capability categories"
@@ -528,9 +615,9 @@ export default function Landing() {
         >
           <div className="section-heading">
             <span>Core Modules</span>
-            <h2>One layer for project, time, and focus execution</h2>
+            <h2>From scattered thinking to controlled execution</h2>
             <p>
-              Structured for serious work, designed for speed.
+              Structured for serious work. Designed for speed.
             </p>
           </div>
 
@@ -560,6 +647,7 @@ export default function Landing() {
           </div>
         </motion.section>
 
+        {/* ─── Use Cases ─── */}
         <motion.section
           className="use-cases-section"
           aria-label="Optileno use cases"
@@ -571,7 +659,7 @@ export default function Landing() {
         >
           <div className="section-heading">
             <span>Use Cases</span>
-            <h2>Built for professionals and high-output teams</h2>
+            <h2>Made for people who ship, not people who plan</h2>
             <p>
               Run your planning, delivery, and analytics from one AI platform.
             </p>
@@ -602,6 +690,7 @@ export default function Landing() {
           </div>
         </motion.section>
 
+        {/* ─── Testimonials ─── */}
         <motion.section
           className="testimonials-section capabilities-section"
           aria-label="Social Proof"
@@ -612,10 +701,10 @@ export default function Landing() {
           custom={0.04}
         >
           <div className="section-heading">
-            <span>Verified Results</span>
-            <h2>Trusted by founders and top percentile operators</h2>
+            <span>Real Feedback</span>
+            <h2>What operators are saying</h2>
             <p>
-              Execution outcomes from high-agency professionals leveraging Optileno.
+              Execution outcomes from high-agency professionals using Optileno.
             </p>
           </div>
 
@@ -631,8 +720,13 @@ export default function Landing() {
                 custom={0.08 + index * 0.04}
               >
                 <div className="testimonial-head">
-                  <div className="testimonial-avatar">
-                    <img src={testimonial.avatarUrl} alt={`${testimonial.author} Avatar`} />
+                  <div
+                    className="testimonial-avatar-initials"
+                    style={{
+                      background: `linear-gradient(135deg, ${testimonial.gradientFrom}, ${testimonial.gradientTo})`,
+                    }}
+                  >
+                    {testimonial.initials}
                   </div>
                   <div className="testimonial-author-wrapper">
                     <h3 className="testimonial-author">{testimonial.author}</h3>
@@ -645,8 +739,32 @@ export default function Landing() {
               </motion.article>
             ))}
           </div>
+          <p className="testimonial-disclaimer">Names shortened for privacy. Based on real user feedback.</p>
         </motion.section>
 
+        {/* ─── FAQ ─── */}
+        <motion.section
+          className="faq-section"
+          aria-label="Frequently asked questions"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={revealVariants}
+          custom={0.04}
+        >
+          <div className="section-heading">
+            <span>FAQ</span>
+            <h2>Questions before you start</h2>
+          </div>
+
+          <div className="faq-list">
+            {FAQ_ITEMS.map((item, index) => (
+              <FAQAccordion key={index} item={item} index={index} />
+            ))}
+          </div>
+        </motion.section>
+
+        {/* ─── Final CTA ─── */}
         <motion.section
           className="journey-section"
           aria-label="Start your Optileno journey"
@@ -658,31 +776,38 @@ export default function Landing() {
         >
           <div className="journey-card">
             <div className="journey-copy">
-              <span className="journey-kicker">Start Today</span>
-              <h2>Begin Journey with Optileno</h2>
+              <span className="journey-kicker">Ready?</span>
+              <h2>Your first productive day starts in 90 seconds.</h2>
               <p>
-                Launch your AI productivity stack in minutes and move from planning to measurable execution.
+                Set up your goals, get AI-planned tasks, and start executing — all in one free trial.
               </p>
             </div>
             <div className="journey-actions">
-              <button className="cta-button btn-premium" onClick={() => navigate('/register')}>
-                Begin Journey
+              <button className="cta-button cta-gold btn-premium" onClick={() => navigate('/register')}>
+                Start Free Trial
                 <ArrowRight size={18} />
               </button>
-              <button className="cta-button-secondary btn-premium" onClick={() => navigate('/chat-leno')}>
-                Try Leno AI Free Chat
-              </button>
-              <button className="cta-button-tertiary btn-premium" onClick={() => navigate('/login')}>
-                Login
-              </button>
+              <p className="cta-note-alt">3-day trial. No credit card. Full access.</p>
             </div>
           </div>
         </motion.section>
       </main>
 
+      {/* ─── Footer ─── */}
       <footer className="landing-footer">
-        <p>© 2026. Serious productivity, engineered with AI.</p>
-        <p className="footer-note">Goals. Planning. Execution. One system.</p>
+        <div className="footer-grid">
+          <div className="footer-brand">
+            <Logo size={32} animated={false} glow={false} />
+            <span className="footer-brand-name">Optileno</span>
+          </div>
+          <div className="footer-links">
+            <button onClick={() => navigate('/privacy')}>Privacy Policy</button>
+            <button onClick={() => navigate('/terms')}>Terms of Service</button>
+            <button onClick={() => navigate('/login')}>Login</button>
+          </div>
+        </div>
+        <p>© 2026 Optileno. Serious productivity, engineered with AI.</p>
+        <p className="footer-note">Built in India. Shipping globally.</p>
       </footer>
     </div>
   );
