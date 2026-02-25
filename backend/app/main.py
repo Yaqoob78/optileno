@@ -201,11 +201,12 @@ async def validation_exception_handler(request, exc: RequestValidationError):
 def _is_origin_allowed(origin: str) -> bool:
     if not origin:
         return False
-    if origin in settings.CORS_ORIGINS:
+    normalized_origin = origin.strip().lower().rstrip("/")
+    if normalized_origin in settings.CORS_ORIGINS:
         return True
     if settings.CORS_ALLOW_ORIGIN_REGEX:
         try:
-            return re.match(settings.CORS_ALLOW_ORIGIN_REGEX, origin) is not None
+            return re.match(settings.CORS_ALLOW_ORIGIN_REGEX, normalized_origin) is not None
         except re.error:
             logger.warning("Invalid CORS_ALLOW_ORIGIN_REGEX configured")
     return False

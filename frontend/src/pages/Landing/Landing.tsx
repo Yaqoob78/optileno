@@ -165,6 +165,34 @@ const USE_CASE_GROUPS: UseCaseGroup[] = [
   },
 ];
 
+type Testimonial = {
+  author: string;
+  title: string;
+  quote: string;
+  avatarUrl: string;
+};
+
+const TESTIMONIALS: Testimonial[] = [
+  {
+    author: "Alex Morgan",
+    title: "SaaS Founder",
+    quote: "\"Before Optileno, I was losing 15+ hours a week context-switching between tools. Now, Leno handles task breakdown and my execution speed is flawless. Best investment yet.\"",
+    avatarUrl: "https://i.pravatar.cc/150?u=optileno1"
+  },
+  {
+    author: "Jordan Lee",
+    title: "Agency Owner",
+    quote: "\"The Burnout Prediction alone justified the cost. It literally stopped me from crashing during our biggest launch week. A deeply intelligent operating system for serious work.\"",
+    avatarUrl: "https://i.pravatar.cc/150?u=optileno2"
+  },
+  {
+    author: "Sarah Jenkins",
+    title: "Senior Executive",
+    quote: "\"This isn't another glorified to-do list. The way it synchronizes goals with daily focus sprints forces you to execute on what actually moves the needle.\"",
+    avatarUrl: "https://i.pravatar.cc/150?u=optileno3"
+  }
+];
+
 const HERO_METRICS = [
   {
     icon: <Layers size={18} />,
@@ -569,6 +597,51 @@ export default function Landing() {
                     <span key={entry}>{entry}</span>
                   ))}
                 </div>
+              </motion.article>
+            ))}
+          </div>
+        </motion.section>
+
+        <motion.section
+          className="testimonials-section capabilities-section"
+          aria-label="Social Proof"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={revealVariants}
+          custom={0.04}
+        >
+          <div className="section-heading">
+            <span>Verified Results</span>
+            <h2>Trusted by founders and top percentile operators</h2>
+            <p>
+              Execution outcomes from high-agency professionals leveraging Optileno.
+            </p>
+          </div>
+
+          <div className="testimonials-grid">
+            {TESTIMONIALS.map((testimonial, index) => (
+              <motion.article
+                key={testimonial.author}
+                className="testimonial-card"
+                variants={revealVariants}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, amount: 0.2 }}
+                custom={0.08 + index * 0.04}
+              >
+                <div className="testimonial-head">
+                  <div className="testimonial-avatar">
+                    <img src={testimonial.avatarUrl} alt={`${testimonial.author} Avatar`} />
+                  </div>
+                  <div className="testimonial-author-wrapper">
+                    <h3 className="testimonial-author">{testimonial.author}</h3>
+                    <p className="testimonial-title">{testimonial.title}</p>
+                  </div>
+                </div>
+                <blockquote className="testimonial-quote">
+                  {testimonial.quote}
+                </blockquote>
               </motion.article>
             ))}
           </div>

@@ -77,6 +77,31 @@ def _strip_wrapping_quotes(value: str) -> str:
     return cleaned
 
 
+def _normalize_origin(origin: str) -> str:
+    """
+    Normalize an origin for strict CORS matching:
+    - trim whitespace/quotes
+    - lowercase scheme + host
+    - drop path/query/fragment
+    - strip trailing slash for non-standard inputs
+    """
+    cleaned = _strip_wrapping_quotes((origin or "").strip())
+    if not cleaned:
+        return ""
+
+    parsed = urllib.parse.urlsplit(cleaned)
+    if parsed.scheme and parsed.netloc:
+        return f"{parsed.scheme.lower()}://{parsed.netloc.lower()}"
+
+    return cleaned.rstrip("/")
+
+
+def _append_unique_origin(origins: List[str], origin: str) -> None:
+    normalized = _normalize_origin(origin)
+    if normalized and normalized not in origins:
+        origins.append(normalized)
+
+
 def _is_unresolved_template(value: str) -> bool:
     """
     Detect unresolved template-like env values such as ${VAR} or ${{Service.VAR}}.
@@ -171,7 +196,7 @@ class Settings:
     # =========================
     APP_NAME: str = "Optileno"
     VERSION: str = "2.0.0"  # SaaS Professional Edition
-    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
+    ENVIRONMENT: str = _strip_wrapping_quotes(os.getenv("ENVIRONMENT", "development")).strip().lower() or "development"
     DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
 
     # =========================
@@ -222,7 +247,7 @@ class Settings:
     # Cookie/SameSite behavior
     COOKIE_SECURE: bool = _env_bool(
         "COOKIE_SECURE",
-        os.getenv("ENVIRONMENT", "development") == "production"
+        ENVIRONMENT == "production"
     )
     COOKIE_SAMESITE: str = os.getenv(
         "COOKIE_SAMESITE",
@@ -239,13 +264,13 @@ class Settings:
     # CORS
     # =========================
     # When using credentials, cannot use wildcard - must specify origins
-    FRONTEND_URL: str = _strip_wrapping_quotes(os.getenv("FRONTEND_URL", "http://localhost:3000"))
-    PRODUCTION_FRONTEND_URL: str = _strip_wrapping_quotes(os.getenv("PRODUCTION_FRONTEND_URL", ""))
-    APP_URL: str = _strip_wrapping_quotes(os.getenv("APP_URL", ""))
+    FRONTEND_URL: str = _normalize_origin(os.getenv("FRONTEND_URL", "http://localhost:3000"))
+    PRODUCTION_FRONTEND_URL: str = _normalize_origin(os.getenv("PRODUCTION_FRONTEND_URL", ""))
+    APP_URL: str = _normalize_origin(os.getenv("APP_URL", ""))
     if not APP_URL:
-        APP_URL = PRODUCTION_FRONTEND_URL or FRONTEND_URL or BASE_URL
+        APP_URL = PRODUCTION_FRONTEND_URL or FRONTEND_URL or _normalize_origin(BASE_URL)
     _cors_env = _env_list("CORS_ORIGINS")
-    CORS_ORIGINS: List[str] = _cors_env or [
+    _cors_seed = _cors_env or [
         "http://localhost:3000",
         "http://localhost:5173",
         "http://localhost:5174",
@@ -253,19 +278,17 @@ class Settings:
         "http://127.0.0.1:5173",
         "http://127.0.0.1:5174",
     ]
-    
-    # Add production URLs
-    if PRODUCTION_FRONTEND_URL and PRODUCTION_FRONTEND_URL not in CORS_ORIGINS:
-        CORS_ORIGINS.append(PRODUCTION_FRONTEND_URL)
-        
-    if FRONTEND_URL and FRONTEND_URL not in CORS_ORIGINS:
-        CORS_ORIGINS.append(FRONTEND_URL)
+    CORS_ORIGINS: List[str] = []
+    for origin in _cors_seed:
+        _append_unique_origin(CORS_ORIGINS, origin)
 
-    # Ensure canonical production domains are always allowed in production.
-    if ENVIRONMENT == "production":
-        for canonical_origin in ("https://optileno.com", "https://www.optileno.com"):
-            if canonical_origin not in CORS_ORIGINS:
-                CORS_ORIGINS.append(canonical_origin)
+    # Add configured frontend URLs.
+    for configured_origin in (PRODUCTION_FRONTEND_URL, FRONTEND_URL, APP_URL):
+        _append_unique_origin(CORS_ORIGINS, configured_origin)
+
+    # Always allow canonical first-party web origins.
+    for canonical_origin in ("https://optileno.com", "https://www.optileno.com"):
+        _append_unique_origin(CORS_ORIGINS, canonical_origin)
 
     CORS_ALLOW_ORIGIN_REGEX: Optional[str] = _strip_wrapping_quotes(
         os.getenv("CORS_ALLOW_ORIGIN_REGEX", "")
