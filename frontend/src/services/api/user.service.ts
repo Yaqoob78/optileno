@@ -567,7 +567,7 @@ class UserService {
    * Validate user session
    */
   async validateSession(): Promise<ApiResponse<{ valid: boolean; user?: UserProfileResponse }>> {
-    return api.get<{ valid: boolean; user?: UserProfileResponse }>('/auth/validate');
+    return api.get<{ valid: boolean; user?: UserProfileResponse }>('/auth/validate', { timeout: 4000 });
   }
 
   /**

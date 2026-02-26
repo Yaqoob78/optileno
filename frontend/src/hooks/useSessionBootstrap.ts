@@ -2,13 +2,19 @@ import { useEffect, useState } from 'react';
 import { useUserStore } from '../stores/useUserStore';
 import { userService } from '../services/api/user.service';
 
-export const useSessionBootstrap = () => {
+export const useSessionBootstrap = (enabled = true) => {
   const login = useUserStore((state) => state.login);
   const logout = useUserStore((state) => state.logout);
-  const [checked, setChecked] = useState(false);
+  const [checked, setChecked] = useState(!enabled);
 
   useEffect(() => {
+    if (!enabled) {
+      setChecked(true);
+      return;
+    }
+
     let mounted = true;
+    setChecked(false);
 
     const run = async () => {
       try {
@@ -36,7 +42,7 @@ export const useSessionBootstrap = () => {
     return () => {
       mounted = false;
     };
-  }, [login, logout]);
+  }, [enabled, login, logout]);
 
   return { checked };
 };

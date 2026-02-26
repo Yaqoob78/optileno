@@ -72,7 +72,7 @@ def upgrade() -> None:
                    comment="Current accumulated value"),
         sa.Column("start_date", sa.Date(), nullable=True),
         sa.Column("due_date", sa.Date(), nullable=True),
-        sa.Column("required", sa.Boolean(), nullable=False, server_default=sa.text("0"),
+        sa.Column("required", sa.Boolean(), nullable=False, server_default=sa.text("false"),
                    comment="Must complete for goal to succeed"),
         sa.Column("quality_weight", sa.Float(), nullable=False, server_default="1.0",
                    comment="Quality multiplier (0-2)"),

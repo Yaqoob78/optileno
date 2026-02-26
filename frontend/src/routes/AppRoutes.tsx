@@ -3,6 +3,7 @@ import { lazy, Suspense } from "react";
 import { Routes, Route } from "react-router-dom";
 import Layout from "../components/layout/Layout";
 import ProtectedRoute from "../components/auth/ProtectedRoute";
+import Landing from "../pages/Landing/Landing";
 
 const Dashboard = lazy(() => import("../pages/Dashboard/Dashboard"));
 const Chat = lazy(() => import("../pages/Chat/chat"));
@@ -13,7 +14,6 @@ const Login = lazy(() => import("../pages/Auth/Login"));
 const Register = lazy(() => import("../pages/Auth/Register"));
 const ForgotPassword = lazy(() => import("../pages/Auth/ForgotPassword"));
 const ResetPassword = lazy(() => import("../pages/Auth/ResetPassword"));
-const Landing = lazy(() => import("../pages/Landing/Landing"));
 const FeaturePage = lazy(() => import("../pages/Marketing/FeaturePage"));
 const TermsOfService = lazy(() => import("../pages/Legal/TermsOfService"));
 const PrivacyPolicy = lazy(() => import("../pages/Legal/PrivacyPolicy"));

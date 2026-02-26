@@ -1,4 +1,5 @@
 ﻿import React, { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import AppRoutes from "./routes/AppRoutes";
 import { useSettingsStore } from "./stores/settings.store";
 import { useUserStore } from "./stores/useUserStore";
@@ -11,6 +12,25 @@ import { useStoreHydration, usePreserveState, useStateListener } from "./hooks/u
 import { initializeStatePreservation } from "./utils/statePreservation";
 import CookieConsent from "./components/legal/CookieConsent";
 import { FullScreenLoader } from "./components/common/loader/Loader";
+
+const PUBLIC_PATHS = new Set([
+  '/',
+  '/login',
+  '/register',
+  '/forgot-password',
+  '/reset-password',
+  '/chat-leno',
+  '/plan-task',
+  '/show-analytics',
+  '/dashboard-preview',
+  '/goal-progress',
+  '/terms',
+  '/privacy',
+  '/refund',
+  '/cookies',
+]);
+
+const isPublicPath = (pathname: string) => PUBLIC_PATHS.has(pathname);
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -58,11 +78,15 @@ class ErrorBoundary extends React.Component<
 }
 
 function StoreInitializer({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+  const isAuthenticated = useUserStore((state) => state.isAuthenticated);
+  const isPublicRoute = isPublicPath(location.pathname);
+  const shouldValidateSession = !isPublicRoute || isAuthenticated;
+
   const { isHydrated } = useStoreHydration();
-  const { checked: sessionChecked } = useSessionBootstrap();
+  const { checked: sessionChecked } = useSessionBootstrap(shouldValidateSession);
   const theme = useSettingsStore((state) => state.theme);
   const profile = useUserStore((state) => state.profile);
-  const isAuthenticated = useUserStore((state) => state.isAuthenticated);
   const initPlannerSockets = usePlannerStore((state) => state.initSocketListeners);
 
   useEffect(() => {
@@ -101,7 +125,7 @@ function StoreInitializer({ children }: { children: React.ReactNode }) {
     document.documentElement.setAttribute('data-theme', appliedTheme);
   }, [theme]);
 
-  if (!isHydrated || !sessionChecked) {
+  if (!isHydrated || (shouldValidateSession && !sessionChecked)) {
     return <FullScreenLoader size={96} />;
   }
 
