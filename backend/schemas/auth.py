@@ -16,6 +16,15 @@ class UserRegister(UserBase):
     def validate_password(cls, value: str) -> str:
         return validate_password_policy(value)
 
+
+class AccessRegisterRequest(UserBase):
+    password: str = Field(...)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        return validate_password_policy(value)
+
 class UserLogin(BaseModel):
     email: EmailStr
     password: str

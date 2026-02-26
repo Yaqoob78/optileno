@@ -17,6 +17,7 @@ const PUBLIC_PATHS = new Set([
   '/',
   '/login',
   '/register',
+  '/get-access',
   '/forgot-password',
   '/reset-password',
   '/chat-leno',

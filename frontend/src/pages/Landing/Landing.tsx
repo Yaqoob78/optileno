@@ -454,7 +454,7 @@ export default function Landing() {
             <div className="nav-actions">
               <button
                 className="nav-btn-access btn-premium"
-                onClick={() => navigate('/register?source=get-access')}
+                onClick={() => navigate('/get-access')}
               >
                 Get Access
               </button>

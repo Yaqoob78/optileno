@@ -200,7 +200,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     }
 
     if (!isAuthenticated) {
-        const publicPaths = ['/', '/login', '/register'];
+        const publicPaths = ['/', '/login', '/register', '/get-access'];
         if (publicPaths.includes(location.pathname)) {
             return <>{children}</>;
         }

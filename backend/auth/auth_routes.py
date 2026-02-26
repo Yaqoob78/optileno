@@ -1,5 +1,6 @@
 import logging
 import secrets
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, Response, Request, status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, func
@@ -9,6 +10,7 @@ from backend.app.config import settings
 from backend.db.database import get_db
 from backend.schemas.auth import (
     UserRegister,
+    AccessRegisterRequest,
     UserLogin,
     UserResponse,
     ForgotPasswordRequest,
@@ -16,9 +18,11 @@ from backend.schemas.auth import (
 )
 from backend.db.models import User
 from backend.utils.user_profile import build_user_profile
+from backend.utils.access_grants import get_active_access_grant
+from backend.services.entitlements_service import PLAN_ULTRA, canonical_plan_type
 from backend.core.auth_rate_limiter import auth_rate_limiter
 from .auth_service import auth_service
-from .auth_utils import decode_token, verify_password
+from .auth_utils import decode_token, verify_password, get_password_hash
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -99,6 +103,88 @@ def _password_matches(user: User, plain_password: str) -> bool:
     except Exception as exc:
         logger.warning("Password verify fallback for user %s: %s", getattr(user, "id", "unknown"), exc)
         return False
+
+
+def _apply_access_grant_to_user(user: User, tier: str, expires_at) -> None:
+    normalized_tier = PLAN_ULTRA if str(tier).strip().lower() == PLAN_ULTRA else "explorer"
+    user.tier = normalized_tier
+    user.plan_type = canonical_plan_type(normalized_tier)
+    user.subscription_status = "active" if normalized_tier == PLAN_ULTRA else "explorer"
+    user.subscription_starts_at = user.subscription_starts_at or datetime.now(timezone.utc)
+    user.subscription_ends_at = expires_at
+
+
+@router.post("/access/register")
+async def register_with_access(
+    user_in: AccessRegisterRequest,
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Invite-only access registration/login path.
+    User must be explicitly granted via scripts/grant_free_access.py first.
+    """
+    normalized_email = str(user_in.email).strip().lower()
+    await auth_rate_limiter.enforce(request=request, action="register", identifier=normalized_email)
+
+    grant = get_active_access_grant(normalized_email)
+    if not grant:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access not granted for this email yet.",
+        )
+
+    grant_tier = str(grant.get("tier") or "explorer").strip().lower()
+    grant_expires_at = grant.get("expires_at_dt")
+
+    existing_result = await db.execute(select(User).where(func.lower(User.email) == normalized_email))
+    existing_user = existing_result.scalar_one_or_none()
+
+    if existing_user:
+        if not _password_matches(existing_user, user_in.password):
+            return {
+                "status": "exists",
+                "requires_payment": False,
+                "account_exists": True,
+                "authenticated": False,
+                "message": "Account exists for this email. Use the same password you set earlier.",
+            }
+
+        if user_in.full_name and user_in.full_name != existing_user.full_name:
+            existing_user.full_name = user_in.full_name
+
+        _apply_access_grant_to_user(existing_user, grant_tier, grant_expires_at)
+        await db.commit()
+        await db.refresh(existing_user)
+        user = existing_user
+    else:
+        user = await auth_service.register(
+            db,
+            UserRegister(
+                email=normalized_email,
+                full_name=user_in.full_name,
+                password=user_in.password,
+                plan_type=canonical_plan_type(grant_tier),
+            ),
+        )
+        _apply_access_grant_to_user(user, grant_tier, grant_expires_at)
+        await db.commit()
+        await db.refresh(user)
+
+    access_token, refresh_token, refresh_days = await auth_service.create_session(
+        db, user.id, remember_me=False
+    )
+    refresh_max_age = refresh_days * 24 * 60 * 60
+    set_auth_cookies(response, access_token, refresh_token, refresh_max_age=refresh_max_age)
+
+    return {
+        "status": "success",
+        "user": build_user_profile(user),
+        "requires_payment": False,
+        "authenticated": True,
+        "access_granted": True,
+    }
 
 
 @router.post("/register")

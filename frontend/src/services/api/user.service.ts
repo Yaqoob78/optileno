@@ -234,6 +234,13 @@ class UserService {
   }
 
   /**
+   * Invite-only access register/login (no payment path).
+   */
+  async getAccess(data: { email: string; password: string; full_name?: string }): Promise<ApiResponse<any>> {
+    return api.post('/auth/access/register', data);
+  }
+
+  /**
    * Request password reset email
    */
   async forgotPassword(request: ForgotPasswordRequest): Promise<ApiResponse<{ ok: boolean }>> {

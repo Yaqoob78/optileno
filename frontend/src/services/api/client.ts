@@ -90,6 +90,7 @@ class APIClient {
         const isAuthEndpoint =
           requestUrl.includes('/auth/login') ||
           requestUrl.includes('/auth/register') ||
+          requestUrl.includes('/auth/access/register') ||
           requestUrl.includes('/auth/validate') ||
           requestUrl.includes('/auth/refresh') ||
           requestUrl.includes('/auth/logout') ||

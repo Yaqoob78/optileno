@@ -12,6 +12,7 @@ const Planner = lazy(() => import("../pages/Planner/Planner"));
 const Settings = lazy(() => import("../pages/Settings/Settings"));
 const Login = lazy(() => import("../pages/Auth/Login"));
 const Register = lazy(() => import("../pages/Auth/Register"));
+const GetAccess = lazy(() => import("../pages/Auth/GetAccess"));
 const ForgotPassword = lazy(() => import("../pages/Auth/ForgotPassword"));
 const ResetPassword = lazy(() => import("../pages/Auth/ResetPassword"));
 const FeaturePage = lazy(() => import("../pages/Marketing/FeaturePage"));
@@ -34,6 +35,7 @@ export default function AppRoutes() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/get-access" element={<GetAccess />} />
         <Route path="/chat-leno" element={<FeaturePage featureKey="chat-leno" />} />
         <Route path="/plan-task" element={<FeaturePage featureKey="plan-task" />} />
         <Route path="/show-analytics" element={<FeaturePage featureKey="show-analytics" />} />
