@@ -80,3 +80,26 @@ export function formatLocalDateLabel(localDateYmd: string, timeZone: string): st
     day: "numeric",
   }).format(dateForDisplay);
 }
+
+export function addDaysToLocalDateKey(localDateYmd: string, days: number): string {
+  const [year, month, day] = localDateYmd.split("-").map(Number);
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day) ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31
+  ) {
+    return localDateYmd;
+  }
+
+  const cursor = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  cursor.setUTCDate(cursor.getUTCDate() + days);
+
+  const yyyy = cursor.getUTCFullYear();
+  const mm = String(cursor.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(cursor.getUTCDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}

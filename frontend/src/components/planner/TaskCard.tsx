@@ -168,6 +168,23 @@ export default function TaskCard({
     return new Date();
   };
 
+  const getScheduledStartTimeMs = (): number | null => {
+    // Prefer exact persisted dueDate instant to avoid browser-local reconstruction drift.
+    const parsedDueDate = parseTaskDueDate(task.dueDate);
+    if (parsedDueDate) {
+      return parsedDueDate.getTime();
+    }
+
+    if (task.startTime) {
+      const [h, m] = task.startTime.split(':').map(Number);
+      const d = getTaskDate();
+      d.setHours(h, m, 0, 0);
+      return d.getTime();
+    }
+
+    return null;
+  };
+
   // Check if the task is scheduled for today
   const isToday = (() => {
     const taskDate = getTaskDate();
@@ -182,15 +199,8 @@ export default function TaskCard({
     const effectiveDurationMinutes = Math.max(5, task.duration);
     const durationMs = effectiveDurationMinutes * 60 * 1000;
 
-    let startTimeMs = 0;
-    if (task.startTime) {
-      const [h, m] = task.startTime.split(':').map(Number);
-      const d = getTaskDate();
-      d.setHours(h, m, 0, 0);
-      startTimeMs = d.getTime();
-    } else {
-      return false; // Can't determine retry without scheduled start
-    }
+    const startTimeMs = getScheduledStartTimeMs();
+    if (!startTimeMs) return false;
 
     const window1EndMs = startTimeMs + durationMs + (15 * 60 * 1000);
     const lastStart = localStartTime || new Date(task.meta!.last_started_at!).getTime();
@@ -206,25 +216,7 @@ export default function TaskCard({
     const effectiveDurationMinutes = Math.max(5, task.duration);
     const durationMs = effectiveDurationMinutes * 60 * 1000;
 
-    let startTimeMs: number = 0;
-
-    // Parse Scheduled Start Time using the task's actual date, not today
-    if (task.startTime) {
-      const [h, m] = task.startTime.split(':').map(Number);
-      const d = getTaskDate();
-      d.setHours(h, m, 0, 0);
-      startTimeMs = d.getTime();
-    } else if (task.dueDate) {
-      // If no explicit startTime but we have a dueDate, use the dueDate time
-      const parsed = parseTaskDueDate(task.dueDate);
-      if (parsed) {
-        startTimeMs = parsed.getTime();
-      } else {
-        startTimeMs = currentTimeMs;
-      }
-    } else {
-      startTimeMs = currentTimeMs;
-    }
+    const startTimeMs = getScheduledStartTimeMs() ?? currentTimeMs;
 
     const scheduledEndTimeMs = startTimeMs + durationMs;
     const window1EndMs = scheduledEndTimeMs + (15 * 60 * 1000); // 15 min completion window

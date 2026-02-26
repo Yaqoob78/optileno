@@ -12,6 +12,7 @@ import { ErrorBoundary } from "../../components/common/ErrorBoundary";
 import { LockedFeature } from '../../components/common/LockedFeature';
 import { OnboardingFlow } from '../../components/planner/OnboardingFlow';
 import {
+  addDaysToLocalDateKey,
   formatLocalDateLabel,
   getDateKeyInTimezone,
   getNextLocalDateForWeekday,
@@ -333,10 +334,11 @@ export default function PlannerPage() {
         return;
       }
 
-      if (editForm.scheduledDay != null) {
-        localDateForPayload = getNextLocalDateForWeekday(timezone, editForm.scheduledDay);
-      } else if (editForm.dueDate) {
+      // Preserve explicitly selected day first; day-pill selection already updates dueDate.
+      if (editForm.dueDate) {
         localDateForPayload = editForm.dueDate;
+      } else if (editForm.scheduledDay != null) {
+        localDateForPayload = getNextLocalDateForWeekday(timezone, editForm.scheduledDay);
       } else {
         localDateForPayload = getDateKeyInTimezone(new Date(), timezone);
       }
@@ -445,8 +447,12 @@ export default function PlannerPage() {
     setIsCreatingRecurrence(true);
     setRecurrenceError(null);
     try {
-      let currentBaseDate = taskToRepeat.dueDate ? new Date(taskToRepeat.dueDate) : new Date();
-      if (isNaN(currentBaseDate.getTime())) currentBaseDate = new Date();
+      const baseDueDate = parseTaskDate(taskToRepeat.dueDate || taskToRepeat.due_date);
+      const baseLocalDateKey = baseDueDate
+        ? getDateKeyInTimezone(baseDueDate, timezone)
+        : getDateKeyInTimezone(new Date(), timezone);
+      const baseLocalTime = taskToRepeat.startTime
+        || (baseDueDate ? getTimeHHMMInTimezone(baseDueDate, timezone) : '09:00');
 
       const { type, iterations } = repeatConfig;
       const linkedGoalId = isUltra
@@ -464,14 +470,8 @@ export default function PlannerPage() {
       let stoppedByGoalDeadline = false;
 
       for (let i = 1; i <= iterations; i++) {
-        const nextDate = new Date(currentBaseDate);
-        if (type === 'daily') {
-          nextDate.setDate(nextDate.getDate() + i);
-        } else if (type === 'weekly') {
-          nextDate.setDate(nextDate.getDate() + (i * 7));
-        }
-
-        const dateStr = getDateKeyInTimezone(nextDate, timezone);
+        const dayOffset = type === 'weekly' ? i * 7 : i;
+        const dateStr = addDaysToLocalDateKey(baseLocalDateKey, dayOffset);
         if (goalEndDateKey && dateStr > goalEndDateKey) {
           stoppedByGoalDeadline = true;
           break;
@@ -483,7 +483,7 @@ export default function PlannerPage() {
           priority: taskToRepeat.priority || 'medium',
           status: 'todo',
           due_local_date: dateStr,
-          due_local_time: taskToRepeat.startTime || '09:00',
+          due_local_time: baseLocalTime,
           timezone,
           estimated_duration_minutes: taskToRepeat.duration || 60,
           tags: taskToRepeat.tags || [],
@@ -1077,6 +1077,5 @@ export default function PlannerPage() {
     </ErrorBoundary>
   );
 }
-
 
 
