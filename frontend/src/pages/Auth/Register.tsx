@@ -228,6 +228,15 @@ export default function Register() {
         validate: (value) =>
             value === formData.password || 'Passwords do not match.',
     });
+
+    return (
+        <div className="auth-page dark">
+            <SEO title="Create Account | Optileno" description="Join Optileno to start converting unstructured ambitions into actionable execution plans." />
+            <div className="auth-background">
+                <div className="auth-sphere sphere-1" />
+                <div className="auth-sphere sphere-2" />
+            </div>
+
             <div className="auth-container">
                 <div className="auth-card">
                     <div className="auth-header">
