@@ -277,13 +277,15 @@ export default function TaskCard({
         setTimeRemaining(`Mark Complete: ${m}m ${s}s`);
         setShowMarkComplete(true);
       }
-      // C. Retry Failed
+      // C. Retry Failed -> Overdue
       else {
-        setTimeRemaining('Failed');
+        setTimeRemaining('Overdue');
         setShowMarkComplete(false);
-        if ((currentStatus as string) !== 'failed') { // Cast to string to avoid TypeScript narrowing error
-          setCurrentStatus('failed');
-          if (onAutoUpdateStatus) onAutoUpdateStatus(task.originalId || String(task.id), 'failed');
+        if (currentStatus !== 'overdue') {
+          setCurrentStatus('overdue');
+          if (task.status !== 'overdue' && onAutoUpdateStatus) {
+            onAutoUpdateStatus(task.originalId || String(task.id), 'overdue');
+          }
         }
       }
       return;
@@ -350,7 +352,9 @@ export default function TaskCard({
     setShowMarkComplete(false); // Strict: missed window
     if (currentStatus !== 'overdue') {
       setCurrentStatus('overdue');
-      if (onAutoUpdateStatus) onAutoUpdateStatus(task.originalId || String(task.id), 'overdue');
+      if (task.status !== 'overdue' && onAutoUpdateStatus) {
+        onAutoUpdateStatus(task.originalId || String(task.id), 'overdue');
+      }
     }
   };
 

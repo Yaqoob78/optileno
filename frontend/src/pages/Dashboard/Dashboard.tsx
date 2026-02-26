@@ -36,6 +36,7 @@ import { userService } from '../../services/api/user.service';
 import { useChatStore } from '../../stores/chat.store';
 import { useAnalyticsStore } from '../../stores/analytics.store';
 import { usePlannerStore } from '../../stores/planner.store';
+import SEO from '../../components/common/SEO';
 
 import DashboardStatsCard from '../../components/dashboard/DashboardStatsCard';
 import RecentActivityWidget from '../../components/dashboard/RecentActivityWidget';
@@ -168,6 +169,7 @@ export default function Dashboard() {
 
   return (
     <div className={`dashboard-container theme-${theme}`}>
+      <SEO title="Dashboard | Optileno" description="Your AI productivity command center overview." />
 
       {/* Animated Background Elements */}
       <div className="background-canvas">

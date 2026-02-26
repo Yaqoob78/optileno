@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { Logo } from '../../components/common/Logo';
 import { Interactive3DCard } from '../../components/landing/Interactive3DCard';
+import SEO from '../../components/common/SEO';
 import './landing.css';
 
 /* ─── Types ─── */
@@ -409,406 +410,410 @@ export default function Landing() {
   );
 
   return (
-    <div className="landing-page">
-      <div className="scene-bg" aria-hidden="true" ref={sceneRef}>
-        <div className="orb orb-a" />
-        <div className="orb orb-b" />
+    <>
+      <SEO
+        title="Optileno | Stop planning. Start finishing. AI Productivity"
+        description="Optileno turns your goals into daily execution with AI planning, focus sessions, and behavioral analytics. Join ambitious operators running our smart system."
+      />
+      <div className="landing-page">
+        <div className="scene-bg" aria-hidden="true" ref={sceneRef}>
+          <div className="orb orb-a" />
+          <div className="orb orb-b" />
 
-        <div className="waves-container">
-          <svg className="waves-base" viewBox="0 0 1440 1000" preserveAspectRatio="none">
-            <defs>
-              <linearGradient id="waveGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#60a5fa" />
-                <stop offset="50%" stopColor="#3b82f6" />
-                <stop offset="100%" stopColor="#d97706" />
-              </linearGradient>
-            </defs>
-            {WAVE_PATHS.map((path, index) => (
-              <path key={`base-${index}`} d={path} stroke="rgba(255, 255, 255, 0.04)" strokeWidth="1" fill="none" />
-            ))}
-          </svg>
-        </div>
-
-        <div className="waves-container waves-glow">
-          <svg className="waves-active" viewBox="0 0 1440 1000" preserveAspectRatio="none">
-            {WAVE_PATHS.map((path, index) => (
-              <path key={`glow-${index}`} d={path} stroke="url(#waveGradient)" strokeWidth="2.5" fill="none" />
-            ))}
-          </svg>
-        </div>
-      </div>
-
-      {/* ─── Nav ─── */}
-      <nav className="landing-nav">
-        <div className="nav-container">
-          <div className="nav-logo">
-            <Logo size={56} animated={true} glow={true} />
-            <span className="logo-text">Optileno</span>
+          <div className="waves-container">
+            <svg className="waves-base" viewBox="0 0 1440 1000" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="waveGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#60a5fa" />
+                  <stop offset="50%" stopColor="#3b82f6" />
+                  <stop offset="100%" stopColor="#d97706" />
+                </linearGradient>
+              </defs>
+              {WAVE_PATHS.map((path, index) => (
+                <path key={`base-${index}`} d={path} stroke="rgba(255, 255, 255, 0.04)" strokeWidth="1" fill="none" />
+              ))}
+            </svg>
           </div>
-          <div className="nav-actions">
-            <button className="nav-link btn-premium" onClick={() => navigate('/login')}>Login</button>
-            <button className="nav-btn-primary nav-cta-gold btn-premium" onClick={() => navigate('/register')}>
+
+          <div className="waves-container waves-glow">
+            <svg className="waves-active" viewBox="0 0 1440 1000" preserveAspectRatio="none">
+              {WAVE_PATHS.map((path, index) => (
+                <path key={`glow-${index}`} d={path} stroke="url(#waveGradient)" strokeWidth="2.5" fill="none" />
+              ))}
+            </svg>
+          </div>
+        </div>
+
+        {/* ─── Nav ─── */}
+        <nav className="landing-nav">
+          <div className="nav-container">
+            <div className="nav-logo">
+              <Logo size={56} animated={true} glow={true} />
+              <span className="logo-text">Optileno</span>
+            </div>
+            <div className="nav-actions">
+              <button className="nav-link btn-premium" onClick={() => navigate('/login')}>Login</button>
+              <button className="nav-btn-primary nav-cta-gold btn-premium" onClick={() => navigate('/register')}>
+                Start Free Trial
+                <ArrowRight size={16} />
+              </button>
+            </div>
+          </div>
+        </nav>
+
+        {/* ─── Sticky Mid-Page CTA Bar ─── */}
+        <div className={`sticky-cta-bar ${showStickyBar ? 'sticky-visible' : ''}`}>
+          <div className="sticky-cta-inner">
+            <span className="sticky-cta-text">Ready to start executing?</span>
+            <button className="sticky-cta-btn btn-premium" onClick={() => navigate('/register')}>
               Start Free Trial
-              <ArrowRight size={16} />
+              <ArrowRight size={15} />
             </button>
           </div>
         </div>
-      </nav>
 
-      {/* ─── Sticky Mid-Page CTA Bar ─── */}
-      <div className={`sticky-cta-bar ${showStickyBar ? 'sticky-visible' : ''}`}>
-        <div className="sticky-cta-inner">
-          <span className="sticky-cta-text">Ready to start executing?</span>
-          <button className="sticky-cta-btn btn-premium" onClick={() => navigate('/register')}>
-            Start Free Trial
-            <ArrowRight size={15} />
-          </button>
-        </div>
-      </div>
-
-      <main className="hero-section">
-        <h1 className="visually-hidden">Stop Planning Start Finishing — AI Execution Layer for Ambitious Operators</h1>
-
-        {/* ─── Hero Content ─── */}
-        <motion.section
-          className="hero-content"
-          initial="hidden"
-          animate="visible"
-          variants={revealVariants}
-          custom={0.02}
-        >
-          <motion.span className="kicker" variants={revealVariants} custom={0.08}>
-            Free 3-day trial · No card required
-          </motion.span>
-
-          <motion.h2
-            className="hero-title"
-            variants={titleContainerVariants}
+        <main className="hero-section">
+          {/* ─── Hero Content ─── */}
+          <motion.section
+            className="hero-content"
             initial="hidden"
             animate="visible"
-            aria-label={HERO_TITLE}
+            variants={revealVariants}
+            custom={0.02}
           >
-            {HERO_TITLE_WORDS.map((word, index) => (
-              <motion.span key={`${word}-${index}`} className="hero-title-word" variants={titleWordVariants}>
-                {word}
-              </motion.span>
-            ))}
-          </motion.h2>
+            <motion.span className="kicker" variants={revealVariants} custom={0.08}>
+              Free 3-day trial · No card required
+            </motion.span>
 
-          <motion.p className="hero-subtitle" variants={revealVariants} custom={0.16}>
-            Optileno turns your goals into daily execution with AI planning,
-            focus sessions, and behavioral analytics — so nothing slips.
-          </motion.p>
-
-          <motion.p className="hero-social-proof" variants={revealVariants} custom={0.2}>
-            Trusted by founders, agency owners, and operators shipping real products.
-          </motion.p>
-
-          <div className="hero-stats">
-            {HERO_STATS.map((metric, index) => (
-              <motion.div
-                className="stat-card"
-                key={metric.label}
-                variants={revealVariants}
-                initial="hidden"
-                animate="visible"
-                custom={0.24 + index * 0.05}
-              >
-                {metric.icon}
-                <span>{metric.label}</span>
-              </motion.div>
-            ))}
-          </div>
-
-          <motion.div className="cta-wrapper hero-cta-stack" variants={revealVariants} custom={0.44}>
-            <button className="cta-button cta-gold btn-premium" onClick={() => navigate('/register')}>
-              Start Free Trial
-              <ArrowRight size={18} />
-            </button>
-            <button className="cta-button-secondary btn-premium" onClick={() => navigate('/dashboard-preview')}>
-              See Dashboard Preview
-            </button>
-            <p className="cta-note">Free for 3 days. No credit card. Full access.</p>
-          </motion.div>
-
-          {/* Scroll indicator */}
-          <motion.div
-            className="scroll-indicator"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.2, duration: 0.6 }}
-          >
-            <ChevronDown size={22} />
-          </motion.div>
-        </motion.section>
-
-        {/* ─── Screens ─── */}
-        <motion.section
-          className="screens-section"
-          aria-label="Product screenshots"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.2 }}
-          variants={revealVariants}
-          custom={0.03}
-        >
-          {SCREEN_CARDS.map((screen, index) => (
-            <motion.article
-              key={screen.fileName}
-              className="screen-card"
-              variants={revealVariants}
+            <motion.h1
+              className="hero-title"
+              variants={titleContainerVariants}
               initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, amount: 0.2 }}
-              custom={0.06 + index * 0.06}
+              animate="visible"
+              aria-label={HERO_TITLE}
             >
-              <div className="screen-top">
-                <span className="screen-badge">{screen.badge}</span>
-                <h3>{screen.title}</h3>
-                <p>{screen.subtitle}</p>
-              </div>
+              {HERO_TITLE_WORDS.map((word, index) => (
+                <motion.span key={`${word}-${index}`} className="hero-title-word" variants={titleWordVariants}>
+                  {word}
+                </motion.span>
+              ))}
+            </motion.h1>
 
-              <Interactive3DCard fileName={screen.fileName} title={screen.title} />
-            </motion.article>
-          ))}
-        </motion.section>
+            <motion.h2 className="hero-subtitle" variants={revealVariants} custom={0.16}>
+              Optileno turns your goals into daily execution with AI planning,
+              focus sessions, and behavioral analytics — so nothing slips.
+            </motion.h2>
 
-        {/* ─── Features ─── */}
-        <motion.section
-          className="features-section"
-          aria-label="Platform features"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.2 }}
-          variants={revealVariants}
-          custom={0.04}
-        >
-          <h2>Everything you need to go from idea → executed</h2>
-          <div className="features-grid">
-            {FEATURES.map((feature, index) => (
-              <motion.article
-                key={feature.title}
-                className="feature-card"
-                variants={revealVariants}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, amount: 0.2 }}
-                custom={0.08 + index * 0.04}
-              >
-                <div className="feature-icon">{feature.icon}</div>
-                <h3>{feature.title}</h3>
-                <p>{feature.description}</p>
-              </motion.article>
-            ))}
-          </div>
-        </motion.section>
+            <motion.p className="hero-social-proof" variants={revealVariants} custom={0.2}>
+              Trusted by founders, agency owners, and operators shipping real products.
+            </motion.p>
 
-        {/* ─── Capabilities ─── */}
-        <motion.section
-          className="capabilities-section"
-          aria-label="Platform capability categories"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.2 }}
-          variants={revealVariants}
-          custom={0.04}
-        >
-          <div className="section-heading">
-            <span>Core Modules</span>
-            <h2>From scattered thinking to controlled execution</h2>
-            <p>
-              Structured for serious work. Designed for speed.
-            </p>
-          </div>
-
-          <div className="capabilities-grid">
-            {CAPABILITY_GROUPS.map((group, groupIndex) => (
-              <motion.article
-                key={group.title}
-                className="capability-card"
-                variants={revealVariants}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, amount: 0.2 }}
-                custom={0.08 + groupIndex * 0.05}
-              >
-                <h3>{group.title}</h3>
-                <p>{group.summary}</p>
-                <div className="capability-list">
-                  {group.items.map((item) => (
-                    <div key={item.title} className="capability-item">
-                      <h4>{item.title}</h4>
-                      <p>{item.description}</p>
-                    </div>
-                  ))}
-                </div>
-              </motion.article>
-            ))}
-          </div>
-        </motion.section>
-
-        {/* ─── Use Cases ─── */}
-        <motion.section
-          className="use-cases-section"
-          aria-label="Optileno use cases"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.2 }}
-          variants={revealVariants}
-          custom={0.04}
-        >
-          <div className="section-heading">
-            <span>Use Cases</span>
-            <h2>Made for people who ship, not people who plan</h2>
-            <p>
-              Run your planning, delivery, and analytics from one AI platform.
-            </p>
-          </div>
-
-          <div className="use-case-grid">
-            {USE_CASE_GROUPS.map((group, index) => (
-              <motion.article
-                key={group.title}
-                className="use-case-card"
-                variants={revealVariants}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, amount: 0.2 }}
-                custom={0.1 + index * 0.08}
-              >
-                <div className="use-case-head">
-                  {group.icon}
-                  <h3>{group.title}</h3>
-                </div>
-                <div className="use-case-list">
-                  {group.entries.map((entry) => (
-                    <span key={entry}>{entry}</span>
-                  ))}
-                </div>
-              </motion.article>
-            ))}
-          </div>
-        </motion.section>
-
-        {/* ─── Testimonials ─── */}
-        <motion.section
-          className="testimonials-section capabilities-section"
-          aria-label="Social Proof"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.2 }}
-          variants={revealVariants}
-          custom={0.04}
-        >
-          <div className="section-heading">
-            <span>Real Feedback</span>
-            <h2>What operators are saying</h2>
-            <p>
-              Execution outcomes from high-agency professionals using Optileno.
-            </p>
-          </div>
-
-          <div className="testimonials-grid">
-            {TESTIMONIALS.map((testimonial, index) => (
-              <motion.article
-                key={testimonial.author}
-                className="testimonial-card"
-                variants={revealVariants}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, amount: 0.2 }}
-                custom={0.08 + index * 0.04}
-              >
-                <div className="testimonial-head">
-                  <div
-                    className="testimonial-avatar-initials"
-                    style={{
-                      background: `linear-gradient(135deg, ${testimonial.gradientFrom}, ${testimonial.gradientTo})`,
-                    }}
-                  >
-                    {testimonial.initials}
-                  </div>
-                  <div className="testimonial-author-wrapper">
-                    <h3 className="testimonial-author">{testimonial.author}</h3>
-                    <p className="testimonial-title">{testimonial.title}</p>
-                  </div>
-                </div>
-                <blockquote className="testimonial-quote">
-                  {testimonial.quote}
-                </blockquote>
-              </motion.article>
-            ))}
-          </div>
-          <p className="testimonial-disclaimer">Names shortened for privacy. Based on real user feedback.</p>
-        </motion.section>
-
-        {/* ─── FAQ ─── */}
-        <motion.section
-          className="faq-section"
-          aria-label="Frequently asked questions"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.2 }}
-          variants={revealVariants}
-          custom={0.04}
-        >
-          <div className="section-heading">
-            <span>FAQ</span>
-            <h2>Questions before you start</h2>
-          </div>
-
-          <div className="faq-list">
-            {FAQ_ITEMS.map((item, index) => (
-              <FAQAccordion key={index} item={item} index={index} />
-            ))}
-          </div>
-        </motion.section>
-
-        {/* ─── Final CTA ─── */}
-        <motion.section
-          className="journey-section"
-          aria-label="Start your Optileno journey"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.2 }}
-          variants={revealVariants}
-          custom={0.04}
-        >
-          <div className="journey-card">
-            <div className="journey-copy">
-              <span className="journey-kicker">Ready?</span>
-              <h2>Your first productive day starts in 90 seconds.</h2>
-              <p>
-                Set up your goals, get AI-planned tasks, and start executing — all in one free trial.
-              </p>
+            <div className="hero-stats">
+              {HERO_STATS.map((metric, index) => (
+                <motion.div
+                  className="stat-card"
+                  key={metric.label}
+                  variants={revealVariants}
+                  initial="hidden"
+                  animate="visible"
+                  custom={0.24 + index * 0.05}
+                >
+                  {metric.icon}
+                  <span>{metric.label}</span>
+                </motion.div>
+              ))}
             </div>
-            <div className="journey-actions">
+
+            <motion.div className="cta-wrapper hero-cta-stack" variants={revealVariants} custom={0.44}>
               <button className="cta-button cta-gold btn-premium" onClick={() => navigate('/register')}>
                 Start Free Trial
                 <ArrowRight size={18} />
               </button>
-              <p className="cta-note-alt">3-day trial. No credit card. Full access.</p>
+              <button className="cta-button-secondary btn-premium" onClick={() => navigate('/dashboard-preview')}>
+                See Dashboard Preview
+              </button>
+              <p className="cta-note">Free for 3 days. No credit card. Full access.</p>
+            </motion.div>
+
+            {/* Scroll indicator */}
+            <motion.div
+              className="scroll-indicator"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.2, duration: 0.6 }}
+            >
+              <ChevronDown size={22} />
+            </motion.div>
+          </motion.section>
+
+          {/* ─── Screens ─── */}
+          <motion.section
+            className="screens-section"
+            aria-label="Product screenshots"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+            variants={revealVariants}
+            custom={0.03}
+          >
+            {SCREEN_CARDS.map((screen, index) => (
+              <motion.article
+                key={screen.fileName}
+                className="screen-card"
+                variants={revealVariants}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, amount: 0.2 }}
+                custom={0.06 + index * 0.06}
+              >
+                <div className="screen-top">
+                  <span className="screen-badge">{screen.badge}</span>
+                  <h3>{screen.title}</h3>
+                  <p>{screen.subtitle}</p>
+                </div>
+
+                <Interactive3DCard fileName={screen.fileName} title={screen.title} />
+              </motion.article>
+            ))}
+          </motion.section>
+
+          {/* ─── Features ─── */}
+          <motion.section
+            className="features-section"
+            aria-label="Platform features"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+            variants={revealVariants}
+            custom={0.04}
+          >
+            <h2>Everything you need to go from idea → executed</h2>
+            <div className="features-grid">
+              {FEATURES.map((feature, index) => (
+                <motion.article
+                  key={feature.title}
+                  className="feature-card"
+                  variants={revealVariants}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true, amount: 0.2 }}
+                  custom={0.08 + index * 0.04}
+                >
+                  <div className="feature-icon">{feature.icon}</div>
+                  <h3>{feature.title}</h3>
+                  <p>{feature.description}</p>
+                </motion.article>
+              ))}
+            </div>
+          </motion.section>
+
+          {/* ─── Capabilities ─── */}
+          <motion.section
+            className="capabilities-section"
+            aria-label="Platform capability categories"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+            variants={revealVariants}
+            custom={0.04}
+          >
+            <div className="section-heading">
+              <span>Core Modules</span>
+              <h2>From scattered thinking to controlled execution</h2>
+              <p>
+                Structured for serious work. Designed for speed.
+              </p>
+            </div>
+
+            <div className="capabilities-grid">
+              {CAPABILITY_GROUPS.map((group, groupIndex) => (
+                <motion.article
+                  key={group.title}
+                  className="capability-card"
+                  variants={revealVariants}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true, amount: 0.2 }}
+                  custom={0.08 + groupIndex * 0.05}
+                >
+                  <h3>{group.title}</h3>
+                  <p>{group.summary}</p>
+                  <div className="capability-list">
+                    {group.items.map((item) => (
+                      <div key={item.title} className="capability-item">
+                        <h4>{item.title}</h4>
+                        <p>{item.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </motion.article>
+              ))}
+            </div>
+          </motion.section>
+
+          {/* ─── Use Cases ─── */}
+          <motion.section
+            className="use-cases-section"
+            aria-label="Optileno use cases"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+            variants={revealVariants}
+            custom={0.04}
+          >
+            <div className="section-heading">
+              <span>Use Cases</span>
+              <h2>Made for people who ship, not people who plan</h2>
+              <p>
+                Run your planning, delivery, and analytics from one AI platform.
+              </p>
+            </div>
+
+            <div className="use-case-grid">
+              {USE_CASE_GROUPS.map((group, index) => (
+                <motion.article
+                  key={group.title}
+                  className="use-case-card"
+                  variants={revealVariants}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true, amount: 0.2 }}
+                  custom={0.1 + index * 0.08}
+                >
+                  <div className="use-case-head">
+                    {group.icon}
+                    <h3>{group.title}</h3>
+                  </div>
+                  <div className="use-case-list">
+                    {group.entries.map((entry) => (
+                      <span key={entry}>{entry}</span>
+                    ))}
+                  </div>
+                </motion.article>
+              ))}
+            </div>
+          </motion.section>
+
+          {/* ─── Testimonials ─── */}
+          <motion.section
+            className="testimonials-section capabilities-section"
+            aria-label="Social Proof"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+            variants={revealVariants}
+            custom={0.04}
+          >
+            <div className="section-heading">
+              <span>Real Feedback</span>
+              <h2>What operators are saying</h2>
+              <p>
+                Execution outcomes from high-agency professionals using Optileno.
+              </p>
+            </div>
+
+            <div className="testimonials-grid">
+              {TESTIMONIALS.map((testimonial, index) => (
+                <motion.article
+                  key={testimonial.author}
+                  className="testimonial-card"
+                  variants={revealVariants}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true, amount: 0.2 }}
+                  custom={0.08 + index * 0.04}
+                >
+                  <div className="testimonial-head">
+                    <div
+                      className="testimonial-avatar-initials"
+                      style={{
+                        background: `linear-gradient(135deg, ${testimonial.gradientFrom}, ${testimonial.gradientTo})`,
+                      }}
+                    >
+                      {testimonial.initials}
+                    </div>
+                    <div className="testimonial-author-wrapper">
+                      <h3 className="testimonial-author">{testimonial.author}</h3>
+                      <p className="testimonial-title">{testimonial.title}</p>
+                    </div>
+                  </div>
+                  <blockquote className="testimonial-quote">
+                    {testimonial.quote}
+                  </blockquote>
+                </motion.article>
+              ))}
+            </div>
+            <p className="testimonial-disclaimer">Names shortened for privacy. Based on real user feedback.</p>
+          </motion.section>
+
+          {/* ─── FAQ ─── */}
+          <motion.section
+            className="faq-section"
+            aria-label="Frequently asked questions"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+            variants={revealVariants}
+            custom={0.04}
+          >
+            <div className="section-heading">
+              <span>FAQ</span>
+              <h2>Questions before you start</h2>
+            </div>
+
+            <div className="faq-list">
+              {FAQ_ITEMS.map((item, index) => (
+                <FAQAccordion key={index} item={item} index={index} />
+              ))}
+            </div>
+          </motion.section>
+
+          {/* ─── Final CTA ─── */}
+          <motion.section
+            className="journey-section"
+            aria-label="Start your Optileno journey"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+            variants={revealVariants}
+            custom={0.04}
+          >
+            <div className="journey-card">
+              <div className="journey-copy">
+                <span className="journey-kicker">Ready?</span>
+                <h2>Your first productive day starts in 90 seconds.</h2>
+                <p>
+                  Set up your goals, get AI-planned tasks, and start executing — all in one free trial.
+                </p>
+              </div>
+              <div className="journey-actions">
+                <button className="cta-button cta-gold btn-premium" onClick={() => navigate('/register')}>
+                  Start Free Trial
+                  <ArrowRight size={18} />
+                </button>
+                <p className="cta-note-alt">3-day trial. No credit card. Full access.</p>
+              </div>
+            </div>
+          </motion.section>
+        </main>
+
+        {/* ─── Footer ─── */}
+        <footer className="landing-footer">
+          <div className="footer-grid">
+            <div className="footer-brand">
+              <Logo size={32} animated={false} glow={false} />
+              <span className="footer-brand-name">Optileno</span>
+            </div>
+            <div className="footer-links">
+              <button onClick={() => navigate('/privacy')}>Privacy Policy</button>
+              <button onClick={() => navigate('/terms')}>Terms of Service</button>
+              <button onClick={() => navigate('/login')}>Login</button>
             </div>
           </div>
-        </motion.section>
-      </main>
-
-      {/* ─── Footer ─── */}
-      <footer className="landing-footer">
-        <div className="footer-grid">
-          <div className="footer-brand">
-            <Logo size={32} animated={false} glow={false} />
-            <span className="footer-brand-name">Optileno</span>
-          </div>
-          <div className="footer-links">
-            <button onClick={() => navigate('/privacy')}>Privacy Policy</button>
-            <button onClick={() => navigate('/terms')}>Terms of Service</button>
-            <button onClick={() => navigate('/login')}>Login</button>
-          </div>
-        </div>
-        <p>© 2026 Optileno. Serious productivity, engineered with AI.</p>
-        <p className="footer-note">Built in India. Shipping globally.</p>
-      </footer>
-    </div>
+          <p>© 2026 Optileno. Serious productivity, engineered with AI.</p>
+          <p className="footer-note">Built in India. Shipping globally.</p>
+        </footer>
+      </div>
+    </>
   );
 }

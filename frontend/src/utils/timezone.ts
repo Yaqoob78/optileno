@@ -9,22 +9,32 @@ const DAY_NAME_TO_INDEX: Record<string, number> = {
 };
 
 function getParts(dateValue: Date, timeZone: string, withWeekday = false): Record<string, string> {
-  const formatter = new Intl.DateTimeFormat("en-US", {
+  const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    weekday: withWeekday ? "short" : undefined,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    weekday: withWeekday ? 'short' : undefined,
   });
-  return formatter.formatToParts(dateValue).reduce<Record<string, string>>((acc, part) => {
-    if (part.type !== "literal") {
-      acc[part.type] = part.value;
+
+  const parts = formatter.formatToParts(dateValue);
+  const result: Record<string, string> = {};
+
+  for (const part of parts) {
+    if (part.type !== 'literal') {
+      // Fix for some browsers returning "24" instead of "00" for midnight in h24/h23
+      if (part.type === 'hour' && part.value === '24') {
+        result[part.type] = '00';
+      } else {
+        result[part.type] = part.value;
+      }
     }
-    return acc;
-  }, {});
+  }
+
+  return result;
 }
 
 export function getDateKeyInTimezone(dateValue: Date, timeZone: string): string {

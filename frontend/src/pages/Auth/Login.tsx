@@ -3,6 +3,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Mail, Lock, LogIn, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
 import { userService } from '../../services/api/user.service';
 import { useUserStore } from '../../stores/useUserStore';
+import SEO from '../../components/common/SEO';
 import '../../styles/pages/auth.css';
 
 export default function Login() {
@@ -112,6 +113,7 @@ export default function Login() {
 
     return (
         <div className="auth-page dark">
+            <SEO title="Login | Optileno" description="Sign in to your Optileno account to access your AI productivity system." />
             <div className="auth-background">
                 <div className="auth-sphere sphere-1" />
                 <div className="auth-sphere sphere-2" />

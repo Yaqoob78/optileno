@@ -8,8 +8,8 @@ import {
     CashfreeMode,
     loadCashfreeSdk,
     openCashfreeCheckout,
-    openCashfreeSubscriptionCheckout,
 } from '../../utils/cashfree';
+import SEO from '../../components/common/SEO';
 import '../../styles/pages/auth.css';
 
 const PASSWORD_POLICY_MESSAGE = 'Password must be at least 8 characters and include at least 1 letter and 1 number.';
@@ -228,14 +228,6 @@ export default function Register() {
         validate: (value) =>
             value === formData.password || 'Passwords do not match.',
     });
-
-    return (
-        <div className="auth-page dark">
-            <div className="auth-background">
-                <div className="auth-sphere sphere-1" />
-                <div className="auth-sphere sphere-2" />
-            </div>
-
             <div className="auth-container">
                 <div className="auth-card">
                     <div className="auth-header">

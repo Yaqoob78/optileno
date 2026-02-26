@@ -59,13 +59,18 @@ class AnalyticsV2Service:
 
         now_local = datetime.now(tz)
         if tr == "daily":
+            # Start of today (00:00:00)
             start_local = datetime.combine(now_local.date(), time.min, tzinfo=tz)
         elif tr == "weekly":
+            # Start of the week (7 days ago to simulate rolling week or start of Monday)
             start_local = datetime.combine(now_local.date() - timedelta(days=6), time.min, tzinfo=tz)
         else:
+            # Monthly/30-days
             start_local = datetime.combine(now_local.date() - timedelta(days=29), time.min, tzinfo=tz)
 
+        # End is always end of today (23:59:59.999999)
         end_local = datetime.combine(now_local.date(), time.max, tzinfo=tz)
+        
         return RangeWindow(
             time_range=tr,
             period_start=start_local.astimezone(timezone.utc),
@@ -1488,8 +1493,11 @@ class AnalyticsV2Service:
                 elif usage["tasks_completed"] > 0:
                     task_component = 80.0
                 
-                scaled_dw = usage["deep_work_minutes"] / max(range_days, 1)
-                deep_work_component = _clamp((scaled_dw / 120.0) * 100.0)
+                # scale deep work to a reasonable average daily chunk rather than 120 total over 30 days
+                # meaning: average daily deep work minutes / 120 minutes = percentage
+                average_daily_dw = usage["deep_work_minutes"] / max(range_days, 1)
+                deep_work_component = _clamp((average_daily_dw / 120.0) * 100.0)
+                
                 goal_alignment = float(goals["score"] or 0.0)
                 derived_score = _clamp(deep_work_component * 0.55 + task_component * 0.30 + goal_alignment * 0.15)
 
