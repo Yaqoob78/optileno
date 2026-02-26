@@ -72,11 +72,11 @@ export default function PlannerDashboard({
     <div className="planner-dashboard">
       {/* Header */}
       <div className="dashboard-header">
-        <div className="header-title">
+        <div className="planner-dashboard-title">
           <Target size={20} />
           <div>
-            <h3>Daily Overview</h3>
-            <p className="header-subtitle">Your productivity at a glance</p>
+            <h3 className="planner-dashboard-heading">Daily Overview</h3>
+            <p className="planner-dashboard-subtitle">Your productivity at a glance</p>
           </div>
         </div>
       </div>

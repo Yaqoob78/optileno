@@ -32,6 +32,7 @@ interface UsePlannerReturn {
   startDeepWork: (data: DeepWorkStart) => Promise<{ success: boolean; session?: DeepWorkSession; error?: string }>;
   scheduleDeepWork: (data: {
     days_of_week: number[];
+    local_dates?: string[];
     start_time: string;
     duration_minutes: number;
     timezone: string;
@@ -331,6 +332,7 @@ export const usePlanner = (): UsePlannerReturn => {
 
   const scheduleDeepWork = useCallback(async (data: {
     days_of_week: number[];
+    local_dates?: string[];
     start_time: string;
     duration_minutes: number;
     timezone: string;
@@ -374,12 +376,38 @@ export const usePlanner = (): UsePlannerReturn => {
     }
   }, [setActiveDeepWork]);
 
+  const resolveActiveDeepWorkSessionId = useCallback(async (): Promise<{ sessionId?: string; error?: string }> => {
+    const currentSessionId = activeDeepWork?.id ? String(activeDeepWork.id) : '';
+    if (currentSessionId && /^\d+$/.test(currentSessionId)) {
+      return { sessionId: currentSessionId };
+    }
+
+    try {
+      const refreshed = await plannerApi.getActiveDeepWork();
+      if (refreshed.success && refreshed.data?.id) {
+        const refreshedId = String(refreshed.data.id);
+        setActiveDeepWork(refreshed.data);
+        if (/^\d+$/.test(refreshedId)) {
+          return { sessionId: refreshedId };
+        }
+      }
+    } catch {
+      // fall through to clean local stale session
+    }
+
+    clearActiveDeepWork();
+    return { error: 'No active session' };
+  }, [activeDeepWork, clearActiveDeepWork, setActiveDeepWork]);
+
   const completeDeepWork = useCallback(async (actualMinutes: number) => {
-    if (!activeDeepWork?.id) return { success: false, error: 'No active session' };
+    const resolved = await resolveActiveDeepWorkSessionId();
+    if (!resolved.sessionId) {
+      return { success: false, error: resolved.error || 'No active session' };
+    }
 
     try {
       const res = await plannerApi.completeDeepWork({
-        sessionId: activeDeepWork.id,
+        sessionId: resolved.sessionId,
         actualDurationMinutes: actualMinutes,
       });
       if (res.success && res.data) {
@@ -391,12 +419,16 @@ export const usePlanner = (): UsePlannerReturn => {
     } catch (err: any) {
       return { success: false, error: err.message };
     }
-  }, [activeDeepWork, clearActiveDeepWork, incrementDeepWorkCount]);
+  }, [clearActiveDeepWork, incrementDeepWorkCount, resolveActiveDeepWorkSessionId]);
 
   const pauseDeepWork = useCallback(async () => {
-    if (!activeDeepWork?.id) return { success: false, error: 'No active session' };
+    const resolved = await resolveActiveDeepWorkSessionId();
+    if (!resolved.sessionId) {
+      return { success: false, error: resolved.error || 'No active session' };
+    }
+
     try {
-      const res = await plannerApi.pauseDeepWork(activeDeepWork.id);
+      const res = await plannerApi.pauseDeepWork(resolved.sessionId);
       if (res.success && res.data) {
         setActiveDeepWork(res.data);
         return { success: true, session: res.data };
@@ -405,12 +437,16 @@ export const usePlanner = (): UsePlannerReturn => {
     } catch (err: any) {
       return { success: false, error: err.message };
     }
-  }, [activeDeepWork, setActiveDeepWork]);
+  }, [resolveActiveDeepWorkSessionId, setActiveDeepWork]);
 
   const resumeDeepWork = useCallback(async () => {
-    if (!activeDeepWork?.id) return { success: false, error: 'No active session' };
+    const resolved = await resolveActiveDeepWorkSessionId();
+    if (!resolved.sessionId) {
+      return { success: false, error: resolved.error || 'No active session' };
+    }
+
     try {
-      const res = await plannerApi.resumeDeepWork(activeDeepWork.id);
+      const res = await plannerApi.resumeDeepWork(resolved.sessionId);
       if (res.success && res.data) {
         setActiveDeepWork(res.data);
         return { success: true, session: res.data };
@@ -419,12 +455,16 @@ export const usePlanner = (): UsePlannerReturn => {
     } catch (err: any) {
       return { success: false, error: err.message };
     }
-  }, [activeDeepWork, setActiveDeepWork]);
+  }, [resolveActiveDeepWorkSessionId, setActiveDeepWork]);
 
   const cancelDeepWork = useCallback(async () => {
-    if (!activeDeepWork?.id) return { success: false, error: 'No active session' };
+    const resolved = await resolveActiveDeepWorkSessionId();
+    if (!resolved.sessionId) {
+      return { success: false, error: resolved.error || 'No active session' };
+    }
+
     try {
-      const res = await plannerApi.cancelDeepWork(activeDeepWork.id);
+      const res = await plannerApi.cancelDeepWork(resolved.sessionId);
       if (res.success) {
         clearActiveDeepWork();
         return { success: true };
@@ -433,7 +473,7 @@ export const usePlanner = (): UsePlannerReturn => {
     } catch (err: any) {
       return { success: false, error: err.message };
     }
-  }, [activeDeepWork, clearActiveDeepWork]);
+  }, [clearActiveDeepWork, resolveActiveDeepWorkSessionId]);
 
   // ── Derived values ────────────────────────────────────────────────
   const isDeepWorkActive = !!activeDeepWork && activeDeepWork.status === 'active';

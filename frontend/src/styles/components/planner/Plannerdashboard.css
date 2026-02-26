@@ -55,7 +55,7 @@
   z-index: 2;
 }
 
-.header-title {
+.planner-dashboard-title {
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -65,16 +65,17 @@
   border: 1px solid rgba(var(--color-primary), 0.1);
 }
 
-.header-title h3 {
+.planner-dashboard-heading {
   font-size: var(--text-xl);
   font-weight: var(--font-bold);
   color: rgb(var(--color-text-primary));
+  -webkit-text-fill-color: rgb(var(--color-text-primary));
   margin: 0;
   letter-spacing: -0.3px;
   text-shadow: none;
 }
 
-.header-title svg {
+.planner-dashboard-title svg {
   color: rgb(var(--color-primary));
   background: rgba(var(--color-primary), 0.1);
   padding: var(--space-3);
@@ -82,9 +83,10 @@
   border: 1px solid rgba(var(--color-primary), 0.2);
 }
 
-.header-subtitle {
+.planner-dashboard-subtitle {
   font-size: var(--text-sm);
   color: rgb(var(--color-text-secondary));
+  -webkit-text-fill-color: rgb(var(--color-text-secondary));
   margin: 4px 0 0;
   font-weight: var(--font-medium);
 }

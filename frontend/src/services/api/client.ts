@@ -365,8 +365,26 @@ class APIClient {
           data: undefined as any,
         };
       }
-      // For other successful responses, parse the body
-      return response.data || { success: true, data: undefined as any };
+      // Normalize backend direct response payloads to ApiResponse shape
+      if (response.data && typeof response.data === 'object') {
+        if ('success' in response.data) {
+          return response.data as ApiResponse<T>;
+        }
+
+        return {
+          success: true,
+          data: response.data as T,
+          meta: {
+            timestamp: new Date().toISOString(),
+            requestId: response.config?.headers?.['X-Request-ID'] as string || 'unknown',
+          },
+        };
+      }
+
+      return {
+        success: true,
+        data: (response.data as T) ?? (undefined as any),
+      };
     } catch (error) {
       const passthrough = this.passthroughApiError<T>(error);
       if (passthrough) {

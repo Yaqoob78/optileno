@@ -5,9 +5,11 @@ import type { DeepWorkSession } from '../../services/api/planner.service';
 import { useSettingsStore } from '../../stores/useSettingsStore';
 import { useUserStore } from '../../stores/useUserStore';
 import {
+  addDaysToLocalDateKey,
   formatLocalDateLabel,
   getDateKeyInTimezone,
   getNextLocalDateForWeekday,
+  getTimeHHMMInTimezone,
   getWeekdayIndexInTimezone,
 } from '../../utils/timezone';
 import { Modal } from '../common/Modal';
@@ -172,20 +174,42 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
 
-  const dayPreview = useMemo(
-    () =>
-      selectedDays.map((day) => {
-        const localDate = getNextLocalDateForWeekday(timezone, day);
-        const today = getDateKeyInTimezone(new Date(), timezone);
-        const tomorrowDate = new Date();
-        tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-        const tomorrow = getDateKeyInTimezone(tomorrowDate, timezone);
-        if (localDate === today) return `${DAYS.find((d) => d.value === day)?.label}: Today`;
-        if (localDate === tomorrow) return `${DAYS.find((d) => d.value === day)?.label}: Tomorrow`;
-        return `${DAYS.find((d) => d.value === day)?.label}: ${formatLocalDateLabel(localDate, timezone)}`;
-      }),
-    [selectedDays, timezone],
-  );
+  const selectedDaySchedules = useMemo(() => {
+    const now = currentTime;
+    const todayLocalDate = getDateKeyInTimezone(now, timezone);
+    const nowLocalHHMM = getTimeHHMMInTimezone(now, timezone);
+
+    return selectedDays
+      .map((day) => {
+        let localDate = getNextLocalDateForWeekday(timezone, day, now);
+
+        // If today is selected but the chosen time has already passed, move to next week's same day.
+        if (localDate === todayLocalDate && startTime <= nowLocalHHMM) {
+          localDate = addDaysToLocalDateKey(localDate, 7);
+        }
+
+        return {
+          day,
+          dayLabel: DAYS.find((d) => d.value === day)?.label ?? `Day ${day}`,
+          localDate,
+        };
+      })
+      .filter((item, index, arr) => arr.findIndex((entry) => entry.localDate === item.localDate) === index);
+  }, [currentTime, selectedDays, startTime, timezone]);
+
+  const dayPreview = useMemo(() => {
+    const now = currentTime;
+    const today = getDateKeyInTimezone(now, timezone);
+    const tomorrowDate = new Date(now);
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    const tomorrow = getDateKeyInTimezone(tomorrowDate, timezone);
+
+    return selectedDaySchedules.map(({ dayLabel, localDate }) => {
+      if (localDate === today) return `${dayLabel}: Today`;
+      if (localDate === tomorrow) return `${dayLabel}: Tomorrow`;
+      return `${dayLabel}: ${formatLocalDateLabel(localDate, timezone)}`;
+    });
+  }, [currentTime, selectedDaySchedules, timezone]);
 
   const scheduledReminderCards = useMemo(() => {
     const nowMs = currentTime.getTime();
@@ -237,7 +261,7 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
 
   const handleSchedule = async () => {
     setError(null);
-    if (selectedDays.length === 0) {
+    if (selectedDays.length === 0 || selectedDaySchedules.length === 0) {
       setError('Select at least one day.');
       return;
     }
@@ -253,6 +277,7 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
     setIsSubmitting(true);
     const result = await scheduleDeepWork({
       days_of_week: selectedDays,
+      local_dates: selectedDaySchedules.map((item) => item.localDate),
       start_time: startTime,
       duration_minutes: durationMinutes,
       timezone,

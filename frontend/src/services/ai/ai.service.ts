@@ -6,6 +6,7 @@ import { useAnalyticsStore } from '../../stores/analytics.store';
 import { useSettingsStore } from "../../stores/useSettingsStore";
 import { useUserStore } from "../../stores/useUserStore";
 import type { TaskStatus } from '../../types/planner.types';
+import { plannerApi } from '../api/planner.service';
 
 /**
  * Unified AI response shape (from backend).
@@ -215,8 +216,32 @@ class AIService {
 
         // ─── PLANNER: DEEP WORK ACTIONS ───────────────────────────────
         case 'PLANNER_START_DEEP_WORK':
-          plannerStore.startDeepWork(payload?.duration ?? null);
-          plannerStore.incrementDeepWorkCount();
+          {
+            const rawDuration = Number(payload?.duration_minutes ?? payload?.duration ?? 60);
+            const plannedDurationMinutes = Math.max(
+              60,
+              Math.min(720, Number.isFinite(rawDuration) ? rawDuration : 60),
+            );
+
+            void plannerApi
+              .startDeepWork({
+                planned_duration_minutes: plannedDurationMinutes,
+                focus_goal: payload?.focus_goal,
+                notes: payload?.notes,
+                goal_id: payload?.goal_id ?? payload?.goalId ?? null,
+              })
+              .then((resp) => {
+                if (resp.success && resp.data) {
+                  plannerStore.setActiveDeepWork(resp.data as any);
+                  plannerStore.incrementDeepWorkCount();
+                } else {
+                  console.warn('AI deep work start failed:', resp.error?.message || 'unknown error');
+                }
+              })
+              .catch((err) => {
+                console.warn('AI deep work start request error:', err);
+              });
+          }
           break;
 
         case 'PLANNER_COMPLETE_DEEP_WORK':
@@ -323,3 +348,4 @@ export const aiService = new AIService();
 
 // Named export for convenience
 export const handleAIResponse = aiService.handleAIResponse.bind(aiService);
+

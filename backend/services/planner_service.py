@@ -1828,8 +1828,17 @@ class PlannerService:
             async for db in get_db():
                 for local_date in selected_dates:
                     local_dt = datetime.combine(local_date, time(hour, minute), tzinfo=tz)
-                    if local_dt < now_local or local_dt > window_end_local:
-                        raise HTTPException(status_code=422, detail="Selected schedule must be within the next 7 days")
+                    if local_dt < now_local:
+                        rolled_dt = local_dt + timedelta(days=7)
+                        if rolled_dt <= window_end_local:
+                            local_dt = rolled_dt
+                            local_date = rolled_dt.date()
+                        else:
+                            continue
+
+                    if local_dt > window_end_local:
+                        continue
+
                     scheduled_utc = local_dt.astimezone(timezone.utc)
                     session = Plan(
                         user_id=int(user_id),
@@ -1851,6 +1860,10 @@ class PlannerService:
                     )
                     db.add(session)
                     created.append(session)
+
+                if not created:
+                    raise HTTPException(status_code=422, detail="Selected schedule must be within the next 7 days")
+
                 await db.commit()
                 for session in created:
                     await db.refresh(session)

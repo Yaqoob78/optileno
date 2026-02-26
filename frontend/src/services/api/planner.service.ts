@@ -42,6 +42,7 @@ export interface DeepWorkStart {
 
 export interface DeepWorkScheduleRequest {
   days_of_week: number[];
+  local_dates?: string[];
   start_time: string;
   duration_minutes: number;
   timezone: string;

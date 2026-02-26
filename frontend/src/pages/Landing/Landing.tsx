@@ -452,6 +452,12 @@ export default function Landing() {
               <span className="logo-text">Optileno</span>
             </div>
             <div className="nav-actions">
+              <button
+                className="nav-btn-access btn-premium"
+                onClick={() => navigate('/register?source=get-access')}
+              >
+                Get Access
+              </button>
               <button className="nav-link btn-premium" onClick={() => navigate('/login')}>Login</button>
               <button className="nav-btn-primary nav-cta-gold btn-premium" onClick={() => navigate('/register')}>
                 Start Free Trial

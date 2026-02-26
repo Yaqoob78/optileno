@@ -246,7 +246,8 @@ body {
 }
 
 .nav-link,
-.nav-btn-primary {
+.nav-btn-primary,
+.nav-btn-access {
   border: 0;
   border-radius: 10px;
   font-size: 0.84rem;
@@ -262,6 +263,18 @@ body {
 
 .nav-link:hover {
   color: #d0deed;
+}
+
+.nav-btn-access {
+  color: #dbeafe;
+  border: 1px solid rgba(96, 165, 250, 0.4);
+  background: linear-gradient(120deg, rgba(37, 99, 235, 0.28), rgba(30, 64, 175, 0.2));
+}
+
+.nav-btn-access:hover {
+  color: #eff6ff;
+  border-color: rgba(147, 197, 253, 0.75);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
 }
 
 /* Gold CTA — nav */
@@ -1453,7 +1466,8 @@ body {
   }
 
   .nav-link,
-  .nav-btn-primary {
+  .nav-btn-primary,
+  .nav-btn-access {
     padding: 0.5rem 0.68rem;
     font-size: 0.79rem;
   }
