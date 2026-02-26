@@ -1,0 +1,43 @@
+OUT:
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   backend/api/v1/endpoints/goals.py
+	modified:   backend/api/v1/endpoints/plans.py
+	modified:   backend/db/models/__init__.py
+	modified:   backend/services/analytics_v2_service.py
+	modified:   backend/services/attention_integrity_service.py
+	modified:   backend/services/enhanced_goal_analytics_service.py
+	modified:   backend/services/goal_intelligence_service.py
+	modified:   backend/services/planner_service.py
+	modified:   frontend/src/components/planner/Plannerdashboard.tsx
+	modified:   frontend/src/hooks/useSessionTracking.ts
+	modified:   frontend/src/pages/Planner/Planner.tsx
+	modified:   frontend/src/styles/components/planner/Plannerdashboard.css
+	modified:   frontend/src/styles/pages/dashboard.css
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	EXPLAINER_VIDEO_SCRIPT.md
+	backend/alembic/versions/a3d7e9f1c2b4_add_v2_goal_scoring_model.py
+	backend/scripts/
+	backend/services/goal_lifecycle.py
+	backend/services/goal_progress_engine.py
+	backend/services/goal_progress_engine_v2.py
+	backend/tests/test_goal_progress_ultra_gate.py
+	backend/tests/test_goal_progress_v2.py
+	clips/
+	explainer-video/
+	fix_goals.py
+	git_log_v2.txt
+	git_status.txt
+	test_engine.py
+	test_out.txt
+	tests/
+
+no changes added to commit (use "git add" and/or "git commit -a")
+
+ERR:

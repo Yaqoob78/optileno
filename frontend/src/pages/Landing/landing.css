@@ -41,18 +41,17 @@ body {
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
-  background-color: #010309 !important;
+  background-color: transparent !important;
   color: var(--text) !important;
   background-image:
-    radial-gradient(circle at 16% 13%, rgba(96, 165, 250, 0.16) 0%, rgba(96, 165, 250, 0) 36%),
-    radial-gradient(circle at 81% 19%, rgba(251, 191, 36, 0.12) 0%, rgba(251, 191, 36, 0) 34%),
+    radial-gradient(circle at 16% 13%, rgba(96, 165, 250, 0.12) 0%, transparent 36%),
+    radial-gradient(circle at 81% 19%, rgba(251, 191, 36, 0.08) 0%, transparent 34%),
     linear-gradient(180deg,
-      #000000 0%,
-      #010205 30%,
-      #040c1a 50%,
-      #12355e 75%,
-      #356aa8 90%,
-      #e2efff 100%) !important;
+      rgba(0, 0, 0, 0.8) 0%,
+      rgba(2, 4, 12, 0.3) 30%,
+      rgba(4, 10, 24, 0.1) 50%,
+      rgba(15, 38, 70, 0.02) 80%,
+      transparent 100%) !important;
 }
 
 .visually-hidden {
@@ -89,14 +88,14 @@ body {
   background:
     radial-gradient(circle at 19% 11%, rgba(96, 165, 250, 0.14) 0%, transparent 31%),
     radial-gradient(circle at 81% 17%, rgba(251, 191, 36, 0.09) 0%, transparent 30%),
-    linear-gradient(180deg, rgba(0, 0, 0, 0.9) 0%, rgba(1, 4, 10, 0.4) 60%, rgba(196, 213, 231, 0.15) 100%);
+    linear-gradient(180deg, rgba(0, 0, 0, 0.8) 0%, rgba(1, 4, 10, 0.4) 30%, transparent 80%);
 }
 
 .scene-bg::after {
   background:
-    radial-gradient(ellipse at 50% -12%, rgba(4, 11, 22, 0.85) 0%, rgba(4, 11, 22, 0.15) 58%, transparent 100%),
-    linear-gradient(180deg, rgba(0, 0, 0, 0.8) 0%, rgba(1, 4, 9, 0.3) 60%, rgba(196, 213, 231, 0.25) 100%);
-  opacity: 0.82;
+    radial-gradient(ellipse at 50% -12%, rgba(4, 11, 22, 0.8) 0%, rgba(4, 11, 22, 0.2) 40%, transparent 80%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.8) 0%, rgba(1, 4, 9, 0.2) 40%, transparent 80%);
+  opacity: 0.8;
 }
 
 /* ─── Orbs ─── */
@@ -619,6 +618,91 @@ body {
     transform: translateY(8px);
     opacity: 1;
   }
+}
+
+/* ═══════════════════════════════════════════════════
+   Sea Surface Zone — No container, no box, no edges
+   Mist effects applied directly to individual sections
+   ═══════════════════════════════════════════════════ */
+
+.sea-surface-zone {
+  position: relative;
+  /* NO background, NO border, NO overflow — completely invisible container */
+}
+
+/* Drifting mist cloud that floats behind each section */
+.sea-surface-zone::before {
+  content: "";
+  position: absolute;
+  /* Extend well beyond the section edges so there are zero hard lines */
+  top: -40%;
+  left: -30%;
+  right: -30%;
+  bottom: -40%;
+  background:
+    radial-gradient(ellipse at 25% 35%, rgba(255, 255, 255, 0.1), transparent 60%),
+    radial-gradient(ellipse at 75% 55%, rgba(150, 200, 255, 0.08), transparent 55%),
+    radial-gradient(ellipse at 50% 80%, rgba(255, 255, 255, 0.06), transparent 50%);
+  animation: sea-mist-drift 14s ease-in-out infinite alternate;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Counter-drifting smoke layer */
+.sea-surface-zone::after {
+  content: "";
+  position: absolute;
+  top: -30%;
+  left: -25%;
+  right: -25%;
+  bottom: -30%;
+  background:
+    radial-gradient(ellipse at 60% 25%, rgba(96, 165, 250, 0.08), transparent 55%),
+    radial-gradient(ellipse at 30% 70%, rgba(255, 255, 255, 0.07), transparent 55%),
+    radial-gradient(ellipse at 80% 45%, rgba(200, 230, 255, 0.06), transparent 45%);
+  animation: sea-smoke-drift 18s ease-in-out infinite alternate-reverse;
+  pointer-events: none;
+  z-index: -1;
+}
+
+@keyframes sea-mist-drift {
+  0% {
+    transform: translateX(-30px) translateY(0px) scale(1);
+    opacity: 0.6;
+  }
+
+  50% {
+    transform: translateX(20px) translateY(-25px) scale(1.08);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateX(-10px) translateY(15px) scale(1.03);
+    opacity: 0.7;
+  }
+}
+
+@keyframes sea-smoke-drift {
+  0% {
+    transform: translateX(20px) translateY(10px) scale(1.05);
+    opacity: 0.5;
+  }
+
+  50% {
+    transform: translateX(-25px) translateY(-15px) scale(1);
+    opacity: 0.85;
+  }
+
+  100% {
+    transform: translateX(15px) translateY(20px) scale(1.06);
+    opacity: 0.6;
+  }
+}
+
+/* Soft text glow for sections in the sea surface */
+.sea-surface-zone h2,
+.sea-surface-zone h3 {
+  text-shadow: 0 0 30px rgba(150, 200, 255, 0.25);
 }
 
 /* ═══════════════════════════════════════════════════
@@ -1409,5 +1493,35 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* ─── Hero Quote Responsive ─── */
+.bruce-quote {
+  position: fixed;
+  bottom: 24px;
+  right: 32px;
+  z-index: 50;
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  pointer-events: none;
+  text-align: right;
+  font-style: italic;
+  background: radial-gradient(ellipse at bottom right, rgba(0, 0, 0, 0.6) 0%, transparent 70%);
+  padding: 16px 24px;
+  border-radius: 16px;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+  max-width: 90vw;
+}
+
+@media (max-width: 640px) {
+  .bruce-quote {
+    bottom: 16px;
+    right: 16px;
+    padding: 12px 16px;
+    font-size: 0.75rem;
+    background: radial-gradient(ellipse at bottom right, rgba(0, 0, 0, 0.8) 0%, transparent 80%);
   }
 }

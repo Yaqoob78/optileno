@@ -1,0 +1,27 @@
+ M backend/api/v1/endpoints/goals.py
+ M backend/api/v1/endpoints/plans.py
+ M backend/db/models/__init__.py
+ M backend/services/analytics_v2_service.py
+ M backend/services/attention_integrity_service.py
+ M backend/services/enhanced_goal_analytics_service.py
+ M backend/services/goal_intelligence_service.py
+ M backend/services/planner_service.py
+ M frontend/src/components/planner/Plannerdashboard.tsx
+ M frontend/src/hooks/useSessionTracking.ts
+ M frontend/src/pages/Planner/Planner.tsx
+ M frontend/src/styles/components/planner/Plannerdashboard.css
+ M frontend/src/styles/pages/dashboard.css
+?? EXPLAINER_VIDEO_SCRIPT.md
+?? backend/alembic/versions/a3d7e9f1c2b4_add_v2_goal_scoring_model.py
+?? backend/scripts/
+?? backend/services/goal_lifecycle.py
+?? backend/services/goal_progress_engine.py
+?? backend/services/goal_progress_engine_v2.py
+?? backend/tests/test_goal_progress_ultra_gate.py
+?? backend/tests/test_goal_progress_v2.py
+?? clips/
+?? explainer-video/
+?? fix_goals.py
+?? test_engine.py
+?? test_out.txt
+?? tests/
