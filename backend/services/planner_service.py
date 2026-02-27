@@ -2166,6 +2166,8 @@ class PlannerService:
             schedule["status"] = "paused"
             schedule["paused_at"] = self._utc_now().isoformat()
             session.schedule = schedule
+            from sqlalchemy.orm.attributes import flag_modified
+            flag_modified(session, "schedule")
             await db.commit()
             await db.refresh(session)
             return self._map_to_deep_work_out(session)
@@ -2205,6 +2207,8 @@ class PlannerService:
             schedule["status"] = "active"
             schedule["paused_at"] = None
             session.schedule = schedule
+            from sqlalchemy.orm.attributes import flag_modified
+            flag_modified(session, "schedule")
             await db.commit()
             await db.refresh(session)
             return self._map_to_deep_work_out(session)
@@ -2235,6 +2239,8 @@ class PlannerService:
             schedule["status"] = "cancelled"
             schedule["cancelled_at"] = self._utc_now().isoformat()
             session.schedule = schedule
+            from sqlalchemy.orm.attributes import flag_modified
+            flag_modified(session, "schedule")
             await db.commit()
             await db.refresh(session)
             return self._map_to_deep_work_out(session)

@@ -69,8 +69,12 @@ try:
         "UPDATE_GOAL_PROGRESS": PlannerToolSet.update_goal_progress,
         "COMPLETE_HABIT": PlannerToolSet.complete_habit,
         "START_DEEP_WORK": PlannerToolSet.create_deep_work_session,  # Override legacy with pure creation
+        "SCHEDULE_DEEP_WORK": PlannerToolSet.schedule_deep_work,
         "CREATE_GOAL_CASCADE": PlannerToolSet.create_goal_with_cascade,  # Override legacy
         "BREAKDOWN_GOAL": PlannerToolSet.breakdown_goal,
+        "UPDATE_TASK": PlannerToolSet.update_task,
+        "UPDATE_GOAL": PlannerToolSet.update_goal,
+        "UPDATE_HABIT": PlannerToolSet.update_habit,
     }
 
     # Register primary tools (will override any duplicates)

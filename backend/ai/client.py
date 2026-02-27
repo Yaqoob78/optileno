@@ -685,6 +685,18 @@ The current time is {now_str}. Never schedule events in the past.
 6. **START_DEEP_WORK**
    - payload: {{ "duration_minutes": int, "focus_goal": "str", "scheduled_start": "str (ISO formatted datetime)" }}
 
+7. **UPDATE_TASK**
+   - payload: {{ "task_id": "str", "title": "str (optional)", "priority": "high/medium/low (optional)", "status": "pending/in-progress/done/cancelled (optional)", "due_date": "str (ISO formatted datetime, optional)", "duration_minutes": "int (optional)" }}
+
+8. **UPDATE_GOAL**
+   - payload: {{ "goal_id": "str", "title": "str (optional)", "description": "str (optional)", "status": "active/completed (optional)", "target_date": "str (optional)" }}
+
+9. **UPDATE_HABIT**
+   - payload: {{ "habit_id": "str", "name": "str (optional)", "description": "str (optional)", "frequency": "daily/weekly (optional)" }}
+
+10. **SCHEDULE_DEEP_WORK**
+   - payload: {{ "start_time": "str (HH:MM)", "duration_minutes": "int", "days_of_week": "[0, 1, 2] (0=Sun, 6=Sat)", "timezone": "str (e.g. Asia/Kolkata)", "focus_goal": "str (optional)" }}
+
 ## EXAMPLE INTERACTIONS:
 
 User: "Create a goal to Learn Rust"

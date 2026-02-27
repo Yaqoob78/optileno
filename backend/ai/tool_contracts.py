@@ -43,7 +43,11 @@ TIER_CAPABILITIES = {
         "DELETE_GOAL",
         "DELETE_HABIT",
         "START_DEEP_WORK",
-        "CREATE_GOAL_CASCADE"
+        "CREATE_GOAL_CASCADE",
+        "UPDATE_TASK",
+        "UPDATE_GOAL",
+        "UPDATE_HABIT",
+        "SCHEDULE_DEEP_WORK"
     ]
 }
 
@@ -130,6 +134,35 @@ class BreakdownGoalContract(BaseModel):
     preferred_task_time: Optional[str] = None
     preferred_deep_work_time: Optional[str] = None
 
+class UpdateTaskContract(BaseModel):
+    task_id: str
+    title: Optional[str] = None
+    priority: Optional[str] = None
+    status: Optional[str] = None
+    description: Optional[str] = None
+    duration_minutes: Optional[int] = None
+    due_date: Optional[str] = None
+
+class UpdateGoalContract(BaseModel):
+    goal_id: str
+    title: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[str] = None
+    target_date: Optional[str] = None
+
+class UpdateHabitContract(BaseModel):
+    habit_id: str
+    name: Optional[str] = None
+    description: Optional[str] = None
+    frequency: Optional[str] = None
+
+class ScheduleDeepWorkContract(BaseModel):
+    duration_minutes: int
+    start_time: str
+    days_of_week: List[int]
+    timezone: str
+    focus_goal: Optional[str] = None
+
 # Map tools to schemas
 CONTRACT_SCHEMATA = {
     "CREATE_TASK": CreateTaskContract,
@@ -139,6 +172,10 @@ CONTRACT_SCHEMATA = {
     "DELETE_TASK": DeleteTaskContract,
     "CREATE_GOAL_CASCADE": CreateGoalCascadeContract,
     "BREAKDOWN_GOAL": BreakdownGoalContract,
+    "UPDATE_TASK": UpdateTaskContract,
+    "UPDATE_GOAL": UpdateGoalContract,
+    "UPDATE_HABIT": UpdateHabitContract,
+    "SCHEDULE_DEEP_WORK": ScheduleDeepWorkContract,
 }
 
 class ToolExecutionError(Exception):

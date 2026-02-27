@@ -688,3 +688,161 @@ class PlannerToolSet:
     async def get_goal_timeline(user_id: str) -> List[Dict[str, Any]]:
         """Get goal timeline for visualization"""
         return await planner_service.get_goal_timeline(user_id)
+
+    @staticmethod
+    async def update_task(
+        user_id: str,
+        task_id: str,
+        title: Optional[str] = None,
+        priority: Optional[str] = None,
+        status: Optional[str] = None,
+        description: Optional[str] = None,
+        due_date: Optional[str] = None,
+        duration_minutes: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """Update a task's details."""
+        from pydantic import BaseModel
+        from datetime import datetime
+        import dateutil.parser
+
+        class TaskUpdate(BaseModel):
+            title: Optional[str] = None
+            priority: Optional[str] = None
+            status: Optional[str] = None
+            description: Optional[str] = None
+            due_date: Optional[datetime] = None
+            estimated_duration_minutes: Optional[int] = None
+
+        updates = {}
+        if title is not None: updates["title"] = title
+        if priority is not None: updates["priority"] = priority
+        if status is not None: updates["status"] = status
+        if description is not None: updates["description"] = description
+        if due_date is not None:
+            try:
+                updates["due_date"] = dateutil.parser.isoparse(due_date)
+            except Exception:
+                pass
+        if duration_minutes is not None: updates["estimated_duration_minutes"] = duration_minutes
+
+        if not updates:
+            return {"success": False, "error": "No valid updates provided."}
+
+        model_update = TaskUpdate(**updates)
+        result = await planner_service.update_task(user_id, task_id, model_update)
+        
+        await analytics_service.save_event({
+            "user_id": int(user_id),
+            "event": "task_updated",
+            "source": "ai_agent",
+            "metadata": {"task_id": task_id, "updated_fields": list(updates.keys())}
+        })
+        return {"success": True, "task_id": task_id, "message": f"Task updated."}
+
+    @staticmethod
+    async def update_goal(
+        user_id: str,
+        goal_id: str,
+        title: Optional[str] = None,
+        description: Optional[str] = None,
+        status: Optional[str] = None,
+        target_date: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Update a goal."""
+        updates = {}
+        if title is not None: updates["title"] = title
+        if description is not None: updates["description"] = description
+        if status is not None: updates["status"] = status
+        if target_date is not None: updates["target_date"] = target_date
+
+        if not updates:
+            return {"success": False, "error": "No valid updates provided."}
+
+        success = await planner_service.update_goal_details(user_id, goal_id, updates)
+        if success:
+            await analytics_service.save_event({
+                "user_id": int(user_id),
+                "event": "goal_updated",
+                "source": "ai_agent",
+                "metadata": {"goal_id": goal_id, "updated_fields": list(updates.keys())}
+            })
+            return {"success": True, "goal_id": goal_id, "message": f"Goal updated."}
+        return {"success": False, "error": "Failed to update goal."}
+
+    @staticmethod
+    async def update_habit(
+        user_id: str,
+        habit_id: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        frequency: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Update a habit."""
+        updates = {}
+        if name is not None: updates["name"] = name
+        if description is not None: updates["description"] = description
+        if frequency is not None: updates["frequency"] = frequency
+
+        if not updates:
+            return {"success": False, "error": "No valid updates provided."}
+
+        from backend.db.models import Habit
+        from sqlalchemy.future import select
+        from backend.db.database import AsyncSessionLocal
+        
+        try:
+            habit_id_int = int(habit_id)
+            user_id_int = int(user_id)
+        except ValueError:
+             return {"success": False, "error": "Invalid IDs"}
+
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(select(Habit).where(Habit.id == habit_id_int, Habit.user_id == user_id_int))
+            habit = result.scalar_one_or_none()
+            if not habit:
+                return {"success": False, "error": "Habit not found."}
+            
+            for k, v in updates.items():
+                setattr(habit, k, v)
+            await db.commit()
+
+        await analytics_service.save_event({
+            "user_id": int(user_id),
+            "event": "habit_updated",
+            "source": "ai_agent",
+            "metadata": {"habit_id": habit_id, "updated_fields": list(updates.keys())}
+        })
+        return {"success": True, "habit_id": habit_id, "message": f"Habit updated."}
+
+    @staticmethod
+    async def schedule_deep_work(
+        user_id: str,
+        start_time: str,
+        duration_minutes: int,
+        days_of_week: List[int],
+        timezone: str,
+        focus_goal: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Schedule a recurring deep work session."""
+        from backend.schemas.planner import DeepWorkScheduleCreate
+        try:
+            payload = DeepWorkScheduleCreate(
+                start_time=start_time,
+                duration_minutes=duration_minutes,
+                days_of_week=days_of_week,
+                timezone=timezone,
+                focus_goal=focus_goal
+            )
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+        result = await planner_service.schedule_deep_work(user_id, payload.dict())
+        
+        await analytics_service.save_event({
+            "user_id": int(user_id),
+            "event": "deep_work_scheduled_recurring",
+            "source": "ai_agent",
+            "metadata": {"duration_minutes": duration_minutes, "days_of_week": days_of_week}
+        })
+        return {"success": True, "message": f"Scheduled recurring deep work at {start_time} for {duration_minutes}m."}
+

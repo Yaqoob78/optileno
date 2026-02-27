@@ -92,6 +92,7 @@ class ActionType(str, Enum):
     UPDATE_HABIT = "UPDATE_HABIT"
     COMPLETE_HABIT = "COMPLETE_HABIT"
     START_DEEP_WORK = "START_DEEP_WORK"
+    SCHEDULE_DEEP_WORK = "SCHEDULE_DEEP_WORK"
     CREATE_PLAN = "CREATE_PLAN"
     RESCHEDULE_TASK = "RESCHEDULE_TASK"
 
@@ -791,6 +792,97 @@ class AIAgentActions:
                 request_id=request_id,
             )
         
+        elif action_type == ActionType.UPDATE_GOAL.value:
+            return await self.execute_tool(
+                tool_name=action_type,
+                user_id=user_id,
+                payload=data,
+                tool_callable=planner_service.update_goal_details,
+                plan_tier=plan_tier,
+                request_id=request_id,
+            )
+            
+        elif action_type == ActionType.UPDATE_TASK.value:
+            from pydantic import BaseModel
+            from datetime import datetime
+            import dateutil.parser
+
+            class TaskUpdate(BaseModel):
+                title: Optional[str] = None
+                priority: Optional[str] = None
+                status: Optional[str] = None
+                description: Optional[str] = None
+                due_date: Optional[datetime] = None
+                estimated_duration_minutes: Optional[int] = None
+                
+            updates = {}
+            if "title" in data: updates["title"] = data["title"]
+            if "priority" in data: updates["priority"] = data["priority"]
+            if "status" in data: updates["status"] = data["status"]
+            if "description" in data: updates["description"] = data["description"]
+            if "due_date" in data and data["due_date"]:
+                try:
+                    updates["due_date"] = dateutil.parser.isoparse(data["due_date"])
+                except Exception:
+                    pass
+            if "duration_minutes" in data: updates["estimated_duration_minutes"] = data["duration_minutes"]
+
+            model_update = TaskUpdate(**updates)
+            
+            async def update_task_wrapper(uid, pd):
+                return await planner_service.update_task(uid, data["task_id"], model_update)
+                
+            return await self.execute_tool(
+                tool_name=action_type,
+                user_id=user_id,
+                payload=data,
+                tool_callable=update_task_wrapper,
+                plan_tier=plan_tier,
+                request_id=request_id,
+            )
+            
+        elif action_type == ActionType.UPDATE_HABIT.value:
+            async def update_habit_wrapper(uid, pd):
+                from backend.db.models import Habit
+                from sqlalchemy.future import select
+                from backend.db.database import AsyncSessionLocal
+                try:
+                    habit_id_int = int(data["habit_id"])
+                    user_id_int = int(uid)
+                except ValueError:
+                     return {"success": False, "error": "Invalid IDs"}
+
+                async with AsyncSessionLocal() as db:
+                    result = await db.execute(select(Habit).where(Habit.id == habit_id_int, Habit.user_id == user_id_int))
+                    habit = result.scalar_one_or_none()
+                    if not habit:
+                        return {"success": False, "error": "Habit not found."}
+                    
+                    if "name" in data: habit.name = data["name"]
+                    if "description" in data: habit.description = data["description"]
+                    if "frequency" in data: habit.frequency = data["frequency"]
+                    await db.commit()
+                return {"success": True}
+
+            return await self.execute_tool(
+                tool_name=action_type,
+                user_id=user_id,
+                payload=data,
+                tool_callable=update_habit_wrapper,
+                plan_tier=plan_tier,
+                request_id=request_id,
+            )
+            
+        elif action_type == ActionType.SCHEDULE_DEEP_WORK.value:
+            return await self.execute_tool(
+                tool_name=action_type,
+                user_id=user_id,
+                payload=data,
+                tool_callable=planner_service.schedule_deep_work,
+                plan_tier=plan_tier,
+                request_id=request_id,
+            )
+            
         else:
             raise ValueError(f"Unknown action type: {action_type}")
     
@@ -798,10 +890,14 @@ class AIAgentActions:
         """Generate success message based on action type."""
         messages = {
             ActionType.CREATE_GOAL.value: f"Goal '{result.get('title', 'New Goal')}' has been created!",
+            ActionType.UPDATE_GOAL.value: "Goal has been updated!",
             ActionType.CREATE_TASK.value: f"Task added to your planner!",
+            ActionType.UPDATE_TASK.value: "Task has been updated!",
             ActionType.CREATE_HABIT.value: f"Habit '{result.get('name', 'New Habit')}' is now being tracked!",
+            ActionType.UPDATE_HABIT.value: "Habit has been updated!",
             ActionType.COMPLETE_TASK.value: "Task marked as complete! Great job! 🎉",
             ActionType.RESCHEDULE_TASK.value: "Task rescheduled successfully!",
+            ActionType.SCHEDULE_DEEP_WORK.value: "Recurring deep work schedule has been saved!",
             "CREATE_MULTIPLE_TASKS": f"Created {result.get('created_count', 0)} tasks for your roadmap!",
         }
         return messages.get(action_type, "Action completed successfully!")

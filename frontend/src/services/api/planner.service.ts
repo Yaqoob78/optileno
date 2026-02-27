@@ -81,8 +81,20 @@ class PlannerService {
 
   // ── Tasks ────────────────────────────────────────────────────────
 
+  private mapTask(t: any): Task {
+    if (!t) return t;
+    return {
+      ...t,
+      dueDate: t.due_date || t.dueDate || null,
+      duration: t.estimated_duration_minutes || t.estimatedDuration || t.duration || 60,
+      actualDuration: t.actual_minutes || t.actualDuration || 0,
+    } as Task;
+  }
+
   async createTask(data: TaskCreate): Promise<ApiResponse<Task>> {
-    return api.post<Task>(`${this.basePath}/tasks`, data);
+    const res = await api.post<Task>(`${this.basePath}/tasks`, data);
+    if (res.success && res.data) res.data = this.mapTask(res.data);
+    return res;
   }
 
   async getTasks(params?: {
@@ -103,19 +115,29 @@ class PlannerService {
       limit: params.limit,
       offset: params.offset,
     } : undefined;
-    return api.get<Task[]>(`${this.basePath}/tasks`, { params: query });
+    const res = await api.get<Task[]>(`${this.basePath}/tasks`, { params: query });
+    if (res.success && res.data) {
+      res.data = res.data.map(t => this.mapTask(t));
+    }
+    return res;
   }
 
   async getTaskById(taskId: string): Promise<ApiResponse<Task>> {
-    return api.get<Task>(`${this.basePath}/tasks/${taskId}`);
+    const res = await api.get<Task>(`${this.basePath}/tasks/${taskId}`);
+    if (res.success && res.data) res.data = this.mapTask(res.data);
+    return res;
   }
 
   async updateTask(taskId: string, updates: Partial<TaskCreate>): Promise<ApiResponse<Task>> {
-    return api.patch<Task>(`${this.basePath}/tasks/${taskId}`, updates);
+    const res = await api.patch<Task>(`${this.basePath}/tasks/${taskId}`, updates);
+    if (res.success && res.data) res.data = this.mapTask(res.data);
+    return res;
   }
 
   async startTask(taskId: string): Promise<ApiResponse<Task>> {
-    return api.post<Task>(`${this.basePath}/tasks/${taskId}/start`, {});
+    const res = await api.post<Task>(`${this.basePath}/tasks/${taskId}/start`, {});
+    if (res.success && res.data) res.data = this.mapTask(res.data);
+    return res;
   }
 
   async deleteTask(taskId: string): Promise<ApiResponse<null>> {
@@ -283,7 +305,7 @@ class PlannerService {
     realtimeClient.on('planner:task:created', (data: any) => {
       // Data is { event, task, timestamp }
       if (data && data.task) {
-        callback(data.task);
+        callback(this.mapTask(data.task));
       }
     });
   }
@@ -299,7 +321,7 @@ class PlannerService {
   onTaskUpdated(callback: (task: Task) => void) {
     realtimeClient.on('planner:task:updated', (data: any) => {
       if (data && data.task) {
-        callback(data.task);
+        callback(this.mapTask(data.task));
       }
     });
   }
