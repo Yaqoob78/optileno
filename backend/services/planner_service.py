@@ -14,7 +14,7 @@ import json
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
-from backend.db.database import get_db
+from backend.db.database import AsyncSessionLocal, get_db
 from backend.db.models import Plan
 from backend.services.entitlements_service import is_ultra_user
 
@@ -85,7 +85,7 @@ class PlannerService:
         from sqlalchemy import select
 
         try:
-            async for db in get_db():
+            async with AsyncSessionLocal() as db:
                 result = await db.execute(select(User).where(User.id == int(user_id)))
                 user = result.scalar_one_or_none()
                 if not user:
@@ -1948,11 +1948,17 @@ class PlannerService:
 
         now_utc = self._utc_now()
         try:
-            async for db in get_db():
+            user_id_int = int(user_id)
+            session_id_int = int(session_id)
+        except (TypeError, ValueError):
+            return {"error": "Invalid deep work session id."}
+
+        try:
+            async with AsyncSessionLocal() as db:
                 result = await db.execute(
                     select(Plan).where(
-                        Plan.id == int(session_id),
-                        Plan.user_id == int(user_id),
+                        Plan.id == session_id_int,
+                        Plan.user_id == user_id_int,
                         Plan.plan_type == "deep_work",
                     )
                 )
@@ -1984,7 +1990,7 @@ class PlannerService:
 
                 conflict_result = await db.execute(
                     select(Plan).where(
-                        Plan.user_id == int(user_id),
+                        Plan.user_id == user_id_int,
                         Plan.plan_type == "deep_work",
                     ).order_by(Plan.created_at.desc())
                 )
@@ -2014,13 +2020,18 @@ class PlannerService:
         """Complete a deep work session."""
         from backend.db.models import Plan
         from sqlalchemy import select
-        
         try:
-            async for db in get_db():
+            user_id_int = int(user_id)
+            session_id_int = int(session_id)
+        except (TypeError, ValueError):
+            return {"error": "Invalid deep work session id."}
+
+        try:
+            async with AsyncSessionLocal() as db:
                 result = await db.execute(
                     select(Plan).where(
-                        Plan.id == int(session_id), 
-                        Plan.user_id == int(user_id),
+                        Plan.id == session_id_int,
+                        Plan.user_id == user_id_int,
                         Plan.plan_type == "deep_work"
                     )
                 )
@@ -2078,7 +2089,7 @@ class PlannerService:
                 # 🔥 ANALYTICS TRACKING: Track deep work session completion
                 try:
                     await realtime_analytics.track_event(
-                        user_id=int(user_id),
+                        user_id=user_id_int,
                         event_type='deep_work_session',
                         metadata={
                             'session_id': session_id,
@@ -2108,11 +2119,17 @@ class PlannerService:
     async def pause_deep_work(self, user_id: str, session_id: str) -> Any:
         from backend.db.models import Plan
         from sqlalchemy import select
-        async for db in get_db():
+        try:
+            user_id_int = int(user_id)
+            session_id_int = int(session_id)
+        except (TypeError, ValueError):
+            return {"error": "Invalid deep work session id."}
+
+        async with AsyncSessionLocal() as db:
             result = await db.execute(
                 select(Plan).where(
-                    Plan.id == int(session_id),
-                    Plan.user_id == int(user_id),
+                    Plan.id == session_id_int,
+                    Plan.user_id == user_id_int,
                     Plan.plan_type == "deep_work",
                 )
             )
@@ -2132,11 +2149,17 @@ class PlannerService:
     async def resume_deep_work(self, user_id: str, session_id: str) -> Any:
         from backend.db.models import Plan
         from sqlalchemy import select
-        async for db in get_db():
+        try:
+            user_id_int = int(user_id)
+            session_id_int = int(session_id)
+        except (TypeError, ValueError):
+            return {"error": "Invalid deep work session id."}
+
+        async with AsyncSessionLocal() as db:
             result = await db.execute(
                 select(Plan).where(
-                    Plan.id == int(session_id),
-                    Plan.user_id == int(user_id),
+                    Plan.id == session_id_int,
+                    Plan.user_id == user_id_int,
                     Plan.plan_type == "deep_work",
                 )
             )
@@ -2165,11 +2188,17 @@ class PlannerService:
     async def cancel_deep_work(self, user_id: str, session_id: str) -> Any:
         from backend.db.models import Plan
         from sqlalchemy import select
-        async for db in get_db():
+        try:
+            user_id_int = int(user_id)
+            session_id_int = int(session_id)
+        except (TypeError, ValueError):
+            return {"error": "Invalid deep work session id."}
+
+        async with AsyncSessionLocal() as db:
             result = await db.execute(
                 select(Plan).where(
-                    Plan.id == int(session_id),
-                    Plan.user_id == int(user_id),
+                    Plan.id == session_id_int,
+                    Plan.user_id == user_id_int,
                     Plan.plan_type == "deep_work",
                 )
             )
@@ -2190,13 +2219,18 @@ class PlannerService:
         """Get active or paused deep work session and clean stale schedule states."""
         from backend.db.models import Plan
         from sqlalchemy import select
-        
+
+        try:
+            user_id_int = int(user_id)
+        except (TypeError, ValueError):
+            return None
+
         try:
             now_utc = self._utc_now()
-            async for db in get_db():
+            async with AsyncSessionLocal() as db:
                 result = await db.execute(
                     select(Plan).where(
-                        Plan.user_id == int(user_id),
+                        Plan.user_id == user_id_int,
                         Plan.plan_type == "deep_work"
                     ).order_by(Plan.created_at.desc())
                 )
@@ -2237,7 +2271,7 @@ class PlannerService:
                         for completed_session_id, completed_minutes in auto_completed_for_tracking:
                             try:
                                 await realtime_analytics.track_event(
-                                    user_id=int(user_id),
+                                    user_id=user_id_int,
                                     event_type="deep_work_session",
                                     metadata={
                                         "session_id": completed_session_id,
@@ -2261,7 +2295,7 @@ class PlannerService:
                         for completed_session_id, completed_minutes in auto_completed_for_tracking:
                             try:
                                 await realtime_analytics.track_event(
-                                    user_id=int(user_id),
+                                    user_id=user_id_int,
                                     event_type="deep_work_session",
                                     metadata={
                                         "session_id": completed_session_id,
@@ -2284,7 +2318,7 @@ class PlannerService:
                 for completed_session_id, completed_minutes in auto_completed_for_tracking:
                     try:
                         await realtime_analytics.track_event(
-                            user_id=int(user_id),
+                            user_id=user_id_int,
                             event_type="deep_work_session",
                             metadata={
                                 "session_id": completed_session_id,

@@ -144,7 +144,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
     <div id="notification-center" className="fixed inset-0 z-[120] overflow-hidden" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px]" onClick={onClose} />
 
-      <div className="absolute right-0 top-0 h-full w-full max-w-md border-l border-white/10 bg-slate-950/95 shadow-2xl backdrop-blur-xl flex flex-col">
+      <div className="absolute right-0 top-0 h-full w-[88vw] max-w-md border-l border-white/10 bg-slate-950/95 shadow-2xl backdrop-blur-xl flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-white/10">
           <h2 className="text-lg font-semibold text-white">Notifications</h2>

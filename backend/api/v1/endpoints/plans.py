@@ -281,6 +281,8 @@ async def cancel_deep_work(
     session = await planner_service.cancel_deep_work(str(current_user.id), session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+    if isinstance(session, dict) and "error" in session:
+        raise HTTPException(status_code=400, detail=session["error"])
     return session
 
 

@@ -102,14 +102,8 @@ export default function Header({ page, onMenuToggle, isMobile }: HeaderProps) {
             {/* Left Section - Page Title */}
             <div className="header-title-section">
               <h1 className="header-title">
-                {page === "Chat" ? "Chat Optileno" : pageTitles[page] || page}
+                {pageTitles[page] || page}
               </h1>
-
-              {page === "Chat" && (
-                <p className="header-subtitle">
-                  Leno
-                </p>
-              )}
             </div>
 
             {/* Right Section - Actions */}
