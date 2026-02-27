@@ -197,15 +197,19 @@ export const usePlanner = (): UsePlannerReturn => {
       if (!userId) return;
       try {
         const res = await plannerApi.getActiveDeepWork();
-        if (res.success && res.data) {
-          setActiveDeepWork(res.data);
+        if (res.success) {
+          if (res.data) {
+            setActiveDeepWork(res.data);
+          } else {
+            clearActiveDeepWork();
+          }
         }
       } catch {
         // Silent fail
       }
     };
     checkActiveSession();
-  }, [userId, setActiveDeepWork]);
+  }, [clearActiveDeepWork, userId, setActiveDeepWork]);
 
   // ── Task actions ──────────────────────────────────────────────────
   const createTask = useCallback(async (data: TaskCreate) => {
@@ -377,22 +381,22 @@ export const usePlanner = (): UsePlannerReturn => {
   }, [setActiveDeepWork]);
 
   const resolveActiveDeepWorkSessionId = useCallback(async (): Promise<{ sessionId?: string; error?: string }> => {
-    const currentSessionId = activeDeepWork?.id ? String(activeDeepWork.id) : '';
-    if (currentSessionId && /^\d+$/.test(currentSessionId)) {
-      return { sessionId: currentSessionId };
-    }
-
     try {
       const refreshed = await plannerApi.getActiveDeepWork();
       if (refreshed.success && refreshed.data?.id) {
-        const refreshedId = String(refreshed.data.id);
+        const refreshedId = String(refreshed.data.id).trim();
         setActiveDeepWork(refreshed.data);
-        if (/^\d+$/.test(refreshedId)) {
+        if (refreshedId) {
           return { sessionId: refreshedId };
         }
       }
     } catch {
-      // fall through to clean local stale session
+      // fall through to local fallback on network/transient failures
+    }
+
+    const currentSessionId = activeDeepWork?.id ? String(activeDeepWork.id).trim() : '';
+    if (currentSessionId && !currentSessionId.startsWith('dw_')) {
+      return { sessionId: currentSessionId };
     }
 
     clearActiveDeepWork();

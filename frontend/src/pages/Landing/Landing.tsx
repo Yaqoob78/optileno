@@ -471,6 +471,9 @@ export default function Landing() {
         <div className={`sticky-cta-bar ${showStickyBar ? 'sticky-visible' : ''}`}>
           <div className="sticky-cta-inner">
             <span className="sticky-cta-text">Ready to start executing?</span>
+            <button className="sticky-cta-btn-secondary btn-premium" onClick={() => navigate('/get-access')}>
+              Get Access
+            </button>
             <button className="sticky-cta-btn btn-premium" onClick={() => navigate('/register')}>
               Start Free Trial
               <ArrowRight size={15} />
@@ -537,6 +540,9 @@ export default function Landing() {
               </button>
               <button className="cta-button-secondary btn-premium" onClick={() => navigate('/dashboard-preview')}>
                 See Dashboard Preview
+              </button>
+              <button className="cta-button-tertiary btn-premium" onClick={() => navigate('/get-access')}>
+                Have an invite? Get Access
               </button>
               <p className="cta-note">Free for 3 days. No credit card. Full access.</p>
             </motion.div>
