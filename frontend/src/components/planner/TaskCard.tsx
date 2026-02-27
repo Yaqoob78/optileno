@@ -155,9 +155,7 @@ export default function TaskCard({
     const normalized = hasTimePart && !hasZoneSuffix ? `${raw}Z` : raw;
     const parsed = new Date(normalized);
     if (!Number.isNaN(parsed.getTime())) return parsed;
-
-    const fallback = new Date(raw);
-    return Number.isNaN(fallback.getTime()) ? null : fallback;
+    return null;
   };
 
   // Helper: Get the actual Date object for this task's scheduled day.

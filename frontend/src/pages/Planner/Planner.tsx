@@ -220,9 +220,7 @@ export default function PlannerPage() {
 
     const parsed = new Date(normalized);
     if (!Number.isNaN(parsed.getTime())) return parsed;
-
-    const fallback = new Date(raw);
-    return Number.isNaN(fallback.getTime()) ? null : fallback;
+    return null;
   };
 
   const handleAddTask = () => {
@@ -1077,5 +1075,4 @@ export default function PlannerPage() {
     </ErrorBoundary>
   );
 }
-
 

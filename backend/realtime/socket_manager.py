@@ -20,7 +20,7 @@ from socketio import AsyncServer, ASGIApp
 from sqlalchemy import select
 from jose import JWTError
 import json
-from datetime import datetime
+from datetime import datetime, date
 from collections import deque
 
 from backend.app.config import settings
@@ -202,6 +202,19 @@ EVENT_ALIASES: Dict[str, List[str]] = {
     "analytics:focus:updated": ["focus_score_updated"],
     "notification:new": ["notification:received"],
 }
+
+
+def _json_default(value: Any) -> Any:
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    return str(value)
+
+
+def _to_json_safe(data: Dict[str, Any]) -> Dict[str, Any]:
+    try:
+        return json.loads(json.dumps(data, default=_json_default))
+    except Exception:
+        return data
 
 
 def _get_cookie_token(environ: dict) -> Optional[str]:
@@ -421,17 +434,19 @@ async def _safe_emit(event: str, data: Dict[str, Any], room: str, use_queue: boo
     """
     start_time = time.time()
     
+    payload = _to_json_safe(data)
+
     try:
         should_queue = use_queue or ws_metrics.current_connections > settings.WEBSOCKET_QUEUE_THRESHOLD_CONNECTIONS
         if should_queue:
             # Queue for batch processing under heavy load
-            message_queue.enqueue(event, data, room)
+            message_queue.enqueue(event, payload, room)
             for alias in EVENT_ALIASES.get(event, []):
-                message_queue.enqueue(alias, data, room)
+                message_queue.enqueue(alias, payload, room)
         else:
-            await sio.emit(event, data, room=room)
+            await sio.emit(event, payload, room=room)
             for alias in EVENT_ALIASES.get(event, []):
-                await sio.emit(alias, data, room=room)
+                await sio.emit(alias, payload, room=room)
             ws_metrics.record_message_sent((time.time() - start_time) * 1000)
     except Exception as e:
         ws_metrics.record_failed_broadcast()

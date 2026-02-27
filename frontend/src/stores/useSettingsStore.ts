@@ -2,6 +2,21 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { SettingsState, defaultNotifications, defaultAIBehavior, defaultFocus, defaultPrivacy, defaultAccessibility, defaultFlags } from "../types/settings.types";
 
+const TIMEZONE_ALIASES: Record<string, string> = {
+  "Asia/Calcutta": "Asia/Kolkata",
+  "Asia/Katmandu": "Asia/Kathmandu",
+};
+
+const normalizeTimezone = (timezone?: string): string => {
+  const candidate = TIMEZONE_ALIASES[timezone || ""] || timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  try {
+    new Intl.DateTimeFormat(undefined, { timeZone: candidate }).format(new Date());
+    return candidate;
+  } catch {
+    const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    return TIMEZONE_ALIASES[browserTz] || browserTz;
+  }
+};
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
@@ -9,7 +24,7 @@ export const useSettingsStore = create<SettingsState>()(
       // Initial state - DEFAULT TO DARK
       theme: 'dark',
       language: 'en-US',
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      timezone: normalizeTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone),
       notifications: defaultNotifications,
       aiBehavior: defaultAIBehavior,
       focus: defaultFocus,
@@ -61,7 +76,7 @@ export const useSettingsStore = create<SettingsState>()(
       },
 
       setLanguage: (language) => set({ language }),
-      setTimezone: (timezone) => set({ timezone }),
+      setTimezone: (timezone) => set({ timezone: normalizeTimezone(timezone) }),
 
       // Actions - Notifications
       setNotificationPreferences: (preferences) => set((state) => ({
@@ -242,7 +257,7 @@ export const useSettingsStore = create<SettingsState>()(
         set({
           theme: 'dark',
           language: 'en-US',
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          timezone: normalizeTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone),
           notifications: defaultNotifications,
           aiBehavior: defaultAIBehavior,
           focus: defaultFocus,
@@ -256,7 +271,7 @@ export const useSettingsStore = create<SettingsState>()(
         const defaults: Record<string, any> = {
           theme: 'dark',
           language: 'en-US',
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          timezone: normalizeTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone),
           notifications: defaultNotifications,
           aiBehavior: defaultAIBehavior,
           focus: defaultFocus,
@@ -291,12 +306,22 @@ export const useSettingsStore = create<SettingsState>()(
           document.documentElement.setAttribute('data-theme', appliedTheme);
         }
 
-        set(settings);
+        set({
+          ...settings,
+          timezone: normalizeTimezone(settings.timezone),
+        });
       },
     }),
     {
       name: 'settings-storage',
       storage: createJSONStorage(() => localStorage),
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        const normalized = normalizeTimezone(state.timezone);
+        if (normalized !== state.timezone) {
+          state.setTimezone(normalized);
+        }
+      },
       partialize: (state) => ({
         theme: state.theme,
         language: state.language,

@@ -383,25 +383,24 @@ export const usePlanner = (): UsePlannerReturn => {
   const resolveActiveDeepWorkSessionId = useCallback(async (): Promise<{ sessionId?: string; error?: string }> => {
     try {
       const refreshed = await plannerApi.getActiveDeepWork();
-      if (refreshed.success && refreshed.data?.id) {
-        const refreshedId = String(refreshed.data.id).trim();
-        setActiveDeepWork(refreshed.data);
-        if (refreshedId) {
-          return { sessionId: refreshedId };
+      if (refreshed.success) {
+        if (refreshed.data?.id) {
+          const refreshedId = String(refreshed.data.id).trim();
+          setActiveDeepWork(refreshed.data);
+          if (refreshedId) {
+            return { sessionId: refreshedId };
+          }
+        } else {
+          clearActiveDeepWork();
         }
       }
     } catch {
-      // fall through to local fallback on network/transient failures
-    }
-
-    const currentSessionId = activeDeepWork?.id ? String(activeDeepWork.id).trim() : '';
-    if (currentSessionId && !currentSessionId.startsWith('dw_')) {
-      return { sessionId: currentSessionId };
+      // refresh failed; do not trust stale local fallback IDs
     }
 
     clearActiveDeepWork();
     return { error: 'No active session' };
-  }, [activeDeepWork, clearActiveDeepWork, setActiveDeepWork]);
+  }, [clearActiveDeepWork, setActiveDeepWork]);
 
   const completeDeepWork = useCallback(async (actualMinutes: number) => {
     const resolved = await resolveActiveDeepWorkSessionId();
@@ -437,6 +436,13 @@ export const usePlanner = (): UsePlannerReturn => {
         setActiveDeepWork(res.data);
         return { success: true, session: res.data };
       }
+      if (res.error?.message?.includes('Can only pause active sessions')) {
+        const refreshed = await plannerApi.getActiveDeepWork();
+        if (refreshed.success && refreshed.data?.status === 'paused') {
+          setActiveDeepWork(refreshed.data);
+          return { success: true, session: refreshed.data };
+        }
+      }
       return { success: false, error: res.error?.message };
     } catch (err: any) {
       return { success: false, error: err.message };
@@ -454,6 +460,13 @@ export const usePlanner = (): UsePlannerReturn => {
       if (res.success && res.data) {
         setActiveDeepWork(res.data);
         return { success: true, session: res.data };
+      }
+      if (res.error?.message?.includes('Can only resume paused sessions')) {
+        const refreshed = await plannerApi.getActiveDeepWork();
+        if (refreshed.success && refreshed.data?.status === 'active') {
+          setActiveDeepWork(refreshed.data);
+          return { success: true, session: refreshed.data };
+        }
       }
       return { success: false, error: res.error?.message };
     } catch (err: any) {

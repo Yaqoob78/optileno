@@ -59,8 +59,17 @@ class PlannerService:
     def _get_timezone(self, timezone_name: Optional[str]) -> ZoneInfo:
         if not timezone_name:
             return ZoneInfo("UTC")
+        timezone_aliases = {
+            "Asia/Calcutta": "Asia/Kolkata",
+            "Asia/Katmandu": "Asia/Kathmandu",
+            "US/Eastern": "America/New_York",
+            "US/Central": "America/Chicago",
+            "US/Mountain": "America/Denver",
+            "US/Pacific": "America/Los_Angeles",
+        }
+        normalized_timezone = timezone_aliases.get(str(timezone_name), str(timezone_name))
         try:
-            return ZoneInfo(timezone_name)
+            return ZoneInfo(normalized_timezone)
         except Exception:
             logger.warning("Invalid timezone '%s'; falling back to UTC", timezone_name)
             return ZoneInfo("UTC")
@@ -1735,10 +1744,15 @@ class PlannerService:
         from sqlalchemy import select
 
         try:
-            async for db in get_db():
+            user_id_int = int(user_id)
+        except (TypeError, ValueError):
+            return {"error": "Invalid user id."}
+
+        try:
+            async with AsyncSessionLocal() as db:
                 result = await db.execute(
                     select(Plan).where(
-                        Plan.user_id == int(user_id),
+                        Plan.user_id == user_id_int,
                         Plan.plan_type == "deep_work",
                     ).order_by(Plan.created_at.desc())
                 )
@@ -1762,7 +1776,7 @@ class PlannerService:
 
                 now_utc = self._utc_now()
                 new_session = Plan(
-                    user_id=int(user_id),
+                    user_id=user_id_int,
                     name="Deep Work",
                     plan_type="deep_work",
                     date=now_utc,
@@ -1787,6 +1801,11 @@ class PlannerService:
     async def schedule_deep_work(self, user_id: str, data: Any) -> list[Any]:
         """Schedule deep work blocks within the next 7 local days."""
         from backend.db.models import Plan
+
+        try:
+            user_id_int = int(user_id)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="Invalid user id")
 
         input_data = data.dict() if hasattr(data, "dict") else data
         days_of_week = sorted(set(input_data.get("days_of_week", [])))
@@ -1825,7 +1844,7 @@ class PlannerService:
 
         created: list[Any] = []
         try:
-            async for db in get_db():
+            async with AsyncSessionLocal() as db:
                 for local_date in selected_dates:
                     local_dt = datetime.combine(local_date, time(hour, minute), tzinfo=tz)
                     if local_dt < now_local:
@@ -1841,7 +1860,7 @@ class PlannerService:
 
                     scheduled_utc = local_dt.astimezone(timezone.utc)
                     session = Plan(
-                        user_id=int(user_id),
+                        user_id=user_id_int,
                         name="Deep Work",
                         plan_type="deep_work",
                         goal_id=int(goal_id) if goal_id not in (None, "") else None,
@@ -1891,10 +1910,15 @@ class PlannerService:
         recent_missed_cutoff = now_utc - timedelta(days=2)
 
         try:
-            async for db in get_db():
+            user_id_int = int(user_id)
+        except (TypeError, ValueError):
+            return []
+
+        try:
+            async with AsyncSessionLocal() as db:
                 result = await db.execute(
                     select(Plan).where(
-                        Plan.user_id == int(user_id),
+                        Plan.user_id == user_id_int,
                         Plan.plan_type == "deep_work",
                     ).order_by(Plan.date.asc(), Plan.created_at.asc())
                 )
