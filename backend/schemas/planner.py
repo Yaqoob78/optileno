@@ -7,6 +7,11 @@ from uuid import UUID
 
 # ── Task Schemas ───────────────────────────────────────────────────────
 
+class SubtaskCreate(BaseModel):
+    title: str = Field(..., min_length=1, max_length=150)
+    completed: bool = False
+
+
 class TaskBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=200, description="Task title")
     description: Optional[str] = Field(None, max_length=1000)
@@ -25,6 +30,10 @@ class TaskCreate(TaskBase):
     due_local_date: Optional[date] = None
     due_local_time: Optional[str] = None
     timezone: Optional[str] = None
+    subtasks: Optional[List[SubtaskCreate]] = None
+    depends_on_task_id: Optional[int | str] = None
+    recurring: Optional[bool] = False
+    recurrence_config: Optional[Dict[str, Any]] = None
 
     @field_validator("due_local_time")
     @classmethod
@@ -55,6 +64,10 @@ class TaskUpdate(BaseModel):
     due_local_date: Optional[date] = None
     due_local_time: Optional[str] = None
     timezone: Optional[str] = None
+    subtasks: Optional[List[Dict[str, Any]]] = None
+    depends_on_task_id: Optional[int | str] = None
+    recurring: Optional[bool] = None
+    recurrence_config: Optional[Dict[str, Any]] = None
 
     model_config = ConfigDict(extra="forbid")
 
@@ -81,6 +94,10 @@ class TaskOut(TaskBase):
     related_goal_id: Optional[str] = None
     goal_title: Optional[str] = None
     meta: Optional[dict] = None
+    subtasks: Optional[List[Dict[str, Any]]] = Field(default_factory=list)
+    depends_on_task_id: Optional[int | str] = None
+    is_recurring: bool = False
+    recurrence_pattern_id: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)  # Enables .from_orm()
 

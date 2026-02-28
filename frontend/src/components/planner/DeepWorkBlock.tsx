@@ -50,6 +50,7 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
   const [durationMinutes, setDurationMinutes] = useState(90);
   const [selectedGoalId, setSelectedGoalId] = useState<string>('');
   const [notes, setNotes] = useState('');
+  const [isRecurring, setIsRecurring] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isStartingNow, setIsStartingNow] = useState(false);
   const [isSessionActionBusy, setIsSessionActionBusy] = useState(false);
@@ -239,10 +240,10 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
           displayDate: scheduledStart ? formatLocalDateLabel(getDateKeyInTimezone(scheduledStart, timezone), timezone) : 'Scheduled',
           displayTime: scheduledStart
             ? new Intl.DateTimeFormat(undefined, {
-                timeZone: timezone,
-                hour: 'numeric',
-                minute: '2-digit',
-              }).format(scheduledStart)
+              timeZone: timezone,
+              hour: 'numeric',
+              minute: '2-digit',
+            }).format(scheduledStart)
             : '--:--',
         };
       })
@@ -269,8 +270,8 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
       setError('Select a start time.');
       return;
     }
-    if (!durationMinutes || durationMinutes < 5) {
-      setError('Duration must be at least 5 minutes.');
+    if (!durationMinutes || durationMinutes < 60) {
+      setError('Duration must be at least 60 minutes.');
       return;
     }
 
@@ -283,6 +284,7 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
       timezone,
       goal_id: selectedGoalId || null,
       notes: notes || undefined,
+      recurring: isRecurring,
     });
     setIsSubmitting(false);
 
@@ -680,10 +682,10 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
             <input
               type="number"
               className="deepwork-input"
-              min={5}
+              min={60}
               max={720}
               value={durationMinutes}
-              onChange={(event) => setDurationMinutes(Math.max(5, Number(event.target.value) || 5))}
+              onChange={(event) => setDurationMinutes(Math.max(60, Number(event.target.value) || 60))}
             />
           </div>
         </div>
@@ -714,13 +716,30 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
           />
         </div>
 
+        <div className="deepwork-form-group" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 0' }}>
+          <label style={{ margin: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <input
+              type="checkbox"
+              checked={isRecurring}
+              onChange={(e) => setIsRecurring(e.target.checked)}
+              style={{ width: '18px', height: '18px', accentColor: 'var(--color-primary, #6c5ce7)', cursor: 'pointer' }}
+            />
+            Repeat every week
+          </label>
+          {isRecurring && (
+            <span style={{ fontSize: '0.8rem', opacity: 0.7, fontStyle: 'italic' }}>
+              Sessions auto-renew weekly
+            </span>
+          )}
+        </div>
+
         <button
           className="deepwork-submit-btn"
           style={{ width: '100%' }}
           onClick={handleSchedule}
           disabled={isSubmitting}
         >
-          {isSubmitting ? 'Scheduling...' : 'Schedule Deep Work'}
+          {isSubmitting ? 'Scheduling...' : isRecurring ? 'Schedule Recurring Deep Work' : 'Schedule Deep Work'}
         </button>
       </div>
 
@@ -800,13 +819,13 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
             <div className="deepwork-scheduled-note">
               Scheduled for {selectedScheduledSession.scheduled_start_at
                 ? new Intl.DateTimeFormat(undefined, {
-                    timeZone: timezone,
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit',
-                  }).format(new Date(selectedScheduledSession.scheduled_start_at))
+                  timeZone: timezone,
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                }).format(new Date(selectedScheduledSession.scheduled_start_at))
                 : 'this slot'}
             </div>
           )}

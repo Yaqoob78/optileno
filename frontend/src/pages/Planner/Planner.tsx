@@ -46,6 +46,10 @@ interface EditForm {
   dueDate?: string;
   goalId?: string;
   scheduledDay?: number;            // 0=Sun..6=Sat
+  subtasks?: { title: string; completed: boolean }[];
+  depends_on_task_id?: string;
+  recurring?: boolean;
+  recurrence_config?: { type: string; days_of_week?: number[] };
 }
 
 
@@ -243,6 +247,8 @@ export default function PlannerPage() {
       notes: '',
       dueDate: getDateKeyInTimezone(now, timezone),
       scheduledDay: getWeekdayIndexInTimezone(now, timezone),
+      subtasks: [],
+      recurring: false,
     });
     setIsNewTask(true);
     setIsEditing(true);
@@ -452,64 +458,43 @@ export default function PlannerPage() {
       const baseLocalTime = taskToRepeat.startTime
         || (baseDueDate ? getTimeHHMMInTimezone(baseDueDate, timezone) : '09:00');
 
-      const { type, iterations } = repeatConfig;
+      const { type } = repeatConfig;
       const linkedGoalId = isUltra
         ? (taskToRepeat.related_goal_id || taskToRepeat.goal_id || taskToRepeat.goalId || null)
         : null;
-      const linkedGoal = linkedGoalId
-        ? goals.find((g) => String(g.id) === String(linkedGoalId))
-        : null;
-      const goalEndDateKey = linkedGoal?.target_date
-        ? getDateKeyInTimezone(new Date(linkedGoal.target_date), timezone)
-        : null;
 
-      let createdCount = 0;
-      let failedCount = 0;
-      let stoppedByGoalDeadline = false;
+      const jsWeekday = baseDueDate ? baseDueDate.getDay() : new Date().getDay();
 
-      for (let i = 1; i <= iterations; i++) {
-        const dayOffset = type === 'weekly' ? i * 7 : i;
-        const dateStr = addDaysToLocalDateKey(baseLocalDateKey, dayOffset);
-        if (goalEndDateKey && dateStr > goalEndDateKey) {
-          stoppedByGoalDeadline = true;
-          break;
-        }
+      const rConfig = type === 'weekly'
+        ? { type: 'weekly', days_of_week: [jsWeekday] }
+        : { type: 'daily' };
 
-        const payload = {
-          title: taskToRepeat.title,
-          description: taskToRepeat.description || '',
-          priority: taskToRepeat.priority || 'medium',
-          status: 'todo',
-          due_local_date: dateStr,
-          due_local_time: baseLocalTime,
-          timezone,
-          estimated_duration_minutes: taskToRepeat.duration || 60,
-          tags: taskToRepeat.tags || [],
-          category: taskToRepeat.category || 'work',
-          goal_id: linkedGoalId,
-        };
+      const payload = {
+        title: taskToRepeat.title,
+        description: taskToRepeat.description || '',
+        priority: taskToRepeat.priority || 'medium',
+        status: 'todo',
+        due_local_date: baseLocalDateKey,
+        due_local_time: baseLocalTime,
+        timezone,
+        estimated_duration_minutes: taskToRepeat.duration || 60,
+        tags: taskToRepeat.tags || [],
+        category: taskToRepeat.category || 'work',
+        goal_id: linkedGoalId,
+        recurring: true,
+        recurrence_config: rConfig
+      };
 
-        const result = await createTask(payload as any);
-        if (result.success) {
-          createdCount += 1;
-        } else {
-          failedCount += 1;
-        }
-      }
+      const result = await createTask(payload as any);
 
-      if (failedCount > 0) {
-        setRecurrenceError(`Created ${createdCount} tasks, ${failedCount} failed. Please review and retry if needed.`);
-      } else if (createdCount === 0 && stoppedByGoalDeadline) {
-        setRecurrenceError('No new tasks created because the linked goal deadline has been reached.');
-      } else {
-        if (createdCount > 0 && stoppedByGoalDeadline) {
-          alert(`Created ${createdCount} tasks until the linked goal deadline.`);
-        }
+      if (result.success) {
+        alert(`Successfully converted '${taskToRepeat.title}' to a ${type} recurring task!`);
         setIsRepeatModalOpen(false);
         setTaskToRepeat(null);
-        setTimeout(() => fetchTasks(), 500);
+        fetchTasks();
+      } else {
+        setRecurrenceError(result.error || 'Failed to apply recurrence.');
       }
-
     } catch (e: any) {
       setRecurrenceError(e.message || "Failed to create recurrences");
     } finally {
@@ -889,6 +874,72 @@ export default function PlannerPage() {
                   disabled={isSaving}
                 />
               </div>
+
+              <div className="planner-task-form-group">
+                <label>
+                  <span className="planner-task-label-icon">🔗</span>
+                  Depends On (Blocker)
+                </label>
+                <select
+                  value={editForm.depends_on_task_id || ''}
+                  onChange={(e) => setEditForm({ ...editForm, depends_on_task_id: e.target.value || undefined })}
+                  className="px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm w-full"
+                  disabled={isSaving}
+                >
+                  <option value="">-- No Blockers --</option>
+                  {tasks.filter(t => t.id !== editForm.id && String(t.status) !== 'done' && String(t.status) !== 'completed').map(t => (
+                    <option key={t.id || t._id} value={t.id || t._id}>{t.title}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="planner-task-form-group">
+                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>
+                    <span className="planner-task-label-icon">☑️</span>
+                    Subtasks
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setEditForm({ ...editForm, subtasks: [...(editForm.subtasks || []), { title: '', completed: false }] })}
+                    style={{ fontSize: '12px', background: 'transparent', color: 'var(--primary)', border: '1px solid var(--primary)', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer' }}
+                    disabled={isSaving}
+                  >
+                    + Add
+                  </button>
+                </label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {(editForm.subtasks || []).map((subtask, idx) => (
+                    <div key={idx} style={{ display: 'flex', gap: '8px' }}>
+                      <input
+                        type="text"
+                        value={subtask.title}
+                        placeholder="Subtask title"
+                        disabled={isSaving}
+                        onChange={(e) => {
+                          const newSub = [...(editForm.subtasks || [])];
+                          newSub[idx].title = e.target.value;
+                          setEditForm({ ...editForm, subtasks: newSub });
+                        }}
+                        className="px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm w-full"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newSub = [...(editForm.subtasks || [])];
+                          newSub.splice(idx, 1);
+                          setEditForm({ ...editForm, subtasks: newSub });
+                        }}
+                        style={{ padding: '0 8px', background: 'transparent', color: '#ff4444', border: 'none', cursor: 'pointer', fontSize: '20px' }}
+                        title="Remove subtask"
+                        disabled={isSaving}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </Modal>
@@ -954,6 +1005,7 @@ export default function PlannerPage() {
                       onRepeat={(t) => handleOpenRepeatModal(t)}
                       draggable
                       onAutoUpdateStatus={(id, status) => updateTask(String(id), { status: status as any })}
+                      onUpdateTask={(id, updates) => updateTask(String(id), updates)}
                     />
                   ));
                 })()}

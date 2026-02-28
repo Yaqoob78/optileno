@@ -1209,6 +1209,44 @@ class PlannerService:
                 goal_id_raw = input_data.get("goal_id")
                 goal_id_value = int(goal_id_raw) if goal_id_raw not in (None, "") else None
 
+                # --- TASK INTELLIGENCE ---
+                subtasks = input_data.get("subtasks", [])
+                subtasks = [s.dict() if hasattr(s, "dict") else s for s in subtasks] if subtasks else []
+                depends_on_task_id = input_data.get("depends_on_task_id")
+                recurring = input_data.get("recurring", False)
+                recurrence_config = input_data.get("recurrence_config") or {}
+                
+                pattern_id = None
+                if recurring:
+                    from backend.db.models import User
+                    import uuid
+                    pattern_id = f"trt_{uuid.uuid4().hex[:8]}"
+                    user_res = await db.execute(select(User).where(User.id == int(user_id)))
+                    user_obj = user_res.scalar_one_or_none()
+                    if user_obj:
+                        prefs = user_obj.preferences or {}
+                        if "task_recurrence" not in prefs:
+                            prefs["task_recurrence"] = []
+                        
+                        prefs["task_recurrence"].append({
+                            "id": pattern_id,
+                            "title": input_data.get("title"),
+                            "description": input_data.get("description"),
+                            "priority": input_data.get("priority"),
+                            "category": input_data.get("category"),
+                            "estimated_minutes": input_data.get("estimated_duration_minutes"),
+                            "time": input_data.get("due_local_time"),
+                            "timezone": input_data.get("timezone", "UTC"),
+                            "recurrence_config": recurrence_config,
+                            "subtasks": subtasks,
+                            "created_at": self._utc_now().isoformat(),
+                            "active": True
+                        })
+                        user_obj.preferences = prefs
+                        from sqlalchemy.orm.attributes import flag_modified
+                        flag_modified(user_obj, "preferences")
+                # --- END TASK INTELLIGENCE ---
+
                 task = Task(
                     user_id=int(user_id),
                     title=input_data.get("title", "New Task"),
@@ -1222,7 +1260,11 @@ class PlannerService:
                     goal_id=goal_id_value,
                     meta={
                         **input_data.get("meta", {}),
-                        "energy": input_data.get("energy", "medium")
+                        "energy": input_data.get("energy", "medium"),
+                        "subtasks": subtasks,
+                        "depends_on_task_id": depends_on_task_id,
+                        "is_recurring": recurring,
+                        "recurrence_pattern_id": pattern_id
                     }
                 )
                 db.add(task)
@@ -1289,6 +1331,10 @@ class PlannerService:
             "related_goal_id": str(task.goal_id) if task.goal_id else None,
             "goal_title": task.goal.title if 'goal' in task.__dict__ and task.goal else None,
             "meta": task.meta or {},
+            "subtasks": task.meta.get("subtasks", []) if task.meta else [],
+            "depends_on_task_id": task.meta.get("depends_on_task_id") if task.meta else None,
+            "is_recurring": task.meta.get("is_recurring", False) if task.meta else False,
+            "recurrence_pattern_id": task.meta.get("recurrence_pattern_id") if task.meta else None,
             "created_at": task.created_at.isoformat() if task.created_at else None,
             "updated_at": task.updated_at.isoformat() if task.updated_at else None,
         }
@@ -1311,6 +1357,8 @@ class PlannerService:
         
         try:
             async for db in get_db():
+                await self._auto_renew_recurring_tasks(user_id, db)
+
                 status_map = {
                     "todo": "pending",
                     "done": "completed",
@@ -1341,10 +1389,115 @@ class PlannerService:
             logger.error(f"Failed to get tasks: {e}")
             return []
 
+    async def _auto_renew_recurring_tasks(self, user_id: str, db: AsyncSession):
+        """Automatically generate upcoming task rows mapped to recurrences."""
+        from backend.db.models import User, Task
+        from sqlalchemy import select, text
+        import pytz
+        from datetime import datetime, timedelta
+
+        user_res = await db.execute(select(User).where(User.id == int(user_id)))
+        user = user_res.scalar_one_or_none()
+        if not user or not user.preferences:
+            return
+
+        patterns = user.preferences.get("task_recurrence", [])
+        active_patterns = [p for p in patterns if p.get("active", True)]
+        if not active_patterns:
+            return
+
+        tz_str = active_patterns[0].get("timezone", "UTC")
+        try:
+            user_tz = pytz.timezone(tz_str)
+        except:
+            user_tz = pytz.UTC
+
+        now = datetime.now(user_tz)
+        today = now.date()
+
+        for pattern in active_patterns:
+            config = pattern.get("recurrence_config", {})
+            rtype = config.get("type", "weekly")
+            days_of_week = config.get("days_of_week", [])  # 0=Sunday, 1=Monday... (or JS mapping)
+
+            # Map the next 7 days
+            for offset in range(8):
+                target_date = today + timedelta(days=offset)
+                
+                # Check if we should spawn for this day
+                should_spawn = False
+                if rtype == "daily":
+                    should_spawn = True
+                elif rtype == "weekly":
+                    # Let's assume days_of_week matches JS (0=Sun, 1=Mon ... 6=Sat) 
+                    # Python's weekday() is 0=Mon, ... 6=Sun. 
+                    # Conversion: JS day = (Python weekday() + 1) % 7
+                    py_weekday = target_date.weekday()
+                    js_weekday = (py_weekday + 1) % 7
+                    if str(js_weekday) in [str(d) for d in days_of_week]:
+                        should_spawn = True
+                
+                if not should_spawn:
+                    continue
+                
+                # Check DB to see if a task already exists for this pattern on this target_date
+                # Build target range 00:00 to 23:59 UTC
+                target_dt_start = user_tz.localize(datetime.combine(target_date, datetime.min.time())).astimezone(pytz.UTC).replace(tzinfo=None)
+                target_dt_end = user_tz.localize(datetime.combine(target_date, datetime.max.time())).astimezone(pytz.UTC).replace(tzinfo=None)
+
+                # Use JSON extraction or cast text to find existing pattern match
+                # sqlite cross-compatibility: text(meta) like "%recurrence_pattern_id...%"
+                pattern_id = pattern.get("id")
+                
+                check_res = await db.execute(
+                    select(Task.id).where(
+                        Task.user_id == int(user_id),
+                        Task.due_date >= target_dt_start,
+                        Task.due_date <= target_dt_end,
+                        text(f"meta LIKE '%\"recurrence_pattern_id\": \"{pattern_id}\"%'")
+                    )
+                )
+                existing = check_res.first()
+                if existing:
+                    continue  # Already exists
+                
+                # We need to spawn
+                time_str = pattern.get("time", "09:00")
+                if ":" in time_str:
+                    hh, mm = map(int, time_str.split(":", 1)[:2])
+                else:
+                    hh, mm = 9, 0
+                
+                target_dt = user_tz.localize(datetime.combine(target_date, datetime.min.time().replace(hour=hh, minute=mm))).astimezone(pytz.UTC).replace(tzinfo=None)
+
+                new_meta = {
+                    "is_recurring": True,
+                    "recurrence_pattern_id": pattern_id,
+                    "subtasks": pattern.get("subtasks", [])
+                }
+
+                new_task = Task(
+                    user_id=int(user_id),
+                    title=pattern.get("title"),
+                    description=pattern.get("description"),
+                    status="pending",
+                    priority=pattern.get("priority", "medium"),
+                    due_date=target_dt,
+                    estimated_minutes=pattern.get("estimated_minutes", 60),
+                    category=pattern.get("category"),
+                    meta=new_meta
+                )
+                db.add(new_task)
+        
+        try:
+            await db.commit()
+        except Exception as e:
+            logger.error(f"Failed auto-renewing tasks: {e}")
+            await db.rollback()
+
     async def get_task_by_id(self, user_id: str, task_id: str) -> Optional[Any]:
         """Get a specific task by ID."""
         from backend.db.models import Task
-        from sqlalchemy import select
         from sqlalchemy.orm import joinedload
         
         try:
@@ -1387,7 +1540,16 @@ class PlannerService:
                         "planned": "planned",
                         "overdue": "overdue",
                     }
-                    update_data["status"] = status_map.get(update_data["status"], update_data["status"])
+                    new_status = status_map.get(update_data["status"], update_data["status"])
+                    if new_status == "completed" and previous_status != "completed":
+                        # Check dependency
+                        depends_id = task.meta.get("depends_on_task_id") if task.meta else None
+                        if depends_id:
+                            blocker_res = await db.execute(select(Task).where(Task.id == int(depends_id)))
+                            blocker = blocker_res.scalar_one_or_none()
+                            if blocker and blocker.status != "completed":
+                                raise ValueError(f"Task is blocked by incomplete task {depends_id}")
+                    update_data["status"] = new_status
 
                 # Map frontend fields to DB fields
                 if "estimated_duration_minutes" in update_data:
@@ -1406,10 +1568,28 @@ class PlannerService:
                     raw_goal_id = update_data.get("goal_id")
                     update_data["goal_id"] = int(raw_goal_id) if raw_goal_id not in (None, "") else None
 
-                for key, value in update_data.items():
-                    if hasattr(task, key):
-                        setattr(task, key, value)
+                # Handle meta fields explicitly
+                if any(k in update_data for k in ["subtasks", "depends_on_task_id"]):
+                    new_meta = dict(task.meta) if task.meta else {}
+                    if "subtasks" in update_data:
+                        # Convert dicts or objects into native dicts
+                        raw_subtasks = update_data["subtasks"]
+                        new_meta["subtasks"] = [s.dict() if hasattr(s, "dict") else dict(s) for s in raw_subtasks] if raw_subtasks else []
+                        
+                        # --- ANALYTICS: Track subtask completion ---
+                        # In the future we can track individual subtask completion events here
+                        
+                    if "depends_on_task_id" in update_data:
+                        new_meta["depends_on_task_id"] = update_data["depends_on_task_id"]
+                    
+                    # Workaround for SQLAlchemy JSON mutation detection
+                    task.meta = new_meta
+                    from sqlalchemy.orm.attributes import flag_modified
+                    flag_modified(task, "meta")
                 
+                for key, value in update_data.items():
+                    if hasattr(task, key) and key not in ["subtasks", "depends_on_task_id"]:
+                        setattr(task, key, value)
                 task.updated_at = self._utc_now()
                 await db.commit()
                 await db.refresh(task)
@@ -1424,7 +1604,9 @@ class PlannerService:
                                 'task_id': str(task_id),
                                 'priority': task.priority or 'medium',
                                 'duration': task.actual_minutes or 0,
-                                'category': task.category
+                                'category': task.category,
+                                'is_recurring': task.meta.get("is_recurring", False) if task.meta else False,
+                                'depends_on_task_id': task.meta.get("depends_on_task_id") if task.meta else None
                             }
                         )
                         logger.info(f"Tracked task_completed event for task {task_id}")
@@ -1709,6 +1891,8 @@ class PlannerService:
             penalty_just_applied = False
 
         session.schedule = schedule
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(session, "schedule")
         await db.flush()
         return schedule, penalty_just_applied
 
@@ -1799,8 +1983,13 @@ class PlannerService:
             return None
 
     async def schedule_deep_work(self, user_id: str, data: Any) -> list[Any]:
-        """Schedule deep work blocks within the next 7 local days."""
-        from backend.db.models import Plan
+        """Schedule deep work blocks within the next 7 local days.
+        
+        If recurring=True, also saves a recurrence pattern to user preferences
+        so sessions auto-renew every week.
+        """
+        from backend.db.models import Plan, User
+        import uuid
 
         try:
             user_id_int = int(user_id)
@@ -1814,6 +2003,7 @@ class PlannerService:
         duration_minutes = input_data.get("duration_minutes")
         if duration_minutes is None or int(duration_minutes) < 60:
             duration_minutes = 60
+        is_recurring = bool(input_data.get("recurring", False))
             
         timezone_name = input_data.get("timezone") or "UTC"
         goal_id = input_data.get("goal_id")
@@ -1824,6 +2014,9 @@ class PlannerService:
         window_end_local = now_local + timedelta(days=7)
         hour = int(start_time_value[:2])
         minute = int(start_time_value[3:])
+
+        # Generate a recurrence pattern ID if recurring
+        pattern_id = f"rp_{uuid.uuid4().hex[:12]}" if is_recurring else None
 
         selected_dates: list[date] = []
         if explicit_local_dates:
@@ -1859,29 +2052,59 @@ class PlannerService:
                         continue
 
                     scheduled_utc = local_dt.astimezone(timezone.utc)
+                    session_schedule = {
+                        "planned_duration": duration_minutes,
+                        "focus_goal": input_data.get("focus_goal"),
+                        "notes": input_data.get("notes"),
+                        "status": "scheduled",
+                        "scheduled_start_at": scheduled_utc.isoformat(),
+                        "timezone": timezone_name,
+                        "scheduled_local_date": local_date.isoformat(),
+                        "scheduled_local_time": start_time_value,
+                        "accumulated_pause_seconds": 0,
+                    }
+                    if pattern_id:
+                        session_schedule["recurrence_pattern_id"] = pattern_id
+
                     session = Plan(
                         user_id=user_id_int,
                         name="Deep Work",
                         plan_type="deep_work",
                         goal_id=int(goal_id) if goal_id not in (None, "") else None,
                         date=scheduled_utc,
-                        schedule={
-                            "planned_duration": duration_minutes,
-                            "focus_goal": input_data.get("focus_goal"),
-                            "notes": input_data.get("notes"),
-                            "status": "scheduled",
-                            "scheduled_start_at": scheduled_utc.isoformat(),
-                            "timezone": timezone_name,
-                            "scheduled_local_date": local_date.isoformat(),
-                            "scheduled_local_time": start_time_value,
-                            "accumulated_pause_seconds": 0
-                        },
+                        schedule=session_schedule,
                     )
                     db.add(session)
                     created.append(session)
 
                 if not created:
                     raise HTTPException(status_code=422, detail="Selected schedule must be within the next 7 days")
+
+                # Save recurrence pattern to user preferences
+                if is_recurring and pattern_id:
+                    user_result = await db.execute(
+                        select(User).where(User.id == user_id_int)
+                    )
+                    user = user_result.scalar_one_or_none()
+                    if user:
+                        prefs = dict(user.preferences) if isinstance(user.preferences, dict) else {}
+                        patterns = list(prefs.get("deep_work_recurrence", []))
+                        patterns.append({
+                            "id": pattern_id,
+                            "days_of_week": days_of_week,
+                            "start_time": start_time_value,
+                            "duration_minutes": int(duration_minutes),
+                            "timezone": timezone_name,
+                            "goal_id": str(goal_id) if goal_id not in (None, "") else None,
+                            "focus_goal": input_data.get("focus_goal"),
+                            "notes": input_data.get("notes"),
+                            "active": True,
+                            "created_at": self._utc_now().isoformat(),
+                        })
+                        prefs["deep_work_recurrence"] = patterns
+                        user.preferences = prefs
+                        from sqlalchemy.orm.attributes import flag_modified
+                        flag_modified(user, "preferences")
 
                 await db.commit()
                 for session in created:
@@ -1892,6 +2115,112 @@ class PlannerService:
         except Exception as exc:
             logger.error("Failed to schedule deep work: %s", exc)
             raise HTTPException(status_code=500, detail="Failed to schedule deep work")
+
+    async def _auto_renew_recurring_deep_work(self, user_id: int, db: Any) -> int:
+        """Auto-create next week's sessions from saved recurrence patterns.
+        
+        Called during get_scheduled_deep_work(). For each active pattern,
+        looks 7 days ahead and creates missing sessions. Returns count of
+        sessions created.
+        """
+        from backend.db.models import User, Plan
+        from sqlalchemy import select
+
+        user_result = await db.execute(select(User).where(User.id == user_id))
+        user = user_result.scalar_one_or_none()
+        if not user:
+            return 0
+
+        prefs = user.preferences if isinstance(user.preferences, dict) else {}
+        patterns = prefs.get("deep_work_recurrence", [])
+        if not patterns:
+            return 0
+
+        now_utc = self._utc_now()
+        created_count = 0
+
+        # Fetch all existing scheduled/active/paused sessions within the next 7 days
+        existing_result = await db.execute(
+            select(Plan).where(
+                Plan.user_id == user_id,
+                Plan.plan_type == "deep_work",
+                Plan.date >= now_utc,
+                Plan.date <= now_utc + timedelta(days=8),
+            )
+        )
+        existing_sessions = existing_result.scalars().all()
+
+        # Build a set of (pattern_id, local_date) already scheduled
+        already_scheduled: set[tuple[str, str]] = set()
+        for session in existing_sessions:
+            schedule = self._deep_work_schedule(session)
+            pid = schedule.get("recurrence_pattern_id")
+            local_date = schedule.get("scheduled_local_date")
+            status = schedule.get("status")
+            if pid and local_date and status in ("scheduled", "active", "paused"):
+                already_scheduled.add((pid, local_date))
+
+        for pattern in patterns:
+            if not isinstance(pattern, dict) or not pattern.get("active", True):
+                continue
+
+            pattern_id = pattern.get("id")
+            if not pattern_id:
+                continue
+
+            days = pattern.get("days_of_week", [])
+            start_time_str = pattern.get("start_time", "09:00")
+            duration = max(60, int(pattern.get("duration_minutes", 60) or 60))
+            tz_name = pattern.get("timezone", "UTC")
+            tz = self._get_timezone(tz_name)
+            now_local = now_utc.astimezone(tz)
+            hour = int(start_time_str[:2])
+            minute = int(start_time_str[3:])
+
+            for day_offset in range(0, 8):
+                candidate_local = (now_local + timedelta(days=day_offset)).date()
+                candidate_js_day = (candidate_local.weekday() + 1) % 7
+                if candidate_js_day not in days:
+                    continue
+
+                local_date_key = candidate_local.isoformat()
+                if (pattern_id, local_date_key) in already_scheduled:
+                    continue
+
+                local_dt = datetime.combine(candidate_local, time(hour, minute), tzinfo=tz)
+                if local_dt < now_local:
+                    continue  # Don't create sessions in the past
+
+                scheduled_utc = local_dt.astimezone(timezone.utc)
+                session = Plan(
+                    user_id=user_id,
+                    name="Deep Work",
+                    plan_type="deep_work",
+                    goal_id=int(pattern.get("goal_id")) if pattern.get("goal_id") not in (None, "", "None") else None,
+                    date=scheduled_utc,
+                    schedule={
+                        "planned_duration": duration,
+                        "focus_goal": pattern.get("focus_goal"),
+                        "notes": pattern.get("notes"),
+                        "status": "scheduled",
+                        "scheduled_start_at": scheduled_utc.isoformat(),
+                        "timezone": tz_name,
+                        "scheduled_local_date": local_date_key,
+                        "scheduled_local_time": start_time_str,
+                        "accumulated_pause_seconds": 0,
+                        "recurrence_pattern_id": pattern_id,
+                        "auto_renewed": True,
+                    },
+                )
+                db.add(session)
+                created_count += 1
+                already_scheduled.add((pattern_id, local_date_key))
+
+        if created_count > 0:
+            await db.flush()
+            logger.info("Auto-renewed %d recurring deep work sessions for user %d", created_count, user_id)
+
+        return created_count
 
     async def get_scheduled_deep_work(
         self,
@@ -1923,6 +2252,18 @@ class PlannerService:
                     ).order_by(Plan.date.asc(), Plan.created_at.asc())
                 )
                 sessions = result.scalars().all()
+
+                # Auto-renew recurring patterns before processing
+                renewed = await self._auto_renew_recurring_deep_work(user_id_int, db)
+                if renewed > 0:
+                    # Re-fetch so we include newly created sessions
+                    result = await db.execute(
+                        select(Plan).where(
+                            Plan.user_id == user_id_int,
+                            Plan.plan_type == "deep_work",
+                        ).order_by(Plan.date.asc(), Plan.created_at.asc())
+                    )
+                    sessions = result.scalars().all()
 
                 newly_missed_for_tracking: list[tuple[str, dict[str, Any]]] = []
                 touched = False
@@ -2032,6 +2373,8 @@ class PlannerService:
                 schedule["started_from_schedule"] = True
                 session.date = now_utc
                 session.schedule = schedule
+                from sqlalchemy.orm.attributes import flag_modified
+                flag_modified(session, "schedule")
 
                 await db.commit()
                 await db.refresh(session)
@@ -2107,11 +2450,14 @@ class PlannerService:
                     schedule["actual_duration"] = actual_duration_minutes
                 
                 session.schedule = schedule
+                from sqlalchemy.orm.attributes import flag_modified
+                flag_modified(session, "schedule")
                 await db.commit()
                 await db.refresh(session)
                 
                 # 🔥 ANALYTICS TRACKING: Track deep work session completion
                 try:
+                    is_recurring = bool(schedule.get("recurrence_pattern_id"))
                     await realtime_analytics.track_event(
                         user_id=user_id_int,
                         event_type='deep_work_session',
@@ -2119,10 +2465,12 @@ class PlannerService:
                             'session_id': session_id,
                             'duration': schedule["actual_duration"],
                             'interruptions': schedule.get('interruptions', 0),
-                            'quality_score': schedule.get('quality_score', 0)
+                            'quality_score': schedule.get('quality_score', 0),
+                            'is_recurring': is_recurring,
+                            'recurrence_pattern_id': schedule.get('recurrence_pattern_id'),
                         }
                     )
-                    logger.info(f"Tracked deep_work_session event for session {session_id}: {schedule['actual_duration']} min")
+                    logger.info(f"Tracked deep_work_session event for session {session_id}: {schedule['actual_duration']} min (recurring={is_recurring})")
                 except Exception as e:
                     logger.error(f"Failed to track analytics event: {e}")
                     
@@ -2288,6 +2636,8 @@ class PlannerService:
                         maybe_completed_schedule = self._auto_complete_active_if_elapsed(session, schedule, now_utc)
                         if maybe_completed_schedule is not None:
                             session.schedule = maybe_completed_schedule
+                            from sqlalchemy.orm.attributes import flag_modified
+                            flag_modified(session, "schedule")
                             touched = True
                             auto_completed_for_tracking.append(
                                 (str(session.id), int(maybe_completed_schedule.get("actual_duration", 0) or 0))
@@ -2391,6 +2741,8 @@ class PlannerService:
             "accumulated_pause_seconds": schedule.get("accumulated_pause_seconds", 0),
             "status": schedule.get("status", "active"),
             "created_at": session.created_at,
+            "is_recurring": bool(schedule.get("recurrence_pattern_id")),
+            "recurrence_pattern_id": schedule.get("recurrence_pattern_id"),
         }
 
     async def is_user_in_session(self, user_id: str) -> bool:
@@ -2469,5 +2821,134 @@ class PlannerService:
             logger.error(f"Failed to delete habit {habit_id}: {e}")
             return False
 
+    # ── Recurring deep work pattern management ───────────────────────
+
+    async def get_recurrence_patterns(self, user_id: str) -> list[dict[str, Any]]:
+        """Get all active recurring deep work patterns for a user."""
+        from backend.db.models import User
+        from sqlalchemy import select
+
+        try:
+            user_id_int = int(user_id)
+        except (TypeError, ValueError):
+            return []
+
+        try:
+            async with AsyncSessionLocal() as db:
+                result = await db.execute(select(User).where(User.id == user_id_int))
+                user = result.scalar_one_or_none()
+                if not user:
+                    return []
+                prefs = user.preferences if isinstance(user.preferences, dict) else {}
+                patterns = prefs.get("deep_work_recurrence", [])
+                return [p for p in patterns if isinstance(p, dict) and p.get("active", True)]
+        except Exception as e:
+            logger.error(f"Failed to get recurrence patterns: {e}")
+            return []
+
+    async def deactivate_recurrence_pattern(self, user_id: str, pattern_id: str) -> bool:
+        """Deactivate a recurring deep work pattern (stops future auto-renewals)."""
+        from backend.db.models import User
+        from sqlalchemy import select
+
+        try:
+            user_id_int = int(user_id)
+        except (TypeError, ValueError):
+            return False
+
+        try:
+            async with AsyncSessionLocal() as db:
+                result = await db.execute(select(User).where(User.id == user_id_int))
+                user = result.scalar_one_or_none()
+                if not user:
+                    return False
+                prefs = dict(user.preferences) if isinstance(user.preferences, dict) else {}
+                patterns = list(prefs.get("deep_work_recurrence", []))
+                
+                found = False
+                for pattern in patterns:
+                    if isinstance(pattern, dict) and pattern.get("id") == pattern_id:
+                        pattern["active"] = False
+                        pattern["deactivated_at"] = self._utc_now().isoformat()
+                        found = True
+                        break
+                
+                if not found:
+                    return False
+
+                prefs["deep_work_recurrence"] = patterns
+                user.preferences = prefs
+                from sqlalchemy.orm.attributes import flag_modified
+                flag_modified(user, "preferences")
+                await db.commit()
+                return True
+        except Exception as e:
+            logger.error(f"Failed to deactivate recurrence pattern {pattern_id}: {e}")
+            return False
+
     # Singleton instance
+
+    async def get_task_recurrence_patterns(self, user_id: str) -> list[dict]:
+        from backend.db.session import AsyncSessionLocal
+        from backend.db.models import User
+        from sqlalchemy import select
+
+        try:
+            user_id_int = int(user_id)
+        except (TypeError, ValueError):
+            return []
+
+        try:
+            async with AsyncSessionLocal() as db:
+                result = await db.execute(select(User).where(User.id == user_id_int))
+                user = result.scalar_one_or_none()
+                if not user:
+                    return []
+                prefs = dict(user.preferences) if isinstance(user.preferences, dict) else {}
+                return list(prefs.get("task_recurrence", []))
+        except Exception as e:
+            logger.error(f"Failed to fetch task recurring patterns: {e}")
+            return []
+
+    async def deactivate_task_recurrence_pattern(self, user_id: str, pattern_id: str) -> bool:
+        from backend.db.session import AsyncSessionLocal
+        from backend.db.models import User
+        from sqlalchemy import select
+
+        try:
+            user_id_int = int(user_id)
+        except (TypeError, ValueError):
+            return False
+
+        try:
+            async with AsyncSessionLocal() as db:
+                result = await db.execute(select(User).where(User.id == user_id_int))
+                user = result.scalar_one_or_none()
+                if not user:
+                    return False
+                prefs = dict(user.preferences) if isinstance(user.preferences, dict) else {}
+                patterns = list(prefs.get("task_recurrence", []))
+                
+                found = False
+                for pattern in patterns:
+                    if isinstance(pattern, dict) and pattern.get("id") == pattern_id:
+                        pattern["active"] = False
+                        pattern["deactivated_at"] = self._utc_now().isoformat()
+                        found = True
+                        break
+                
+                if not found:
+                    return False
+
+                prefs["task_recurrence"] = patterns
+                user.preferences = prefs
+                from sqlalchemy.orm.attributes import flag_modified
+                flag_modified(user, "preferences")
+                await db.commit()
+                return True
+        except Exception as e:
+            logger.error(f"Failed to deactivate task recurrence pattern: {e}")
+            return False
+
+
 planner_service = PlannerService()

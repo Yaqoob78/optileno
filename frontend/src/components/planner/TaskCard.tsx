@@ -3,7 +3,7 @@ import {
   CheckCircle, Clock, Zap, Tag, Edit3, Trash2, MoreVertical,
   ChevronDown, ChevronRight, Copy, AlertCircle, Briefcase,
   Users, Coffee, Dumbbell, BookOpen, Home, Target,
-  Play, Pause, Timer, FileText, Hash, X, Calendar as CalendarIcon, Repeat
+  Play, Pause, Timer, FileText, Hash, X, Calendar as CalendarIcon, Repeat, Lock
 } from 'lucide-react';
 import '../../styles/components/planner/TaskCard.css';
 import { useSettingsStore } from '../../stores/useSettingsStore';
@@ -32,6 +32,8 @@ interface Task {
   notes?: string;
   goalTitle?: string;
   dueDate?: string | Date | null;  // The actual scheduled date/time
+  depends_on_task_id?: string | number | null;
+  is_recurring?: boolean;
   meta?: {
     started_at?: string;
     last_started_at?: string;
@@ -51,6 +53,7 @@ interface TaskCardProps {
   onStartTask?: (taskId: string | number) => void;
   onPauseTask?: (taskId: string | number) => void;
   onAutoUpdateStatus?: (taskId: string | number, status: string) => void;
+  onUpdateTask?: (taskId: string | number, updates: any) => void;
   compact?: boolean;
   draggable?: boolean;
 }
@@ -66,6 +69,7 @@ export default function TaskCard({
   onStartTask,
   onPauseTask,
   onAutoUpdateStatus,
+  onUpdateTask,
   compact = false,
   draggable = false
 }: TaskCardProps) {
@@ -497,7 +501,11 @@ export default function TaskCard({
 
           <div className="task-title-section">
             <div className="title-row">
-              <h4 className="task-title">{task.title}</h4>
+              <h4 className="task-title" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                {task.depends_on_task_id && <span title="Blocked by another task"><Lock size={14} color="#888" /></span>}
+                {task.is_recurring && <span title="Recurring task"><Repeat size={14} color="#888" /></span>}
+                {task.title}
+              </h4>
               {currentStatus === 'overdue' && (
                 <span className="overdue-badge">
                   <AlertCircle size={12} />
@@ -629,8 +637,18 @@ export default function TaskCard({
             <span>Subtasks</span>
           </div>
           <div className="subtasks-tags">
-            {task.subtasks.map(subtask => (
-              <span key={subtask.id} className={`subtask-tag ${subtask.completed ? 'completed' : ''}`}>
+            {task.subtasks.map((subtask: any, idx: number) => (
+              <span
+                key={subtask.id || idx}
+                className={`subtask-tag ${subtask.completed ? 'completed' : ''}`}
+                style={{ cursor: onUpdateTask ? 'pointer' : 'default' }}
+                onClick={() => {
+                  if (!onUpdateTask || !task.subtasks) return;
+                  const newSubtasks = [...task.subtasks];
+                  newSubtasks[idx] = { ...newSubtasks[idx], completed: !newSubtasks[idx].completed };
+                  onUpdateTask(task.originalId || task.id, { subtasks: newSubtasks });
+                }}
+              >
                 {subtask.completed ? <CheckCircle size={10} /> : '○'}
                 <span>{subtask.title}</span>
               </span>

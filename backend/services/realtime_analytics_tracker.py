@@ -207,6 +207,62 @@ class RealTimeAnalyticsTracker:
             focus = max(0, focus - (missed_deep_work * 8))
             burnout = min(100, burnout + (missed_deep_work * 4))
 
+        # 🔁 Recurring commitment bonus: reward completing recurring sessions
+        recurring_result = await db.execute(
+            select(func.count()).where(
+                AnalyticsEvent.user_id == user_id,
+                func.date(AnalyticsEvent.timestamp) == today,
+                AnalyticsEvent.event_type == 'deep_work_session',
+            )
+        )
+        recurring_sessions = int(recurring_result.scalar() or 0)
+        # Check how many of today's completed deep work events were recurring
+        if recurring_sessions > 0:
+            recurring_events = await db.execute(
+                select(AnalyticsEvent).where(
+                    AnalyticsEvent.user_id == user_id,
+                    func.date(AnalyticsEvent.timestamp) == today,
+                    AnalyticsEvent.event_type == 'deep_work_session',
+                )
+            )
+            recurring_count = 0
+            for evt in recurring_events.scalars().all():
+                meta = evt.meta if isinstance(evt.meta, dict) else {}
+                if meta.get('is_recurring', False):
+                    recurring_count += 1
+            if recurring_count > 0:
+                # Consistency bonus: +5 productivity, +7 focus per recurring session (max 3 counted)
+                capped = min(recurring_count, 3)
+                productivity = min(100, productivity + (capped * 5))
+                focus = min(100, focus + (capped * 7))
+                burnout = max(0, burnout - (capped * 2))  # Recurring commitment reduces burnout
+
+        # 🌟 Task Intelligence Bonus: reward completing recurring tasks & blockers
+        task_events = await db.execute(
+            select(AnalyticsEvent).where(
+                AnalyticsEvent.user_id == user_id,
+                func.date(AnalyticsEvent.timestamp) == today,
+                AnalyticsEvent.event_type == 'task_completed',
+            )
+        )
+        task_recurring_count = 0
+        blocker_count = 0
+        for evt in task_events.scalars().all():
+            meta = evt.meta if isinstance(evt.meta, dict) else {}
+            if meta.get('is_recurring', False):
+                task_recurring_count += 1
+            # If the task we completed was a blocker for something else, 
+            # we get a velocity bonus!
+            # We track this by seeing if depends_on_task_id is NOT none...
+            # Well actually, if depends_on_task_id IS none, it could be a blocker. 
+            # For now let's just reward recurring. The true blocked relation is hard to derive backwards.
+        
+        if task_recurring_count > 0:
+            capped_tasks = min(task_recurring_count, 5)
+            # +2 Productivity +1 Focus per recurring task completed
+            productivity = min(100, productivity + (capped_tasks * 2))
+            focus = min(100, focus + (capped_tasks * 1))
+
         # Update snapshot with calculated scores
         snapshot.productivity_score = productivity
         snapshot.focus_score = focus

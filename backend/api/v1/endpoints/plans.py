@@ -456,3 +456,38 @@ async def get_current_plan(current_user: User = Depends(get_current_user)):
 @router.get("/history", response_model=list)
 async def get_plan_history(current_user: User = Depends(get_current_user)):
     return await planner_service.get_plan_history(str(current_user.id))
+
+
+# ── Recurring deep work management ──────────────────────────────────────
+
+@router.get("/deep-work/recurrence")
+async def get_recurrence_patterns(current_user: User = Depends(get_current_user)):
+    """Get all active recurring deep work patterns."""
+    patterns = await planner_service.get_recurrence_patterns(str(current_user.id))
+    return {"success": True, "data": patterns}
+
+
+@router.delete("/deep-work/recurrence/{pattern_id}")
+async def delete_recurrence_pattern(
+    pattern_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    """Deactivate a recurring deep work pattern (stops future auto-renewals)."""
+    result = await planner_service.deactivate_recurrence_pattern(str(current_user.id), pattern_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Recurrence pattern not found")
+    return {"success": True, "message": "Recurring schedule deactivated"}
+
+
+@router.get("/tasks/recurrence", response_model=List[dict])
+async def get_task_recurrence(current_user: User = Depends(get_current_user)):
+    """Get active task recurring patterns for the current user."""
+    return await planner_service.get_task_recurrence_patterns(str(current_user.id))
+
+@router.delete("/tasks/recurrence/{pattern_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_task_recurrence(pattern_id: str, current_user: User = Depends(get_current_user)):
+    """Deactivate a recurring task pattern."""
+    success = await planner_service.deactivate_task_recurrence_pattern(str(current_user.id), pattern_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Recurrence pattern not found or already deactivated")
+    return None

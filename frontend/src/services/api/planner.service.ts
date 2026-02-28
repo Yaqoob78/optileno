@@ -49,6 +49,7 @@ export interface DeepWorkScheduleRequest {
   focus_goal?: string;
   notes?: string;
   goal_id?: string | number | null;
+  recurring?: boolean;
 }
 
 export interface DeepWorkComplete {

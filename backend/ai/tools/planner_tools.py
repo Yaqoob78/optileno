@@ -26,7 +26,11 @@ class PlannerToolSet:
         category: str = "work",
         tags: List[str] = None,
         goal_link: Optional[str] = None,
-        scheduled_time: Optional[str] = None  # e.g. "morning", "5pm", "tomorrow 10am"
+        scheduled_time: Optional[str] = None,
+        recurring: bool = False,
+        recurrence_config: Optional[dict] = None,
+        subtasks: Optional[list] = None,
+        depends_on_task_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """Create a task in the planner"""
         
@@ -129,8 +133,12 @@ class PlannerToolSet:
             'tags': tags or [],
             'goal_link': goal_link,
             'goal_id': goal_id,
-            'due_date': due_date.isoformat() if due_date else None
-        }
+            'due_date': due_date.isoformat() if due_date else None,
+        'recurring': recurring,
+        'recurrence_config': recurrence_config,
+        'subtasks': subtasks,
+        'depends_on_task_id': depends_on_task_id
+    }
         
         result = await planner_service.create_task(user_id, task_data)
 
@@ -698,7 +706,9 @@ class PlannerToolSet:
         status: Optional[str] = None,
         description: Optional[str] = None,
         due_date: Optional[str] = None,
-        duration_minutes: Optional[int] = None
+        duration_minutes: Optional[int] = None,
+        subtasks: Optional[list] = None,
+        depends_on_task_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """Update a task's details."""
         from pydantic import BaseModel
@@ -712,6 +722,8 @@ class PlannerToolSet:
             description: Optional[str] = None
             due_date: Optional[datetime] = None
             estimated_duration_minutes: Optional[int] = None
+            subtasks: Optional[list] = None
+            depends_on_task_id: Optional[str] = None
 
         updates = {}
         if title is not None: updates["title"] = title
@@ -724,6 +736,8 @@ class PlannerToolSet:
             except Exception:
                 pass
         if duration_minutes is not None: updates["estimated_duration_minutes"] = duration_minutes
+        if subtasks is not None: updates["subtasks"] = subtasks
+        if depends_on_task_id is not None: updates["depends_on_task_id"] = depends_on_task_id
 
         if not updates:
             return {"success": False, "error": "No valid updates provided."}
@@ -821,9 +835,10 @@ class PlannerToolSet:
         duration_minutes: int,
         days_of_week: List[int],
         timezone: str,
-        focus_goal: Optional[str] = None
+        focus_goal: Optional[str] = None,
+        recurring: bool = False,
     ) -> Dict[str, Any]:
-        """Schedule a recurring deep work session."""
+        """Schedule a deep work session. Set recurring=True for weekly auto-renewal."""
         from backend.schemas.planner import DeepWorkScheduleCreate
         try:
             payload = DeepWorkScheduleCreate(
@@ -831,18 +846,21 @@ class PlannerToolSet:
                 duration_minutes=duration_minutes,
                 days_of_week=days_of_week,
                 timezone=timezone,
-                focus_goal=focus_goal
+                focus_goal=focus_goal,
+                recurring=recurring,
             )
         except Exception as e:
             return {"success": False, "error": str(e)}
 
         result = await planner_service.schedule_deep_work(user_id, payload.dict())
         
+        event_type = "deep_work_scheduled_recurring" if recurring else "deep_work_scheduled"
         await analytics_service.save_event({
             "user_id": int(user_id),
-            "event": "deep_work_scheduled_recurring",
+            "event": event_type,
             "source": "ai_agent",
-            "metadata": {"duration_minutes": duration_minutes, "days_of_week": days_of_week}
+            "metadata": {"duration_minutes": duration_minutes, "days_of_week": days_of_week, "recurring": recurring}
         })
-        return {"success": True, "message": f"Scheduled recurring deep work at {start_time} for {duration_minutes}m."}
+        mode_label = "recurring" if recurring else "one-time"
+        return {"success": True, "message": f"Scheduled {mode_label} deep work at {start_time} for {duration_minutes}m."}
 

@@ -39,6 +39,7 @@ interface UsePlannerReturn {
     focus_goal?: string;
     notes?: string;
     goal_id?: string | number | null;
+    recurring?: boolean;
   }) => Promise<{ success: boolean; sessions?: DeepWorkSession[]; error?: string }>;
   fetchScheduledDeepWork: (params?: { includeMissed?: boolean; daysAhead?: number }) => Promise<{ success: boolean; sessions?: DeepWorkSession[]; error?: string }>;
   startScheduledDeepWork: (sessionId: string) => Promise<{ success: boolean; session?: DeepWorkSession; error?: string }>;
@@ -343,6 +344,7 @@ export const usePlanner = (): UsePlannerReturn => {
     focus_goal?: string;
     notes?: string;
     goal_id?: string | number | null;
+    recurring?: boolean;
   }) => {
     try {
       const res = await plannerApi.scheduleDeepWork(data);
