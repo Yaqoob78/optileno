@@ -319,11 +319,15 @@
     flex-wrap: nowrap;
     gap: 0.5rem;
     justify-content: flex-end;
+    flex-shrink: 0;
+    overflow: visible;
+    margin-left: 0;
   }
 
   .notification-container {
     display: flex;
     align-items: center;
+    flex: 0 0 auto;
   }
 
   .search-toggle,
@@ -418,6 +422,7 @@
     width: 2rem;
     height: 2rem;
     border-radius: 0.5rem;
+    flex: 0 0 auto;
   }
 
   .search-toggle svg,
