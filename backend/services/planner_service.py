@@ -2234,8 +2234,10 @@ class PlannerService:
             if not session:
                 return None
             schedule = self._deep_work_schedule(session)
-            if schedule.get("status") in {"completed", "cancelled"}:
-                return {"error": "This deep work session cannot be cancelled."}
+            current_status = schedule.get("status")
+            # Only block cancel for truly terminal statuses
+            if current_status in {"completed", "cancelled", "missed"}:
+                return {"error": f"This deep work session cannot be cancelled (status: {current_status})."}
             schedule["status"] = "cancelled"
             schedule["cancelled_at"] = self._utc_now().isoformat()
             session.schedule = schedule

@@ -109,7 +109,7 @@
   opacity: 0.9;
 }
 
-.header-actions {
+.planner-header .header-actions {
   display: flex;
   gap: var(--space-3);
   align-items: center;
@@ -293,11 +293,9 @@
 }
 
 .planner-task-modal .planner-task-day-pill.selected {
-  background: linear-gradient(
-    135deg,
-    rgba(var(--color-primary, 245 158 11), 0.36),
-    rgba(var(--color-primary-dark, 217 119 6), 0.3)
-  );
+  background: linear-gradient(135deg,
+      rgba(var(--color-primary, 245 158 11), 0.36),
+      rgba(var(--color-primary-dark, 217 119 6), 0.3));
   border-color: rgba(var(--color-primary, 245 158 11), 0.82);
   color: rgb(var(--color-gray-50, 248 250 252));
   box-shadow:
@@ -822,7 +820,7 @@
     font-size: var(--text-xl);
   }
 
-  .header-actions {
+  .planner-header .header-actions {
     width: 100%;
     justify-content: space-between;
   }
@@ -877,7 +875,7 @@
     padding: var(--space-3);
   }
 
-  .header-actions {
+  .planner-header .header-actions {
     flex-direction: column;
     gap: var(--space-2);
   }
@@ -1229,11 +1227,9 @@
 }
 
 .planner-task-modal .planner-task-form-group {
-  background: linear-gradient(
-    155deg,
-    rgba(var(--color-bg-tertiary), 0.48),
-    rgba(var(--color-bg-secondary), 0.32)
-  );
+  background: linear-gradient(155deg,
+      rgba(var(--color-bg-tertiary), 0.48),
+      rgba(var(--color-bg-secondary), 0.32));
   border: 1px solid rgba(var(--color-border-light), 0.34);
   border-radius: 14px;
   padding: 12px;
@@ -1269,4 +1265,3 @@
 .planner-task-modal-shell .planner-modal-select-recurrence {
   border-color: rgba(16, 185, 129, 0.58) !important;
 }
-

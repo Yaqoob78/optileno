@@ -475,13 +475,21 @@ export const usePlanner = (): UsePlannerReturn => {
   }, [resolveActiveDeepWorkSessionId, setActiveDeepWork]);
 
   const cancelDeepWork = useCallback(async () => {
-    const resolved = await resolveActiveDeepWorkSessionId();
-    if (!resolved.sessionId) {
-      return { success: false, error: resolved.error || 'No active session' };
+    // Prefer locally cached session ID to avoid race conditions where
+    // resolveActiveDeepWorkSessionId re-fetches and auto-completes the session.
+    const localId = activeDeepWork?.id ? String(activeDeepWork.id).trim() : null;
+    let sessionId = localId;
+
+    if (!sessionId) {
+      const resolved = await resolveActiveDeepWorkSessionId();
+      if (!resolved.sessionId) {
+        return { success: false, error: resolved.error || 'No active session' };
+      }
+      sessionId = resolved.sessionId;
     }
 
     try {
-      const res = await plannerApi.cancelDeepWork(resolved.sessionId);
+      const res = await plannerApi.cancelDeepWork(sessionId);
       if (res.success) {
         clearActiveDeepWork();
         return { success: true };
@@ -490,7 +498,7 @@ export const usePlanner = (): UsePlannerReturn => {
     } catch (err: any) {
       return { success: false, error: err.message };
     }
-  }, [clearActiveDeepWork, resolveActiveDeepWorkSessionId]);
+  }, [activeDeepWork, clearActiveDeepWork, resolveActiveDeepWorkSessionId]);
 
   // ── Derived values ────────────────────────────────────────────────
   const isDeepWorkActive = !!activeDeepWork && activeDeepWork.status === 'active';
