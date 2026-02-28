@@ -435,21 +435,20 @@ export const usePlanner = (): UsePlannerReturn => {
     try {
       const res = await plannerApi.pauseDeepWork(resolved.sessionId);
       if (res.success && res.data) {
+        const returnedStatus = (res.data as any).status;
+        // If the session came back in a terminal state, clear it from the UI
+        if (returnedStatus && !['active', 'paused'].includes(returnedStatus)) {
+          clearActiveDeepWork();
+          return { success: true, session: res.data };
+        }
         setActiveDeepWork(res.data);
         return { success: true, session: res.data };
-      }
-      if (res.error?.message?.includes('Can only pause active sessions')) {
-        const refreshed = await plannerApi.getActiveDeepWork();
-        if (refreshed.success && refreshed.data?.status === 'paused') {
-          setActiveDeepWork(refreshed.data);
-          return { success: true, session: refreshed.data };
-        }
       }
       return { success: false, error: res.error?.message };
     } catch (err: any) {
       return { success: false, error: err.message };
     }
-  }, [resolveActiveDeepWorkSessionId, setActiveDeepWork]);
+  }, [clearActiveDeepWork, resolveActiveDeepWorkSessionId, setActiveDeepWork]);
 
   const resumeDeepWork = useCallback(async () => {
     const resolved = await resolveActiveDeepWorkSessionId();
@@ -460,21 +459,20 @@ export const usePlanner = (): UsePlannerReturn => {
     try {
       const res = await plannerApi.resumeDeepWork(resolved.sessionId);
       if (res.success && res.data) {
+        const returnedStatus = (res.data as any).status;
+        // If the session came back in a terminal state, clear it from the UI
+        if (returnedStatus && !['active', 'paused'].includes(returnedStatus)) {
+          clearActiveDeepWork();
+          return { success: true, session: res.data };
+        }
         setActiveDeepWork(res.data);
         return { success: true, session: res.data };
-      }
-      if (res.error?.message?.includes('Can only resume paused sessions')) {
-        const refreshed = await plannerApi.getActiveDeepWork();
-        if (refreshed.success && refreshed.data?.status === 'active') {
-          setActiveDeepWork(refreshed.data);
-          return { success: true, session: refreshed.data };
-        }
       }
       return { success: false, error: res.error?.message };
     } catch (err: any) {
       return { success: false, error: err.message };
     }
-  }, [resolveActiveDeepWorkSessionId, setActiveDeepWork]);
+  }, [clearActiveDeepWork, resolveActiveDeepWorkSessionId, setActiveDeepWork]);
 
   const cancelDeepWork = useCallback(async () => {
     // Prefer locally cached session ID to avoid race conditions where

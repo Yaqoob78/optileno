@@ -2518,11 +2518,10 @@ class PlannerService:
                 return None
             schedule = self._deep_work_schedule(session)
             current_status = schedule.get("status")
-            # Idempotent: if already paused, return success
-            if current_status == "paused":
-                return self._map_to_deep_work_out(session)
+            # For any non-active state, return the session as-is so
+            # the frontend can read the real status and update its UI.
             if current_status != "active":
-                return {"error": f"Can only pause active sessions (current: {current_status})."}
+                return self._map_to_deep_work_out(session)
             schedule["status"] = "paused"
             schedule["paused_at"] = self._utc_now().isoformat()
             session.schedule = schedule
@@ -2554,11 +2553,10 @@ class PlannerService:
                 return None
             schedule = self._deep_work_schedule(session)
             current_status = schedule.get("status")
-            # Idempotent: if already active, return success
-            if current_status == "active":
-                return self._map_to_deep_work_out(session)
+            # For any non-paused state, return the session as-is so
+            # the frontend can read the real status and update its UI.
             if current_status != "paused":
-                return {"error": f"Can only resume paused sessions (current: {current_status})."}
+                return self._map_to_deep_work_out(session)
             
             paused_at_str = schedule.get("paused_at")
             if paused_at_str:
