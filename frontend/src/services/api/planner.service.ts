@@ -24,6 +24,13 @@ export interface TaskCreate {
   goal_id?: string | number | null;
   tags?: string[];
   category?: string;
+  subtasks?: Array<{ title: string; completed: boolean }>;
+  depends_on_task_id?: string | number | null;
+  recurring?: boolean;
+  recurrence_config?: {
+    type: string;
+    days_of_week?: number[];
+  };
 }
 
 export interface TaskUpdate extends Partial<TaskCreate> {

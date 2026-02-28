@@ -308,6 +308,10 @@ export default function PlannerPage() {
       dueDate: parsedDueDate ? getDateKeyInTimezone(parsedDueDate, timezone) : undefined,
       goalId: task.related_goal_id, // Map backend field
       scheduledDay: scheduledDay,
+      subtasks: Array.isArray(task.subtasks) ? task.subtasks : [],
+      depends_on_task_id: task.depends_on_task_id ? String(task.depends_on_task_id) : undefined,
+      recurring: Boolean(task.is_recurring ?? task.recurring),
+      recurrence_config: task.recurrence_config,
     });
     setIsNewTask(false);
     setIsEditing(true);
@@ -379,7 +383,9 @@ export default function PlannerPage() {
         estimated_duration_minutes: editForm.duration || 60,
         tags: editForm.tags || [],
         category: editForm.category,
-        goal_id: isUltra && editForm.category === 'goal' ? editForm.goalId : null
+        goal_id: isUltra && editForm.category === 'goal' ? editForm.goalId : null,
+        subtasks: editForm.subtasks || [],
+        depends_on_task_id: editForm.depends_on_task_id || null,
       };
 
 
@@ -1127,4 +1133,3 @@ export default function PlannerPage() {
     </ErrorBoundary>
   );
 }
-

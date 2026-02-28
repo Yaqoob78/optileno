@@ -22,7 +22,6 @@ from backend.schemas.planner import (
     DeepWorkScheduleCreate,
     HabitCreate,
     TaskCreate,
-    TaskOut,
     TaskUpdate,
 )
 from backend.services.entitlements_service import require_ultra_feature
@@ -53,7 +52,7 @@ def _enforce_goal_link_ultra(
     require_ultra_feature(current_user, feature)
 
 
-@router.post("/tasks", response_model=TaskOut, status_code=status.HTTP_201_CREATED)
+@router.post("/tasks", response_model=Dict[str, Any], status_code=status.HTTP_201_CREATED)
 async def create_task(
     task_in: TaskCreate,
     current_user: User = Depends(get_current_user),
@@ -85,7 +84,7 @@ async def create_task(
     return task
 
 
-@router.get("/tasks", response_model=List[TaskOut])
+@router.get("/tasks", response_model=List[Dict[str, Any]])
 async def get_tasks(
     status: Optional[str] = Query(None, description="todo, in-progress, done"),
     day: Optional[date] = Query(None, description="Local day in user's timezone"),
@@ -108,7 +107,7 @@ async def get_tasks(
     )
 
 
-@router.get("/tasks/{task_id}", response_model=TaskOut)
+@router.get("/tasks/{task_id}", response_model=Dict[str, Any])
 async def get_task(task_id: str, current_user: User = Depends(get_current_user)):
     task = await planner_service.get_task_by_id(str(current_user.id), task_id)
     if not task:
@@ -116,7 +115,7 @@ async def get_task(task_id: str, current_user: User = Depends(get_current_user))
     return task
 
 
-@router.patch("/tasks/{task_id}", response_model=TaskOut)
+@router.patch("/tasks/{task_id}", response_model=Dict[str, Any])
 async def update_task(
     task_id: str,
     task_update: TaskUpdate,
@@ -134,11 +133,11 @@ async def update_task(
         await broadcast_task_updated(
             current_user.id,
             {
-                "id": str(updated.id),
-                "title": updated.title,
-                "status": updated.status,
-                "priority": updated.priority,
-                "category": updated.category,
+                "id": str(updated.get("id")),
+                "title": updated.get("title"),
+                "status": updated.get("status"),
+                "priority": updated.get("priority"),
+                "category": updated.get("category"),
             },
         )
     except Exception:
@@ -146,7 +145,7 @@ async def update_task(
     return updated
 
 
-@router.post("/tasks/{task_id}/start", response_model=TaskOut)
+@router.post("/tasks/{task_id}/start", response_model=Dict[str, Any])
 async def start_task(task_id: str, current_user: User = Depends(get_current_user)):
     result = await planner_service.start_task(str(current_user.id), task_id)
     if "error" in result:

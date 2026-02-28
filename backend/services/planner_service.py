@@ -1384,7 +1384,7 @@ class PlannerService:
                 
                 result = await db.execute(query)
                 tasks = result.scalars().all()
-                return tasks
+                return [self._task_to_dict(task) for task in tasks]
         except Exception as e:
             logger.error(f"Failed to get tasks: {e}")
             return []
@@ -1505,7 +1505,8 @@ class PlannerService:
                 result = await db.execute(
                     select(Task).where(Task.id == int(task_id), Task.user_id == int(user_id)).options(joinedload(Task.goal))
                 )
-                return result.scalar_one_or_none()
+                task = result.scalar_one_or_none()
+                return self._task_to_dict(task) if task else None
         except Exception as e:
             logger.error(f"Failed to get task {task_id}: {e}")
             return None
@@ -1629,7 +1630,7 @@ class PlannerService:
                     except Exception as e:
                         logger.error(f"V2 lifecycle recompute failed on update_task: {e}")
                 
-                return task
+                return self._task_to_dict(task)
         except Exception as e:
             logger.error(f"Failed to update task {task_id}: {e}")
             return None
@@ -2905,7 +2906,8 @@ class PlannerService:
                 if not user:
                     return []
                 prefs = dict(user.preferences) if isinstance(user.preferences, dict) else {}
-                return list(prefs.get("task_recurrence", []))
+                patterns = prefs.get("task_recurrence", [])
+                return [p for p in patterns if isinstance(p, dict) and p.get("active", True)]
         except Exception as e:
             logger.error(f"Failed to fetch task recurring patterns: {e}")
             return []

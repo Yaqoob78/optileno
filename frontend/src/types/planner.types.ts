@@ -34,6 +34,10 @@ export interface Task {
   goalId?: string;
   goalTitle?: string;
   meta?: any;
+  subtasks?: Array<{ title: string; completed: boolean }>;
+  depends_on_task_id?: string | number | null;
+  is_recurring?: boolean;
+  recurrence_pattern_id?: string | null;
 }
 
 // Goal types
