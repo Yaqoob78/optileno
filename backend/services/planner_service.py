@@ -2517,8 +2517,12 @@ class PlannerService:
             if not session:
                 return None
             schedule = self._deep_work_schedule(session)
-            if schedule.get("status") != "active":
-                return {"error": "Can only pause active sessions."}
+            current_status = schedule.get("status")
+            # Idempotent: if already paused, return success
+            if current_status == "paused":
+                return self._map_to_deep_work_out(session)
+            if current_status != "active":
+                return {"error": f"Can only pause active sessions (current: {current_status})."}
             schedule["status"] = "paused"
             schedule["paused_at"] = self._utc_now().isoformat()
             session.schedule = schedule
@@ -2549,8 +2553,12 @@ class PlannerService:
             if not session:
                 return None
             schedule = self._deep_work_schedule(session)
-            if schedule.get("status") != "paused":
-                return {"error": "Can only resume paused sessions."}
+            current_status = schedule.get("status")
+            # Idempotent: if already active, return success
+            if current_status == "active":
+                return self._map_to_deep_work_out(session)
+            if current_status != "paused":
+                return {"error": f"Can only resume paused sessions (current: {current_status})."}
             
             paused_at_str = schedule.get("paused_at")
             if paused_at_str:
@@ -2591,8 +2599,11 @@ class PlannerService:
                 return None
             schedule = self._deep_work_schedule(session)
             current_status = schedule.get("status")
+            # Idempotent: if already cancelled, return success
+            if current_status == "cancelled":
+                return self._map_to_deep_work_out(session)
             # Only block cancel for truly terminal statuses
-            if current_status in {"completed", "cancelled", "missed"}:
+            if current_status in {"completed", "missed"}:
                 return {"error": f"This deep work session cannot be cancelled (status: {current_status})."}
             schedule["status"] = "cancelled"
             schedule["cancelled_at"] = self._utc_now().isoformat()

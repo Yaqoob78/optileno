@@ -714,7 +714,7 @@ async def get_planner_dashboard(user_id: str) -> Dict[str, Any]:
         tasks = await planner_service.get_active_tasks(user_id)
         goals = await planner_service.get_user_goals(user_id)
         habits = await planner_service.get_user_habits(user_id)
-        active_session = await planner_service.get_latest_session(user_id)
+        active_session = await planner_service.get_active_deep_work(user_id)
         
         # Calculate stats
         today = datetime.utcnow().date()
