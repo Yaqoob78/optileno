@@ -1814,8 +1814,15 @@ class PlannerService:
     # ─────────────────────────────────────────────────────────────
 
     def _deep_work_schedule(self, session: Any) -> dict[str, Any]:
-        if isinstance(getattr(session, "schedule", None), dict):
-            return dict(session.schedule)
+        schedule = getattr(session, "schedule", None)
+        if isinstance(schedule, str):
+            import json
+            try:
+                schedule = json.loads(schedule)
+            except Exception:
+                return {}
+        if isinstance(schedule, dict):
+            return dict(schedule)
         return {}
 
     def _parse_deep_work_datetime(self, value: Any) -> Optional[datetime]:
