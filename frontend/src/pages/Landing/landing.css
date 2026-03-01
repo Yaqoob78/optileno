@@ -226,28 +226,28 @@ body {
     drop-shadow(0 0 12px rgba(96, 165, 250, 0.7)) drop-shadow(0 0 24px rgba(59, 130, 246, 0.6)) drop-shadow(0 0 42px rgba(251, 191, 36, 0.5));
 }
 
-.nav-logo:hover .logo-text {
+.landing-nav .nav-logo:hover .logo-text {
   color: #fffaf0;
   text-shadow:
     0 0 12px rgba(96, 165, 250, 0.7),
     0 0 24px rgba(251, 191, 36, 0.5);
 }
 
-.logo-text {
+.landing-nav .logo-text {
   font-weight: 700;
   font-size: 1.08rem;
   letter-spacing: 0.01em;
 }
 
-.nav-actions {
+.landing-nav .nav-actions {
   display: flex;
   align-items: center;
   gap: 0.65rem;
 }
 
-.nav-link,
-.nav-btn-primary,
-.nav-btn-access {
+.landing-nav .nav-link,
+.landing-nav .nav-btn-primary,
+.landing-nav .nav-btn-access {
   border: 0;
   border-radius: 10px;
   font-size: 0.84rem;
@@ -255,30 +255,30 @@ body {
   cursor: pointer;
 }
 
-.nav-link {
+.landing-nav .nav-link {
   color: var(--muted);
   background: transparent;
   transition: color 200ms ease;
 }
 
-.nav-link:hover {
+.landing-nav .nav-link:hover {
   color: #d0deed;
 }
 
-.nav-btn-access {
+.landing-nav .nav-btn-access {
   color: #dbeafe;
   border: 1px solid rgba(96, 165, 250, 0.4);
   background: linear-gradient(120deg, rgba(37, 99, 235, 0.28), rgba(30, 64, 175, 0.2));
 }
 
-.nav-btn-access:hover {
+.landing-nav .nav-btn-access:hover {
   color: #eff6ff;
   border-color: rgba(147, 197, 253, 0.75);
   box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
 }
 
 /* Gold CTA — nav */
-.nav-cta-gold {
+.landing-nav .nav-cta-gold {
   color: #1a0f00 !important;
   font-weight: 700;
   background: linear-gradient(120deg, var(--cta-gold-from), var(--cta-gold-to)) !important;
@@ -288,7 +288,7 @@ body {
   gap: 0.35rem;
 }
 
-.nav-cta-gold:hover {
+.landing-nav .nav-cta-gold:hover {
   box-shadow:
     0 8px 30px rgba(251, 191, 36, 0.45),
     0 0 40px rgba(251, 191, 36, 0.3) !important;
@@ -1488,19 +1488,19 @@ body {
     justify-content: center;
   }
 
-  .nav-actions {
+  .landing-nav .nav-actions {
     width: 100%;
     justify-content: center;
     flex-wrap: wrap;
   }
 
-  .logo-text {
+  .landing-nav .logo-text {
     font-size: 0.95rem;
   }
 
-  .nav-link,
-  .nav-btn-primary,
-  .nav-btn-access {
+  .landing-nav .nav-link,
+  .landing-nav .nav-btn-primary,
+  .landing-nav .nav-btn-access {
     padding: 0.5rem 0.68rem;
     font-size: 0.79rem;
   }

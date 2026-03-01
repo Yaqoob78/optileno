@@ -14,6 +14,8 @@ import json
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
+from sqlalchemy import select, text
+from sqlalchemy.ext.asyncio import AsyncSession
 from backend.db.database import AsyncSessionLocal, get_db
 from backend.db.models import Plan
 from backend.services.entitlements_service import is_ultra_user
@@ -349,14 +351,16 @@ class PlannerService:
         try:
             async for db in get_db():
                 result = await db.execute(
-                    """
+                    text(
+                        """
                     SELECT created_at, schedule
                     FROM plans
                     WHERE user_id = :user_id
                       AND plan_type = 'deep_work'
                     ORDER BY created_at DESC
                     LIMIT 1
-                    """,
+                        """
+                    ),
                     {"user_id": int(user_id)},
                 )
 
@@ -369,6 +373,7 @@ class PlannerService:
                     "data": row[1],
                     "status": "active",
                 }
+            return None
 
         except Exception as e:
             logger.warning(f"Failed to fetch deep work session: {e}")
@@ -381,13 +386,15 @@ class PlannerService:
         try:
             async for db in get_db():
                 result = await db.execute(
-                    """
+                    text(
+                        """
                     SELECT created_at, plan_type, schedule
                     FROM plans
                     WHERE user_id = :user_id
                     ORDER BY created_at DESC
                     LIMIT 1
-                    """,
+                        """
+                    ),
                     {"user_id": int(user_id)},
                 )
 
@@ -400,6 +407,7 @@ class PlannerService:
                     "plan_type": row[1],
                     "data": row[2],
                 }
+            return None
 
         except Exception as e:
             logger.warning(f"Failed to fetch plan: {e}")
@@ -2906,9 +2914,7 @@ class PlannerService:
     # Singleton instance
 
     async def get_task_recurrence_patterns(self, user_id: str) -> list[dict]:
-        from backend.db.session import AsyncSessionLocal
         from backend.db.models import User
-        from sqlalchemy import select
 
         try:
             user_id_int = int(user_id)
@@ -2929,9 +2935,7 @@ class PlannerService:
             return []
 
     async def deactivate_task_recurrence_pattern(self, user_id: str, pattern_id: str) -> bool:
-        from backend.db.session import AsyncSessionLocal
         from backend.db.models import User
-        from sqlalchemy import select
 
         try:
             user_id_int = int(user_id)
