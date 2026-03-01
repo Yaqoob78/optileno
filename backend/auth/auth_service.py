@@ -16,7 +16,7 @@ from backend.schemas.auth import UserRegister, UserLogin
 from backend.services.email_service import email_service
 from backend.services.entitlements_service import normalize_plan_tier, canonical_plan_type
 from backend.utils.owner import is_owner_email
-from backend.utils.access_grants import get_access_grant, get_active_access_grant
+from backend.utils.access_grants import get_access_grant
 from backend.core.password_policy import (
     PASSWORD_POLICY_MESSAGE,
     validate_password_policy,
@@ -296,7 +296,8 @@ class AuthService:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
 
         user_email = str(getattr(user, "email", "") or "").strip().lower()
-        if user_email and get_access_grant(user_email) and not get_active_access_grant(user_email):
+        grant = await get_access_grant(user_email, db) if user_email else None
+        if grant and not grant.get("is_currently_active"):
             await db.execute(
                 update(RefreshToken)
                 .where(RefreshToken.user_id == user_id_int)

@@ -218,6 +218,33 @@ export interface SecuritySettings {
   }>;
 }
 
+export interface AccessGrant {
+  email: string;
+  tier: 'explorer' | 'ultra';
+  active: boolean;
+  grantedAt: string | null;
+  updatedAt: string | null;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  reason?: string | null;
+  grantedByUserId?: number | null;
+  storage: string;
+  isCurrentlyActive: boolean;
+}
+
+export interface AccessGrantListResponse {
+  grants: AccessGrant[];
+  total: number;
+}
+
+export interface AccessGrantUpsertRequest {
+  email: string;
+  tier: 'explorer' | 'ultra';
+  days?: number;
+  expiresAt?: string;
+  reason?: string;
+}
+
 class UserService {
   /**
    * Login user
@@ -568,6 +595,29 @@ class UserService {
     }
 
     return api.get(`/admin/users?${params}`);
+  }
+
+  /**
+   * List access grants (admin only)
+   */
+  async listAccessGrants(): Promise<ApiResponse<AccessGrantListResponse>> {
+    return api.get<AccessGrantListResponse>('/users/admin/access-grants');
+  }
+
+  /**
+   * Create or renew an access grant (admin only)
+   */
+  async grantAccess(payload: AccessGrantUpsertRequest): Promise<ApiResponse<AccessGrant>> {
+    return api.post<AccessGrant>('/users/admin/access-grants', payload);
+  }
+
+  /**
+   * Revoke an access grant (admin only)
+   */
+  async revokeAccessGrant(email: string): Promise<ApiResponse<{ status: string; email: string }>> {
+    return api.delete<{ status: string; email: string }>(
+      `/users/admin/access-grants/${encodeURIComponent(email)}`
+    );
   }
 
   /**

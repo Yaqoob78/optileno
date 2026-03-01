@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status, Response
 from typing import List, Optional, Any, Dict
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
 import logging
@@ -8,12 +8,22 @@ from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func
 
-from backend.core.security import get_current_user
+from backend.core.security import get_current_user, get_current_active_superuser
 from backend.db.database import get_db
 from backend.db.models import User, Notification, ChatSession, ChatMessage
 from backend.auth.auth_utils import verify_password, get_password_hash
 from backend.app.config import settings
 from backend.core.password_policy import validate_password_policy
+from backend.schemas.access_grants import (
+    AccessGrantListResponse,
+    AccessGrantResponse,
+    AccessGrantUpsertRequest,
+)
+from backend.utils.access_grants import (
+    list_access_grants,
+    revoke_access_grant,
+    upsert_access_grant,
+)
 from backend.utils.user_profile import (
     build_user_profile,
     merge_preferences,
@@ -68,6 +78,22 @@ class NotificationResponse(BaseModel):
     read: bool
     createdAt: str
     priority: str
+
+
+def _serialize_access_grant_response(record: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "email": record.get("email"),
+        "tier": record.get("tier"),
+        "active": bool(record.get("active", False)),
+        "grantedAt": record.get("granted_at"),
+        "updatedAt": record.get("updated_at"),
+        "expiresAt": record.get("expires_at"),
+        "revokedAt": record.get("revoked_at"),
+        "reason": record.get("reason"),
+        "grantedByUserId": record.get("granted_by_user_id"),
+        "storage": record.get("storage") or "database",
+        "isCurrentlyActive": bool(record.get("is_currently_active", False)),
+    }
 
 
 @router.get("/me")
@@ -502,14 +528,56 @@ async def get_subscription(
     }
 
 
+@router.get("/admin/access-grants", response_model=AccessGrantListResponse, tags=["Admin"])
+async def get_admin_access_grants(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_superuser),
+):
+    records = await list_access_grants(db, include_inactive=True)
+    grants = [_serialize_access_grant_response(record) for record in records]
+    return {"grants": grants, "total": len(grants)}
+
+
+@router.post("/admin/access-grants", response_model=AccessGrantResponse, tags=["Admin"])
+async def create_admin_access_grant(
+    payload: AccessGrantUpsertRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_superuser),
+):
+    expires_at = payload.expiresAt
+    if payload.days is not None:
+        expires_at = datetime.now(timezone.utc) + timedelta(days=payload.days)
+
+    record = await upsert_access_grant(
+        email=str(payload.email),
+        tier=payload.tier,
+        db=db,
+        expires_at=expires_at,
+        granted_by_user_id=current_user.id,
+        reason=payload.reason,
+    )
+    return _serialize_access_grant_response(record)
+
+
+@router.delete("/admin/access-grants/{email:path}", tags=["Admin"])
+async def delete_admin_access_grant(
+    email: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_superuser),
+):
+    del current_user
+    success = await revoke_access_grant(email, db)
+    if not success:
+        raise HTTPException(status_code=404, detail="Access grant not found")
+
+    return {"status": "revoked", "email": str(email).strip().lower()}
+
+
 @router.get("/admin/dashboard", tags=["Admin"])
 async def get_admin_dashboard(
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_active_superuser)
 ):
     """Admin-only data dump for debugging/management"""
-    if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="Forbidden")
-
     return {
         "status": "admin_access_granted",
         "system_stats": {

@@ -36,11 +36,11 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from backend.utils.access_grants import (  # noqa: E402
     ACCESS_GRANTS_FILE,
-    _load_payload,
-    get_access_grant,
-    get_active_access_grant,
-    revoke_access_grant,
-    upsert_access_grant,
+    get_access_grant_sync,
+    get_active_access_grant_sync,
+    list_access_grants_sync,
+    revoke_access_grant_sync,
+    upsert_access_grant_sync,
 )
 
 
@@ -61,14 +61,18 @@ def cmd_grant(args: argparse.Namespace) -> None:
     if args.days:
         expires_at = datetime.now(timezone.utc) + timedelta(days=args.days)
 
-    record = upsert_access_grant(email, tier, expires_at)
+    record = upsert_access_grant_sync(email, tier, expires_at)
+    storage = record.get("storage") or "database"
 
     print("\n[OK] Access GRANTED successfully!")
     print(f"    Email    : {email}")
     print(f"    Tier     : {record['tier'].upper()}")
     print(f"    Active   : {record['active']}")
     print(f"    Expires  : {record.get('expires_at') or 'Never'}")
-    print(f"    Saved to : {ACCESS_GRANTS_FILE.resolve()}")
+    if storage == "legacy_file":
+        print(f"    Saved to : {ACCESS_GRANTS_FILE.resolve()}")
+    else:
+        print("    Saved to : database access_grants table")
     print()
     print("  The user can now register/login via the /api/v1/auth/access/register endpoint.")
     print()
@@ -76,7 +80,7 @@ def cmd_grant(args: argparse.Namespace) -> None:
 
 def cmd_revoke(args: argparse.Namespace) -> None:
     email = args.email.strip().lower()
-    success = revoke_access_grant(email)
+    success = revoke_access_grant_sync(email)
 
     if success:
         print(f"\n[OK] Access REVOKED for {email}")
@@ -88,8 +92,8 @@ def cmd_revoke(args: argparse.Namespace) -> None:
 def cmd_check(args: argparse.Namespace) -> None:
     email = args.email.strip().lower()
 
-    raw_record = get_access_grant(email)
-    active_record = get_active_access_grant(email)
+    raw_record = get_access_grant_sync(email)
+    active_record = get_active_access_grant_sync(email)
 
     print(f"\n[INFO] Access check for: {email}")
     print()
@@ -117,24 +121,23 @@ def cmd_check(args: argparse.Namespace) -> None:
 
 
 def cmd_list(_args: argparse.Namespace) -> None:
-    payload = _load_payload()
-    grants = payload.get("grants", {})
+    grants = list_access_grants_sync(include_inactive=True)
 
     if not grants:
         print("\n[INFO] No grants found.\n")
         return
 
     print(f"\n[INFO] All access grants ({len(grants)} total):\n")
-    print(f"  {'Email':<35} {'Tier':<10} {'Active':<8} {'Expires':<25}")
-    print(f"  {'-' * 35} {'-' * 10} {'-' * 8} {'-' * 25}")
+    print(f"  {'Email':<35} {'Tier':<10} {'Active':<8} {'Expires':<25} {'Store':<12}")
+    print(f"  {'-' * 35} {'-' * 10} {'-' * 8} {'-' * 25} {'-' * 12}")
 
-    for email, record in sorted(grants.items()):
-        if not isinstance(record, dict):
-            continue
+    for record in grants:
+        email = str(record.get("email", ""))
         tier = str(record.get("tier", "?")).upper()
-        active = "Yes" if record.get("active", True) else "No"
+        active = "Yes" if record.get("is_currently_active", False) else "No"
         expires = record.get("expires_at") or "Never"
-        print(f"  {email:<35} {tier:<10} {active:<8} {expires:<25}")
+        storage = str(record.get("storage", "database"))
+        print(f"  {email:<35} {tier:<10} {active:<8} {expires:<25} {storage:<12}")
 
     print()
 

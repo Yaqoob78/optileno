@@ -6,10 +6,9 @@ import {
   Database,
   User,
   Info,
-  ChevronRight,
   LogOut,
   CreditCard,
-  Sparkles
+  ShieldCheck,
 } from 'lucide-react';
 import GeneralSettings from '../../components/settings/GeneralSettings';
 import NotificationSettings from '../../components/settings/NotificationSettings';
@@ -17,6 +16,7 @@ import DataSettings from '../../components/settings/DataSettings';
 import ProfileSettings from '../../components/settings/ProfileSettings';
 import AboutSettings from '../../components/settings/AboutSettings';
 import BillingSettings from '../../components/settings/BillingSettings';
+import AdminAccessSettings from '../../components/settings/AdminAccessSettings';
 import { useUserStore } from '../../stores/useUserStore';
 import { useNavigate } from 'react-router-dom';
 import { userService } from '../../services/api/user.service';
@@ -32,7 +32,9 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<string>('general');
   const logout = useUserStore((state) => state.logout);
   const setProfile = useUserStore((state) => state.setProfile);
+  const profile = useUserStore((state) => state.profile);
   const navigate = useNavigate();
+  const isAdmin = profile?.role === 'admin';
 
   useEffect(() => {
     let cancelled = false;
@@ -54,6 +56,12 @@ export default function SettingsPage() {
     };
   }, [setProfile]);
 
+  useEffect(() => {
+    if (!isAdmin && activeTab === 'admin') {
+      setActiveTab('general');
+    }
+  }, [activeTab, isAdmin]);
+
   const handleLogout = () => {
     logout();
     navigate('/');
@@ -65,6 +73,7 @@ export default function SettingsPage() {
     { id: 'data', label: 'Data', icon: <Database size={18} /> },
     { id: 'profile', label: 'Profile', icon: <User size={18} /> },
     { id: 'billing', label: 'Billing', icon: <CreditCard size={18} /> },
+    ...(isAdmin ? [{ id: 'admin', label: 'Access', icon: <ShieldCheck size={18} /> }] : []),
     { id: 'about', label: 'About', icon: <Info size={18} /> },
   ];
 
@@ -82,6 +91,8 @@ export default function SettingsPage() {
         return <AboutSettings />;
       case 'billing':
         return <BillingSettings />;
+      case 'admin':
+        return <AdminAccessSettings />;
       default:
         return <GeneralSettings />;
     }

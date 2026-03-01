@@ -128,12 +128,12 @@ async def register_with_access(
 ):
     """
     Invite-only access registration/login path.
-    User must be explicitly granted via scripts/grant_free_access.py first.
+    User must be explicitly granted via an admin-managed access grant first.
     """
     normalized_email = str(user_in.email).strip().lower()
     await auth_rate_limiter.enforce(request=request, action="register", identifier=normalized_email)
 
-    grant = get_active_access_grant(normalized_email)
+    grant = await get_active_access_grant(normalized_email, db)
     if not grant:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

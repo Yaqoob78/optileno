@@ -503,6 +503,26 @@ class UserInsight(Base):
     dismissed_at = Column(DateTime(timezone=True))
 
 # ==================================================
+# ACCESS GRANT
+# ==================================================
+class AccessGrant(Base):
+    """Admin-managed access grants for invite-only registration."""
+
+    __tablename__ = "access_grants"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    tier = Column(String, nullable=False, default="explorer")
+    active = Column(Boolean, nullable=False, default=True)
+    granted_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+    reason = Column(Text, nullable=True)
+    granted_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+
+
+# ==================================================
 # REFRESH TOKEN
 # ==================================================
 class RefreshToken(Base):
@@ -834,6 +854,7 @@ __all__ = [
     "AIIntelligenceScore",
     "RefreshToken",
     "PasswordResetToken",
+    "AccessGrant",
     # Phase 3 models
     "Notification",
     "TaskShare",
