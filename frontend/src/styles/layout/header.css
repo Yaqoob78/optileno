@@ -1,17 +1,19 @@
 /* ========== HEADER CONTAINER ========== */
 .premium-header {
-  position: sticky;
-  top: 0;
-  z-index: 40;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 40 !important;
   background: linear-gradient(180deg,
       rgba(25, 25, 35, 0.95) 0%,
-      rgba(20, 20, 30, 0.98) 100%);
+      rgba(20, 20, 30, 0.98) 100%) !important;
   backdrop-filter: blur(25px);
   -webkit-backdrop-filter: blur(25px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
   box-shadow:
     0 4px 30px rgba(0, 0, 0, 0.25),
     0 1px 0 rgba(255, 255, 255, 0.05) inset;
+  /* Prevent Tailwind preflight from breaking header */
+  isolation: isolate;
 }
 
 .header-container {
@@ -19,9 +21,9 @@
 }
 
 .header-content {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
   height: 4.5rem;
   max-width: 100%;
   position: relative;
@@ -37,14 +39,16 @@
 }
 
 .header-title {
-  font-size: 1.5rem;
-  font-weight: 500;
-  color: #f8fafc;
+  font-size: 1.5rem !important;
+  font-weight: 500 !important;
+  color: #f8fafc !important;
   letter-spacing: -0.02em;
-  -webkit-text-fill-color: currentColor;
+  -webkit-text-fill-color: #f8fafc !important;
   position: relative;
   padding-right: 0.5rem;
   text-shadow: 0 1px 2px rgba(2, 6, 23, 0.5);
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 .header-title::after {
@@ -67,12 +71,14 @@
 
 /* ========== HEADER ACTIONS ========== */
 .header-actions {
-  display: flex;
-  align-items: center;
+  display: flex !important;
+  align-items: center !important;
   gap: 0.75rem;
   margin-left: auto;
   flex-shrink: 0;
   flex-wrap: nowrap;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 /* ========== SEARCH COMPONENT ========== */
@@ -186,17 +192,18 @@
 .notification-button {
   width: 2.75rem;
   height: 2.75rem;
-  display: flex;
+  display: flex !important;
   align-items: center;
   justify-content: center;
-  background: rgba(40, 40, 50, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(40, 40, 50, 0.5) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
   border-radius: 0.875rem;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.7) !important;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   flex: 0 0 auto;
+  overflow: visible !important;
 }
 
 .notification-button:hover {

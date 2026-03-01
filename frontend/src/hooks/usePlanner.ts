@@ -427,13 +427,20 @@ export const usePlanner = (): UsePlannerReturn => {
   }, [clearActiveDeepWork, incrementDeepWorkCount, resolveActiveDeepWorkSessionId]);
 
   const pauseDeepWork = useCallback(async () => {
-    const resolved = await resolveActiveDeepWorkSessionId();
-    if (!resolved.sessionId) {
-      return { success: false, error: resolved.error || 'No active session' };
+    // Prefer locally cached session ID to avoid race conditions
+    const localId = activeDeepWork?.id ? String(activeDeepWork.id).trim() : null;
+    let sessionId = localId;
+
+    if (!sessionId) {
+      const resolved = await resolveActiveDeepWorkSessionId();
+      if (!resolved.sessionId) {
+        return { success: false, error: resolved.error || 'No active session' };
+      }
+      sessionId = resolved.sessionId;
     }
 
     try {
-      const res = await plannerApi.pauseDeepWork(resolved.sessionId);
+      const res = await plannerApi.pauseDeepWork(sessionId);
       if (res.success && res.data) {
         const returnedStatus = (res.data as any).status;
         // If the session came back in a terminal state, clear it from the UI
@@ -448,16 +455,23 @@ export const usePlanner = (): UsePlannerReturn => {
     } catch (err: any) {
       return { success: false, error: err.message };
     }
-  }, [clearActiveDeepWork, resolveActiveDeepWorkSessionId, setActiveDeepWork]);
+  }, [activeDeepWork, clearActiveDeepWork, resolveActiveDeepWorkSessionId, setActiveDeepWork]);
 
   const resumeDeepWork = useCallback(async () => {
-    const resolved = await resolveActiveDeepWorkSessionId();
-    if (!resolved.sessionId) {
-      return { success: false, error: resolved.error || 'No active session' };
+    // Prefer locally cached session ID to avoid race conditions
+    const localId = activeDeepWork?.id ? String(activeDeepWork.id).trim() : null;
+    let sessionId = localId;
+
+    if (!sessionId) {
+      const resolved = await resolveActiveDeepWorkSessionId();
+      if (!resolved.sessionId) {
+        return { success: false, error: resolved.error || 'No active session' };
+      }
+      sessionId = resolved.sessionId;
     }
 
     try {
-      const res = await plannerApi.resumeDeepWork(resolved.sessionId);
+      const res = await plannerApi.resumeDeepWork(sessionId);
       if (res.success && res.data) {
         const returnedStatus = (res.data as any).status;
         // If the session came back in a terminal state, clear it from the UI
@@ -472,7 +486,7 @@ export const usePlanner = (): UsePlannerReturn => {
     } catch (err: any) {
       return { success: false, error: err.message };
     }
-  }, [clearActiveDeepWork, resolveActiveDeepWorkSessionId, setActiveDeepWork]);
+  }, [activeDeepWork, clearActiveDeepWork, resolveActiveDeepWorkSessionId, setActiveDeepWork]);
 
   const cancelDeepWork = useCallback(async () => {
     // Prefer locally cached session ID to avoid race conditions where
