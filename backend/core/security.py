@@ -17,6 +17,7 @@ from backend.db.models import User
 from backend.app.config import settings
 from backend.core.redis_rate_limiter import check_api_rate_limit, check_ai_quota_limit
 from backend.utils.owner import is_owner_email
+from backend.utils.access_grants import get_access_grant, get_active_access_grant
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,8 @@ PAYMENT_GATE_ALLOWED_ROUTES = {
     ("GET", "/users/me"),
     ("GET", "/users/me/subscription"),
 }
+
+ACCESS_GRANT_EXPIRED_DETAIL = "Access grant expired. Contact support to renew access."
 
 
 def _is_payment_gate_exempt(request: Request) -> bool:
@@ -140,6 +143,20 @@ async def get_current_user(
                 user.tier = "ultra"
                 user.plan_type = "ULTRA"
                 user.is_superuser = True
+
+    user_email = str(getattr(user, "email", "") or "").strip().lower()
+    if user_email and get_access_grant(user_email) and not get_active_access_grant(user_email):
+        user.subscription_status = "canceled"
+        user.trial_ends_at = None
+        try:
+            await db.commit()
+        except Exception as exc:
+            logger.warning("Expired access grant sync failed for user %s: %s", getattr(user, "id", "unknown"), exc)
+            await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=ACCESS_GRANT_EXPIRED_DETAIL,
+        )
 
     # Release any open auth transaction immediately so long-running handlers don't
     # pin a pooled connection for the full request duration.

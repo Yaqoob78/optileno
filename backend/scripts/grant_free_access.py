@@ -25,7 +25,6 @@ Usage examples:
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -35,13 +34,13 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from backend.utils.access_grants import (
-    upsert_access_grant,
-    revoke_access_grant,
-    get_access_grant,
-    get_active_access_grant,
+from backend.utils.access_grants import (  # noqa: E402
     ACCESS_GRANTS_FILE,
     _load_payload,
+    get_access_grant,
+    get_active_access_grant,
+    revoke_access_grant,
+    upsert_access_grant,
 )
 
 
@@ -49,8 +48,8 @@ def _fmt_record(record: dict | None, label: str = "") -> str:
     if not record:
         return f"  {label}No record found."
     lines = [f"  {label}"]
-    for k, v in record.items():
-        lines.append(f"    {k}: {v}")
+    for key, value in record.items():
+        lines.append(f"    {key}: {value}")
     return "\n".join(lines)
 
 
@@ -64,7 +63,7 @@ def cmd_grant(args: argparse.Namespace) -> None:
 
     record = upsert_access_grant(email, tier, expires_at)
 
-    print(f"\n✅  Access GRANTED successfully!")
+    print("\n[OK] Access GRANTED successfully!")
     print(f"    Email    : {email}")
     print(f"    Tier     : {record['tier'].upper()}")
     print(f"    Active   : {record['active']}")
@@ -80,9 +79,9 @@ def cmd_revoke(args: argparse.Namespace) -> None:
     success = revoke_access_grant(email)
 
     if success:
-        print(f"\n🚫  Access REVOKED for {email}")
+        print(f"\n[OK] Access REVOKED for {email}")
     else:
-        print(f"\n⚠️  No active grant found for {email}")
+        print(f"\n[WARN] No active grant found for {email}")
     print()
 
 
@@ -92,11 +91,11 @@ def cmd_check(args: argparse.Namespace) -> None:
     raw_record = get_access_grant(email)
     active_record = get_active_access_grant(email)
 
-    print(f"\n🔍  Access check for: {email}")
+    print(f"\n[INFO] Access check for: {email}")
     print()
 
     if not raw_record:
-        print("  ❌ No grant record exists for this email.")
+        print("  [X] No grant record exists for this email.")
         print()
         return
 
@@ -105,7 +104,7 @@ def cmd_check(args: argparse.Namespace) -> None:
     print()
 
     if active_record:
-        print(f"  ✅ Access is ACTIVE — tier: {active_record['tier'].upper()}")
+        print(f"  [OK] Access is ACTIVE - tier: {active_record['tier'].upper()}")
         expires = active_record.get("expires_at_dt")
         if expires:
             remaining = expires - datetime.now(timezone.utc)
@@ -113,7 +112,7 @@ def cmd_check(args: argparse.Namespace) -> None:
         else:
             print("     Expires: Never (lifetime)")
     else:
-        print("  ❌ Access is INACTIVE (revoked or expired)")
+        print("  [X] Access is INACTIVE (revoked or expired)")
     print()
 
 
@@ -122,12 +121,12 @@ def cmd_list(_args: argparse.Namespace) -> None:
     grants = payload.get("grants", {})
 
     if not grants:
-        print("\n📋  No grants found.\n")
+        print("\n[INFO] No grants found.\n")
         return
 
-    print(f"\n📋  All access grants ({len(grants)} total):\n")
+    print(f"\n[INFO] All access grants ({len(grants)} total):\n")
     print(f"  {'Email':<35} {'Tier':<10} {'Active':<8} {'Expires':<25}")
-    print(f"  {'-'*35} {'-'*10} {'-'*8} {'-'*25}")
+    print(f"  {'-' * 35} {'-' * 10} {'-' * 8} {'-' * 25}")
 
     for email, record in sorted(grants.items()):
         if not isinstance(record, dict):
@@ -142,31 +141,27 @@ def cmd_list(_args: argparse.Namespace) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Optileno Access Grant Manager — grant, revoke, or inspect user access from the terminal.",
+        description="Optileno Access Grant Manager - grant, revoke, or inspect user access from the terminal.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
-    # --- grant ---
     p_grant = sub.add_parser("grant", help="Grant access to a user")
     p_grant.add_argument("email", help="User email address")
     p_grant.add_argument("tier", choices=["explorer", "ultra"], help="Plan tier to grant")
     p_grant.add_argument("--days", type=int, default=None, help="Optional: expire after N days (omit for lifetime)")
     p_grant.set_defaults(func=cmd_grant)
 
-    # --- revoke ---
     p_revoke = sub.add_parser("revoke", help="Revoke access for a user")
     p_revoke.add_argument("email", help="User email address")
     p_revoke.set_defaults(func=cmd_revoke)
 
-    # --- check ---
     p_check = sub.add_parser("check", help="Check access status for a user")
     p_check.add_argument("email", help="User email address")
     p_check.set_defaults(func=cmd_check)
 
-    # --- list ---
-    p_list = sub.add_parser("list", help="List all access grants")
+    p_list = sub.add_parser("list", help="List all grants")
     p_list.set_defaults(func=cmd_list)
 
     args = parser.parse_args()

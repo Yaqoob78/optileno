@@ -109,8 +109,13 @@ def _apply_access_grant_to_user(user: User, tier: str, expires_at) -> None:
     normalized_tier = PLAN_ULTRA if str(tier).strip().lower() == PLAN_ULTRA else "explorer"
     user.tier = normalized_tier
     user.plan_type = canonical_plan_type(normalized_tier)
-    user.subscription_status = "active" if normalized_tier == PLAN_ULTRA else "explorer"
-    user.subscription_starts_at = user.subscription_starts_at or datetime.now(timezone.utc)
+    user.subscription_starts_at = datetime.now(timezone.utc)
+    if normalized_tier == PLAN_ULTRA:
+        user.subscription_status = "active"
+        user.trial_ends_at = None
+    else:
+        user.subscription_status = "trialing" if expires_at else "explorer"
+        user.trial_ends_at = expires_at
     user.subscription_ends_at = expires_at
 
 

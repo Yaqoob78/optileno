@@ -16,6 +16,7 @@ from backend.schemas.auth import UserRegister, UserLogin
 from backend.services.email_service import email_service
 from backend.services.entitlements_service import normalize_plan_tier, canonical_plan_type
 from backend.utils.owner import is_owner_email
+from backend.utils.access_grants import get_access_grant, get_active_access_grant
 from backend.core.password_policy import (
     PASSWORD_POLICY_MESSAGE,
     validate_password_policy,
@@ -34,6 +35,8 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_REFRESH_TOKEN_DAYS = settings.REFRESH_TOKEN_EXPIRE_DAYS
 REMEMBER_ME_REFRESH_TOKEN_DAYS = max(settings.REFRESH_TOKEN_EXPIRE_DAYS, 30)
+
+ACCESS_GRANT_EXPIRED_DETAIL = "Access grant expired. Contact support to renew access."
 
 
 class AuthService:
@@ -291,6 +294,18 @@ class AuthService:
         user = user_result.scalar_one_or_none()
         if not user or not user.is_active:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
+
+        user_email = str(getattr(user, "email", "") or "").strip().lower()
+        if user_email and get_access_grant(user_email) and not get_active_access_grant(user_email):
+            await db.execute(
+                update(RefreshToken)
+                .where(RefreshToken.user_id == user_id_int)
+                .values(is_revoked=True)
+            )
+            user.subscription_status = "canceled"
+            user.trial_ends_at = None
+            await db.commit()
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=ACCESS_GRANT_EXPIRED_DETAIL)
 
         # Revoke old token and issue new ones (rotation for extra security)
         db_token.is_revoked = True

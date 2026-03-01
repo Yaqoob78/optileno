@@ -184,6 +184,7 @@ def build_user_profile(user: User) -> Dict[str, Any]:
 
     created_at = user.created_at or datetime.now(timezone.utc)
     updated_at = user.updated_at or created_at
+    subscription_expires_at = getattr(user, "trial_ends_at", None) or getattr(user, "subscription_ends_at", None)
     today_key = _usage_today_key(prefs.get("timezone", "UTC") if isinstance(prefs, dict) else "UTC")
     usage_date = _safe_iso_date(usage_time.get("date"))
     time_spent_today = _coerce_int(usage_time.get("minutes"), 0) if usage_date == today_key else 0
@@ -201,7 +202,7 @@ def build_user_profile(user: User) -> Dict[str, Any]:
         "subscription": {
             "tier": plan_tier,
             "status": getattr(user, "subscription_status", None) or "explorer",
-            "expiresAt": None,
+            "expiresAt": subscription_expires_at.isoformat() if subscription_expires_at else None,
             "features": ["all-features"] if plan_tier == PLAN_ULTRA else ["basic-chat", "basic-analytics"],
         },
         "entitlements": entitlements,
