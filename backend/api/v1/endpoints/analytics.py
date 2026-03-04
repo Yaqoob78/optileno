@@ -17,6 +17,12 @@ from backend.realtime.socket_manager import (
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+ANALYTICS_CACHE_TTLS = {
+    "daily": 60,
+    "weekly": 180,
+    "monthly": 300,
+}
+HEAVY_ANALYTICS_CACHE_TTL = 120
 
 class AnalyticsEventIn(BaseModel):
     event: str
@@ -44,6 +50,20 @@ def _fallback_payload(message: str, **extra: Any) -> Dict[str, Any]:
         "generated_at": datetime.utcnow().isoformat(),
         **extra,
     }
+
+
+def _analytics_cache_ttl(time_range: Optional[str], default: int = 60) -> int:
+    return ANALYTICS_CACHE_TTLS.get((time_range or "").strip().lower(), default)
+
+
+def _should_cache_analytics_payload(payload: Any) -> bool:
+    if not isinstance(payload, dict):
+        return False
+    if payload.get("error_fallback"):
+        return False
+    if payload.get("reason") in {"NO_DATA", "TEMPORARILY_UNAVAILABLE"}:
+        return False
+    return True
 
 @router.get("/metrics")
 async def get_realtime_metrics(user = Depends(get_current_user)):
@@ -331,7 +351,13 @@ async def get_focus_heatmap(
     """Get monthly focus heatmap (calendar grid)"""
     _require_ultra(user, "focus_heatmap")
     try:
+        from backend.core.cache import cache_service
         from backend.services.attention_integrity_service import attention_integrity_service
+
+        cache_key = f"analytics:focus:heatmap:{user.id}:{year or 'current'}:{month or 'current'}:{time_range}"
+        cached = await cache_service.get(cache_key)
+        if cached:
+            return cached
 
         heatmap_data = await attention_integrity_service.get_monthly_heatmap(user.id, year, month)
         window = await analytics_v2_service.resolve_window(user, time_range)
@@ -347,6 +373,8 @@ async def get_focus_heatmap(
                     "generated_at": datetime.utcnow().isoformat(),
                 }
             )
+        if _should_cache_analytics_payload(heatmap_data):
+            await cache_service.set(cache_key, heatmap_data, expire=HEAVY_ANALYTICS_CACHE_TTL)
         return heatmap_data
     except Exception as e:
         logger.error("Focus heatmap failed for user %s: %s", user.id, e, exc_info=True)
@@ -368,7 +396,13 @@ async def get_focus_stats(
     """Get comprehensive focus statistics for the stats panel"""
     _require_ultra(user, "focus_heatmap")
     try:
+        from backend.core.cache import cache_service
         from backend.services.attention_integrity_service import attention_integrity_service
+
+        cache_key = f"analytics:focus:stats:{user.id}:{time_range}"
+        cached = await cache_service.get(cache_key)
+        if cached:
+            return cached
 
         stats = await attention_integrity_service.get_focus_stats(user.id)
         window = await analytics_v2_service.resolve_window(user, time_range)
@@ -384,6 +418,8 @@ async def get_focus_stats(
                     "generated_at": datetime.utcnow().isoformat(),
                 }
             )
+        if _should_cache_analytics_payload(stats):
+            await cache_service.set(cache_key, stats, expire=HEAVY_ANALYTICS_CACHE_TTL)
         return stats
     except Exception as e:
         logger.error("Focus stats failed for user %s: %s", user.id, e, exc_info=True)
@@ -506,18 +542,15 @@ async def get_productivity_score_today(
     """Get today's productivity score with V3 context-aware breakdown."""
     try:
         from backend.core.cache import cache_service
-        tier = _plan_tier(current_user)
         cache_key = f"analytics:productivity:daily:{current_user.id}"
-        
-        if tier == "explorer":
-            cached = await cache_service.get(cache_key)
-            if cached:
-                return cached
-                
+
+        cached = await cache_service.get(cache_key)
+        if cached:
+            return cached
+
         result = await analytics_v2_service.productivity_score(current_user, "daily")
-        
-        if tier == "explorer" and result and not result.get("reason") == "NO_DATA":
-            await cache_service.set(cache_key, result, expire=900)
+        if _should_cache_analytics_payload(result):
+            await cache_service.set(cache_key, result, expire=_analytics_cache_ttl("daily"))
         return result
     except Exception as e:
         logger.error("Productivity score (daily) failed for user %s: %s", current_user.id, e, exc_info=True)
@@ -539,14 +572,24 @@ async def get_productivity_score_weekly(
 ):
     """Get weekly average productivity score."""
     try:
+        from backend.core.cache import cache_service
+
+        cache_key = f"analytics:productivity:weekly:{current_user.id}"
+        cached = await cache_service.get(cache_key)
+        if cached:
+            return cached
+
         result = await analytics_v2_service.productivity_score(current_user, "weekly")
         score = result.get("score")
-        return {
+        payload = {
             **result,
             "average": score,
             "period": "weekly",
             "days": 7,
         }
+        if _should_cache_analytics_payload(payload):
+            await cache_service.set(cache_key, payload, expire=_analytics_cache_ttl("weekly"))
+        return payload
     except Exception as e:
         logger.error("Productivity score (weekly) failed for user %s: %s", current_user.id, e, exc_info=True)
         return _fallback_payload(
@@ -570,14 +613,24 @@ async def get_productivity_score_monthly(
 ):
     """Get monthly average productivity score."""
     try:
+        from backend.core.cache import cache_service
+
+        cache_key = f"analytics:productivity:monthly:{current_user.id}"
+        cached = await cache_service.get(cache_key)
+        if cached:
+            return cached
+
         result = await analytics_v2_service.productivity_score(current_user, "monthly")
         score = result.get("score")
-        return {
+        payload = {
             **result,
             "average": score,
             "period": "monthly",
             "days": 30,
         }
+        if _should_cache_analytics_payload(payload):
+            await cache_service.set(cache_key, payload, expire=_analytics_cache_ttl("monthly"))
+        return payload
     except Exception as e:
         logger.error("Productivity score (monthly) failed for user %s: %s", current_user.id, e, exc_info=True)
         return _fallback_payload(
@@ -711,18 +764,15 @@ async def get_burnout_risk_today(
     _require_ultra(current_user, "burnout_risk")
     try:
         from backend.core.cache import cache_service
-        tier = _plan_tier(current_user)
         cache_key = f"analytics:burnout:daily:{current_user.id}"
-        
-        if tier == "explorer":
-            cached = await cache_service.get(cache_key)
-            if cached:
-                return cached
-                
+
+        cached = await cache_service.get(cache_key)
+        if cached:
+            return cached
+
         result = await analytics_v2_service.burnout_risk(current_user, "daily")
-        
-        if tier == "explorer" and result:
-            await cache_service.set(cache_key, result, expire=900)
+        if _should_cache_analytics_payload(result):
+            await cache_service.set(cache_key, result, expire=_analytics_cache_ttl("daily"))
         return result
     except Exception as e:
         logger.error("Burnout risk (daily) failed for user %s: %s", current_user.id, e, exc_info=True)
@@ -745,13 +795,23 @@ async def get_burnout_risk_weekly(
     """Get weekly average burnout risk."""
     _require_ultra(current_user, "burnout_risk")
     try:
+        from backend.core.cache import cache_service
+
+        cache_key = f"analytics:burnout:weekly:{current_user.id}"
+        cached = await cache_service.get(cache_key)
+        if cached:
+            return cached
+
         result = await analytics_v2_service.burnout_risk(current_user, "weekly")
-        return {
+        payload = {
             **result,
             "average_risk": result.get("risk"),
             "period": "weekly",
             "days": 7,
         }
+        if _should_cache_analytics_payload(payload):
+            await cache_service.set(cache_key, payload, expire=_analytics_cache_ttl("weekly"))
+        return payload
     except Exception as e:
         logger.error("Burnout risk (weekly) failed for user %s: %s", current_user.id, e, exc_info=True)
         return _fallback_payload(
@@ -776,13 +836,23 @@ async def get_burnout_risk_monthly(
     """Get monthly burnout risk."""
     _require_ultra(current_user, "burnout_risk")
     try:
+        from backend.core.cache import cache_service
+
+        cache_key = f"analytics:burnout:monthly:{current_user.id}"
+        cached = await cache_service.get(cache_key)
+        if cached:
+            return cached
+
         result = await analytics_v2_service.burnout_risk(current_user, "monthly")
-        return {
+        payload = {
             **result,
             "average_risk": result.get("risk"),
             "period": "monthly",
             "days": 30,
         }
+        if _should_cache_analytics_payload(payload):
+            await cache_service.set(cache_key, payload, expire=_analytics_cache_ttl("monthly"))
+        return payload
     except Exception as e:
         logger.error("Burnout risk (monthly) failed for user %s: %s", current_user.id, e, exc_info=True)
         return _fallback_payload(
@@ -939,16 +1009,26 @@ async def get_ai_intelligence(
     """
     _require_ultra(current_user, "ai_intelligence")
     try:
+        from backend.core.cache import cache_service
+
+        cache_key = f"analytics:ai-intelligence:{current_user.id}:{time_range}"
+        cached = await cache_service.get(cache_key)
+        if cached:
+            return cached
+
         if settings.ANALYTICS_V2_ENABLED:
-            return await analytics_v2_service.ai_intelligence(current_user, time_range)
-        from backend.services.enhanced_ai_intelligence_service import enhanced_ai_intelligence_service
-        result = await enhanced_ai_intelligence_service.get_score(current_user.id, time_range)
+            result = await analytics_v2_service.ai_intelligence(current_user, time_range)
+        else:
+            from backend.services.enhanced_ai_intelligence_service import enhanced_ai_intelligence_service
+            result = await enhanced_ai_intelligence_service.get_score(current_user.id, time_range)
         if isinstance(result, dict):
             result.setdefault("score_version", analytics_v2_service.SCORE_VERSION)
             result.setdefault("time_range", time_range)
             result.setdefault("source", "derived")
             result.setdefault("confidence", 0.6)
             result.setdefault("generated_at", datetime.utcnow().isoformat())
+        if _should_cache_analytics_payload(result):
+            await cache_service.set(cache_key, result, expire=_analytics_cache_ttl(time_range, HEAVY_ANALYTICS_CACHE_TTL))
         return result
     except Exception as e:
         logger.error("Error calculating AI intelligence for user %s: %s", current_user.id, e, exc_info=True)
@@ -1052,14 +1132,23 @@ async def get_goal_progress_report(
     """
     _require_ultra(current_user, "goal_progress_detailed")
     try:
-        if settings.ANALYTICS_V2_ENABLED:
-            return await analytics_v2_service.goal_progress(current_user, time_range, goal_id=goal_id)
+        from backend.core.cache import cache_service
 
-        from backend.services.enhanced_goal_analytics_service import enhanced_goal_analytics_service
-        report = await enhanced_goal_analytics_service.get_goal_progress_report(
-            str(current_user.id),
-            str(goal_id) if goal_id else None
-        )
+        cache_key = f"analytics:goal-progress:{current_user.id}:{time_range}:{goal_id or 'all'}"
+        cached = await cache_service.get(cache_key)
+        if cached:
+            return cached
+
+        if settings.ANALYTICS_V2_ENABLED:
+            report = await analytics_v2_service.goal_progress(current_user, time_range, goal_id=goal_id)
+        else:
+            from backend.services.enhanced_goal_analytics_service import enhanced_goal_analytics_service
+            report = await enhanced_goal_analytics_service.get_goal_progress_report(
+                str(current_user.id),
+                str(goal_id) if goal_id else None
+            )
+        if _should_cache_analytics_payload(report):
+            await cache_service.set(cache_key, report, expire=_analytics_cache_ttl(time_range, HEAVY_ANALYTICS_CACHE_TTL))
         return report
     except HTTPException as exc:
         if exc.status_code < 500:

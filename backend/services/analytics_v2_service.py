@@ -99,6 +99,21 @@ class AnalyticsV2Service:
             payload.update(extra)
         return payload
 
+    async def _safe_burnout_snapshot(
+        self,
+        user: User,
+        time_range: str,
+        *,
+        default: float,
+    ) -> float:
+        """Fetch burnout risk without propagating nested analytics failures."""
+        try:
+            burnout_data = await self.burnout_risk(user, time_range)
+            risk = burnout_data.get("risk") if isinstance(burnout_data, dict) else None
+            return float(risk) if risk is not None else float(default)
+        except Exception:
+            return float(default)
+
     async def _active_days_count(self, db: AsyncSession, user_id: int, window: RangeWindow) -> int:
         task_rows = await db.execute(
             select(Task.completed_at).where(
@@ -1226,6 +1241,7 @@ class AnalyticsV2Service:
 
     async def productivity_score(self, user: User, time_range: str) -> Dict[str, Any]:
         window = await self.resolve_window(user, time_range)
+        burnout_value = await self._safe_burnout_snapshot(user, time_range, default=0.0)
         async for db in get_db():
             usage = await self._usage_inputs(db, user.id, window)
             goals = await self._goal_progress_summary(db, user.id, window)
@@ -1339,19 +1355,14 @@ class AnalyticsV2Service:
             # ── 5. Burnout Interconnection (False Peak Detection) ────
             reason_codes: List[str] = []
             burnout_cap = 100.0
-            try:
-                burnout_data = await self.burnout_risk(user, time_range)
-                burnout_value = float(burnout_data.get("risk", 0))
-                if burnout_value >= 75 and raw_score >= 70:
-                    # False Peak: high productivity + high burnout = unsustainable
-                    burnout_cap = 72.0
-                    reason_codes.append("false_peak_detected")
-                elif burnout_value >= 60:
-                    # Grind Protection: moderate burnout dampens score slightly
-                    burnout_cap = 85.0
-                    reason_codes.append("grind_protection")
-            except Exception:
-                burnout_value = 0.0
+            if burnout_value >= 75 and raw_score >= 70:
+                # False Peak: high productivity + high burnout = unsustainable
+                burnout_cap = 72.0
+                reason_codes.append("false_peak_detected")
+            elif burnout_value >= 60:
+                # Grind Protection: moderate burnout dampens score slightly
+                burnout_cap = 85.0
+                reason_codes.append("grind_protection")
 
             raw_score = min(raw_score, burnout_cap)
 
@@ -1785,6 +1796,7 @@ class AnalyticsV2Service:
     async def ai_intelligence(self, user: User, time_range: str) -> Dict[str, Any]:
         """V3 AI Intelligence Score — 6 pure-logic dimensions."""
         window = await self.resolve_window(user, time_range)
+        burnout_score = await self._safe_burnout_snapshot(user, time_range, default=50.0)
         async for db in get_db():
             usage = await self._usage_inputs(db, user.id, window)
             goals = await self._goal_progress_summary(db, user.id, window)
@@ -1969,12 +1981,6 @@ class AnalyticsV2Service:
             #   Uses real-time burnout risk to see if the user
             #   is operating sustainably. No static personality tests.
             # ════════════════════════════════════════════════════════
-            try:
-                burnout_data = await self.burnout_risk(user, time_range)
-                burnout_score = float(burnout_data.get("risk", 50))
-            except Exception:
-                burnout_score = 50.0
-
             # Low burnout = good self-regulation
             # But zero burnout + zero activity = not doing anything
             if completed == 0 and usage["deep_work_sessions"] == 0:
@@ -2118,11 +2124,8 @@ class AnalyticsV2Service:
         window = await self.resolve_window(user, time_range)
         burnout_snapshot: Optional[float] = None
         if settings.GOAL_PROGRESS_V3_ENABLED:
-            try:
-                burnout_payload = await self.burnout_risk(user, time_range)
-                if burnout_payload and burnout_payload.get("risk") is not None:
-                    burnout_snapshot = float(burnout_payload["risk"])
-            except Exception:
+            burnout_snapshot = await self._safe_burnout_snapshot(user, time_range, default=-1.0)
+            if burnout_snapshot < 0:
                 burnout_snapshot = None
         async for db in get_db():
             if settings.GOAL_PROGRESS_V3_ENABLED:
