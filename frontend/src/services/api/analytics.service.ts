@@ -92,8 +92,18 @@ export class AnalyticsService {
     }
 
     try {
+      const normalizedEvents = events.map((event) => ({
+        event: event.type || 'unknown',
+        source: event.source || 'frontend',
+        metadata: {
+          ...event.metadata,
+          original_event: event,
+          timestamp: new Date().toISOString(),
+        },
+      }));
+
       await api.post(ENDPOINTS.EVENTS + '/batch', {
-        events,
+        events: normalizedEvents,
         timestamp: new Date().toISOString(),
       });
 

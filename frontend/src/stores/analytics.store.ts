@@ -121,38 +121,35 @@ const initialMetrics: UserMetrics = {
   // Focus & Productivity
   focusScore: 0,
   productivityScore: 0,
-  focusDecayRate: 15,
-  deepWorkRatio: 20,
-  averageFocusDuration: 25,
+  focusDecayRate: 0,
+  deepWorkRatio: 0,
+  averageFocusDuration: 0,
 
   // Planning & Execution
-  planningAccuracy: 60,
-  executionRatio: 0.8,
-  overplanningIndex: 30,
-  procrastinationScore: 40,
+  planningAccuracy: 0,
+  executionRatio: 0,
+  overplanningIndex: 0,
+  procrastinationScore: 0,
 
   // Consistency
-  habitConsistency: 70,
-  streakVariance: 20,
-  routineStability: 65,
+  habitConsistency: 0,
+  streakVariance: 0,
+  routineStability: 0,
 
   // Energy & Wellbeing
-  energyEfficiency: 65,
-  burnoutRisk: 25,
-  recoveryRate: 70,
+  energyEfficiency: 0,
+  burnoutRisk: 0,
+  recoveryRate: 0,
 
   // Time Patterns
-  peakProductivityHours: [10, 11, 14, 15],
-  focusWindows: [
-    { startHour: 9, endHour: 11, quality: 0.8 },
-    { startHour: 14, endHour: 16, quality: 0.7 },
-  ],
+  peakProductivityHours: [],
+  focusWindows: [],
   distractionPatterns: [],
 
   // Behavioral Insights
   behavioralPatterns: [],
 
-  lastUpdated: new Date(),
+  lastUpdated: new Date(0),
 };
 
 export const useAnalyticsStore = create<AnalyticsState>()(
@@ -897,11 +894,16 @@ export const useAnalyticsStore = create<AnalyticsState>()(
           const response = await api.post('/analytics/sync', data);
 
           if (response.success && response.data) {
-            const backendInsights = response.data;
+            const syncPayload = response.data as any;
+            const backendInsights = Array.isArray(syncPayload)
+              ? syncPayload
+              : Array.isArray(syncPayload.insights)
+                ? syncPayload.insights
+                : [];
 
             // Merge backend insights
             set((state) => ({
-              insights: [...state.insights, ...backendInsights],
+              insights: backendInsights.length > 0 ? [...state.insights, ...backendInsights] : state.insights,
               lastSynced: new Date(),
             }));
           }
@@ -999,7 +1001,7 @@ function computeRealTimeMetrics(events: AppEvent[], focusSessions: AnalyticsStat
 }
 
 function computeFocusScore(deepWorkEvents: DeepWorkEvent[], focusSessions: AnalyticsState['focusSessions']): number {
-  if (focusSessions.length === 0) return 50;
+  if (focusSessions.length === 0) return 0;
 
   const recentSessions = focusSessions.slice(-10);
   const avgQuality = recentSessions.reduce((sum, s) => sum + (s.quality || 0), 0) / recentSessions.length;
@@ -1008,7 +1010,7 @@ function computeFocusScore(deepWorkEvents: DeepWorkEvent[], focusSessions: Analy
 
 function computeFocusDecayRate(deepWorkEvents: DeepWorkEvent[]): number {
   const interruptedSessions = deepWorkEvents.filter(e => e.subtype === 'deep_work_interrupted');
-  if (interruptedSessions.length === 0) return 10;
+  if (interruptedSessions.length === 0) return 0;
 
   return Math.min(50, interruptedSessions.length * 5);
 }
@@ -1025,7 +1027,7 @@ function computeDeepWorkRatio(deepWorkEvents: DeepWorkEvent[], taskEvents: TaskE
 
 function computeAverageFocusDuration(focusSessions: AnalyticsState['focusSessions']): number {
   const completedSessions = focusSessions.filter(s => s.endTime);
-  if (completedSessions.length === 0) return 25;
+  if (completedSessions.length === 0) return 0;
 
   const totalDuration = completedSessions.reduce((sum, s) => sum + s.duration, 0);
   return totalDuration / completedSessions.length;
@@ -1033,7 +1035,7 @@ function computeAverageFocusDuration(focusSessions: AnalyticsState['focusSession
 
 function computePlanningAccuracy(taskEvents: TaskEvent[]): number {
   const completedTasks = taskEvents.filter(e => e.subtype === 'task_completed');
-  if (completedTasks.length === 0) return 60;
+  if (completedTasks.length === 0) return 0;
 
   const accurateTasks = completedTasks.filter(e =>
     e.metrics.delay !== undefined && e.metrics.delay <= 15 // within 15 minutes
@@ -1044,7 +1046,7 @@ function computePlanningAccuracy(taskEvents: TaskEvent[]): number {
 
 function computeExecutionRatio(taskEvents: TaskEvent[]): number {
   const completedTasks = taskEvents.filter(e => e.subtype === 'task_completed');
-  if (completedTasks.length === 0) return 0.8;
+  if (completedTasks.length === 0) return 0;
 
   const totalPlanned = completedTasks.reduce((sum, e) => sum + e.task.plannedDuration, 0);
   const totalActual = completedTasks.reduce((sum, e) => sum + (e.metrics.completionTime || e.task.plannedDuration), 0);
@@ -1134,7 +1136,7 @@ function computeRoutineStability(taskEvents: TaskEvent[], habitEvents: HabitEven
   });
 
   const hours = Object.keys(timeSlots).map(Number);
-  if (hours.length < 2) return 50;
+  if (hours.length < 2) return 0;
 
   // Calculate consistency of time slots
   const totalEvents = allEvents.length;
@@ -1148,7 +1150,7 @@ function computeRoutineStability(taskEvents: TaskEvent[], habitEvents: HabitEven
 
 function computeEnergyEfficiency(taskEvents: TaskEvent[], deepWorkEvents: DeepWorkEvent[]): number {
   const completedTasks = taskEvents.filter(e => e.subtype === 'task_completed');
-  if (completedTasks.length === 0) return 50;
+  if (completedTasks.length === 0) return 0;
 
   const totalEnergyUsed = completedTasks.reduce((sum, e) => {
     const energyValue = e.task.energy === 'high' ? 3 : e.task.energy === 'medium' ? 2 : 1;
@@ -1193,7 +1195,7 @@ function computeRecoveryRate(deepWorkEvents: DeepWorkEvent[], taskEvents: TaskEv
   const completedDeepWork = deepWorkEvents.filter(e => e.subtype === 'deep_work_completed');
   const interruptedDeepWork = deepWorkEvents.filter(e => e.subtype === 'deep_work_interrupted');
 
-  if (completedDeepWork.length === 0) return 50;
+  if (completedDeepWork.length === 0) return 0;
 
   const completionRate = (completedDeepWork.length / (completedDeepWork.length + interruptedDeepWork.length)) * 100;
 

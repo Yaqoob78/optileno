@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from backend.types.events import AppEvent, UserMetrics, AnalyticsEvent
 from backend.realtime.socket_manager import (
     broadcast_analytics_update,
+    broadcast_focus_score_updated,
     broadcast_insight_generated,
 )
 
@@ -30,6 +31,11 @@ class AnalyticsEventIn(BaseModel):
     metadata: dict = {}
 
 
+class AnalyticsEventBatchIn(BaseModel):
+    events: List[AnalyticsEventIn]
+    timestamp: Optional[str] = None
+
+
 def _plan_tier(user: Any) -> str:
     return normalize_plan_tier(
         plan_type=getattr(user, "plan_type", None),
@@ -46,6 +52,8 @@ def _require_ultra(user: Any, feature: str) -> None:
 def _fallback_payload(message: str, **extra: Any) -> Dict[str, Any]:
     return {
         "error_fallback": True,
+        "status": "unavailable",
+        "reason_code": "TEMPORARILY_UNAVAILABLE",
         "message": message,
         "generated_at": datetime.utcnow().isoformat(),
         **extra,
@@ -159,12 +167,28 @@ async def get_historical_analytics(
 
 @router.post("/events/batch")
 async def log_events_batch(
-    payload: List[AnalyticsEventIn],
+    payload: Any = Body(...),
     user = Depends(get_current_user)
 ):
     """Log multiple events at once"""
+    incoming_events: List[Any]
+    if isinstance(payload, list):
+        incoming_events = payload
+    elif isinstance(payload, dict):
+        incoming_events = payload.get("events", [])
+    else:
+        raise HTTPException(status_code=400, detail="Payload must be an array or object with an events field")
+
     events = []
-    for event_in in payload:
+    invalid_count = 0
+    for raw_event in incoming_events:
+        try:
+            if not isinstance(raw_event, dict):
+                raise ValueError("Invalid event payload")
+            event_in = AnalyticsEventIn(**raw_event)
+        except Exception:
+            invalid_count += 1
+            continue
         events.append({
             "user_id": user.id,
             "event": event_in.event,
@@ -172,8 +196,8 @@ async def log_events_batch(
             "metadata": event_in.metadata,
             "timestamp": datetime.utcnow().isoformat(),
         })
-    
-    saved_events = await analytics_service.save_event_batch(events)
+
+    saved_events = await analytics_service.save_event_batch(events) if events else []
     
     # Broadcast analytics update to connected clients
     await broadcast_analytics_update(user.id, {
@@ -191,6 +215,7 @@ async def log_events_batch(
     return {
         "status": "batch_logged",
         "count": len(saved_events),
+        "invalid_count": invalid_count,
         "event_ids": [e.id for e in saved_events],
     }
 
@@ -224,22 +249,52 @@ async def sync_analytics(
     user = Depends(get_current_user)
 ):
     """Sync frontend events and metrics"""
+    processed_count = 0
     # Simply log the batch for now
     if "events" in payload:
         events = []
         for e in payload["events"]:
+            event_name = e.get("type") or e.get("event") or "unknown"
+            event_source = e.get("source") or "frontend"
             events.append({
                 "user_id": user.id,
-                "event": e.get("type", "unknown"),
-                "source": e.get("source", "frontend"),
+                "event": event_name,
+                "source": event_source,
                 "metadata": e.get("metadata", {}),
                 "timestamp": e.get("timestamp", datetime.utcnow().isoformat()),
             })
-        await analytics_service.save_event_batch(events)
+        if events:
+            await analytics_service.save_event_batch(events)
+            processed_count = len(events)
     
-    # Return latest insights
+    # Return latest analytics bundle in a stable shape
     insights = await analytics_service.get_user_insights(user.id, limit=5)
-    return insights
+    predictions: List[Dict[str, Any]] = []
+    try:
+        from backend.ai.tools.analytics import predict_user_trajectory
+        trajectory = await predict_user_trajectory(str(user.id), "weekly")
+        summary = "Stable"
+        if isinstance(trajectory, dict):
+            summary = str(trajectory.get("summary") or "Stable")
+        predictions = [
+            {
+                "type": "productivity",
+                "confidence": 0.85,
+                "description": f"Predicted trajectory: {summary}",
+                "timeframe": "weekly",
+            }
+        ]
+    except Exception as e:
+        logger.warning("Sync predictions unavailable for user %s: %s", user.id, e)
+
+    return {
+        "status": "synced",
+        "events_processed": processed_count,
+        "events": [],
+        "insights": insights,
+        "predictions": predictions,
+        "recommendations": [],
+    }
 
 @router.get("/predictions")
 async def get_predictions(user = Depends(get_current_user)):
@@ -447,11 +502,7 @@ async def recalculate_focus_score(user = Depends(get_current_user)):
     score_data = await attention_integrity_service.calculate_attention_integrity(user.id, date.today())
     
     # Broadcast update to connected clients
-    await broadcast_analytics_update(user.id, {
-        "type": "focus_score_updated",
-        "score": score_data["score"],
-        "breakdown": score_data["breakdown"],
-    })
+    await broadcast_focus_score_updated(user.id, score_data)
     
     return score_data
 
@@ -473,11 +524,11 @@ async def get_current_mood(
         logger.error("Mood calculation failed for user %s: %s", current_user.id, e, exc_info=True)
         return _fallback_payload(
             "Mood insights are temporarily unavailable.",
-            score=50,
-            category="NEUTRAL",
-            label="Neutral",
-            emoji="🙂",
-            hint="Keep going. Your latest mood insight will appear shortly.",
+            score=None,
+            category=None,
+            label="Unavailable",
+            emoji=None,
+            hint="Mood insights are temporarily unavailable.",
             breakdown={},
         )
 
@@ -778,8 +829,8 @@ async def get_burnout_risk_today(
         logger.error("Burnout risk (daily) failed for user %s: %s", current_user.id, e, exc_info=True)
         return _fallback_payload(
             "Burnout risk is temporarily unavailable.",
-            risk=35.0,
-            level="low",
+            risk=None,
+            level=None,
             reason_codes=["TEMPORARILY_UNAVAILABLE"],
             score_version=analytics_v2_service.SCORE_VERSION,
             source="fallback",
@@ -816,9 +867,9 @@ async def get_burnout_risk_weekly(
         logger.error("Burnout risk (weekly) failed for user %s: %s", current_user.id, e, exc_info=True)
         return _fallback_payload(
             "Weekly burnout risk is temporarily unavailable.",
-            risk=35.0,
-            average_risk=35.0,
-            level="low",
+            risk=None,
+            average_risk=None,
+            level=None,
             period="weekly",
             days=7,
             reason_codes=["TEMPORARILY_UNAVAILABLE"],
@@ -857,9 +908,9 @@ async def get_burnout_risk_monthly(
         logger.error("Burnout risk (monthly) failed for user %s: %s", current_user.id, e, exc_info=True)
         return _fallback_payload(
             "Monthly burnout risk is temporarily unavailable.",
-            risk=35.0,
-            average_risk=35.0,
-            level="low",
+            risk=None,
+            average_risk=None,
+            level=None,
             period="monthly",
             days=30,
             reason_codes=["TEMPORARILY_UNAVAILABLE"],
@@ -925,16 +976,8 @@ async def get_behavior_timeline(
                 "current_streak": 0,
                 "flow_days": 0,
                 "interventions_triggered": 0,
-                "dominant_pattern": "Insufficient data",
-                "anti_quit": {
-                    "profile": "maker",
-                    "current_state": "STABLE",
-                    "quit_probability": 0,
-                    "risk_level": "low",
-                    "warning_label": "Behavior is stable.",
-                    "confidence": 0.2,
-                    "evidence": [],
-                },
+                "dominant_pattern": "Unavailable",
+                "anti_quit": None,
             },
             meta={
                 "start_date": datetime.utcnow().date().isoformat(),
@@ -1035,10 +1078,12 @@ async def get_ai_intelligence(
         # Return fallback data to prevent frontend crash
         return {
             "ready": False,
-            "status": "pending",
-            "message": "AI will load your intelligence score soon. Keep working.",
+            "status": "unavailable",
+            "score": None,
+            "message": "AI intelligence is temporarily unavailable.",
             "last_updated": datetime.utcnow().isoformat(),
-            "error_fallback": True
+            "error_fallback": True,
+            "reason_code": "TEMPORARILY_UNAVAILABLE",
         }
 
 
@@ -1060,22 +1105,11 @@ async def get_strategic_insight(
     except Exception as e:
         logger.error("Strategic insight failed for user %s: %s", current_user.id, e, exc_info=True)
         return {
-            "insights": [
-                {
-                    "id": 0,
-                    "title": "Strategic insights are calibrating",
-                    "description": "Keep using planner and chat activity. Your next high-impact insight will appear shortly.",
-                    "confidence": 0,
-                    "applied_at": None,
-                    "type": "awaiting_data",
-                    "severity": "info",
-                    "category": "planning",
-                    "generated_at": datetime.utcnow().isoformat(),
-                    "evidence": [],
-                    "data_points": 0,
-                }
-            ],
-            "count": 1,
+            "insights": [],
+            "count": 0,
+            "status": "unavailable",
+            "reason_code": "TEMPORARILY_UNAVAILABLE",
+            "message": "Strategic insights are temporarily unavailable.",
             "error_fallback": True,
         }
 
@@ -1311,9 +1345,11 @@ async def get_big_five_test_status(current_user = Depends(get_current_user)):
             "has_completed_test": False,
             "test_in_progress": False,
             "current_scores": None,
-            "days_until_next_test": 0,
-            "next_test_available": True,
-            "can_take_test": True,
+            "days_until_next_test": None,
+            "next_test_available": False,
+            "can_take_test": False,
+            "status": "unavailable",
+            "reason_code": "TEMPORARILY_UNAVAILABLE",
             "error_fallback": True,
         }
 

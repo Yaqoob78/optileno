@@ -9,7 +9,9 @@ import {
   Zap,
   CheckCircle,
   Activity,
-  ArrowRight
+  ArrowRight,
+  AlertTriangle,
+  RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMoodTracker } from '../../hooks/useMoodTracker';
@@ -29,7 +31,7 @@ const MOOD_VARIANTS: Record<string, string[]> = {
 };
 
 export default function MoodTracker() {
-  const { moodData, isLoading, checkIn } = useMoodTracker();
+  const { moodData, isLoading, error, refresh, checkIn } = useMoodTracker();
   const [isExpanded, setIsExpanded] = useState(false);
   const [emojiIndex, setEmojiIndex] = useState(0);
   const { addMessage, createConversation, setActiveConversation } = useChatStore();
@@ -112,7 +114,20 @@ export default function MoodTracker() {
     );
   }
 
-  if (!moodData) return null;
+  if (!moodData) {
+    return (
+      <div className="mood-tracker-container loading">
+        <div className="mood-loading-content">
+          <AlertTriangle size={24} />
+          <span>{error || 'Mood insights are currently unavailable.'}</span>
+          <button className="talk-btn" onClick={() => void refresh()}>
+            <RefreshCw size={16} />
+            Retry Mood Sync
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const moodClass = `mood-${moodData.category.toLowerCase()}`;
 

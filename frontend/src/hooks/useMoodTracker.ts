@@ -20,6 +20,19 @@ interface MoodData {
     breakdown: MoodBreakdown;
 }
 
+interface MoodApiPayload {
+    score?: number | null;
+    category?: string | null;
+    label?: string | null;
+    emoji?: string | null;
+    hint?: string | null;
+    breakdown?: Partial<MoodBreakdown> | null;
+    status?: string;
+    error_fallback?: boolean;
+    message?: string;
+    reason_code?: string;
+}
+
 interface UseMoodTrackerReturn {
     moodData: MoodData | null;
     isLoading: boolean;
@@ -34,6 +47,35 @@ export function useMoodTracker(): UseMoodTrackerReturn {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    const normalizeMoodData = useCallback((payload: MoodApiPayload): MoodData | null => {
+        if (!payload || payload.error_fallback || payload.status === 'unavailable') {
+            return null;
+        }
+
+        const parsedScore =
+            payload.score === null || payload.score === undefined || Number.isNaN(Number(payload.score))
+                ? null
+                : Number(payload.score);
+        if (parsedScore === null) {
+            return null;
+        }
+
+        const breakdown = payload.breakdown || {};
+        return {
+            score: parsedScore,
+            category: String(payload.category || 'NEUTRAL'),
+            label: String(payload.label || 'Neutral'),
+            emoji: String(payload.emoji || '🙂'),
+            hint: String(payload.hint || 'Mood insights are syncing.'),
+            breakdown: {
+                chat_sentiment: Number(breakdown.chat_sentiment ?? 0),
+                planner_engagement: Number(breakdown.planner_engagement ?? 0),
+                productivity_flow: Number(breakdown.productivity_flow ?? 0),
+                temporal_adjustment: Number(breakdown.temporal_adjustment ?? 0),
+            },
+        };
+    }, []);
+
     // Fetch current mood
     const refresh = useCallback(async () => {
         if (!isAuthenticated) {
@@ -46,7 +88,7 @@ export function useMoodTracker(): UseMoodTrackerReturn {
         try {
             setIsLoading(true);
             setError(null);
-            const response = await api.get<MoodData>('/analytics/mood/current');
+            const response = await api.get<MoodApiPayload>('/analytics/mood/current');
             if (!response.success || !response.data) {
                 if (response.error?.code === 'HTTP_401' || response.error?.code === 'HTTP_403') {
                     setMoodData(null);
@@ -55,14 +97,28 @@ export function useMoodTracker(): UseMoodTrackerReturn {
                 }
                 throw new Error(response.error?.message || 'Failed to fetch mood data');
             }
-            setMoodData(response.data);
+            const payload = response.data;
+            const normalized = normalizeMoodData(payload);
+
+            if (!normalized) {
+                setMoodData(null);
+                setError(
+                    typeof payload.message === 'string'
+                        ? payload.message
+                        : 'Mood insights are temporarily unavailable.'
+                );
+                return;
+            }
+
+            setMoodData(normalized);
         } catch (err: any) {
             console.error('Error fetching mood:', err);
+            setMoodData(null);
             setError(err.message);
         } finally {
             setIsLoading(false);
         }
-    }, [isAuthenticated]);
+    }, [isAuthenticated, normalizeMoodData]);
 
     // Check-in (manual mood log)
     const checkIn = useCallback(async (mood: string, context?: string) => {

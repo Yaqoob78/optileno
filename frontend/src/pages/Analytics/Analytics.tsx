@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import BehaviorTimeline from '../../components/analytics/BehaviorTimeline';
 import FocusHeatmap from '../../components/analytics/FocusHeatmap';
 import BigFiveProfile from '../../components/analytics/BigFiveProfile';
@@ -27,16 +27,12 @@ import {
   ArrowUpRight,
   AlertTriangle,
   Calendar,
-  Trophy,
   Fingerprint
 } from 'lucide-react';
 import '../../styles/pages/analytics.css';
 import '../../styles/components/analytics/customScrollbar.css';
 import { LockedFeature } from '../../components/common/LockedFeature';
-import { useAnalyticsStore } from '../../stores/analytics.store';
 import { useUser } from '../../hooks/useUser';
-import { useRealtime } from '../../hooks/useRealtime';
-import { useNavigate } from 'react-router-dom';
 import { ErrorBoundary } from '../../components/common/ErrorBoundary';
 import { useProductivityScore } from '../../hooks/useProductivityScore';
 import { useFocusScore } from '../../hooks/useFocusScore';
@@ -45,28 +41,14 @@ import { useTheme } from '../../hooks/useTheme';
 
 
 export default function AnalyticsPage() {
-  const [timeRange, setTimeRange] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('daily');
+  const [timeRange, setTimeRange] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [loading, setLoading] = useState<boolean>(false);
-  const realtimeRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const realtimeRefreshInFlightRef = useRef(false);
   const { theme, setTheme } = useTheme();
   const resolvedTheme: 'dark' | 'light' =
     theme === 'auto'
       ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
       : theme;
   const isDarkMode = resolvedTheme === 'dark';
-
-  // Safe time range for hooks that don't support yearly yet
-  const safeTimeRange = timeRange === 'yearly' ? 'monthly' : timeRange;
-  const nextYearReportDate = useMemo(() => {
-    const now = new Date();
-    const reportDate = new Date(now.getFullYear() + 1, 0, 1);
-    return reportDate.toLocaleDateString(undefined, {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  }, []);
 
   const analyticsParticles = useMemo(() => {
     const seeded = (seed: number) => {
@@ -84,80 +66,33 @@ export default function AnalyticsPage() {
 
   const { isUltra, user } = useUser();
   const bigFiveIntervalDays = Number((user as any)?.limits?.big_five_interval_days ?? (isUltra ? 7 : 14));
-  const navigate = useNavigate();
-
-  const {
-    dailyMetrics,
-    userInsights,
-    currentMetrics,
-    fetchAnalytics,
-    fetchHistoricalAnalytics,
-    detectedPatterns,
-    predictions,
-    focusSessions,
-    logEvent
-  } = useAnalyticsStore();
-
-  // Real-time integration
-  const { onAnalyticsUpdate, onInsightGenerated } = useRealtime();
-
-  useEffect(() => {
-    fetchAnalytics();
-  }, [fetchAnalytics]);
-
-  // Subscribe to real-time analytics updates
-  useEffect(() => {
-    const queueRefresh = () => {
-      if (realtimeRefreshTimerRef.current) {
-        clearTimeout(realtimeRefreshTimerRef.current);
-      }
-      realtimeRefreshTimerRef.current = setTimeout(async () => {
-        if (realtimeRefreshInFlightRef.current) return;
-        realtimeRefreshInFlightRef.current = true;
-        try {
-          await fetchAnalytics();
-        } finally {
-          realtimeRefreshInFlightRef.current = false;
-        }
-      }, 300);
-    };
-
-    const unsubscribeAnalytics = onAnalyticsUpdate(queueRefresh);
-    const unsubscribeInsight = onInsightGenerated(queueRefresh);
-
-    return () => {
-      if (realtimeRefreshTimerRef.current) {
-        clearTimeout(realtimeRefreshTimerRef.current);
-        realtimeRefreshTimerRef.current = null;
-      }
-      unsubscribeAnalytics?.();
-      unsubscribeInsight?.();
-    };
-  }, [fetchAnalytics, onAnalyticsUpdate, onInsightGenerated]);
 
   // Real-time productivity scoring
   const {
     score: productivityData,
     weeklyAverage: weeklyProductivityAvg,
     monthlyAverage: monthlyProductivityAvg,
-    isLoading: productivityLoading
-  } = useProductivityScore(safeTimeRange);
+    isLoading: productivityLoading,
+    refresh: refreshProductivity,
+  } = useProductivityScore(timeRange);
 
   // Real-time focus scoring
   const {
     score: focusData,
     weeklyAverage: weeklyFocusAvg,
     monthlyAverage: monthlyFocusAvg,
-    isLoading: focusLoading
-  } = useFocusScore(safeTimeRange);
+    isLoading: focusLoading,
+    refresh: refreshFocus,
+  } = useFocusScore(timeRange);
 
   // AI-powered burnout risk
   const {
     risk: burnoutData,
     weeklyAverage: weeklyBurnoutAvg,
     monthlyData: monthlyBurnoutData,
-    isLoading: burnoutLoading
-  } = useBurnoutRisk(safeTimeRange, isUltra);
+    isLoading: burnoutLoading,
+    refresh: refreshBurnout,
+  } = useBurnoutRisk(timeRange, isUltra);
 
   // Get real productivity score (not hardcoded)
   const getRealProductivityScore = (): number | null => {
@@ -381,25 +316,52 @@ export default function AnalyticsPage() {
     }
   ];
 
+  const latestMetricTimestamp = useMemo(() => {
+    const timestamps = [
+      productivityData?.date,
+      focusData?.date,
+      burnoutData?.date,
+    ]
+      .filter((value): value is string => Boolean(value))
+      .map((value) => new Date(value))
+      .filter((value) => !Number.isNaN(value.getTime()));
+
+    if (timestamps.length === 0) return null;
+    return new Date(Math.max(...timestamps.map((value) => value.getTime())));
+  }, [burnoutData?.date, focusData?.date, productivityData?.date]);
+
   // Calculate last updated time
   const getLastUpdatedText = () => {
-    if (currentMetrics.lastUpdated) {
-      const now = new Date();
-      const updated = new Date(currentMetrics.lastUpdated);
-      const diffMs = now.getTime() - updated.getTime();
-      const diffMins = Math.floor(diffMs / 60000);
-      if (diffMins < 1) return 'Just now';
-      if (diffMins < 60) return `${diffMins} min ago`;
-      return `${Math.floor(diffMins / 60)}h ago`;
-    }
-    return 'Syncing...';
+    if (!latestMetricTimestamp) return 'Waiting for live inputs';
+    const now = new Date();
+    const diffMs = now.getTime() - latestMetricTimestamp.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min ago`;
+    return `${Math.floor(diffMins / 60)}h ago`;
   };
+
+  const isAnyMetricLoading = productivityLoading || focusLoading || (isUltra && burnoutLoading);
+  const hasAnyMetricData =
+    displayProductivityScore !== null ||
+    currentFocusScore !== null ||
+    (!isUltra || burnoutRiskValue !== null);
+  const dataIntegrityLabel = isAnyMetricLoading
+    ? 'Syncing'
+    : hasAnyMetricData
+      ? 'Live'
+      : 'Calibrating';
+  const dataIntegrityClass = dataIntegrityLabel === 'Live' ? 'success' : 'warning';
 
   // Handle refresh
   const handleRefresh = async () => {
     setLoading(true);
     try {
-      await fetchAnalytics();
+      await Promise.all([
+        refreshProductivity(),
+        refreshFocus(),
+        ...(isUltra ? [refreshBurnout()] : []),
+      ]);
     } catch (error) {
       console.error('Failed to refresh analytics:', error);
     }
@@ -407,17 +369,8 @@ export default function AnalyticsPage() {
   };
 
   // Handle time range change
-  const handleTimeRangeChange = async (range: 'daily' | 'weekly' | 'monthly' | 'yearly') => {
+  const handleTimeRangeChange = (range: 'daily' | 'weekly' | 'monthly') => {
     setTimeRange(range);
-    if (range === 'yearly') {
-      // Show yearly message
-      return;
-    }
-    try {
-      await fetchHistoricalAnalytics(range);
-    } catch (error) {
-      console.error(`Failed to fetch ${range} analytics:`, error);
-    }
   };
 
   return (
@@ -460,7 +413,7 @@ export default function AnalyticsPage() {
 
             <div className="nav-right">
               <div className="time-range-selector">
-                {(['daily', 'weekly', 'monthly', 'yearly'] as const).map((range) => (
+                {(['daily', 'weekly', 'monthly'] as const).map((range) => (
                   <button
                     key={range}
                     className={`time-range-btn ${timeRange === range ? 'active' : ''}`}
@@ -485,22 +438,6 @@ export default function AnalyticsPage() {
               </div>
             </div>
           </div>
-
-          {/* Yearly Message - Shown when time range is yearly */}
-          {timeRange === 'yearly' && (
-            <div className="glass-card p-8 rounded-xl text-center my-6">
-              <div className="flex flex-col items-center justify-center">
-                <Trophy className="w-16 h-16 text-yellow-500 mb-4" />
-                <h2 className="text-2xl font-bold text-white mb-2">Yearly Analytics Report</h2>
-                <p className="text-gray-300 mb-4">
-                  Your comprehensive yearly analytics will be ready on {nextYearReportDate}.
-                </p>
-                <p className="text-gray-400 text-sm">
-                  Real-time analysis in progress. We'll deliver your personalized insights and performance summary.
-                </p>
-              </div>
-            </div>
-          )}
 
           {/* Stats Dashboard - 4 Cards at Top */}
           <div className="stats-overview-grid">
@@ -653,7 +590,7 @@ export default function AnalyticsPage() {
                       </div>
                     </div>
                     <div className="component-content">
-                      <GoalProgress timeRange={safeTimeRange} />
+                      <GoalProgress timeRange={timeRange} />
                     </div>
                   </>
                 ) : <LockedFeature title="Goal Analytics" className="h-full" />}
@@ -674,7 +611,7 @@ export default function AnalyticsPage() {
                       </div>
                     </div>
                     <div className="component-content">
-                      <FocusHeatmap timeRange={safeTimeRange} />
+                      <FocusHeatmap timeRange={timeRange} />
                     </div>
                   </>
                 ) : <LockedFeature title="Focus Heatmap" className="h-full" />}
@@ -742,8 +679,8 @@ export default function AnalyticsPage() {
               <span>AI Processing: Real-time</span>
             </div>
             <div className="status-item">
-              <div className={`status-dot ${currentMetrics.lastUpdated ? 'success' : 'warning'}`} />
-              <span>Data Integrity: {currentMetrics.lastUpdated ? 'Live' : 'Syncing'}</span>
+              <div className={`status-dot ${dataIntegrityClass}`} />
+              <span>Data Integrity: {dataIntegrityLabel}</span>
             </div>
             <div className="status-item">
               <div className="status-dot success" />
@@ -751,7 +688,7 @@ export default function AnalyticsPage() {
             </div>
             <div className="status-item">
               <div className="status-dot" />
-              <span>Patterns: {detectedPatterns.length} detected</span>
+              <span>Signals: Unified V3</span>
             </div>
           </div>
         </div>

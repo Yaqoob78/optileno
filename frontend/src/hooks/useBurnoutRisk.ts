@@ -18,17 +18,17 @@ interface BurnoutBreakdown {
 }
 
 interface BurnoutRisk {
-    risk: number;
+    risk: number | null;
     date: string;
-    level: string;
+    level: string | null;
     breakdown: BurnoutBreakdown;
     ai_insights: string[];
     recommendation: string;
 }
 
 interface BurnoutAverageData {
-    average_risk: number;
-    level: string;
+    average_risk: number | null;
+    level: string | null;
     period: string;
     days: number;
     note?: string;
@@ -82,12 +82,28 @@ export function useBurnoutRisk(
                 throw new Error(todayResponse.error?.message || 'Failed to fetch burnout risk');
             }
             const todayPayload = todayResponse.data as any;
+            const parsedRisk =
+                todayPayload.risk === null || todayPayload.risk === undefined || Number.isNaN(Number(todayPayload.risk))
+                    ? null
+                    : Number(todayPayload.risk);
+
+            if (todayPayload.error_fallback || todayPayload.status === 'unavailable' || parsedRisk === null) {
+                setRisk(null);
+                setWeeklyAverage(null);
+                setMonthlyData(null);
+                setError(
+                    typeof todayPayload.message === 'string'
+                        ? todayPayload.message
+                        : 'Burnout risk is temporarily unavailable.'
+                );
+                return;
+            }
 
             // V3 breakdown with backward-compatible fallbacks
             setRisk({
-                risk: Number(todayPayload.risk ?? 0),
+                risk: parsedRisk,
                 date: todayPayload.period_end || todayPayload.date || new Date().toISOString(),
-                level: String(todayPayload.level || 'moderate'),
+                level: todayPayload.level ? String(todayPayload.level) : null,
                 breakdown: {
                     workload_strain: Number(todayPayload.breakdown?.workload_strain ?? 0),
                     strain_velocity: Number(todayPayload.breakdown?.strain_velocity ?? 0),
@@ -110,7 +126,22 @@ export function useBurnoutRisk(
             if (timeRange === 'weekly' || timeRange === 'monthly') {
                 const weeklyResponse = await api.get<BurnoutAverageData>('/analytics/burnout/risk/weekly');
                 if (weeklyResponse.success && weeklyResponse.data) {
-                    setWeeklyAverage(weeklyResponse.data);
+                    const weeklyPayload = weeklyResponse.data as any;
+                    const weeklyRisk =
+                        weeklyPayload.average_risk === null || weeklyPayload.average_risk === undefined || Number.isNaN(Number(weeklyPayload.average_risk))
+                            ? null
+                            : Number(weeklyPayload.average_risk);
+                    if (weeklyRisk === null) {
+                        setWeeklyAverage(null);
+                    } else {
+                        setWeeklyAverage({
+                            average_risk: weeklyRisk,
+                            level: weeklyPayload.level ? String(weeklyPayload.level) : null,
+                            period: String(weeklyPayload.period || 'weekly'),
+                            days: Number(weeklyPayload.days ?? 7),
+                            note: typeof weeklyPayload.note === 'string' ? weeklyPayload.note : undefined,
+                        });
+                    }
                 } else if (weeklyResponse.error?.code === 'HTTP_401' || weeklyResponse.error?.code === 'HTTP_403') {
                     setWeeklyAverage(null);
                 }
@@ -120,13 +151,29 @@ export function useBurnoutRisk(
             if (timeRange === 'monthly') {
                 const monthlyResponse = await api.get<BurnoutAverageData>('/analytics/burnout/risk/monthly');
                 if (monthlyResponse.success && monthlyResponse.data) {
-                    setMonthlyData(monthlyResponse.data);
+                    const monthlyPayload = monthlyResponse.data as any;
+                    const monthlyRisk =
+                        monthlyPayload.average_risk === null || monthlyPayload.average_risk === undefined || Number.isNaN(Number(monthlyPayload.average_risk))
+                            ? null
+                            : Number(monthlyPayload.average_risk);
+                    if (monthlyRisk === null) {
+                        setMonthlyData(null);
+                    } else {
+                        setMonthlyData({
+                            average_risk: monthlyRisk,
+                            level: monthlyPayload.level ? String(monthlyPayload.level) : null,
+                            period: String(monthlyPayload.period || 'monthly'),
+                            days: Number(monthlyPayload.days ?? 30),
+                            note: typeof monthlyPayload.note === 'string' ? monthlyPayload.note : undefined,
+                        });
+                    }
                 } else if (monthlyResponse.error?.code === 'HTTP_401' || monthlyResponse.error?.code === 'HTTP_403') {
                     setMonthlyData(null);
                 }
             }
         } catch (err: any) {
             console.error('Error fetching burnout risk:', err);
+            setRisk(null);
             setError(err.message);
         } finally {
             setIsLoading(false);

@@ -211,7 +211,7 @@ class AnalyticsService:
             if not metrics:
                 metrics = RealTimeMetrics(
                     user_id=user_id,
-                    focus_score=50,
+                    focus_score=0,
                     focus_sessions_today=0,
                     total_focus_minutes=0,
                     planning_accuracy=0.0,
@@ -224,7 +224,7 @@ class AnalyticsService:
                 db.add(metrics)
             else:
                 # Backfill nullable legacy rows before arithmetic updates.
-                metrics.focus_score = 50 if metrics.focus_score is None else int(metrics.focus_score)
+                metrics.focus_score = 0 if metrics.focus_score is None else int(metrics.focus_score)
                 metrics.focus_sessions_today = int(metrics.focus_sessions_today or 0)
                 metrics.total_focus_minutes = int(metrics.total_focus_minutes or 0)
                 metrics.planning_accuracy = float(metrics.planning_accuracy or 0.0)
@@ -484,10 +484,10 @@ class AnalyticsService:
                 from backend.db.models import RealTimeMetrics
                 metrics = RealTimeMetrics(
                     user_id=int(user_id),
-                    focus_score=50,
-                    planning_accuracy=60,
-                    burnout_risk=25,
-                    engagement_score=50,
+                    focus_score=0,
+                    planning_accuracy=0,
+                    burnout_risk=0,
+                    engagement_score=0,
                     current_habit_streak=0,
                     habits_completed_today=0,
                     tasks_completed_today=0,
@@ -564,7 +564,7 @@ class AnalyticsService:
             # Return a safe default instead of crashing
             return {
                 "metrics": {
-                    "focus": {"score": 50, "sessions_today": 0, "total_minutes": 0, "average_session": 0},
+                    "focus": {"score": 0, "sessions_today": 0, "total_minutes": 0, "average_session": 0},
                     "planning": {"accuracy": 0, "tasks_completed": 0, "completion_rate": 0},
                     "consistency": {"habit_streak": 0, "habits_today": 0, "consistency_score": 0},
                     "wellbeing": {"burnout_risk": 0, "engagement": 0},
@@ -724,10 +724,10 @@ class AnalyticsService:
                 from backend.db.models import RealTimeMetrics
                 metrics = RealTimeMetrics(
                     user_id=int(user_id),
-                    focus_score=50,
-                    planning_accuracy=60,
-                    burnout_risk=25,
-                    engagement_score=50,
+                    focus_score=0,
+                    planning_accuracy=0,
+                    burnout_risk=0,
+                    engagement_score=0,
                     current_habit_streak=0,
                     habits_completed_today=0,
                     tasks_completed_today=0,
