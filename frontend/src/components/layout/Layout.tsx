@@ -10,9 +10,7 @@ import {
   LayoutDashboard
 } from "lucide-react";
 import Sidebar from "./Sidebar";
-import GlassMorphBG from "../ui/GlassMorphBG";
 import Header from "./Header";
-import StatusBar from "./Statusbar";
 import "../../styles/layout/layout.css"; // CSS CONNECTION";
 
 interface MenuItem {
@@ -32,13 +30,6 @@ export default function Layout() {
   // Mobile: default closed, Desktop: default open
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
   const [currentPage, setCurrentPage] = useState("Chat");
-
-  // Auto-close sidebar on mobile route change
-  useEffect(() => {
-    if (isMobile) {
-      setSidebarOpen(false);
-    }
-  }, [location.pathname, isMobile]);
 
   // Lock background scroll when mobile sidebar is open.
   useEffect(() => {
@@ -127,6 +118,9 @@ export default function Layout() {
 
   const handlePageChange = (page: string) => {
     setCurrentPage(page);
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
     navigate(routeMap[page] || "/chat");
   };
 
@@ -184,8 +178,6 @@ export default function Layout() {
             </div>
           </main>
 
-          {/* Status Bar */}
-          <StatusBar />
         </motion.div>
       </div>
     </div>

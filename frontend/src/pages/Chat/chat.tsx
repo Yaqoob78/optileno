@@ -46,7 +46,6 @@ export default function Chat() {
   const toggleKeep = useChatStore((state) => state.toggleKeepConversation);
   const deleteMessage = useChatStore((state) => state.deleteMessage); // Import deleteMessage
 
-
   // Local UI State
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -215,7 +214,6 @@ export default function Chat() {
     }
   }, [chatMode, activeConversation?.messages, deleteMessage]);
 
-
   // Initialize suggestion timer (5 seconds)
   useEffect(() => {
     const msgCount = activeConversation?.messages.length || 0;
@@ -254,7 +252,7 @@ export default function Chat() {
         toggleKeep(activeConversation.id); // Set isKept = true
         setChatMode('KEEP');
         setUiActiveTab('keep');
-        setToast({ message: "💾 Keep Mode Active: Session recording...", type: "success" });
+        setToast({ message: "Keep mode enabled.", type: "success" });
       }
     }
   };
@@ -266,18 +264,17 @@ export default function Chat() {
       createConversation("New Chat"); // Start fresh
       setChatMode('NORMAL');
       setUiActiveTab(null);
-      setToast({ message: "Chat reset for fresh start", type: "info" });
+      setToast({ message: "Clear flow disabled.", type: "info" });
     } else if (chatMode === 'KEEP') {
-      alert("Keep mode is active. Disable Keep first to activate Clear Flow.");
+      setToast({ message: "Disable Keep mode first.", type: "info" });
     } else {
-      if (window.confirm("⚠️ Clear Flow Mode: Messages will start disappearing after 3 exchanges. Continue?")) {
-        setChatMode('CLEAR_FLOW');
-        setUiActiveTab('clear');
-      }
+      setChatMode('CLEAR_FLOW');
+      setUiActiveTab('clear');
+      setToast({ message: "Clear flow enabled.", type: "success" });
     }
   };
 
-  // ✅ FIXED: Added the missing sendMessage function
+  // Added sendMessage helper with API session support
   const sendMessage = async (
     userMessage: string,
     currentAiMode: AIMode,
@@ -325,7 +322,6 @@ export default function Chat() {
         sessionId
       );
 
-
       // Update session ID from response
       if (data.session_id && data.session_id !== sessionId) {
         setSessionId(data.session_id);
@@ -340,21 +336,9 @@ export default function Chat() {
       };
 
     } catch (error: any) {
-      console.error("❌ getAIResponse failed:", error.message || error);
+      console.error("getAIResponse failed:", error.message || error);
       throw new Error(`API failed: ${error.message}`);
     }
-  };
-
-  // Fallback responses
-  const getFallbackResponse = (mode: AIMode): string => {
-    const fallbacks = {
-      CHAT: "I understand. Let me help you with that. What specific assistance do you need?",
-      PLAN: "I'll help you plan! What specific project or task would you like to organize?",
-      ANALYZE: "Let me analyze your progress. What data or information should I look at?",
-      TASK: "Here's a quick task: Take 5 minutes to organize your workspace. Would you like another?"
-    };
-
-    return fallbacks[mode];
   };
 
   // Toast state
@@ -376,25 +360,25 @@ export default function Chat() {
 
       switch (action.type) {
         case 'CREATE_TASK':
-          setToast({ message: `📝 Task created: ${action.result?.title || 'New Task'}`, type: 'success' });
+          setToast({ message: `Task created: ${action.result?.title || 'New Task'}`, type: 'success' });
           // Refresh planner store to show new task
           usePlannerStore.getState().fetchTasks();
           break;
 
         case 'CREATE_GOAL':
-          setToast({ message: `🎯 Goal created: ${action.result?.title || 'New Goal'}`, type: 'success' });
+          setToast({ message: `Goal created: ${action.result?.title || 'New Goal'}`, type: 'success' });
           // Refresh planner store to show new goal
           usePlannerStore.getState().fetchGoals();
           break;
 
         case 'CREATE_HABIT':
-          setToast({ message: `🔄 Habit created: ${action.result?.name || 'New Habit'}`, type: 'success' });
+          setToast({ message: `Habit created: ${action.result?.name || 'New Habit'}`, type: 'success' });
           // Refresh planner store to show new habit
           usePlannerStore.getState().fetchHabits();
           break;
 
         case 'BREAKDOWN_GOAL':
-          setToast({ message: `🎯 Plan generated for ${action.result?.goal?.title || action.result?.title || 'goal'}`, type: 'success' });
+          setToast({ message: `Plan generated for ${action.result?.goal?.title || action.result?.title || 'goal'}`, type: 'success' });
           usePlannerStore.getState().fetchGoals();
           usePlannerStore.getState().fetchTasks();
           usePlannerStore.getState().fetchHabits();
@@ -402,7 +386,7 @@ export default function Chat() {
 
         case 'CREATE_GOAL_CASCADE':
         case 'PLANNER_CREATE_GOAL':
-          setToast({ message: `🎯 Goal created: ${action.result?.goal?.title || action.result?.title || 'New Goal'}`, type: 'success' });
+          setToast({ message: `Goal created: ${action.result?.goal?.title || action.result?.title || 'New Goal'}`, type: 'success' });
           // Cascade may create tasks/habits too
           usePlannerStore.getState().fetchGoals();
           usePlannerStore.getState().fetchTasks();
@@ -410,32 +394,32 @@ export default function Chat() {
           break;
 
         case 'PLANNER_CREATE_TASK':
-          setToast({ message: `📝 Task created: ${action.result?.task?.title || 'New Task'}`, type: 'success' });
+          setToast({ message: `Task created: ${action.result?.task?.title || 'New Task'}`, type: 'success' });
           usePlannerStore.getState().fetchTasks();
           break;
 
         case 'PLANNER_TRACK_HABIT':
-          setToast({ message: `✅ Habit tracked`, type: 'success' });
+          setToast({ message: `Habit tracked.`, type: 'success' });
           usePlannerStore.getState().fetchHabits();
           break;
 
         case 'DELETE_TASK':
-          setToast({ message: `🗑️ Task deleted`, type: 'info' });
+          setToast({ message: `Task deleted.`, type: 'info' });
           usePlannerStore.getState().fetchTasks();
           break;
 
         case 'DELETE_GOAL':
-          setToast({ message: `🗑️ Goal deleted`, type: 'info' });
+          setToast({ message: `Goal deleted.`, type: 'info' });
           usePlannerStore.getState().fetchGoals();
           break;
 
         case 'DELETE_HABIT':
-          setToast({ message: `🗑️ Habit deleted`, type: 'info' });
+          setToast({ message: `Habit deleted.`, type: 'info' });
           usePlannerStore.getState().fetchHabits();
           break;
 
         case 'PLANNER_START_DEEP_WORK':
-          setToast({ message: "🎯 Deep Work Session Started!", type: 'success' });
+          setToast({ message: "Deep work session started.", type: 'success' });
           break;
 
         case 'ANALYTICS_VIEW_DASHBOARD':
@@ -577,7 +561,7 @@ export default function Chat() {
   };
 
   const handleFocusMode = () => {
-    alert("Focus mode activated! Minimizing distractions...");
+    setToast({ message: "Focus mode activated.", type: "info" });
   };
 
   const messages = activeConversation?.messages || [];
@@ -591,40 +575,22 @@ export default function Chat() {
             if (tab === 'keep') handleKeepClick();
             if (tab === 'clear') handleClearFlowClick();
           }}
-          isClearing={chatMode === 'CLEAR_FLOW'}
         />
 
         {/* Toast Notification */}
         {toast && (
-          <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-50 animate-bounce-in">
-            <div className={`px-6 py-3 rounded-full shadow-2xl backdrop-blur-md border border-white/10 flex items-center gap-3 ${toast.type === 'success' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-blue-500/20 text-blue-300'
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50">
+            <div className={`px-4 py-2 rounded-lg shadow-md border flex items-center gap-2 ${toast.type === 'success' ? 'bg-emerald-950/80 border-emerald-700 text-emerald-200' : 'bg-slate-900/90 border-slate-700 text-slate-200'
               }`}>
-              <div className={`w-2 h-2 rounded-full ${toast.type === 'success' ? 'bg-emerald-400' : 'bg-blue-400'
-                } animate-pulse`} />
-              <span className="text-sm font-medium text-white shadow-sm">{toast.message}</span>
+              <div className={`w-1.5 h-1.5 rounded-full ${toast.type === 'success' ? 'bg-emerald-300' : 'bg-slate-300'
+                }`} />
+              <span className="text-sm font-medium">{toast.message}</span>
             </div>
           </div>
         )}
 
         <div className="chat-messages-area">
           <div className="max-w-3xl mx-auto space-y-4 p-4 md:p-6">
-            {chatMode !== 'NORMAL' && (
-              <div className={`mode-indicator ${chatMode === 'KEEP' ? 'keep-mode' : 'clear-mode'}`}>
-                <span className="mode-text">
-                  {chatMode === 'KEEP' ? '💾 Keep Mode Active' : '⏳ Clear Flow Mode Active'}
-                </span>
-                {chatMode === 'CLEAR_FLOW' && (
-                  <span className="clear-warning">Messages auto-delete after 3 exchanges</span>
-                )}
-              </div>
-            )}
-
-            {aiMode !== 'CHAT' && (
-              <div className="ai-mode-indicator">
-                <span className="ai-mode-text">AI Mode: {aiMode}</span>
-              </div>
-            )}
-
             {messages.map((message: any) => (
               <ChatBubble key={message.id} message={{
                 ...message,

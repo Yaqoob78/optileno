@@ -1,27 +1,21 @@
-// src/components/chat/ChatHeader.tsx - ONLY CLEAR FLOW & KEEP
-import React, { useState } from "react";
-import { Trash2, Save } from "lucide-react";
+import React from "react";
 
 import "../../styles/components/chats/ChatHeader.css";
-// Update the ChatHeader.tsx to pass isClearing prop
 interface ChatHeaderProps {
   activeTab: 'keep' | 'clear' | null;
   onTabChange: (tab: 'keep' | 'clear') => void;
-  isClearing?: boolean;
 }
 
 export default function ChatHeader({ 
   activeTab, 
-  onTabChange,
-  isClearing = false 
+  onTabChange
 }: ChatHeaderProps) {
   return (
     <div className="chat-tabs-container">
-      {/* Keep Button */}
       <button
         onClick={() => onTabChange('keep')}
         className={`chat-tab ${activeTab === 'keep' ? 'active keep-active' : ''}`}
-        title={activeTab === 'keep' ? "Keep mode active - messages saved" : "Save and keep all messages"}
+        title={activeTab === 'keep' ? "Keep mode is on" : "Enable keep mode"}
       >
         <div className="flex items-center justify-center gap-2">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -32,12 +26,11 @@ export default function ChatHeader({
           <span>Keep</span>
         </div>
       </button>
-      
-      {/* Clear Flow Button */}
+
       <button
         onClick={() => onTabChange('clear')}
-        className={`chat-tab ${activeTab === 'clear' ? 'active clear-flow-active' : ''} ${isClearing ? 'clearing-active' : ''}`}
-        title={activeTab === 'clear' ? "Clear Flow active - messages disappearing" : "Start clearing chat messages"}
+        className={`chat-tab ${activeTab === 'clear' ? 'active clear-flow-active' : ''}`}
+        title={activeTab === 'clear' ? "Clear flow mode is on" : "Enable clear flow mode"}
       >
         <div className="flex items-center justify-center gap-2">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -46,11 +39,6 @@ export default function ChatHeader({
           </svg>
           <span>Clear Flow</span>
         </div>
-        {isClearing && (
-          <div className="clearing-indicator">
-            <div className="clearing-pulse"></div>
-          </div>
-        )}
       </button>
     </div>
   );
