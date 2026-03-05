@@ -799,7 +799,7 @@
 
 @media (max-width: 768px) {
   .planner-page {
-    padding: var(--space-4);
+    padding: var(--space-3);
     gap: var(--space-4);
   }
 

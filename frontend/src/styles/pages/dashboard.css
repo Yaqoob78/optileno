@@ -976,7 +976,7 @@
 /* Responsive Design */
 @media (max-width: 768px) {
   .dashboard-content {
-    padding: 1.5rem;
+    padding: 1rem;
   }
 
   .dashboard-header {

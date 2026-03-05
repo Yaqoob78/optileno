@@ -2,7 +2,10 @@
 /* ========== CHAT INPUT ========== */
 .chat-input-container {
   border-top: 2px solid rgba(var(--color-primary), 0.3);
-  background: rgb(var(--color-bg-primary));
+  background: rgba(var(--color-bg-primary), 0.85);
+  /* Slightly transparent */
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   padding: var(--space-4) 0;
   position: relative;
   z-index: 10;
@@ -136,7 +139,6 @@
   box-shadow: 0 6px 20px rgba(var(--color-primary), 0.25);
 }
 
-/* Send Button */
 .send-button {
   display: flex;
   align-items: center;
@@ -151,7 +153,29 @@
   color: rgb(var(--color-text-light));
   cursor: pointer;
   transition: all var(--transition-slow);
-  box-shadow: 0 4px 15px rgba(var(--color-primary), 0.3);
+  box-shadow: 0 4px 15px rgba(var(--color-primary), 0.5), 0 0 10px rgba(var(--color-primary), 0.4);
+}
+
+.send-button:not(:disabled) {
+  animation: send-ready-pulse 2s infinite cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .send-button:not(:disabled) {
+    animation: none;
+  }
+}
+
+@keyframes send-ready-pulse {
+
+  0%,
+  100% {
+    box-shadow: 0 4px 15px rgba(var(--color-primary), 0.4), 0 0 5px rgba(var(--color-primary), 0.2);
+  }
+
+  50% {
+    box-shadow: 0 4px 20px rgba(var(--color-primary), 0.7), 0 0 15px rgba(var(--color-primary), 0.6);
+  }
 }
 
 .send-button:hover:not(:disabled) {
@@ -159,7 +183,7 @@
       rgb(var(--color-primary-dark)) 0%,
       rgb(var(--color-primary)) 100%);
   transform: translateY(-3px) scale(1.05);
-  box-shadow: 0 10px 30px rgba(var(--color-primary), 0.4);
+  box-shadow: 0 10px 30px rgba(var(--color-primary), 0.6);
 }
 
 .send-button:disabled {
