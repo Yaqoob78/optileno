@@ -170,6 +170,7 @@ async def check_database_health() -> Dict[str, Any]:
         Dict with health status and metrics
     """
     import datetime
+    from datetime import timezone
     
     health = {
         "status": "unknown",
@@ -200,7 +201,7 @@ async def check_database_health() -> Dict[str, Any]:
             db_metrics.overflow_connections = pool.overflow()
         
         db_metrics.is_healthy = True
-        db_metrics.last_health_check = datetime.datetime.utcnow().isoformat()
+        db_metrics.last_health_check = datetime.datetime.now(timezone.utc).isoformat()
         
     except Exception as e:
         health["status"] = "unhealthy"

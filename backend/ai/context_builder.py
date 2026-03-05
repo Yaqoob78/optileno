@@ -13,6 +13,7 @@ This module constructs the full context that the AI agent needs to:
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta, timezone
 import logging
+import re
 
 from backend.db.database import get_db
 from backend.services.planner_service import planner_service
@@ -25,6 +26,28 @@ from sqlalchemy import desc, and_, or_
 
 logger = logging.getLogger(__name__)
 
+
+def sanitize_user_content(text: str, max_length: int = 200) -> str:
+    """Sanitize user-provided content before injecting into AI prompts.
+    
+    Strips instruction-injection patterns and truncates to prevent
+    adversarial content from manipulating the AI's behavior.
+    """
+    if not text or not isinstance(text, str):
+        return ""
+    text = text[:max_length]
+    # Strip common prompt-injection patterns
+    text = re.sub(
+        r'(?i)(ignore|forget|disregard|override|bypass).{0,30}(instructions|prompt|rules|system|previous)',
+        '[filtered]', text
+    )
+    text = re.sub(
+        r'(?i)(reveal|show|print|output|display).{0,30}(system prompt|instructions|rules|secret)',
+        '[filtered]', text
+    )
+    # Escape template braces to prevent format string injection
+    text = text.replace('{', '{{').replace('}', '}}')
+    return text.strip()
 
 class AIContextBuilder:
     """
@@ -87,8 +110,8 @@ class AIContextBuilder:
             goals_data.append(
                 {
                     "id": goal.get("id"),
-                    "title": goal.get("title"),
-                    "description": goal.get("description"),
+                    "title": sanitize_user_content(goal.get("title", "")),
+                    "description": sanitize_user_content(goal.get("description", ""), 500),
                     "category": goal.get("category"),
                     "progress": progress,
                     "target_date": target_date_raw,
@@ -166,8 +189,8 @@ class AIContextBuilder:
 
             task_data = {
                 "id": str(getattr(task, "id", "")),
-                "title": getattr(task, "title", None),
-                "description": getattr(task, "description", None),
+                "title": sanitize_user_content(getattr(task, "title", None) or ""),
+                "description": sanitize_user_content(getattr(task, "description", None) or "", 500),
                 "status": status,
                 "priority": getattr(task, "priority", None),
                 "category": getattr(task, "category", None),
@@ -214,8 +237,8 @@ class AIContextBuilder:
             habits_data.append(
                 {
                     "id": habit.get("id"),
-                    "name": habit.get("name"),
-                    "description": habit.get("description"),
+                    "name": sanitize_user_content(habit.get("name", "")),
+                    "description": sanitize_user_content(habit.get("description", ""), 500),
                     "frequency": habit.get("frequency", "daily"),
                     "streak": habit.get("currentStreak", 0),
                     "best_streak": habit.get("longestStreak", 0),

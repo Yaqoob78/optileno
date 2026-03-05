@@ -10,7 +10,7 @@ Provides accurate, confidence-based insights about:
 NO fake confidence, NO placeholders, NO guessing
 """
 
-from datetime import datetime, timedelta, date, time
+from datetime import datetime, timedelta, date, time, timezone
 from typing import Dict, Any, List, Optional
 import logging
 import statistics
@@ -71,7 +71,7 @@ class TemporalPerformanceService:
         Confidence = (Sample Size Factor) × (Consistency Factor) × (Task Type Weighting)
         """
         # Get completed tasks (last 30 days)
-        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
         result = await db.execute(
             select(Task).where(
                 Task.user_id == user_id,
@@ -380,7 +380,7 @@ class TemporalPerformanceService:
         Based on historical completion data, not heuristics.
         """
         # Get deep work sessions (last 30 days)
-        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
         result = await db.execute(
             select(Plan).where(
                 Plan.user_id == user_id,

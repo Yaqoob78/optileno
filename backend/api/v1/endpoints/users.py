@@ -106,7 +106,7 @@ async def get_user_me(current_user: User = Depends(get_current_user)):
         fallback_name = current_user.full_name or (current_user.email.split("@")[0] if current_user.email else "User")
         fallback_tier = (getattr(current_user, "tier", "") or "explorer").strip().lower()
         fallback_plan_type = (getattr(current_user, "plan_type", "") or "EXPLORER").strip().upper()
-        now_iso = datetime.utcnow().isoformat()
+        now_iso = datetime.now(timezone.utc).isoformat()
         return {
             "id": str(current_user.id),
             "email": current_user.email,
@@ -127,8 +127,8 @@ async def get_user_me(current_user: User = Depends(get_current_user)):
                 "totalSessions": 0,
                 "totalTokens": 0,
                 "avgRating": 0,
-                "joinedAt": (getattr(current_user, "created_at", None) or datetime.utcnow()).isoformat(),
-                "lastActiveAt": (getattr(current_user, "updated_at", None) or datetime.utcnow()).isoformat(),
+                "joinedAt": (getattr(current_user, "created_at", None) or datetime.now(timezone.utc)).isoformat(),
+                "lastActiveAt": (getattr(current_user, "updated_at", None) or datetime.now(timezone.utc)).isoformat(),
                 "timeSpentToday": 0,
                 "totalTimeSpent": 0,
                 "lastActivityAt": now_iso,
@@ -380,7 +380,7 @@ async def get_notifications(
             "title": n.title,
             "message": n.message,
             "read": bool(n.is_read),
-            "createdAt": n.created_at.isoformat() if n.created_at else datetime.utcnow().isoformat(),
+            "createdAt": n.created_at.isoformat() if n.created_at else datetime.now(timezone.utc).isoformat(),
             "priority": n.priority,
         }
         for n in notifications
@@ -404,7 +404,7 @@ async def mark_notification_read(
         raise HTTPException(status_code=404, detail="Notification not found")
 
     notification.is_read = True
-    notification.read_at = datetime.utcnow()
+    notification.read_at = datetime.now(timezone.utc)
     await db.commit()
     return {"status": "success"}
 
@@ -417,7 +417,7 @@ async def mark_all_read(
     await db.execute(
         update(Notification)
         .where(Notification.user_id == current_user.id)
-        .values(is_read=True, read_at=datetime.utcnow())
+        .values(is_read=True, read_at=datetime.now(timezone.utc))
     )
     await db.commit()
     return {"status": "success"}
@@ -459,7 +459,7 @@ async def export_data(current_user: User = Depends(get_current_user)):
     # Placeholder for data export workflow
     return {
         "url": "",
-        "expiresAt": (datetime.utcnow()).isoformat(),
+        "expiresAt": (datetime.now(timezone.utc)).isoformat(),
     }
 
 

@@ -349,7 +349,7 @@ export type AppEvent =
 // ==============================
 
 export function createEventId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  return crypto.randomUUID();
 }
 
 export function createBaseEvent(source: BaseEvent['source']): Omit<BaseEvent, 'id' | 'type'> {

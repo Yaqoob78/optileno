@@ -2,7 +2,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from backend.services.planner_service import planner_service
-from datetime import datetime
+from datetime import datetime, timezone
 import asyncio
 
 # Setup mock database session
@@ -22,7 +22,7 @@ async def test_get_user_habits(mock_db_session):
     """Test retrieving user habits."""
     
     # Mock habit data
-    created_at = datetime.utcnow()
+    created_at = datetime.now(timezone.utc)
     mock_plan = MagicMock()
     mock_plan.id = 1
     mock_plan.name = "Test Habit"
@@ -90,7 +90,7 @@ async def test_create_habit(mock_db_session):
             # Since we're mocking the DB, we need to ensure the ID is set on the object "added"
             def side_effect_add(obj):
                 obj.id = 55
-                obj.created_at = datetime.utcnow()
+                obj.created_at = datetime.now(timezone.utc)
                 return None
             mock_db_session.add.side_effect = side_effect_add
             

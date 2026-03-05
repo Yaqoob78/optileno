@@ -860,7 +860,7 @@ class EnhancedGoalAnalyticsService:
                     event_type=f"goal_progress_updated_realtime",
                     event_source="system",
                     category="goals",
-                    timestamp=datetime.utcnow(),
+                    timestamp=datetime.now(timezone.utc),
                     meta={
                         "goal_id": goal_id,
                         "new_progress": goal.current_progress,
@@ -879,7 +879,7 @@ class EnhancedGoalAnalyticsService:
                         "type": "goal_progress_updated",
                         "goal_id": goal_id,
                         "progress": goal.current_progress,
-                        "timestamp": datetime.utcnow().isoformat()
+                        "timestamp": datetime.now(timezone.utc).isoformat()
                     })
                 except ImportError:
                     # Socket manager not available, skip broadcasting

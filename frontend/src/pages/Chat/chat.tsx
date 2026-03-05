@@ -500,10 +500,10 @@ export default function Chat() {
     } catch (error: any) {
       console.error("Suggestion API error:", error);
 
-      // Only add error message, no fallback to prevent duplicates
+      // Show user-friendly error, log details to console only
       addMessage({
         role: 'assistant',
-        content: `⚠️ API Error: ${error.message}. Please check if backend is running.`
+        content: "Something went wrong. Please try again in a moment."
       });
     } finally {
       setIsTyping(false);
@@ -552,10 +552,10 @@ export default function Chat() {
     } catch (error: any) {
       console.error("Send API error:", error);
 
-      // Only add error message, no fallback to prevent duplicates
+      // Show user-friendly error, log details to console only
       addMessage({
         role: 'assistant',
-        content: `⚠️ API Error: ${error.message}. Please check if backend is running.`
+        content: "Something went wrong. Please try again in a moment."
       });
 
     } finally {

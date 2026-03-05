@@ -3,7 +3,7 @@ Analytics AI Tools - Enable AI agent to analyze and provide insights on user pro
 """
 
 from typing import Dict, Any, List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 from statistics import mean, median
 
@@ -32,7 +32,7 @@ class AnalyticsToolSet:
         """
         try:
             async for db in get_db():
-                cutoff_date = datetime.utcnow() - timedelta(days=days)
+                cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
 
                 # Get task completion rate
                 tasks_query = """

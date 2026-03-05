@@ -132,6 +132,7 @@ export default function Dashboard() {
           setShowSuccessModal(true);
         } catch (error) {
           console.error("Payment verification failed", error);
+          alert("Payment verification failed. Please contact support.");
         } finally {
           // Clean up URL
           navigate('/dashboard', { replace: true });

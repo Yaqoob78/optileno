@@ -5,7 +5,7 @@ This service calculates intelligence scores based on real-time user behavior pat
 with immediate updates as users interact with the system.
 """
 
-from datetime import datetime, timedelta, time
+from datetime import datetime, timedelta, time, timezone
 from typing import Dict, Any, List, Optional
 from sqlalchemy import select, func, and_, or_, extract
 import logging
@@ -80,7 +80,7 @@ class EnhancedAIIntelligenceService:
         return merged
 
     async def _get_readiness(self, db, user_id: int) -> Dict[str, Any]:
-        since = datetime.utcnow() - timedelta(days=self.READINESS_WINDOW_DAYS)
+        since = datetime.now(timezone.utc) - timedelta(days=self.READINESS_WINDOW_DAYS)
 
         tasks_completed_res = await db.execute(
             select(func.count(Task.id)).where(
@@ -176,7 +176,7 @@ class EnhancedAIIntelligenceService:
 
     async def _get_baseline_30d(self, db, user_id: int) -> Optional[Dict[str, Any]]:
         """Get 30-day baseline from stored daily AI intelligence scores."""
-        since = datetime.utcnow() - timedelta(days=30)
+        since = datetime.now(timezone.utc) - timedelta(days=30)
         result = await db.execute(
             select(AIIntelligenceScore.overall_score).where(
                 AIIntelligenceScore.user_id == user_id,
@@ -471,7 +471,7 @@ class EnhancedAIIntelligenceService:
                         "requirements": readiness.get("requirements"),
                         "counts": readiness.get("counts"),
                         "window_days": readiness.get("window_days"),
-                        "last_updated": datetime.utcnow().isoformat()
+                        "last_updated": datetime.now(timezone.utc).isoformat()
                     }
 
                 if time_range == 'weekly':
@@ -491,7 +491,7 @@ class EnhancedAIIntelligenceService:
                 "status": "pending",
                 "message": "AI will load your intelligence score soon. Keep working.",
                 "error": str(e),
-                "last_updated": datetime.utcnow().isoformat()
+                "last_updated": datetime.now(timezone.utc).isoformat()
             }
 
     async def _calculate_daily_score(
@@ -503,7 +503,7 @@ class EnhancedAIIntelligenceService:
     ) -> Dict[str, Any]:
         """Calculate score for a specific day (default today)."""
         if not target_date:
-            target_date = datetime.utcnow()
+            target_date = datetime.now(timezone.utc)
 
         start_of_day = datetime.combine(target_date.date(), time.min)
         end_of_day = datetime.combine(target_date.date(), time.max)
@@ -564,7 +564,7 @@ class EnhancedAIIntelligenceService:
             "category": self._get_category(final_score),
             "context_label": "Daily Snapshot",
             "metrics": metrics,
-            "last_updated": datetime.utcnow().isoformat()
+            "last_updated": datetime.now(timezone.utc).isoformat()
         }
 
         if include_extras:
@@ -575,7 +575,7 @@ class EnhancedAIIntelligenceService:
             # 7-day sparkline from stored daily scores
             sparkline_7d = []
             try:
-                since_7d = datetime.utcnow() - timedelta(days=7)
+                since_7d = datetime.now(timezone.utc) - timedelta(days=7)
                 spark_res = await db.execute(
                     select(
                         func.date(AIIntelligenceScore.calculated_at).label('date'),
@@ -608,7 +608,7 @@ class EnhancedAIIntelligenceService:
 
     async def _calculate_weekly_score(self, db, user_id: int) -> Dict[str, Any]:
         """Weekly score: compute components once across 7-day range, with trend from two halves."""
-        today = datetime.utcnow()
+        today = datetime.now(timezone.utc)
         week_start = datetime.combine((today - timedelta(days=6)).date(), time.min)
         week_end = datetime.combine(today.date(), time.max)
 
@@ -682,12 +682,12 @@ class EnhancedAIIntelligenceService:
             "drivers": self._build_drivers(metrics, signals),
             "next_actions": self._build_next_actions(metrics, signals),
             "confidence": coverage.get("confidence", 0),
-            "last_updated": datetime.utcnow().isoformat(),
+            "last_updated": datetime.now(timezone.utc).isoformat(),
         }
 
     async def _calculate_monthly_score(self, db, user_id: int) -> Dict[str, Any]:
         """Monthly score: compute components once across 30-day range with lightweight trend."""
-        today = datetime.utcnow()
+        today = datetime.now(timezone.utc)
         month_start = datetime.combine((today - timedelta(days=29)).date(), time.min)
         month_end = datetime.combine(today.date(), time.max)
 
@@ -777,7 +777,7 @@ class EnhancedAIIntelligenceService:
             "drivers": self._build_drivers(metrics, signals),
             "next_actions": self._build_next_actions(metrics, signals),
             "confidence": coverage.get("confidence", 0),
-            "last_updated": datetime.utcnow().isoformat(),
+            "last_updated": datetime.now(timezone.utc).isoformat(),
         }
 
     # -------------------------------------------------------------------------
@@ -1306,7 +1306,7 @@ class EnhancedAIIntelligenceService:
             async for db in get_db():
                 score_record = AIIntelligenceScore(
                     user_id=user_id,
-                    calculated_at=datetime.utcnow(),
+                    calculated_at=datetime.now(timezone.utc),
                     time_range='daily',
                     overall_score=current_score['score'],
                     category=current_score['category'],
@@ -1319,7 +1319,7 @@ class EnhancedAIIntelligenceService:
                         'event_timestamp': event_data.get('timestamp'),
                         'user_behavior_context': event_data.get('metadata', {}),
                         'learning_growth': current_score['metrics'].get('learning_growth', 50),  # Store in meta since not in DB schema
-                        'calculated_at': datetime.utcnow().isoformat()
+                        'calculated_at': datetime.now(timezone.utc).isoformat()
                     }
                 )
                 
@@ -1334,7 +1334,7 @@ class EnhancedAIIntelligenceService:
                 
                 if metrics_record:
                     metrics_record.focus_score = current_score['score']
-                    metrics_record.updated_at = datetime.utcnow()
+                    metrics_record.updated_at = datetime.now(timezone.utc)
                     await db.commit()
                     
                     # Broadcast the update to real-time systems
@@ -1344,7 +1344,7 @@ class EnhancedAIIntelligenceService:
                             "type": "intelligence_score_updated",
                             "score": current_score['score'],
                             "category": current_score['category'],
-                            "timestamp": datetime.utcnow().isoformat()
+                            "timestamp": datetime.now(timezone.utc).isoformat()
                         })
                     except ImportError:
                         # Socket manager not available, skip broadcasting

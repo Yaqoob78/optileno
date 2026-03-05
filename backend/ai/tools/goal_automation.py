@@ -218,7 +218,7 @@ async def generate_tasks_from_goal(
         
         # Calculate duration days
         target_date = calculate_target_date(timeframe)
-        duration_days = max(1, (target_date - datetime.utcnow()).days)
+        duration_days = max(1, (target_date - datetime.now(timezone.utc)).days)
         
         # 1. Get AI Breakdown
         logger.info(f"Requesting AI breakdown for goal: {goal_title} ({duration_days} days)")
@@ -252,9 +252,9 @@ async def generate_tasks_from_goal(
 
             for due_in in due_in_days_list:
                 try:
-                    due_date = datetime.utcnow() + timedelta(days=int(due_in))
+                    due_date = datetime.now(timezone.utc) + timedelta(days=int(due_in))
                 except Exception:
-                    due_date = datetime.utcnow() + timedelta(days=(i + 1) * 2)
+                    due_date = datetime.now(timezone.utc) + timedelta(days=(i + 1) * 2)
                 
                 task_data = {
                     "title": task_def.get("title", f"Task for {goal_title}"),
@@ -358,7 +358,7 @@ async def schedule_deep_work_block(
     try:
         # Find the next available slot (simplified - would use calendar integration)
         # For now, schedule for next day morning
-        start_time = datetime.utcnow() + timedelta(days=1)
+        start_time = datetime.now(timezone.utc) + timedelta(days=1)
         start_time = start_time.replace(hour=9, minute=0, second=0, microsecond=0)
         
         session = await planner_service.start_deep_work_session(
@@ -717,7 +717,7 @@ async def get_planner_dashboard(user_id: str) -> Dict[str, Any]:
         active_session = await planner_service.get_active_deep_work(user_id)
         
         # Calculate stats
-        today = datetime.utcnow().date()
+        today = datetime.now(timezone.utc).date()
         tasks_today = [t for t in tasks if hasattr(t, 'due_date') and t.due_date and t.due_date.date() == today]
         tasks_completed_today = [t for t in tasks if hasattr(t, 'status') and t.status == 'completed' and hasattr(t, 'completed_at') and t.completed_at and t.completed_at.date() == today]
         

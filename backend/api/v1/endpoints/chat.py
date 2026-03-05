@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 from backend.core.security import get_current_user
@@ -17,19 +17,19 @@ logger = logging.getLogger(__name__)
 
 
 class ChatRequest(BaseModel):
-    message: str
+    message: str = Field(..., min_length=1, max_length=4000)
     mode: Optional[str] = "CHAT"
-    history: Optional[List[Dict[str, str]]] = []
+    history: Optional[List[Dict[str, str]]] = Field(default_factory=list)
     session_id: Optional[str] = None
 
 class ChatResponse(BaseModel):
     message: str
     intent: Optional[str] = "CHAT"
-    actions: Optional[List[Any]] = []
-    pending_confirmations: Optional[List[Any]] = []
+    actions: Optional[List[Any]] = Field(default_factory=list)
+    pending_confirmations: Optional[List[Any]] = Field(default_factory=list)
     session_id: Optional[str] = None
-    ui: Optional[Dict[str, Any]] = {}
-    data: Optional[Dict[str, Any]] = {}
+    ui: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    data: Optional[Dict[str, Any]] = Field(default_factory=dict)
     provider: Optional[str] = None
     model: Optional[str] = None
 
@@ -87,7 +87,7 @@ async def send_message(
                 "provider": response.get("provider"),
                 "model": response.get("model"),
                 "message_count": len(history) + 2 if history else 2,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             })
         except Exception as e:
             logger.warning(f"Broadcast failed: {e}")

@@ -364,6 +364,7 @@ export default function AnalyticsPage() {
       ]);
     } catch (error) {
       console.error('Failed to refresh analytics:', error);
+      alert('Failed to refresh analytics data. Please check your connection.');
     }
     setTimeout(() => setLoading(false), 800);
   };

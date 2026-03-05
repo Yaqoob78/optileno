@@ -3,7 +3,7 @@
 Behavior Timeline Service (Behavior v3)
 """
 
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, timezone
 from typing import Dict, Any, List, Optional
 import logging
 import re
@@ -159,7 +159,7 @@ class BehaviorTimelineService:
                         "days": days,
                         "score_version": "v3",
                         "source": "derived",
-                        "generated_at": datetime.utcnow().isoformat(),
+                        "generated_at": datetime.now(timezone.utc).isoformat(),
                     },
                 }
         except Exception as e:

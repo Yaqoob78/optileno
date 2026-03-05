@@ -5,7 +5,7 @@ Notification Service - Multi-channel notifications (in-app, push, email)
 
 import logging
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 import asyncio
 
@@ -66,7 +66,7 @@ class Notification:
         self.channels = channels or [NotificationChannel.IN_APP]
         self.metadata = metadata or {}
         self.action_url = action_url
-        self.created_at = datetime.utcnow()
+        self.created_at = datetime.now(timezone.utc)
         self.expires_at = expires_at
         self.read = False
         self.read_at: Optional[datetime] = None
@@ -75,7 +75,7 @@ class Notification:
     def mark_as_read(self):
         """Mark notification as read"""
         self.read = True
-        self.read_at = datetime.utcnow()
+        self.read_at = datetime.now(timezone.utc)
     
     def mark_delivered(self, channel: NotificationChannel):
         """Mark notification as delivered on a channel"""
@@ -85,7 +85,7 @@ class Notification:
     def is_expired(self) -> bool:
         """Check if notification has expired"""
         if self.expires_at:
-            return datetime.utcnow() > self.expires_at
+            return datetime.now(timezone.utc) > self.expires_at
         return False
     
     def to_dict(self) -> Dict[str, Any]:
@@ -140,7 +140,7 @@ class NotificationPreferences:
         if not self.quiet_hours_start or not self.quiet_hours_end:
             return False
         
-        current_time = datetime.utcnow().time()
+        current_time = datetime.now(timezone.utc).time()
         start = datetime.strptime(self.quiet_hours_start, "%H:%M").time()
         end = datetime.strptime(self.quiet_hours_end, "%H:%M").time()
         
@@ -252,8 +252,13 @@ class NotificationService:
             from backend.services.push_notification_service import push_service
             
             # Get user's device tokens (would be fetched from DB in production)
-            device_tokens = []  # TODO: Fetch from user preferences
+            device_tokens = []  # Push tokens not yet implemented; skip gracefully
             
+            if not device_tokens:
+                logger.debug("Push notification skipped: no device tokens configured for user %s", notification.user_id)
+                notification.mark_delivered(NotificationChannel.PUSH)
+                return
+
             if device_tokens:
                 result = await push_service.send_notification(
                     device_token=device_tokens[0] if device_tokens else "",

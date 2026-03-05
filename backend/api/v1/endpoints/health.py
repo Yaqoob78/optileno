@@ -5,7 +5,7 @@ Health check endpoints for monitoring and load balancers.
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
-from datetime import datetime
+from datetime import datetime, timezone
 import psutil
 import asyncio
 from typing import Dict, Any
@@ -20,7 +20,7 @@ async def health_check():
     """Basic health check endpoint"""
     return {
         "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "service": "optileno-backend"
     }
 
@@ -69,7 +69,7 @@ async def readiness_check(db: AsyncSession = Depends(get_db)):
     
     return {
         "status": "ready" if all_healthy else "not_ready",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "checks": checks
     }
 
@@ -90,7 +90,7 @@ async def liveness_check():
         
         return {
             "status": "alive",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "system": {
                 "cpu_percent": cpu_percent,
                 "memory_percent": memory.percent,
@@ -109,7 +109,7 @@ async def detailed_health_check(db: AsyncSession = Depends(get_db)):
     """Comprehensive health check with detailed metrics"""
     health_info = {
         "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "version": "1.0.0",
         "uptime_seconds": 0,  # Would need to track startup time
         "checks": {}

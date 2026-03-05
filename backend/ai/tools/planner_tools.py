@@ -3,7 +3,7 @@ AI Planner Tools - Full integration with user's goals, tasks, and habits.
 """
 
 from typing import Dict, Any, List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 
 from backend.services.planner_service import planner_service
@@ -635,7 +635,7 @@ class PlannerToolSet:
         from datetime import datetime
         import dateutil.parser
         
-        dt = datetime.utcnow()
+        dt = datetime.now(timezone.utc)
         if scheduled_start:
             try:
                 dt = dateutil.parser.isoparse(scheduled_start)

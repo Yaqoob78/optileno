@@ -20,7 +20,7 @@ from socketio import AsyncServer, ASGIApp
 from sqlalchemy import select
 from jose import JWTError
 import json
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from collections import deque
 
 from backend.app.config import settings
@@ -272,8 +272,8 @@ async def _register_session(sid: str, user_id: int, metadata: Dict[str, Any] = N
     # Store session metadata
     session_metadata[sid] = {
         "user_id": user_id,
-        "connected_at": datetime.utcnow().isoformat(),
-        "last_activity": datetime.utcnow().isoformat(),
+        "connected_at": datetime.now(timezone.utc).isoformat(),
+        "last_activity": datetime.now(timezone.utc).isoformat(),
         **(metadata or {})
     }
     
@@ -413,12 +413,12 @@ async def heartbeat(sid: str, data: dict):
     ws_metrics.record_message_received()
     
     if sid in session_metadata:
-        session_metadata[sid]["last_activity"] = datetime.utcnow().isoformat()
+        session_metadata[sid]["last_activity"] = datetime.now(timezone.utc).isoformat()
     
-    ws_metrics.last_heartbeat = datetime.utcnow().isoformat()
+    ws_metrics.last_heartbeat = datetime.now(timezone.utc).isoformat()
     
     await sio.emit('heartbeat_ack', {
-        'timestamp': datetime.utcnow().isoformat(),
+        'timestamp': datetime.now(timezone.utc).isoformat(),
         'server_time': time.time()
     }, to=sid)
 
@@ -461,7 +461,7 @@ async def broadcast_task_created(user_id: int, task: Dict[str, Any]):
         {
             'event': 'task_created',
             'task': task,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         },
         room=room
     )
@@ -476,7 +476,7 @@ async def broadcast_task_updated(user_id: int, task: Dict[str, Any]):
         {
             'event': 'task_updated',
             'task': task,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         },
         room=room
     )
@@ -491,7 +491,7 @@ async def broadcast_task_deleted(user_id: int, task_id: str):
         {
             'event': 'task_deleted',
             'task_id': task_id,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         },
         room=room
     )
@@ -506,7 +506,7 @@ async def broadcast_goal_created(user_id: int, goal: Dict[str, Any]):
         {
             'event': 'goal_created',
             'goal': goal,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         },
         room=room
     )
@@ -521,7 +521,7 @@ async def broadcast_goal_updated(user_id: int, goal: Dict[str, Any]):
         {
             'event': 'goal_updated',
             'goal': goal,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         },
         room=room
     )
@@ -538,7 +538,7 @@ async def broadcast_goal_progress_changed(user_id: int, goal_data: Dict[str, Any
             'goal_id': goal_data.get('goal_id'),
             'progress': goal_data.get('progress'),
             'previous_progress': goal_data.get('previous_progress'),
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         },
         room=room
     )
@@ -553,7 +553,7 @@ async def broadcast_deep_work_started(user_id: int, session: Dict[str, Any]):
         {
             'event': 'deep_work_started',
             'session': session,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         },
         room=room
     )
@@ -568,7 +568,7 @@ async def broadcast_deep_work_completed(user_id: int, session: Dict[str, Any]):
         {
             'event': 'deep_work_completed',
             'session': session,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         },
         room=room
     )
@@ -583,7 +583,7 @@ async def broadcast_analytics_update(user_id: int, metrics: Dict[str, Any]):
         {
             'event': 'analytics_update',
             'metrics': metrics,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         },
         room=room
     )
@@ -598,7 +598,7 @@ async def broadcast_insight_generated(user_id: int, insight: Dict[str, Any]):
         {
             'event': 'insight_generated',
             'insight': insight,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         },
         room=room
     )
@@ -616,7 +616,7 @@ async def broadcast_focus_score_updated(user_id: int, score_data: Dict[str, Any]
             'score': score_data.get('score', 0),
             'breakdown': score_data.get('breakdown', {}),
             'color': score_data.get('color', {}),
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         },
         room=room
     )
@@ -631,7 +631,7 @@ async def broadcast_notification(user_id: int, notification: Dict[str, Any]):
         {
             'event': 'notification',
             'notification': notification,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         },
         room=room
     )
@@ -646,7 +646,7 @@ async def broadcast_habit_created(user_id: int, habit: Dict[str, Any]):
         {
             'event': 'habit_created',
             'habit': habit,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         },
         room=room
     )
@@ -661,7 +661,7 @@ async def broadcast_habit_completed(user_id: int, habit: Dict[str, Any]):
         {
             'event': 'habit_completed',
             'habit': habit,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         },
         room=room
     )
@@ -676,7 +676,7 @@ async def broadcast_plan_generated(user_id: int, plan: Dict[str, Any]):
         {
             'event': 'plan_generated',
             'plan': plan,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         },
         room=room
     )
@@ -700,7 +700,7 @@ async def broadcast_message_received(user_id: int, message: Dict[str, Any]):
                 'message_count': message.get('message_count'),
                 'timestamp': message.get('timestamp')
             },
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         },
         room=room
     )
@@ -715,7 +715,7 @@ async def broadcast_conversation_updated(user_id: int, conversation: Dict[str, A
         {
             'event': 'conversation_updated',
             'conversation': conversation,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         },
         room=room
     )
@@ -734,7 +734,7 @@ async def broadcast_goal_achievement(user_id: int, achievement: Dict[str, Any]):
         {
             'event': 'goal_achievement',
             'achievement': achievement,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         },
         room=room
     )
@@ -749,7 +749,7 @@ async def broadcast_daily_summary(user_id: int, summary: Dict[str, Any]):
         {
             'event': 'daily_summary',
             'summary': summary,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         },
         room=room
     )
@@ -764,7 +764,7 @@ async def broadcast_weekly_insights(user_id: int, insights: Dict[str, Any]):
         {
             'event': 'weekly_insights',
             'insights': insights,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         },
         room=room
     )
@@ -779,7 +779,7 @@ async def broadcast_system_alert(user_id: int, alert: Dict[str, Any]):
         {
             'event': 'system_alert',
             'alert': alert,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         },
         room=room
     )
@@ -794,7 +794,7 @@ async def broadcast_presence_update(user_id: int, presence_data: Dict[str, Any])
         {
             'event': 'presence_updated',
             'data': presence_data,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         },
         room=room
     )
@@ -809,7 +809,7 @@ async def broadcast_collaboration_invite(user_id: int, invite_data: Dict[str, An
         {
             'event': 'collaboration_invite',
             'invite': invite_data,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         },
         room=room
     )
@@ -829,7 +829,7 @@ async def broadcast_task_shared(owner_id: int, shared_with_id: int, task: Dict[s
             'event': 'task_shared',
             'task': task,
             'shared_by_id': owner_id,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         },
         room=room
     )
@@ -845,7 +845,7 @@ async def broadcast_comment_added(user_id: int, task_id: str, comment: Dict[str,
             'event': 'comment_added',
             'task_id': task_id,
             'comment': comment,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         },
         room=room
     )
@@ -860,7 +860,7 @@ async def broadcast_collaboration_session_started(user_id: int, session_data: Di
         {
             'event': 'session_started',
             'session': session_data,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         },
         room=room
     )
@@ -876,7 +876,7 @@ async def broadcast_collaboration_update(user_id: int, session_id: str, change: 
             'event': 'collaboration_update',
             'session_id': session_id,
             'change': change,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         },
         room=room
     )
@@ -891,7 +891,7 @@ async def broadcast_notification_received(user_id: int, notification: Dict[str, 
         {
             'event': 'notification_received',
             'notification': notification,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         },
         room=room
     )
@@ -907,7 +907,7 @@ async def broadcast_agent_conversation_update(user_id: int, conversation_id: str
             'event': 'agent_conversation_updated',
             'conversation_id': conversation_id,
             'update': update,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         },
         room=room
     )
@@ -923,7 +923,7 @@ async def broadcast_agent_thinking(user_id: int, conversation_id: str, step: Dic
             'event': 'agent_thinking',
             'conversation_id': conversation_id,
             'step': step,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         },
         room=room
     )

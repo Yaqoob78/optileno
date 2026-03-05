@@ -140,8 +140,8 @@ async def update_task(
                 "category": updated.get("category"),
             },
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Task update broadcast failed: %s", exc)
     return updated
 
 
@@ -345,7 +345,7 @@ class GoalCreate(BaseModel):
     description: Optional[str] = None
     category: Optional[str] = "personal"
     target_date: Optional[str] = None
-    milestones: Optional[List[str]] = []
+    milestones: Optional[List[str]] = Field(default_factory=list)
 
 
 class GoalUpdate(BaseModel):
@@ -371,7 +371,7 @@ async def get_goal_timeline(current_user: User = Depends(get_current_user)):
 async def create_goal(goal_in: GoalCreate, current_user: User = Depends(get_current_user)):
     goal = await planner_service.create_goal(
         user_id=str(current_user.id),
-        goal_data=goal_in.dict(),
+        goal_data=goal_in.model_dump(),
     )
     if "error" in goal:
         raise HTTPException(status_code=500, detail=goal["error"])
@@ -438,7 +438,7 @@ async def ai_create_goal_with_cascade(
         )
     from backend.ai.tools.goal_automation import create_goal_with_cascade
 
-    result = await create_goal_with_cascade(user_id=str(current_user.id), payload=request.dict())
+    result = await create_goal_with_cascade(user_id=str(current_user.id), payload=request.model_dump())
     if result.get("status") == "error":
         raise HTTPException(status_code=500, detail=result.get("message", "Failed to create goal"))
     return result

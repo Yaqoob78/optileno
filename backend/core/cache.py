@@ -15,7 +15,7 @@ import asyncio
 import logging
 import time
 from typing import Any, Optional, Union, Dict, Callable, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 import redis.asyncio as redis
 from redis.asyncio.sentinel import Sentinel
@@ -243,7 +243,7 @@ class CacheService:
             health["status"] = "healthy"
             health["latency_ms"] = round(latency, 2)
             self.metrics.is_connected = True
-            self.metrics.last_health_check = datetime.utcnow().isoformat()
+            self.metrics.last_health_check = datetime.now(timezone.utc).isoformat()
         except Exception as e:
             health["status"] = "unhealthy"
             health["error"] = str(e)

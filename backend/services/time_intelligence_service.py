@@ -1,5 +1,5 @@
 # backend/services/time_intelligence_service.py
-from datetime import datetime, timedelta, date, time
+from datetime import datetime, timedelta, date, time, timezone
 from typing import Dict, Any, List, Optional
 from sqlalchemy import select, func, and_
 from sqlalchemy.orm import Session
@@ -27,7 +27,7 @@ class TimeIntelligenceService:
 
     async def _analyze_chronotype(self, db: Session, user_id: int) -> Dict[str, Any]:
         # Fetch completed tasks in last 30 days
-        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
         result = await db.execute(
             select(Task).where(
                 Task.user_id == user_id,

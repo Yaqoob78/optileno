@@ -1,5 +1,5 @@
 ﻿from typing import Optional, List, Any, Dict
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 import json
 import uuid
@@ -63,7 +63,8 @@ class CreateTaskContract(BaseModel):
     category: Optional[str] = "work"
     scheduled_time: Optional[str] = None
 
-    @validator("priority")
+    @field_validator("priority")
+    @classmethod
     def validate_priority(cls, v):
         allowed = ["low", "medium", "high", "urgent"]
         if v.lower() not in allowed:
@@ -77,7 +78,8 @@ class CreateHabitContract(BaseModel):
     category: Optional[str] = "Wellness"
     goal_link: Optional[str] = None
 
-    @validator("frequency_type")
+    @field_validator("frequency_type")
+    @classmethod
     def validate_frequency(cls, v):
         allowed = ["daily", "weekly"]
         return v.lower() if v.lower() in allowed else "daily"
@@ -99,9 +101,10 @@ class DeleteTaskContract(BaseModel):
     task_id: Optional[str] = None
     title: Optional[str] = None
     
-    @validator("title")
-    def check_one_present(cls, v, values):
-        if not v and not values.get("task_id"):
+    @field_validator("title")
+    @classmethod
+    def check_one_present(cls, v, info):
+        if not v and not info.data.get("task_id"):
             raise ValueError("Must provide either task_id or title")
         return v
 
@@ -226,7 +229,7 @@ def validate_tool_payload(tool_name: str, payload: Dict[str, Any], plan_tier: st
             payload["duration_minutes"] = payload.pop("duration")
 
         validated = schema_cls(**payload)
-        return validated.dict()
+        return validated.model_dump()
     except ValueError as e:
         error_msgs = []
         for error in e.errors():

@@ -5,7 +5,7 @@ Collaboration Service - Task sharing, permissions, real-time collaboration
 
 import logging
 from typing import List, Dict, Any, Optional, Set
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 import uuid
 
@@ -38,10 +38,10 @@ class TaskShare:
         self.shared_with_id = shared_with_id
         self.permissions = permissions
         self.message = message
-        self.created_at = datetime.utcnow()
+        self.created_at = datetime.now(timezone.utc)
         self.accepted = False
         self.accepted_at: Optional[datetime] = None
-        self.last_accessed: Optional[datetime] = datetime.utcnow()
+        self.last_accessed: Optional[datetime] = datetime.now(timezone.utc)
     
     def has_permission(self, permission: Permission) -> bool:
         """Check if share has a specific permission"""
@@ -50,11 +50,11 @@ class TaskShare:
     def accept(self):
         """Accept the shared task"""
         self.accepted = True
-        self.accepted_at = datetime.utcnow()
+        self.accepted_at = datetime.now(timezone.utc)
     
     def update_access_time(self):
         """Update last access time"""
-        self.last_accessed = datetime.utcnow()
+        self.last_accessed = datetime.now(timezone.utc)
     
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -86,15 +86,15 @@ class TaskComment:
         self.author_id = author_id
         self.content = content
         self.parent_comment_id = parent_comment_id  # For nested replies
-        self.created_at = datetime.utcnow()
-        self.updated_at = datetime.utcnow()
+        self.created_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(timezone.utc)
         self.likes: Set[int] = set()  # User IDs who liked this
         self.resolved = False
     
     def update_content(self, new_content: str):
         """Update comment content"""
         self.content = new_content
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
     
     def toggle_like(self, user_id: int):
         """Toggle like from user"""
@@ -129,8 +129,8 @@ class CollaborationSession:
         self.task_id = task_id
         self.session_id = str(uuid.uuid4())
         self.active_editors: Dict[int, Dict[str, Any]] = {}  # user_id -> editor info
-        self.started_at = datetime.utcnow()
-        self.last_activity = datetime.utcnow()
+        self.started_at = datetime.now(timezone.utc)
+        self.last_activity = datetime.now(timezone.utc)
         self.changes_log: List[Dict[str, Any]] = []
     
     def add_editor(self, user_id: int, user_name: str, cursor_position: Optional[int] = None):
@@ -139,10 +139,10 @@ class CollaborationSession:
             "user_id": user_id,
             "user_name": user_name,
             "cursor_position": cursor_position,
-            "joined_at": datetime.utcnow(),
-            "last_activity": datetime.utcnow()
+            "joined_at": datetime.now(timezone.utc),
+            "last_activity": datetime.now(timezone.utc)
         }
-        self.last_activity = datetime.utcnow()
+        self.last_activity = datetime.now(timezone.utc)
     
     def remove_editor(self, user_id: int):
         """Remove an editor from the session"""
@@ -156,9 +156,9 @@ class CollaborationSession:
             "field": field,
             "old_value": old_value,
             "new_value": new_value,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
-        self.last_activity = datetime.utcnow()
+        self.last_activity = datetime.now(timezone.utc)
     
     def get_active_editors_list(self) -> List[Dict[str, Any]]:
         """Get list of active editors"""
@@ -166,7 +166,7 @@ class CollaborationSession:
     
     def is_active(self, timeout_seconds: int = 300) -> bool:
         """Check if session is still active"""
-        elapsed = (datetime.utcnow() - self.last_activity).total_seconds()
+        elapsed = (datetime.now(timezone.utc) - self.last_activity).total_seconds()
         return elapsed < timeout_seconds
     
     def to_dict(self) -> Dict[str, Any]:

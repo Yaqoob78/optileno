@@ -160,7 +160,7 @@ const defaultModeSettings: ChatState['modeSettings'] = {
   }
 };
 
-const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2);
+const generateId = () => crypto.randomUUID();
 
 export const useChatStore = create<ChatState>()(
   persist(

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query, HTTPException, status, Body
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 from backend.core.security import get_current_user
 from backend.services.analytics_service import analytics_service
@@ -55,7 +55,7 @@ def _fallback_payload(message: str, **extra: Any) -> Dict[str, Any]:
         "status": "unavailable",
         "reason_code": "TEMPORARILY_UNAVAILABLE",
         "message": message,
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
         **extra,
     }
 
@@ -194,7 +194,7 @@ async def log_events_batch(
             "event": event_in.event,
             "source": event_in.source,
             "metadata": event_in.metadata,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         })
 
     saved_events = await analytics_service.save_event_batch(events) if events else []
@@ -230,7 +230,7 @@ async def log_event(
         "event": event_in.event,
         "source": event_in.source,
         "metadata": event_in.metadata,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
     
     saved_event = await analytics_service.save_event(event_data)
@@ -261,7 +261,7 @@ async def sync_analytics(
                 "event": event_name,
                 "source": event_source,
                 "metadata": e.get("metadata", {}),
-                "timestamp": e.get("timestamp", datetime.utcnow().isoformat()),
+                "timestamp": e.get("timestamp", datetime.now(timezone.utc).isoformat()),
             })
         if events:
             await analytics_service.save_event_batch(events)
@@ -369,7 +369,7 @@ async def get_focus_today(user = Depends(get_current_user)):
         logger.error("Focus today failed for user %s: %s", user.id, e, exc_info=True)
         return _fallback_payload(
             "Focus score is temporarily unavailable.",
-            date=datetime.utcnow().date().isoformat(),
+            date=datetime.now(timezone.utc).date().isoformat(),
             score=0,
             breakdown={},
             activities=[],
@@ -425,7 +425,7 @@ async def get_focus_heatmap(
                     "score_version": analytics_v2_service.SCORE_VERSION,
                     "source": "heatmap",
                     "confidence": 0.8,
-                    "generated_at": datetime.utcnow().isoformat(),
+                    "generated_at": datetime.now(timezone.utc).isoformat(),
                 }
             )
         if _should_cache_analytics_payload(heatmap_data):
@@ -470,7 +470,7 @@ async def get_focus_stats(
                     "score_version": analytics_v2_service.SCORE_VERSION,
                     "source": "heatmap",
                     "confidence": 0.75,
-                    "generated_at": datetime.utcnow().isoformat(),
+                    "generated_at": datetime.now(timezone.utc).isoformat(),
                 }
             )
         if _should_cache_analytics_payload(stats):
@@ -980,12 +980,12 @@ async def get_behavior_timeline(
                 "anti_quit": None,
             },
             meta={
-                "start_date": datetime.utcnow().date().isoformat(),
-                "end_date": datetime.utcnow().date().isoformat(),
+                "start_date": datetime.now(timezone.utc).date().isoformat(),
+                "end_date": datetime.now(timezone.utc).date().isoformat(),
                 "days": days,
                 "score_version": "v3",
                 "source": "fallback",
-                "generated_at": datetime.utcnow().isoformat(),
+                "generated_at": datetime.now(timezone.utc).isoformat(),
             },
         )
 
@@ -1069,7 +1069,7 @@ async def get_ai_intelligence(
             result.setdefault("time_range", time_range)
             result.setdefault("source", "derived")
             result.setdefault("confidence", 0.6)
-            result.setdefault("generated_at", datetime.utcnow().isoformat())
+            result.setdefault("generated_at", datetime.now(timezone.utc).isoformat())
         if _should_cache_analytics_payload(result):
             await cache_service.set(cache_key, result, expire=_analytics_cache_ttl(time_range, HEAVY_ANALYTICS_CACHE_TTL))
         return result
@@ -1081,7 +1081,7 @@ async def get_ai_intelligence(
             "status": "unavailable",
             "score": None,
             "message": "AI intelligence is temporarily unavailable.",
-            "last_updated": datetime.utcnow().isoformat(),
+            "last_updated": datetime.now(timezone.utc).isoformat(),
             "error_fallback": True,
             "reason_code": "TEMPORARILY_UNAVAILABLE",
         }

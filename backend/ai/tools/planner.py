@@ -10,7 +10,7 @@ async def resolve_task_id(user_id: str, identifier: str) -> str:
 
 from typing import Dict, Any
 import logging
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 
 from backend.services.planner_service import planner_service
 from backend.services.analytics_service import analytics_service
@@ -44,7 +44,7 @@ async def create_plan(user_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
             "name": payload.get("name", "Daily Plan"),
             "description": payload.get("description", ""),
             "plan_type": payload.get("plan_type", "daily"),
-            "date": datetime.utcnow().isoformat(),
+            "date": datetime.now(timezone.utc).isoformat(),
             "focus_areas": payload.get("focus_areas", []),
         }
         
@@ -111,7 +111,7 @@ async def start_deep_work(user_id: str, payload: Dict[str, Any]) -> Dict[str, An
                 "session_id": session.id if hasattr(session, 'id') else None,
                 "duration": payload.get("duration", 60),
                 "focus_area": payload.get("focus_area", "general"),
-                "started_at": datetime.utcnow().isoformat(),
+                "started_at": datetime.now(timezone.utc).isoformat(),
             }
         })
         
@@ -172,7 +172,7 @@ async def complete_task(user_id: str, payload: Dict[str, Any]) -> Dict[str, Any]
                 "planned_duration": planned_duration,
                 "actual_duration": actual_duration,
                 "delay": (actual_duration - planned_duration) if actual_duration and planned_duration else None,
-                "completed_at": datetime.utcnow().isoformat(),
+                "completed_at": datetime.now(timezone.utc).isoformat(),
             }
         })
         
@@ -212,7 +212,7 @@ async def track_habit(user_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
                 "habit_id": habit_id,
                 "habit_name": habit_name,
                 "streak": result.get("streak", 0),
-                "completed_at": datetime.utcnow().isoformat(),
+                "completed_at": datetime.now(timezone.utc).isoformat(),
             }
         })
         

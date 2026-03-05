@@ -8,7 +8,7 @@ import logging.config
 import json
 import sys
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict
 from pathlib import Path
 
@@ -50,7 +50,7 @@ class JSONFormatter(logging.Formatter):
     
     def format(self, record: logging.LogRecord) -> str:
         log_entry = {
-            'timestamp': datetime.utcnow().isoformat() + 'Z',
+            'timestamp': datetime.now(timezone.utc).isoformat() + 'Z',
             'level': record.levelname,
             'logger': record.name,
             'message': record.getMessage(),
@@ -226,11 +226,11 @@ def log_performance(logger_name: str = __name__):
     def decorator(func):
         def wrapper(*args, **kwargs):
             logger = get_logger(logger_name)
-            start_time = datetime.utcnow()
+            start_time = datetime.now(timezone.utc)
             
             try:
                 result = func(*args, **kwargs)
-                duration = (datetime.utcnow() - start_time).total_seconds()
+                duration = (datetime.now(timezone.utc) - start_time).total_seconds()
                 
                 logger.info(
                     f"Function {func.__name__} completed successfully",
@@ -244,7 +244,7 @@ def log_performance(logger_name: str = __name__):
                 return result
                 
             except Exception as e:
-                duration = (datetime.utcnow() - start_time).total_seconds()
+                duration = (datetime.now(timezone.utc) - start_time).total_seconds()
                 
                 logger.error(
                     f"Function {func.__name__} failed with error: {str(e)}",

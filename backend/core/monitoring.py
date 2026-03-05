@@ -12,7 +12,7 @@ Implements comprehensive monitoring, logging, and observability features:
 import time
 import asyncio
 from typing import Dict, Any, Optional, Callable
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 import logging
 from fastapi import Request, Response
@@ -224,7 +224,7 @@ class MonitoringService:
         duration = time.time() - start_time
         
         log_data = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "method": request.method,
             "url": str(request.url),
             "status_code": response.status_code,
@@ -249,7 +249,7 @@ class MonitoringService:
         endpoint = request.url.path if request else "unknown"
         
         error_data = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "type": error_type,
             "message": str(error),
             "endpoint": endpoint,
@@ -277,7 +277,7 @@ class MonitoringService:
         """Get comprehensive application health status."""
         health_data = {
             "status": "healthy",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "checks": {},
             "metrics": {}
         }
@@ -330,7 +330,7 @@ class MonitoringService:
     async def get_performance_metrics(self) -> Dict[str, Any]:
         """Get detailed performance metrics."""
         metrics = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "system": {
                 "cpu_percent": psutil.cpu_percent(),
                 "memory_percent": psutil.virtual_memory().percent,
@@ -367,7 +367,7 @@ class MonitoringService:
             "name": name,
             "value": value,
             "labels": labels or {},
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
         self.logger.debug(f"CUSTOM_METRIC: {metric_data}")
@@ -435,8 +435,8 @@ class MonitoringService:
             return 0
         
         # Calculate based on time range of recent requests
-        first_time = datetime.fromisoformat(requests[-1]["timestamp"]) if requests else datetime.utcnow()
-        last_time = datetime.fromisoformat(requests[0]["timestamp"]) if requests else datetime.utcnow()
+        first_time = datetime.fromisoformat(requests[-1]["timestamp"]) if requests else datetime.now(timezone.utc)
+        last_time = datetime.fromisoformat(requests[0]["timestamp"]) if requests else datetime.now(timezone.utc)
         
         time_diff = (last_time - first_time).total_seconds() / 60  # in minutes
         if time_diff == 0:
@@ -450,8 +450,8 @@ class MonitoringService:
             return 0
         
         # Calculate based on time range of recent errors
-        first_time = datetime.fromisoformat(errors[-1]["timestamp"]) if errors else datetime.utcnow()
-        last_time = datetime.fromisoformat(errors[0]["timestamp"]) if errors else datetime.utcnow()
+        first_time = datetime.fromisoformat(errors[-1]["timestamp"]) if errors else datetime.now(timezone.utc)
+        last_time = datetime.fromisoformat(errors[0]["timestamp"]) if errors else datetime.now(timezone.utc)
         
         time_diff = (last_time - first_time).total_seconds() / 60  # in minutes
         if time_diff == 0:
@@ -468,7 +468,7 @@ class MonitoringService:
                     event_type=event_type,
                     event_source="system",
                     category="monitoring",
-                    timestamp=datetime.utcnow(),
+                    timestamp=datetime.now(timezone.utc),
                     meta=metadata,
                     raw_data={"event_type": event_type, "user_id": user_id}
                 )

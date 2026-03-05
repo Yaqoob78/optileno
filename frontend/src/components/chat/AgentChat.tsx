@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Send, Loader, Zap, TrendingUp, CheckSquare, Brain } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { Send, Loader, Zap, TrendingUp, CheckSquare, Brain, AlertCircle } from 'lucide-react';
 import { socket } from '../../services/realtime/socket-client';
 import { usePlanner } from '../../hooks/usePlanner';
 import { api } from '../../services/api/client';
@@ -12,10 +12,87 @@ interface Message {
   mode?: string;
   timestamp: string;
   confirmations?: any[];
+  error?: boolean;
 }
 
 interface AgentChatProps {
   conversationId?: string;
+}
+
+// Lightweight markdown-ish renderer (bold, headers, bullets, code)
+function renderMarkdown(text: string): React.ReactNode {
+  if (!text) return null;
+  const lines = text.split('\n');
+  const elements: React.ReactNode[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i];
+
+    // Headers
+    if (line.startsWith('### ')) {
+      elements.push(<h4 key={i} className="font-bold text-sm mt-2 mb-1">{renderInline(line.slice(4))}</h4>);
+      continue;
+    }
+    if (line.startsWith('## ')) {
+      elements.push(<h3 key={i} className="font-bold text-base mt-2 mb-1">{renderInline(line.slice(3))}</h3>);
+      continue;
+    }
+
+    // Bullet points
+    if (line.startsWith('- ') || line.startsWith('• ')) {
+      elements.push(
+        <div key={i} className="flex gap-1.5 ml-1">
+          <span className="shrink-0 mt-0.5">•</span>
+          <span>{renderInline(line.slice(2))}</span>
+        </div>
+      );
+      continue;
+    }
+
+    // Numbered lists
+    const numMatch = line.match(/^(\d+)\.\s+(.*)$/);
+    if (numMatch) {
+      elements.push(
+        <div key={i} className="flex gap-1.5 ml-1">
+          <span className="shrink-0 font-medium">{numMatch[1]}.</span>
+          <span>{renderInline(numMatch[2])}</span>
+        </div>
+      );
+      continue;
+    }
+
+    // Empty lines -> small spacer
+    if (!line.trim()) {
+      elements.push(<div key={i} className="h-1.5" />);
+      continue;
+    }
+
+    // Normal text
+    elements.push(<p key={i} className="leading-relaxed">{renderInline(line)}</p>);
+  }
+
+  return <>{elements}</>;
+}
+
+function renderInline(text: string): React.ReactNode {
+  // Bold: **text** or __text__
+  const parts = text.split(/(\*\*[^*]+\*\*|__[^_]+__)/g);
+  return parts.map((part, idx) => {
+    if ((part.startsWith('**') && part.endsWith('**')) || (part.startsWith('__') && part.endsWith('__'))) {
+      return <strong key={idx} className="font-semibold">{part.slice(2, -2)}</strong>;
+    }
+    // Inline code: `text`
+    const codeParts = part.split(/(`[^`]+`)/g);
+    if (codeParts.length > 1) {
+      return codeParts.map((cp, cIdx) => {
+        if (cp.startsWith('`') && cp.endsWith('`')) {
+          return <code key={`${idx}-${cIdx}`} className="bg-gray-700/30 px-1 py-0.5 rounded text-xs font-mono">{cp.slice(1, -1)}</code>;
+        }
+        return cp;
+      });
+    }
+    return part;
+  });
 }
 
 export const AgentChat: React.FC<AgentChatProps> = ({ conversationId }) => {
@@ -25,6 +102,12 @@ export const AgentChat: React.FC<AgentChatProps> = ({ conversationId }) => {
   const [agentMode, setAgentMode] = useState<'CHAT' | 'PLAN' | 'ANALYZE' | 'TASK'>('CHAT');
   const [agentThinking, setAgentThinking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Stable session ID for multi-turn context
+  const sessionId = useMemo(
+    () => conversationId || crypto.randomUUID(),
+    [conversationId]
+  );
 
   const modes = [
     { id: 'CHAT', label: 'Chat', icon: Brain },
@@ -39,7 +122,7 @@ export const AgentChat: React.FC<AgentChatProps> = ({ conversationId }) => {
 
   useEffect(() => {
     // Listen for agent updates
-    socket.on('agent:thinking', (data: any) => {
+    socket.on('agent:thinking', () => {
       setAgentThinking(true);
     });
 
@@ -61,12 +144,30 @@ export const AgentChat: React.FC<AgentChatProps> = ({ conversationId }) => {
 
   const { forceRefresh } = usePlanner();
 
+  // Build conversation history from messages for the backend
+  const buildHistory = useCallback((): Array<{ role: string; content: string }> => {
+    return messages
+      .slice(-10) // Last 10 messages for context
+      .map((m) => ({
+        role: m.role === 'agent' ? 'assistant' : 'user',
+        content: m.content,
+      }));
+  }, [messages]);
+
+  // Debounce guard
+  const lastSendRef = useRef<number>(0);
+
   const handleSendMessage = async (customMessage?: string) => {
     const textToSend = customMessage || inputValue;
     if (!textToSend.trim()) return;
 
+    // Debounce: prevent double sends within 500ms
+    const now = Date.now();
+    if (now - lastSendRef.current < 500) return;
+    lastSendRef.current = now;
+
     const userMessage: Message = {
-      id: Math.random().toString(),
+      id: crypto.randomUUID(),
       role: 'user',
       content: textToSend,
       timestamp: new Date().toISOString(),
@@ -81,6 +182,8 @@ export const AgentChat: React.FC<AgentChatProps> = ({ conversationId }) => {
       const response = await api.post<any>('/chat/send', {
         message: textToSend,
         mode: agentMode,
+        session_id: sessionId,
+        history: buildHistory(),
       });
       if (!response.success || !response.data) {
         throw new Error(response.error?.message || 'Failed to send message');
@@ -94,7 +197,7 @@ export const AgentChat: React.FC<AgentChatProps> = ({ conversationId }) => {
       }
 
       const agentMessage: Message = {
-        id: Math.random().toString(), // data.message_id might be missing
+        id: crypto.randomUUID(),
         role: 'agent',
         content: data.message || "I didn't get a response.",
         mode: agentMode,
@@ -104,9 +207,19 @@ export const AgentChat: React.FC<AgentChatProps> = ({ conversationId }) => {
 
       setMessages((prev) => [...prev, agentMessage]);
       setAgentThinking(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to send message:', error);
       setAgentThinking(false);
+
+      // Show error to user instead of silently failing
+      const errorMessage: Message = {
+        id: crypto.randomUUID(),
+        role: 'agent',
+        content: error?.message || "Something went wrong. Please try again.",
+        timestamp: new Date().toISOString(),
+        error: true,
+      };
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
@@ -117,16 +230,29 @@ export const AgentChat: React.FC<AgentChatProps> = ({ conversationId }) => {
       <div
         className={`max-w-xs lg:max-w-md xl:max-w-lg px-4 py-3 rounded-lg ${message.role === 'user'
           ? 'bg-blue-600 text-white rounded-br-none'
-          : 'bg-gray-200 text-gray-900 rounded-bl-none'
+          : message.error
+            ? 'bg-red-100 text-red-800 rounded-bl-none border border-red-200'
+            : 'bg-gray-200 text-gray-900 rounded-bl-none'
           }`}
       >
-        <div className="text-sm whitespace-pre-wrap">{message.content}</div>
+        {message.error && (
+          <div className="flex items-center gap-1.5 mb-1 text-red-600">
+            <AlertCircle className="w-3.5 h-3.5" />
+            <span className="text-xs font-medium">Error</span>
+          </div>
+        )}
+        <div className="text-sm">
+          {message.role === 'agent' && !message.error
+            ? renderMarkdown(message.content)
+            : <span className="whitespace-pre-wrap">{message.content}</span>
+          }
+        </div>
 
         {/* Confirmation Actions */}
         {message.confirmations && message.confirmations.length > 0 && (
           <div className="mt-3 pt-3 border-t border-gray-300">
             <p className="text-xs font-semibold mb-2">Requires Confirmation:</p>
-            {message.confirmations.map((conf, idx) => (
+            {message.confirmations.map((conf: any, idx: number) => (
               <div key={idx} className="bg-white p-2 rounded text-xs mb-2 shadow-sm">
                 <div className="font-medium text-blue-800 mb-1">{conf.description}</div>
                 <div className="flex gap-2 mt-2">
@@ -214,7 +340,7 @@ export const AgentChat: React.FC<AgentChatProps> = ({ conversationId }) => {
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={(e) => {
+            onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 handleSendMessage();

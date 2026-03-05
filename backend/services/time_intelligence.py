@@ -3,7 +3,7 @@
 Time Intelligence Service - AI-powered temporal analytics.
 """
 
-from datetime import datetime, timedelta, time
+from datetime import datetime, timedelta, time, timezone
 from typing import Dict, Any, List, Optional
 import logging
 from sqlalchemy import select, func, and_
@@ -31,7 +31,7 @@ class TimeIntelligenceService:
         try:
             async for db in get_db():
                 # Analyze task completions by hour
-                start_date = datetime.utcnow() - timedelta(days=30)
+                start_date = datetime.now(timezone.utc) - timedelta(days=30)
                 
                 # Get completion timestamps
                 result = await db.execute(

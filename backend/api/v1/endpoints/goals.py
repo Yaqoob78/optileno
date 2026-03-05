@@ -23,7 +23,7 @@ class GoalCreate(BaseModel):
     description: Optional[str] = None
     category: Optional[str] = "personal"
     target_date: Optional[datetime] = None
-    milestones: Optional[List[str]] = []
+    milestones: Optional[List[str]] = Field(default_factory=list)
 
 
 class GoalUpdate(BaseModel):
@@ -41,10 +41,10 @@ class GoalOut(BaseModel):
     category: Optional[str] = None
     target_date: Optional[str] = None
     current_progress: int = 0
-    milestones: List[str] = []
+    milestones: List[str] = Field(default_factory=list)
     
     # AI Fields
-    ai_suggestions: dict = {}
+    ai_suggestions: dict = Field(default_factory=dict)
     is_tracked: bool = False
     probability_status: str = "Medium"
     

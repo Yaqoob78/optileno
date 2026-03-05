@@ -4,7 +4,7 @@ Event normalizer - standardizes events from different sources.
 """
 
 from typing import Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 
 async def normalize_event(event_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -16,7 +16,7 @@ async def normalize_event(event_data: Dict[str, Any]) -> Dict[str, Any]:
         "user_id": _normalize_user_id(event_data.get("user_id", "")),
         "event": event_data.get("event", "unknown").lower().strip(),
         "source": event_data.get("source", "unknown").lower().strip(),
-        "timestamp": event_data.get("timestamp") or datetime.utcnow().isoformat(),
+        "timestamp": event_data.get("timestamp") or datetime.now(timezone.utc).isoformat(),
         "metadata": event_data.get("metadata", {}),
     }
     

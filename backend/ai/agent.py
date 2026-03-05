@@ -6,7 +6,7 @@ Handles agent planning, execution, and decision-making
 
 import logging
 from typing import Any, Dict, List, Optional, Callable
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 import json
 
@@ -31,7 +31,7 @@ class AgentPlan:
         self.goal = goal
         self.steps = steps
         self.reasoning = reasoning
-        self.created_at = datetime.utcnow()
+        self.created_at = datetime.now(timezone.utc)
         self.completed_steps: List[str] = []
         self.current_step_index = 0
     
@@ -65,14 +65,14 @@ class ConversationContext:
         self.max_history = max_history
         self.context_topics: List[str] = []
         self.user_preferences: Dict[str, Any] = {}
-        self.last_interaction = datetime.utcnow()
+        self.last_interaction = datetime.now(timezone.utc)
     
     def add_message(self, role: str, content: str, metadata: Optional[Dict] = None):
         """Add a message to conversation history"""
         message = {
             "role": role,
             "content": content,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "metadata": metadata or {}
         }
         self.messages.append(message)
@@ -81,7 +81,7 @@ class ConversationContext:
         if len(self.messages) > self.max_history:
             self.messages = self.messages[-self.max_history:]
         
-        self.last_interaction = datetime.utcnow()
+        self.last_interaction = datetime.now(timezone.utc)
     
     def get_recent_context(self, num_messages: int = 5) -> List[Dict[str, str]]:
         """Get recent conversation messages for context"""
@@ -119,7 +119,7 @@ class ToolCall:
         """Execute the tool function"""
         try:
             self.result = tool_function(**self.parameters)
-            self.executed_at = datetime.utcnow()
+            self.executed_at = datetime.now(timezone.utc)
             logger.info(f"✓ Tool executed: {self.tool_name}")
             return True
         except Exception as e:
@@ -151,7 +151,7 @@ class AgentOrchestrator:
         self.conversation_context = ConversationContext(user_id)
         self.tool_registry: Dict[str, Callable] = {}
         self.execution_history: List[Dict[str, Any]] = []
-        self.created_at = datetime.utcnow()
+        self.created_at = datetime.now(timezone.utc)
     
     def register_tool(self, name: str, func: Callable, description: str = ""):
         """Register a tool function for the agent to use"""

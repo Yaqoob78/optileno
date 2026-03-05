@@ -3,7 +3,7 @@
 Complete analytics service with real-time processing and AI integration.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional
 from sqlalchemy import select, func
 import asyncio
@@ -49,7 +49,7 @@ class AnalyticsService:
             try:
                 ts = datetime.fromisoformat(normalized["timestamp"].replace('Z', '+00:00'))
             except (ValueError, TypeError):
-                ts = datetime.utcnow()
+                ts = datetime.now(timezone.utc)
             
             # Create event record
             event = AnalyticsEvent(
@@ -61,7 +61,7 @@ class AnalyticsService:
                 # Store as dict, let SQLAlchemy/Driver handle JSON serialization
                 meta=normalized.get("metadata", {}),
                 raw_data=normalized,
-                processed_at=datetime.utcnow(),
+                processed_at=datetime.now(timezone.utc),
             )
             
             db.add(event)
@@ -115,7 +115,7 @@ class AnalyticsService:
                     try:
                         ts = datetime.fromisoformat(normalized["timestamp"].replace('Z', '+00:00'))
                     except (ValueError, TypeError):
-                        ts = datetime.utcnow()
+                        ts = datetime.now(timezone.utc)
 
                     event = AnalyticsEvent(
                         user_id=user_id,
@@ -125,7 +125,7 @@ class AnalyticsService:
                         timestamp=ts,
                         meta=normalized.get("metadata", {}),
                         raw_data=normalized,
-                        processed_at=datetime.utcnow(),
+                        processed_at=datetime.now(timezone.utc),
                     )
                     events.append(event)
                     normalized_events.append(normalized)
@@ -235,7 +235,7 @@ class AnalyticsService:
                 metrics.engagement_score = int(metrics.engagement_score or 0)
 
             # Check for daily reset
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             # If metrics exist and were last updated on a Previous day
             if metrics.updated_at and metrics.updated_at.date() < now.date():
                 logger.info(f"Resetting daily metrics for user {user_id} (last updated: {metrics.updated_at})")
@@ -324,7 +324,7 @@ class AnalyticsService:
                     metrics.focus_score = min(100, metrics.focus_score + 2)
                     # Use metadata to track daily limit if needed in a more complex setup
 
-            metrics.updated_at = datetime.utcnow()
+            metrics.updated_at = datetime.now(timezone.utc)
             await db.commit()
 
             # Broadcast updated metrics
@@ -353,7 +353,7 @@ class AnalyticsService:
         
         async for db in get_db():
             # 2. Update/Create FocusScore record for today
-            today = datetime.utcnow().date()
+            today = datetime.now(timezone.utc).date()
             stmt = select(FocusScore).where(
                 FocusScore.user_id == user_id,
                 func.date(FocusScore.date) == today
@@ -364,7 +364,7 @@ class AnalyticsService:
             if not focus_record:
                 focus_record = FocusScore(
                     user_id=user_id,
-                    date=datetime.utcnow(),
+                    date=datetime.now(timezone.utc),
                     score=int(new_score),
                     breakdown=result.get("breakdown", {}),
                     activities=result.get("activities", [])
@@ -374,13 +374,13 @@ class AnalyticsService:
                 focus_record.score = int(new_score)
                 focus_record.breakdown = result.get("breakdown", {})
                 focus_record.activities = result.get("activities", [])
-                focus_record.updated_at = datetime.utcnow()
+                focus_record.updated_at = datetime.now(timezone.utc)
             
             # 3. Also update RealTimeMetrics for instant UI updates
             metrics = await self.get_realtime_metrics(user_id)
             if metrics:
                 metrics.focus_score = int(new_score)
-                metrics.updated_at = datetime.utcnow()
+                metrics.updated_at = datetime.now(timezone.utc)
             
             await db.commit()
             
@@ -408,7 +408,7 @@ class AnalyticsService:
                 confidence=insight_data.get("confidence", 0.7),
                 action_items=json.dumps(insight_data.get("action_items", [])),
                 context=json.dumps(insight_data.get("context", {})),
-                generated_at=datetime.utcnow(),
+                generated_at=datetime.now(timezone.utc),
             )
             db.add(insight)
             await db.commit()
@@ -423,7 +423,7 @@ class AnalyticsService:
                 analysis_type=analysis.get("type", "pattern"),
                 content=json.dumps(analysis),
                 confidence=analysis.get("confidence", 0.5),
-                generated_at=datetime.utcnow(),
+                generated_at=datetime.now(timezone.utc),
             )
             db.add(ai_analysis)
             await db.commit()
@@ -440,8 +440,8 @@ class AnalyticsService:
                     frequency=pattern_data.get("count", 1),
                     significance=pattern_data.get("significance", "medium"),
                     metadata=json.dumps(pattern_data),
-                    first_detected=datetime.utcnow(),
-                    last_detected=datetime.utcnow(),
+                    first_detected=datetime.now(timezone.utc),
+                    last_detected=datetime.now(timezone.utc),
                 )
                 db.add(pattern)
             await db.commit()
@@ -557,7 +557,7 @@ class AnalyticsService:
                 ],
                 "time_analytics": time_analytics,
                 "recent_activity": events[:10],
-                "last_updated": datetime.utcnow().isoformat(),
+                "last_updated": datetime.now(timezone.utc).isoformat(),
             }
         except Exception as e:
             logger.error(f"Error in get_comprehensive_analytics: {e}", exc_info=True)
@@ -574,7 +574,7 @@ class AnalyticsService:
                 "patterns": [],
                 "time_analytics": {},
                 "recent_activity": [],
-                "last_updated": datetime.utcnow().isoformat(),
+                "last_updated": datetime.now(timezone.utc).isoformat(),
                 "error": str(e)
             }
 
@@ -608,7 +608,7 @@ class AnalyticsService:
                 if focus_scores:
                     # Calculate weekly average (last 7 days)
                     # Safe check for date type
-                    today_date = datetime.utcnow().date()
+                    today_date = datetime.now(timezone.utc).date()
                     
                     def get_date_obj(fs):
                         d = fs.date
@@ -975,7 +975,9 @@ class AnalyticsService:
             return False
         try:
             event_time = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
-            return (datetime.utcnow() - event_time).total_seconds() < hours * 3600
+            if event_time.tzinfo is None:
+                event_time = event_time.replace(tzinfo=timezone.utc)
+            return (datetime.now(timezone.utc) - event_time).total_seconds() < hours * 3600
         except:
             return False
 

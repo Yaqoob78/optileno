@@ -9,7 +9,7 @@ Implements additional security measures including:
 - Audit logging
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 import hashlib
 import secrets
@@ -60,7 +60,7 @@ class SecurityEnhancementService:
         token_hash = await self.hash_token(token_value)
         
         # Set expiration (typically 30 days)
-        expires_at = datetime.utcnow() + timedelta(days=30)
+        expires_at = datetime.now(timezone.utc) + timedelta(days=30)
         
         # Store in database
         async for db in get_db():
@@ -87,13 +87,13 @@ class SecurityEnhancementService:
             refresh_token = db.query(RefreshToken).filter(
                 RefreshToken.token == token_hash,
                 RefreshToken.user_id == user_id,
-                RefreshToken.expires_at > datetime.utcnow(),
+                RefreshToken.expires_at > datetime.now(timezone.utc),
                 RefreshToken.is_revoked == False
             ).first()
             
             if refresh_token:
                 # Mark as used (for one-time use tokens) or update last used
-                refresh_token.last_used_at = datetime.utcnow()
+                refresh_token.last_used_at = datetime.now(timezone.utc)
                 await db.commit()
                 return True
         
@@ -135,7 +135,7 @@ class SecurityEnhancementService:
         
         if cached_data:
             count, expiry = cached_data
-            current_time = datetime.utcnow().timestamp()
+            current_time = datetime.now(timezone.utc).timestamp()
             
             if current_time > expiry:
                 # Reset counter after window expires
@@ -147,7 +147,7 @@ class SecurityEnhancementService:
         else:
             # First request in this window
             count = 1
-            expiry = datetime.utcnow().timestamp() + window
+            expiry = datetime.now(timezone.utc).timestamp() + window
         
         # Store updated count and expiry
         await cache_service.set(cache_key, [count, expiry], window)
@@ -162,7 +162,7 @@ class SecurityEnhancementService:
     async def log_security_event(self, user_id: Optional[int], event_type: str, details: Dict[str, Any]):
         """Log security-related events for audit purposes."""
         event = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "user_id": user_id,
             "event_type": event_type,
             "details": details,
@@ -198,17 +198,19 @@ class SecurityEnhancementService:
         
         if not attempts_data:
             # No previous attempts, allow
-            await cache_service.set(cache_key, {"count": 1, "timestamp": datetime.utcnow().isoformat()}, window_minutes * 60)
+            await cache_service.set(cache_key, {"count": 1, "timestamp": datetime.now(timezone.utc).isoformat()}, window_minutes * 60)
             return True
         
         # Check if window has expired
         attempt_time = datetime.fromisoformat(attempts_data["timestamp"])
-        current_time = datetime.utcnow()
+        if attempt_time.tzinfo is None:
+            attempt_time = attempt_time.replace(tzinfo=timezone.utc)
+        current_time = datetime.now(timezone.utc)
         time_diff = (current_time - attempt_time).seconds / 60  # in minutes
         
         if time_diff > window_minutes:
             # Reset counter after window expires
-            await cache_service.set(cache_key, {"count": 1, "timestamp": datetime.utcnow().isoformat()}, window_minutes * 60)
+            await cache_service.set(cache_key, {"count": 1, "timestamp": datetime.now(timezone.utc).isoformat()}, window_minutes * 60)
             return True
         
         # Increment count
@@ -228,15 +230,17 @@ class SecurityEnhancementService:
         attempts_data = await cache_service.get(cache_key)
         
         if not attempts_data:
-            await cache_service.set(cache_key, {"count": 1, "timestamp": datetime.utcnow().isoformat()}, window_minutes * 60)
+            await cache_service.set(cache_key, {"count": 1, "timestamp": datetime.now(timezone.utc).isoformat()}, window_minutes * 60)
         else:
             attempt_time = datetime.fromisoformat(attempts_data["timestamp"])
-            current_time = datetime.utcnow()
+            if attempt_time.tzinfo is None:
+                attempt_time = attempt_time.replace(tzinfo=timezone.utc)
+            current_time = datetime.now(timezone.utc)
             time_diff = (current_time - attempt_time).seconds / 60  # in minutes
             
             if time_diff > window_minutes:
                 # Reset after window expires
-                await cache_service.set(cache_key, {"count": 1, "timestamp": datetime.utcnow().isoformat()}, window_minutes * 60)
+                await cache_service.set(cache_key, {"count": 1, "timestamp": datetime.now(timezone.utc).isoformat()}, window_minutes * 60)
             else:
                 # Increment count
                 attempts_data["count"] += 1
@@ -282,7 +286,7 @@ class SecurityEnhancementService:
         await self.log_security_event(
             user_id, 
             "TWO_FACTOR_ENABLED", 
-            {"method": "totp", "timestamp": datetime.utcnow().isoformat()}
+            {"method": "totp", "timestamp": datetime.now(timezone.utc).isoformat()}
         )
         
         return True

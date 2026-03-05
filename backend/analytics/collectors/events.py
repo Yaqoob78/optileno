@@ -3,7 +3,7 @@ Enhanced event collector with rich event types and immediate processing.
 """
 
 from typing import Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timezone
 import asyncio
 import json
 
@@ -56,7 +56,7 @@ async def collect_and_process_event(event_data: Dict[str, Any]) -> Dict[str, Any
     # Add category based on event type
     event_type = normalized.get("event", "unknown")
     normalized["category"] = EVENT_CATEGORIES.get(event_type, "other")
-    normalized["processed_at"] = datetime.utcnow().isoformat()
+    normalized["processed_at"] = datetime.now(timezone.utc).isoformat()
     
     # Save to database via service
     saved_event = await analytics_service.save_event(normalized)
@@ -174,7 +174,7 @@ async def update_realtime_metrics(user_id: str, event: Dict[str, Any]):
             "planning": {"accuracy": 0, "tasks_created": 0, "tasks_completed": 0},
             "consistency": {"streak": 0, "habits_today": 0, "missed_days": 0},
             "wellbeing": {"burnout_risk": 0, "engagement": 0},
-            "last_updated": datetime.utcnow().isoformat(),
+            "last_updated": datetime.now(timezone.utc).isoformat(),
         }
     
     # Update based on event type

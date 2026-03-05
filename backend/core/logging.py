@@ -3,7 +3,7 @@ Enhanced logging for security events.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 
 from backend.analytics.collectors.events import collect_and_save_event
@@ -24,7 +24,7 @@ async def log_security_event(
     - suspicious_activity
     """
     log_data = {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "user_id": user_id,
         "event": event,
         "source": "security",

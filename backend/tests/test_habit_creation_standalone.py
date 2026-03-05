@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from backend.services.planner_service import planner_service
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class MockDbGen:
@@ -28,7 +28,7 @@ async def test_get_user_habits():
     mock_result = MagicMock()
     
     # Mock habit data with ISO formatted dates
-    created_at = datetime.utcnow()
+    created_at = datetime.now(timezone.utc)
     mock_plan = MagicMock()
     mock_plan.id = 1
     mock_plan.name = "Test Habit"
@@ -58,7 +58,7 @@ async def test_create_habit():
 
     def _refresh_side_effect(plan):
         plan.id = 55
-        plan.created_at = datetime.utcnow()
+        plan.created_at = datetime.now(timezone.utc)
 
     mock_db.refresh.side_effect = _refresh_side_effect
     

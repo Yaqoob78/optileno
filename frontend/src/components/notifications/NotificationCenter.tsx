@@ -32,7 +32,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
   );
 
   const normalizeNotification = (incoming: any): Notification => ({
-    id: String(incoming?.id ?? Math.random()),
+    id: String(incoming?.id ?? crypto.randomUUID()),
     type: String(incoming?.type ?? 'info'),
     title: String(incoming?.title ?? 'Notification'),
     message: String(incoming?.message ?? ''),
@@ -134,7 +134,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
     }
   };
 
-  const filtered = filter === 'unread' 
+  const filtered = filter === 'unread'
     ? notifications.filter((n) => !n.read)
     : notifications;
 
@@ -161,21 +161,19 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
         <div className="flex gap-2 px-5 py-3 border-b border-white/10">
           <button
             onClick={() => setFilter('all')}
-            className={`px-3 py-1 rounded-full text-sm font-medium transition ${
-              filter === 'all'
+            className={`px-3 py-1 rounded-full text-sm font-medium transition ${filter === 'all'
                 ? 'bg-blue-500 text-white'
                 : 'bg-white/5 text-slate-300 hover:bg-white/10'
-            }`}
+              }`}
           >
             All ({notifications.length})
           </button>
           <button
             onClick={() => setFilter('unread')}
-            className={`px-3 py-1 rounded-full text-sm font-medium transition ${
-              filter === 'unread'
+            className={`px-3 py-1 rounded-full text-sm font-medium transition ${filter === 'unread'
                 ? 'bg-blue-500 text-white'
                 : 'bg-white/5 text-slate-300 hover:bg-white/10'
-            }`}
+              }`}
           >
             Unread ({unreadCount})
           </button>
@@ -193,9 +191,8 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
               {filtered.map((notif) => (
                 <div
                   key={notif.id}
-                  className={`p-4 transition ${
-                    !notif.read ? 'bg-blue-500/10 hover:bg-blue-500/15' : 'hover:bg-white/5'
-                  }`}
+                  className={`p-4 transition ${!notif.read ? 'bg-blue-500/10 hover:bg-blue-500/15' : 'hover:bg-white/5'
+                    }`}
                 >
                   <div className="flex gap-3">
                     <div className="flex-shrink-0 pt-1">

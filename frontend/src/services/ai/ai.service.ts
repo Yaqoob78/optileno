@@ -77,7 +77,7 @@ class AIService {
             if (result.tasks_created && Array.isArray(result.tasks_created)) {
               result.tasks_created.forEach((taskData: any) => {
                 const task: Task = {
-                  id: taskData.id || `task_${Date.now()}_${Math.random()}`,
+                  id: taskData.id || `task_${crypto.randomUUID()}`,
                   title: taskData.title,
                   description: taskData.description || '',
                   status: this.mapTaskStatus(taskData.status),
@@ -99,7 +99,7 @@ class AIService {
             if (result.habits_created && Array.isArray(result.habits_created)) {
               const existingHabits = plannerStore.habits || [];
               const newHabits: Habit[] = result.habits_created.map((h: any) => ({
-                id: h.id || `habit_${Date.now()}_${Math.random()}`,
+                id: h.id || `habit_${crypto.randomUUID()}`,
                 name: h.name,
                 description: h.description || '',
                 frequency: h.frequency || 'daily',

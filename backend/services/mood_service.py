@@ -9,7 +9,7 @@ ALGORITHM:
 4. Temporal Pattern (10%)
 """
 
-from datetime import datetime, timedelta, date, time
+from datetime import datetime, timedelta, date, time, timezone
 from typing import Dict, Any, List, Optional
 import logging
 from sqlalchemy import select, func, and_
@@ -159,7 +159,7 @@ class MoodService:
         """
         try:
             async for db in get_db():
-                start_time = datetime.utcnow() - timedelta(hours=2)
+                start_time = datetime.now(timezone.utc) - timedelta(hours=2)
                 
                 # Count recent completions
                 task_count = await db.execute(
@@ -195,7 +195,7 @@ class MoodService:
         """
         try:
             async for db in get_db():
-                start_time = datetime.utcnow() - timedelta(hours=6)
+                start_time = datetime.now(timezone.utc) - timedelta(hours=6)
                 result = await db.execute(
                     select(AnalyticsEvent.meta).where( # Fixed column name from metadata to meta
                         AnalyticsEvent.user_id == user_id,
@@ -310,7 +310,7 @@ class MoodService:
         """Check for frustration indicators."""
         try:
             async for db in get_db():
-                start_time = datetime.utcnow() - timedelta(minutes=30)
+                start_time = datetime.now(timezone.utc) - timedelta(minutes=30)
                 result = await db.execute(
                     select(AnalyticsEvent.meta).where(
                         AnalyticsEvent.user_id == user_id,

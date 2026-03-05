@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 async def test_big_five_start():
-    with open("big_five_test_output.txt", "w") as f:
+    with open("big_five_test_output.txt", "w", encoding="utf-8") as f:
         f.write("--- Testing Big Five Test Start ---\n")
         
         # Mock user_id (ensure this user exists or use a dummy)

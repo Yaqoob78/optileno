@@ -31,7 +31,7 @@ from backend.realtime import (
 )
 from backend.db.models import User
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timezone
 
 router = APIRouter()
 
@@ -143,7 +143,7 @@ async def get_trajectory_forecast(
     """Get trajectory forecast for a metric"""
     # In production, fetch actual user data
     sample_data = [
-        DataPoint(datetime.utcnow(), float(i * 5), {})
+        DataPoint(datetime.now(timezone.utc), float(i * 5), {})
         for i in range(1, 31)
     ]
     
@@ -164,7 +164,7 @@ async def check_goal_achievement(
 ):
     """Check if goal will be achieved"""
     sample_data = [
-        DataPoint(datetime.utcnow(), float(i * 2), {})
+        DataPoint(datetime.now(timezone.utc), float(i * 2), {})
         for i in range(1, 31)
     ]
     
@@ -366,7 +366,7 @@ async def add_comment(
         comment={
             "author": current_user.username,
             "content": request.content,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
     ))
     

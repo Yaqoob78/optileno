@@ -4,7 +4,7 @@ Unified Context Builder - Aggregates Analytics, Planner, and Settings for the Co
 """
 
 from typing import Dict, Any, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 from backend.services.analytics_service import analytics_service
@@ -38,7 +38,7 @@ async def build_comprehensive_context(user_id: str, context_type: str = "general
         # Base Context Object
         context = {
             "user_id": user_id,
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
             "app_state": {
                 "planner": {
                     "active_tasks": [
@@ -112,5 +112,5 @@ async def build_analytics_context(
         "sessions_count": len(sessions) if sessions else 0,
         "plans_count": len(plans) if plans else 0,
         "context_type": context_type,
-        "generated_at": datetime.utcnow().isoformat()
+        "generated_at": datetime.now(timezone.utc).isoformat()
     }

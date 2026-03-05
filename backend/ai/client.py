@@ -1,7 +1,10 @@
 import logging
 import asyncio
-from typing import List, Dict, Any, Optional
+import time
+import hashlib
+from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime, timezone
+from collections import Counter
 import uuid
 
 # Providers
@@ -23,12 +26,64 @@ from backend.ai.agent_actions import ai_agent_actions, ActionType
 logger = logging.getLogger(__name__)
 
 
+# ---------- Context cache (module-level, keyed by user_id) ----------
+_CONTEXT_CACHE: Dict[str, Tuple[float, Dict[str, Any], str]] = {}  # user_id -> (ts, context, prompt)
+_CONTEXT_TTL = 60  # seconds
+
+# ---------- Anti-repetition tracking (per session) ----------
+_RECENT_RESPONSES: Dict[str, List[str]] = {}  # session_key -> last N responses
+_MAX_TRACKED_RESPONSES = 6
+
+
+def _compute_ngrams(text: str, n: int = 3) -> Counter:
+    """Compute n-gram counter for repetition detection."""
+    words = text.lower().split()
+    return Counter(tuple(words[i:i+n]) for i in range(len(words) - n + 1))
+
+
+def _repetition_score(new_text: str, history_texts: List[str]) -> float:
+    """Return 0..1 score; higher means more repetitive."""
+    if not history_texts or not new_text.strip():
+        return 0.0
+    new_ngrams = _compute_ngrams(new_text)
+    if not new_ngrams:
+        return 0.0
+    overlaps = []
+    for prev in history_texts[-_MAX_TRACKED_RESPONSES:]:
+        prev_ngrams = _compute_ngrams(prev)
+        if not prev_ngrams:
+            continue
+        shared = sum((new_ngrams & prev_ngrams).values())
+        total = sum(new_ngrams.values())
+        overlaps.append(shared / max(total, 1))
+    return max(overlaps) if overlaps else 0.0
+
+
+_STOCK_OPENERS = [
+    "great question", "that's a great question", "absolutely",
+    "i'd be happy to help", "of course", "sure thing",
+    "let me help you with that", "no problem",
+]
+
+
+def _strip_stock_opener(text: str) -> str:
+    """Remove stock opening phrases to add variety."""
+    lower = text.lstrip()
+    for opener in _STOCK_OPENERS:
+        if lower.lower().startswith(opener):
+            rest = lower[len(opener):].lstrip(" !.,;:-")
+            if rest:
+                return rest[0].upper() + rest[1:] if rest else text
+    return text
+
+
 class DualAIClient:
     """
     Intelligent AI Client that manages:
     1. Dual Provider Switching (NVIDIA -> Groq)
     2. Token Limit Enforcement based on Plan (Explorer/Ultra)
     3. Daily Quota Reset Logic
+    4. Anti-repetition and response quality
     """
 
     def __init__(self, user_id: str):
@@ -358,8 +413,8 @@ class DualAIClient:
         self, 
         message: str, 
         mode: str = "CHAT", 
-        history: List[Dict[str, str]] = [],
-        session_id: str = None
+        history: Optional[List[Dict[str, str]]] = None,
+        session_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Handle incoming messages with FULL CONTEXT and intent detection.
@@ -367,18 +422,31 @@ class DualAIClient:
         ENHANCED: Now builds complete context from user's planner and analytics
         so AI has access to goals, tasks, habits, and productivity data.
         """
-        # 1. Build FULL context for AI access
-        try:
-            full_context = await ai_context_builder.build_full_context(self.user_id)
-            context_prompt = ai_context_builder.format_for_prompt(full_context)
-            logger.info(f"🧠 AI Context built with {full_context.get('summary', {}).get('active_goals', 0)} goals, {full_context.get('tasks', {}).get('counts', {}).get('pending', 0)} pending tasks")
-        except Exception as e:
-            logger.warning(f"Context building failed: {e}")
-            full_context = {}
-            context_prompt = "Context unavailable - please try again."
+        if history is None:
+            history = []
+
+        # 1. Build FULL context for AI access (with caching)
+        cache_key = str(self.user_id)
+        now_ts = time.time()
+        cached = _CONTEXT_CACHE.get(cache_key)
+        if cached and (now_ts - cached[0]) < _CONTEXT_TTL:
+            full_context, context_prompt = cached[1], cached[2]
+            logger.debug("🧠 Using cached AI context")
+        else:
+            try:
+                full_context = await ai_context_builder.build_full_context(self.user_id)
+                context_prompt = ai_context_builder.format_for_prompt(full_context)
+                _CONTEXT_CACHE[cache_key] = (now_ts, full_context, context_prompt)
+                logger.info(f"🧠 AI Context built with {full_context.get('summary', {}).get('active_goals', 0)} goals, {full_context.get('tasks', {}).get('counts', {}).get('pending', 0)} pending tasks")
+            except Exception as e:
+                logger.warning(f"Context building failed: {e}")
+                full_context = {}
+                context_prompt = "Context unavailable - please try again."
         
-        # 2. Build enhanced system prompt with full context
-        system_prompt = self._get_system_prompt_with_context(mode, context_prompt)
+        # 2. Build enhanced system prompt with full context + anti-repetition
+        session_key = session_id or f"{self.user_id}_default"
+        recent_responses = _RECENT_RESPONSES.get(session_key, [])
+        system_prompt = self._get_system_prompt_with_context(mode, context_prompt, recent_responses)
         
         # 3. Generate AI response
         provider_info = {"provider": "unknown", "model": "unknown"}
@@ -386,7 +454,7 @@ class DualAIClient:
             # Construct the full message list for the AI
             full_messages = [
                 {"role": "system", "content": system_prompt},
-                *history[-5:],
+                *history[-8:],  # increased from 5 to 8 for better context
                 {"role": "user", "content": message}
             ]
             # 3. Call chat_completion with mode-aware routing
@@ -399,7 +467,7 @@ class DualAIClient:
             
         except Exception as e:
             logger.error(f"AI completion failed: {e}")
-            response_text = f"I apologize, I'm having trouble connecting right now. Error: {str(e)}"
+            response_text = "I apologize, I'm having trouble connecting right now. Please try again in a moment."
             provider_info = {"provider": "system", "model": "error"}
         
         request_id = session_id or str(uuid.uuid4())
@@ -578,7 +646,24 @@ class DualAIClient:
         
         # 7. Sanitize response to remove any JSON artifacts
         final_response = response_formatter.sanitize_response(response_text)
-        
+
+        # 8. Anti-repetition: strip stock openers and check for high overlap
+        final_response = _strip_stock_opener(final_response)
+        rep_score = _repetition_score(final_response, recent_responses)
+        if rep_score > 0.6 and len(final_response) > 40:
+            logger.info(f"⚠️ Repetition score {rep_score:.2f} – adding variation hint")
+            # Cannot regenerate here without recursion, but log it for future improvement
+
+        # Track for future anti-repetition
+        if final_response.strip():
+            _RECENT_RESPONSES.setdefault(session_key, []).append(final_response)
+            if len(_RECENT_RESPONSES[session_key]) > _MAX_TRACKED_RESPONSES:
+                _RECENT_RESPONSES[session_key] = _RECENT_RESPONSES[session_key][-_MAX_TRACKED_RESPONSES:]
+
+        # Invalidate context cache if any write action was executed
+        if executed_actions:
+            _CONTEXT_CACHE.pop(cache_key, None)
+
         return {
             "message": final_response,
             "intent": intent,
@@ -594,11 +679,27 @@ class DualAIClient:
             "has_full_context": bool(full_context.get("goals")),
         }
     
-    def _get_system_prompt_with_context(self, mode: str, context_prompt: str) -> str:
+    def _get_system_prompt_with_context(self, mode: str, context_prompt: str, recent_responses: Optional[List[str]] = None) -> str:
         """Build system prompt with FULL user context for AI agent."""
         
-        from datetime import datetime, timezone
         now_str = datetime.now(timezone.utc).strftime("%A, %Y-%m-%d %H:%M UTC")
+
+        # Build anti-repetition hint from recent responses
+        anti_rep_hint = ""
+        if recent_responses:
+            # Extract openers to avoid
+            openers_used = []
+            for resp in recent_responses[-3:]:
+                first_line = resp.strip().split("\n")[0][:60]
+                if first_line:
+                    openers_used.append(first_line)
+            if openers_used:
+                anti_rep_hint = (
+                    "\n## VARIATION REQUIREMENT:\n"
+                    "Your recent responses started with these phrases – do NOT repeat them:\n"
+                    + "\n".join(f'- "{o}"' for o in openers_used)
+                    + "\nVary your opening, structure, and wording each time.\n"
+                )
         
         base_agent_prompt = """You are Leno, an AI productivity coach built into Optileno.
 
@@ -623,13 +724,22 @@ The current time is {now_str}. Never schedule events in the past.
 5. Reference specific goals/tasks by name when relevant.
 6. **GOAL BREAKDOWN POLICY**: Automatic task/habit/deep-work cascade runs through chat flow only.
 
+## GROUNDING (CRITICAL - NEVER VIOLATE):
+- ONLY reference goals, tasks, habits, and scores that appear in YOUR KNOWLEDGE section above.
+- If data is not available, say so honestly: "I don't have that data right now."
+- NEVER invent statistics, scores, percentages, or item names.
+- When giving recommendations, tie them to specific data points from YOUR KNOWLEDGE.
+
 ## RESPONSE STYLE (CRITICAL - FOLLOW STRICTLY):
 1. **KEEP REPLIES SHORT**: 2-3 sentences max by default. Be punchy and direct.
 2. **NEVER write paragraphs** unless the user explicitly asks for detail.
 3. **Be warm, motivating, and conversational** - like a friend who's also a great coach.
 4. **Ask one question at a time** when gathering info. Don't overwhelm.
 5. **When asked 'who are you'**: Say something like "I'm Leno, your AI productivity coach! I help you crush goals, manage tasks, and stay focused. What can I help with?" - keep it SHORT.
-
+6. **For analytics questions**: Lead with the key insight/number, then a brief actionable suggestion.
+7. **For planner questions**: Lead with the action or status, then context.
+8. **Include a clear next step** when it adds value.
+{anti_rep}
 ## CLASSIFICATION RULES (Task vs. Habit):
 1. **TASK**: 
    - Big, one-off, or project-related work.
@@ -692,7 +802,7 @@ The current time is {now_str}. Never schedule events in the past.
    - payload: {{ "habit_id": "str", "name": "str (optional)", "description": "str (optional)", "frequency": "daily/weekly (optional)" }}
 
 10. **SCHEDULE_DEEP_WORK**
-   - payload: {{ "start_time": "str (HH:MM)", "duration_minutes": "int", "days_of_week": "[0, 1, 2] (0=Sun, 6=Sat)", "timezone": "str (e.g. Asia/Kolkata)", "focus_goal": "str (optional)" }}
+    - payload: {{ "start_time": "str (HH:MM)", "duration_minutes": "int", "days_of_week": "[0, 1, 2] (0=Sun, 6=Sat)", "timezone": "str (e.g. Asia/Kolkata)", "focus_goal": "str (optional)" }}
 
 ## EXAMPLE INTERACTIONS:
 
@@ -747,7 +857,8 @@ Now help the user with their request. Use the real data above to give personaliz
         return base_agent_prompt.format(
             now_str=now_str,
             context=context_prompt,
-            mode=mode + " - " + mode_additions.get(mode, "")
+            mode=mode + " - " + mode_additions.get(mode, ""),
+            anti_rep=anti_rep_hint,
         )
 
     
@@ -884,31 +995,37 @@ Now help the user with their request. Use the real data above to give personaliz
         )
         pending_confirmations: List[Dict[str, Any]] = []
 
-        user_lower = (user_message or "").lower()
+        user_lower = (user_message or "").lower().strip()
+        # Use word-boundary matching to avoid false positives
+        # (e.g., "ok" inside "book" or "token")
         confirmation_keywords = [
-            "yes",
-            "sure",
-            "okay",
-            "ok",
-            "yep",
-            "yeah",
-            "go ahead",
-            "do it",
-            "confirm",
-            "proceed",
+            r"\byes\b",
+            r"\bsure\b",
+            r"\bokay\b",
+            r"\bok\b",
+            r"\byep\b",
+            r"\byeah\b",
+            r"\bgo ahead\b",
+            r"\bdo it\b",
+            r"\bconfirm\b",
+            r"\bproceed\b",
         ]
         rejection_keywords = [
-            "no",
-            "cancel",
-            "don't",
-            "stop",
-            "nevermind",
-            "nope",
-            "not now",
-            "skip",
+            r"\bno\b",
+            r"\bcancel\b",
+            r"\bdon'?t\b",
+            r"\bstop\b",
+            r"\bnevermind\b",
+            r"\bnope\b",
+            r"\bnot now\b",
+            r"\bskip\b",
         ]
-        is_confirmation = any(kw in user_lower for kw in confirmation_keywords)
-        is_rejection = any(kw in user_lower for kw in rejection_keywords)
+        # Only treat as confirmation/rejection if message is short (likely a direct response)
+        word_count = len(user_lower.split())
+        is_short_response = word_count <= 12
+        is_confirmation = is_short_response and any(re.search(kw, user_lower) for kw in confirmation_keywords)
+        is_rejection = is_short_response and any(re.search(kw, user_lower) for kw in rejection_keywords)
+
 
         if is_confirmation or is_rejection:
             try:
@@ -1140,354 +1257,7 @@ def get_ai_client(user_id: Optional[str] = None) -> AIClientAdapter:
     """
     return AIClientAdapter(str(user_id or "0"))
 
-    async def _extract_intent_and_actions_v2(
-        self,
-        user_message: str,
-        ai_response: str,
-        mode: str,
-        context: Dict[str, Any],
-        request_id: str = "",
-        plan_tier: str = "unknown",
-    ) -> tuple:
-        """
-        Enhanced intent extraction with confirmation flow.
-
-        Returns: (intent, actions, pending_confirmations)
-        - actions: Immediate actions to execute
-        - pending_confirmations: Actions that need user confirmation
-        """
-        import json
-        import re
-
-        user_lower = user_message.lower()
-        actions = []
-        pending_confirmations = []
-        intent = mode or "CHAT"
-
-        # 1. Try to parse JSON from AI response (Primary Method)
-        # This handles explicit tool calls or structured data returned by LLM
-        try:
-            def extract_all_json_safely(text):
-                """Find ALL valid JSON blocks in text, not just the first one."""
-                found_data = [] # List of parsed dicts
-                
-                # Check for code blocks first (most reliable)
-                code_blocks = re.findall(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL)
-                for block in code_blocks:
-                    try:
-                        found_data.append(json.loads(block))
-                    except json.JSONDecodeError:
-                        pass
-                
-                # If code blocks found, return them
-                if found_data:
-                    return found_data
-
-                # Fallback: Brute force find all outer braces
-                stack = []
-                start_index = -1
-                for i, char in enumerate(text):
-                    if char == '{':
-                        if not stack:
-                            start_index = i
-                        stack.append(char)
-                    elif char == '}':
-                        if stack:
-                            stack.pop()
-                            if not stack and start_index != -1:
-                                # Found a complete outer block
-                                candidate = text[start_index:i+1]
-                                try:
-                                    parsed = json.loads(candidate)
-                                    # Basic validation: likely an action payload
-                                    if "intent" in parsed or "actions" in parsed or "type" in parsed:
-                                        found_data.append(parsed)
-                                except json.JSONDecodeError:
-                                    pass
-                                start_index = -1 # Reset
-                return found_data
-
-            all_data_blocks = extract_all_json_safely(ai_response)
-            
-            for data in all_data_blocks:
-                # Extract Intent (Use the last valid one if multiple, or specific logic)
-                if "intent" in data:
-                    intent = data["intent"]
-
-                # Extract Actions
-                if "actions" in data and isinstance(data["actions"], list):
-                    logger.info(f"🧠 AI-Driven Logic: Found {len(data['actions'])} actions in block.")
-                    actions.extend(data["actions"])
-                    
-        except Exception as e:
-            logger.debug(f"AI JSON parsing skipped or failed: {e}")
-
-        # 2. Check for confirmation keywords (user responding to AI suggestion)
-        # More precise confirmation detection
-        confirmation_keywords = ["yes", "sure", "okay", "ok", "yep", "yeah", "go ahead", "do it", "confirm", "create it", "add it", "please", "would be great", "sounds good", "proceed", "correct", "approve", "let's do it", "i agree"]
-        rejection_keywords = ["no", "cancel", "don't", "stop", "nevermind", "nope", "not now", "maybe later", "skip", "pass"]
-
-        # Check for explicit confirmation (user saying yes to pending actions)
-        is_confirmation = any(kw in user_lower for kw in confirmation_keywords)
-        is_rejection = any(kw in user_lower for kw in rejection_keywords)
-
-        if is_confirmation or is_rejection:
-            # Check for pending actions to confirm/reject
-            user_pending = await ai_agent_actions.get_pending_actions(self.user_id)
-            if user_pending:
-                if is_confirmation:
-                    intent = "CONFIRM_ACTION"
-                    for pending in user_pending:
-                        result = await ai_agent_actions.confirm_action(
-                            pending["action_id"],
-                            self.user_id,
-                            plan_tier=plan_tier,
-                            request_id=f"{request_id}:confirm:{pending['action_id']}",
-                        )
-                        actions.append({
-                            "type": pending["action_type"],
-                            "status": result.get("status"),
-                            "result": result,
-                        })
-                    return intent, actions, []
-                elif is_rejection:
-                    intent = "REJECT_ACTION"
-                    for pending in user_pending:
-                        await ai_agent_actions.reject_action(pending["action_id"], self.user_id)
-                    return intent, [], []
-
-        # 2. Detect goal creation intent with more comprehensive triggers
-        goal_triggers = [
-            "i want to", "my goal is", "set a goal", "create a goal", "new goal", "i aim to",
-            "i need to achieve", "i want to achieve", "i want to accomplish", "my objective is",
-            "i'm working toward", "i'm trying to", "i want to improve", "i want to gain",
-            "i want to lose", "i want to learn", "i want to master", "i want to build"
-        ]
-        if any(trigger in user_lower for trigger in goal_triggers):
-            intent = "SUGGEST_GOAL"
-            # Don't create immediately - AI should ask for details first
-            # The AI response likely already contains the suggestion
-
-        # 3. Detect task creation intent with more comprehensive triggers
-        task_triggers = [
-            "add task", "create task", "new task", "remind me to", "i need to",
-            "i should", "i have to", "i must", "i need to do", "plan to", "schedule",
-            "i want to do", "i want to complete", "i want to finish"
-        ]
-        if any(trigger in user_lower for trigger in task_triggers):
-            intent = "SUGGEST_TASK"
-
-        # 4. Detect habit creation intent with more comprehensive triggers
-        habit_triggers = [
-            "add habit", "create habit", "new habit", "track habit", "start tracking",
-            "i want to develop", "i want to build", "i want to form", "i want to establish",
-            "i want to start doing", "i want to make a habit", "i want to practice"
-        ]
-        if any(trigger in user_lower for trigger in habit_triggers):
-            intent = "SUGGEST_HABIT"
-
-        # 5. Detect deep work scheduling intent
-        deep_work_triggers = [
-            "start deep work", "focus time", "schedule focus", "block time", "time block",
-            "start working", "begin deep work", "focus session", "working session"
-        ]
-        if any(trigger in user_lower for trigger in deep_work_triggers):
-            intent = "START_DEEP_WORK"
-
-        # 6. Navigation/analysis intents (safe to execute immediately)
-        if any(kw in user_lower for kw in ["dashboard", "overview", "status", "summary", "analytics", "report", "progress"]):
-            intent = "DASHBOARD"
-            actions.append({"type": "GET_DAILY_ACHIEVEMENT_SCORE", "payload": {}})
-
-        if any(kw in user_lower for kw in ["analyze", "insights", "how am i doing", "stats", "progress", "review", "evaluate"]):
-            intent = "ANALYZE"
-            actions.append({"type": "GET_GOAL_PROGRESS_REPORT", "payload": {}})
-
-        if any(kw in user_lower for kw in ["start focus", "deep work", "start timer", "pomodoro", "focus session"]):
-            intent = "START_DEEP_WORK"
-            actions.append({"type": "START_DEEP_WORK", "payload": {"duration_minutes": 25, "focus_goal": "Focus on priority tasks"}})
-
-        # 7. Goal-specific queries (use context to provide real data)
-        if any(kw in user_lower for kw in ["my goals", "goal progress", "how are my goals", "show goals", "what goals"]):
-            intent = "GOAL_STATUS"
-            # AI already has context, will respond with real data
-
-        if any(kw in user_lower for kw in ["my tasks", "today's tasks", "what should i do", "show tasks", "what tasks"]):
-            intent = "TASK_STATUS"
-
-        if any(kw in user_lower for kw in ["my habits", "habit streak", "habits today", "show habits", "what habits"]):
-            intent = "HABIT_STATUS"
-
-        # 8. Analytics queries
-        if any(kw in user_lower for kw in ["my analytics", "show analytics", "performance", "productivity", "focus score", "burnout risk"]):
-            intent = "ANALYTICS_OVERVIEW"
-            actions.append({"type": "GET_DAILY_ACHIEVEMENT_SCORE", "payload": {}})
-
-        # 9. Goal-specific analytics
-        if any(kw in user_lower for kw in ["how am i progressing", "progress report", "how am i doing", "am i on track", "am i achieving"]):
-            intent = "GOAL_PROGRESS_CHECK"
-            actions.append({"type": "GET_GOAL_PROGRESS_REPORT", "payload": {}})
-
-        # 10. Habit analytics
-        if any(kw in user_lower for kw in ["how are my habits", "habit progress", "am i consistent", "habit tracking"]):
-            intent = "HABIT_ANALYTICS"
-            actions.append({"type": "GET_HABITS", "payload": {}})
-
-        # 11. Explicit CRUD fallbacks when AI didn't emit tool actions
-        try:
-            from backend.ai.intent_parser import PlannerIntentParser
-            from backend.ai.tools.goal_automation import detect_goal_intent
-            parsed = PlannerIntentParser.parse_user_input(user_message)
-        except Exception:
-            parsed = None
-            detect_goal_intent = None  # type: ignore
-
-        # Explicit create phrases (only auto-execute when user clearly asks)
-        explicit_task = any(p in user_lower for p in [
-            "create task", "create a task", "add task", "add a task", "make task", "make a task", "new task"
-        ])
-        explicit_goal = any(p in user_lower for p in [
-            "create goal", "create a goal", "add goal", "add a goal", "make goal", "make a goal", "set goal", "set a goal", "new goal"
-        ])
-        explicit_habit = any(p in user_lower for p in [
-            "create habit", "create a habit", "add habit", "add a habit", "make habit", "make a habit",
-            "new habit", "track habit", "start habit"
-        ])
-
-        # Detect delete intent (explicit)
-        delete_action = self._detect_delete_action(user_message)
-        if delete_action and not any(a.get("type") == delete_action.get("type") for a in actions):
-            actions.append(delete_action)
-
-        # Create task fallback
-        if explicit_task and parsed and parsed.get("type") == "create_task":
-            if not any(a.get("type") == "CREATE_TASK" for a in actions):
-                task_payload = parsed.get("data", {})
-                actions.append({
-                    "type": "CREATE_TASK",
-                    "payload": {
-                        "title": task_payload.get("title"),
-                        "priority": task_payload.get("priority", "medium"),
-                        "description": task_payload.get("description", ""),
-                        "duration_minutes": task_payload.get("duration_minutes", 60),
-                        "category": task_payload.get("category", "work"),
-                        "tags": task_payload.get("tags", []),
-                    }
-                })
-
-        # Create habit fallback
-        if explicit_habit and parsed and parsed.get("type") == "create_habit":
-            if not any(a.get("type") == "CREATE_HABIT" for a in actions):
-                habit_payload = parsed.get("data", {})
-                actions.append({
-                    "type": "CREATE_HABIT",
-                    "payload": {
-                        "name": habit_payload.get("name"),
-                        "description": habit_payload.get("description", ""),
-                        "frequency": habit_payload.get("frequency", "daily"),
-                        "category": habit_payload.get("category", "Wellness"),
-                    }
-                })
-
-        # Create goal fallback (optionally cascade)
-        if explicit_goal and parsed and parsed.get("type") == "create_goal":
-            if not any(a.get("type") in ["CREATE_GOAL", "CREATE_GOAL_CASCADE"] for a in actions):
-                goal_payload = parsed.get("data", {})
-                goal_intent = detect_goal_intent(user_message) if detect_goal_intent else {}
-                category = goal_intent.get("category", "personal")
-                timeframe = goal_intent.get("timeframe", "month")
-                complexity = goal_intent.get("complexity", "medium")
-
-                wants_breakdown = any(p in user_lower for p in [
-                    "plan", "roadmap", "steps", "milestones", "break down", "breakdown",
-                    "with tasks", "task list", "tasks for", "action plan"
-                ])
-                wants_habits = "habit" in user_lower or "habits" in user_lower
-
-                if wants_breakdown:
-                    actions.append({
-                        "type": "CREATE_GOAL_CASCADE",
-                        "payload": {
-                            "title": goal_payload.get("title"),
-                            "description": goal_payload.get("description", ""),
-                            "category": category,
-                            "timeframe": timeframe,
-                            "complexity": complexity,
-                            "target_date": goal_payload.get("target_date"),
-                            "auto_create_tasks": True,
-                            "auto_create_habits": wants_habits,
-                            "propose_deep_work": True,
-                        }
-                    })
-                else:
-                    actions.append({
-                        "type": "CREATE_GOAL",
-                        "payload": {
-                            "title": goal_payload.get("title"),
-                            "description": goal_payload.get("description", ""),
-                            "category": category,
-                            "target_date": goal_payload.get("target_date"),
-                            "milestones": goal_payload.get("milestones", []),
-                        }
-                    })
-
-        return intent, actions, pending_confirmations
-
-    def _detect_delete_action(self, user_message: str) -> Optional[Dict[str, Any]]:
-        """Detect explicit delete/remove commands for tasks, goals, habits."""
-        import re
-
-        text = user_message.strip()
-        lower = text.lower()
-        if not any(k in lower for k in ["delete", "remove", "archive"]):
-            return None
-
-        def extract_name(keyword: str) -> Optional[str]:
-            # delete task "Title" / remove habit Title
-            pattern = rf"(?:delete|remove|archive)\s+(?:the\s+)?{keyword}\s+['\"]?([^'\"\n\r]+?)['\"]?(?:\s*$)"
-            match = re.search(pattern, lower)
-            if match:
-                return match.group(1).strip()
-            return None
-
-        def build_action(kind: str) -> Optional[Dict[str, Any]]:
-            name = extract_name(kind)
-            payload: Dict[str, Any] = {}
-            if name:
-                # Trim polite suffixes if present
-                for suffix in ["please", "now", "today"]:
-                    if name.endswith(f" {suffix}"):
-                        name = name[: -len(suffix) - 1].strip()
-                if name.isdigit():
-                    payload[f"{kind}_id"] = name
-                else:
-                    payload["title"] = name
-            if not payload:
-                return None
-            return {
-                "type": f"DELETE_{kind.upper()}",
-                "payload": payload
-            }
-
-        for kind in ["task", "goal", "habit"]:
-            if kind in lower:
-                action = build_action(kind)
-                if action:
-                    return action
-        return None
-    
-    def _get_ui_hints(self, intent: str) -> Dict[str, Any]:
-        """Get UI hints based on intent for frontend rendering."""
-        hints = {
-            "CREATE_TASK": {"showTaskForm": True, "highlight": "planner"},
-            "START_DEEP_WORK": {"showTimer": True, "highlight": "deepwork"},
-            "ANALYZE": {"showAnalytics": True, "highlight": "analytics"},
-            "PLAN": {"showPlanner": True, "highlight": "planner"},
-            "SUGGEST_GOAL": {"showConfirmation": True, "type": "goal"},
-            "SUGGEST_TASK": {"showConfirmation": True, "type": "task"},
-            "SUGGEST_HABIT": {"showConfirmation": True, "type": "habit"},
-            "GOAL_STATUS": {"highlight": "planner", "scrollTo": "goals"},
-            "TASK_STATUS": {"highlight": "planner", "scrollTo": "tasks"},
-            "HABIT_STATUS": {"highlight": "planner", "scrollTo": "habits"},
-        }
-        return hints.get(intent, {})
+# NOTE: Duplicate dead code removed. The _extract_intent_and_actions_v2,
+# _detect_delete_action, and _get_ui_hints methods that were previously
+# indented under get_ai_client() have been cleaned up. The real implementations
+# live inside the DualAIClient class above.

@@ -3,7 +3,7 @@ Enhanced insight engine with real-time insights and AI integration.
 """
 
 from typing import Dict, Any, List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 import asyncio
 
@@ -53,7 +53,7 @@ async def generate_insights(user_id: str) -> Dict[str, Any]:
             },
             "recommendations": ai_insights.get("recommendations", []),
             "focus_status": await _determine_focus_status(latest_sessions),
-            "last_updated": datetime.utcnow().isoformat(),
+            "last_updated": datetime.now(timezone.utc).isoformat(),
         }
         
         logger.info(f"Generated comprehensive insights for user {user_id}")
@@ -115,7 +115,7 @@ async def generate_immediate_insight(user_id: str, event: Dict[str, Any]) -> Opt
         return {
             **insight,
             "event_type": event_type,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "context": metadata,
         }
     
@@ -331,7 +331,9 @@ def _is_recent(timestamp: Optional[str], minutes: int = 30) -> bool:
         return False
     try:
         event_time = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
-        return (datetime.utcnow() - event_time).total_seconds() < minutes * 60
+        if event_time.tzinfo is None:
+            event_time = event_time.replace(tzinfo=timezone.utc)
+        return (datetime.now(timezone.utc) - event_time).total_seconds() < minutes * 60
     except:
         return False
 
@@ -409,5 +411,5 @@ def _get_fallback_insights() -> Dict[str, Any]:
             "Set up a daily habit to track"
         ],
         "focus_status": "available",
-        "last_updated": datetime.utcnow().isoformat(),
+        "last_updated": datetime.now(timezone.utc).isoformat(),
     }

@@ -6,7 +6,7 @@ Metrics collection, alerting, and performance monitoring.
 import asyncio
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Any, Optional
 import psutil
 from dataclasses import dataclass, asdict
@@ -99,7 +99,7 @@ class ProductionMonitor:
                 active_connections = 0
             
             metrics = SystemMetrics(
-                timestamp=datetime.utcnow().isoformat(),
+                timestamp=datetime.now(timezone.utc).isoformat(),
                 cpu_percent=cpu_percent,
                 memory_percent=memory.percent,
                 memory_available_gb=memory_available_gb,
@@ -127,7 +127,7 @@ class ProductionMonitor:
             # For now, we'll simulate some metrics
             
             metrics = ApplicationMetrics(
-                timestamp=datetime.utcnow().isoformat(),
+                timestamp=datetime.now(timezone.utc).isoformat(),
                 active_users=await self._get_active_user_count(),
                 requests_per_minute=await self._get_requests_per_minute(),
                 error_rate=await self._get_error_rate(),
@@ -243,7 +243,7 @@ class ProductionMonitor:
         else:
             return
         
-        alert_key = f"{alert_id}_{datetime.utcnow().strftime('%Y%m%d%H%M')}"
+        alert_key = f"{alert_id}_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M')}"
         
         if triggered and alert_key not in self.active_alerts:
             # Create new alert
@@ -255,7 +255,7 @@ class ProductionMonitor:
                 threshold=threshold,
                 current_value=current_value,
                 message=self._generate_alert_message(alert_id, current_value, threshold),
-                timestamp=datetime.utcnow().isoformat()
+                timestamp=datetime.now(timezone.utc).isoformat()
             )
             
             self.active_alerts[alert_key] = alert
@@ -321,7 +321,7 @@ class ProductionMonitor:
             resolution_data = {
                 "alert_id": alert.id,
                 "name": alert.name,
-                "resolved_at": datetime.utcnow().isoformat(),
+                "resolved_at": datetime.now(timezone.utc).isoformat(),
                 "message": f"Alert resolved: {alert.message}"
             }
             

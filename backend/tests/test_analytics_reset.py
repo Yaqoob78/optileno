@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, patch
 
 from backend.db.models import RealTimeMetrics
@@ -27,7 +27,7 @@ class MockDbGen:
 async def test_daily_metrics_reset():
     """Daily metrics reset when the latest row is from a previous day."""
     user_id = 999
-    yesterday = datetime.utcnow() - timedelta(days=1)
+    yesterday = datetime.now(timezone.utc) - timedelta(days=1)
 
     saved_metric = RealTimeMetrics(
         user_id=user_id,

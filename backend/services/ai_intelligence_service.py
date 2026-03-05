@@ -1,5 +1,5 @@
 # backend/services/ai_intelligence_service.py
-from datetime import datetime, timedelta, time
+from datetime import datetime, timedelta, time, timezone
 from typing import Dict, Any, List, Optional
 from sqlalchemy import select, func, and_, or_, case, extract
 from sqlalchemy.orm import Session
@@ -55,14 +55,14 @@ class AIIntelligenceService:
                     "adaptation_reflection": 50,
                     "behavioral_stability": 50
                 },
-                "last_updated": datetime.utcnow().isoformat(),
+                "last_updated": datetime.now(timezone.utc).isoformat(),
                 "error": str(e)
             }
 
     async def _calculate_daily_score(self, db: Session, user_id: int, target_date: datetime = None) -> Dict[str, Any]:
         """Calculate score for a specific day (default today)."""
         if not target_date:
-            target_date = datetime.utcnow()
+            target_date = datetime.now(timezone.utc)
             
         start_of_day = datetime.combine(target_date.date(), time.min)
         end_of_day = datetime.combine(target_date.date(), time.max)
@@ -98,14 +98,14 @@ class AIIntelligenceService:
                 "adaptation_reflection": round(adaptation_score),
                 "behavioral_stability": round(stability_score)
             },
-            "last_updated": datetime.utcnow().isoformat()
+            "last_updated": datetime.now(timezone.utc).isoformat()
         }
 
     async def _calculate_weekly_score(self, db: Session, user_id: int) -> Dict[str, Any]:
         """Arithmetic mean of last 7 days."""
         scores = []
         metric_samples: List[Dict[str, int]] = []
-        today = datetime.utcnow()
+        today = datetime.now(timezone.utc)
         
         for i in range(7):
             date_val = today - timedelta(days=i)
@@ -145,14 +145,14 @@ class AIIntelligenceService:
             "trend": trend,
             "trend_percent": trend_percent,
             "metrics": metrics,
-            "last_updated": datetime.utcnow().isoformat(),
+            "last_updated": datetime.now(timezone.utc).isoformat(),
         }
 
     async def _calculate_monthly_score(self, db: Session, user_id: int) -> Dict[str, Any]:
         """Monthly stats and trend."""
         scores = []
         metric_samples: List[Dict[str, int]] = []
-        today = datetime.utcnow()
+        today = datetime.now(timezone.utc)
         
         # Sample every day for last 30 days
         for i in range(30):
@@ -198,7 +198,7 @@ class AIIntelligenceService:
             "trend_percent": round(trend_delta, 1),
             "context_label": self._get_weekly_context_label(scores),
             "metrics": metrics,
-            "last_updated": datetime.utcnow().isoformat(),
+            "last_updated": datetime.now(timezone.utc).isoformat(),
         }
 
     # -------------------------------------------------------------------------

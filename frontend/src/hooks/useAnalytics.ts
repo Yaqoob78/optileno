@@ -33,7 +33,7 @@ export const useAnalytics = () => {
   useEffect(() => {
     const trackPageView = () => {
       const event: AppEvent = {
-        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: crypto.randomUUID(),
         type: 'analytics_event',
         subtype: 'behavior_change_detected',
         insight: {

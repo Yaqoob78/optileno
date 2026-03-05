@@ -11,7 +11,7 @@ Implements various performance optimization techniques:
 import asyncio
 import functools
 from typing import Any, Callable, Dict, List, Optional, Awaitable
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 from concurrent.futures import ThreadPoolExecutor
 
@@ -63,7 +63,7 @@ class PerformanceOptimizer:
                         event_type=event_data["event_type"],
                         event_source=event_data.get("event_source", "system"),
                         category=event_data.get("category", "general"),
-                        timestamp=datetime.utcnow(),
+                        timestamp=datetime.now(timezone.utc),
                         meta=event_data.get("meta", {}),
                         raw_data=event_data.get("raw_data", {})
                     )
@@ -101,7 +101,7 @@ class PerformanceOptimizer:
                             setattr(metrics, key, value)
                     
                     # Update timestamp
-                    metrics.updated_at = datetime.utcnow()
+                    metrics.updated_at = datetime.now(timezone.utc)
                 
                 await db.commit()
                 self.logger.info(f"Batch updated {len(user_metrics)} user metrics")
@@ -197,7 +197,7 @@ class PerformanceOptimizer:
                     "plans": [plan.__dict__ for plan in plans],
                     "goals": [goal.__dict__ for goal in goals],
                     "focus_scores": [score.__dict__ for score in focus_scores],
-                    "timestamp": datetime.utcnow().isoformat()
+                    "timestamp": datetime.now(timezone.utc).isoformat()
                 }
                 
                 cache_key = f"prefetch:user:{user_id}"

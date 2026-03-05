@@ -14,7 +14,7 @@ Features:
 import time
 import logging
 from typing import Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timezone
 import asyncio
 
 from backend.app.config import settings
@@ -38,7 +38,7 @@ class HealthCheckResult:
         self.latency_ms = latency_ms
         self.message = message
         self.details = details or {}
-        self.timestamp = datetime.utcnow().isoformat()
+        self.timestamp = datetime.now(timezone.utc).isoformat()
     
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -239,7 +239,7 @@ class HealthMonitor:
             "environment": settings.ENVIRONMENT,
             "checks": check_results,
             "check_time_ms": round(check_time_ms, 2),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "scaling": {
                 "max_concurrent_users": settings.MAX_CONCURRENT_USERS,
                 "db_pool_size": settings.DB_POOL_SIZE,
@@ -265,7 +265,7 @@ class HealthMonitor:
             "environment": settings.ENVIRONMENT,
             "checks": check_results,
             "cached": True,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     
     async def get_liveness(self) -> Dict[str, Any]:
@@ -275,7 +275,7 @@ class HealthMonitor:
         """
         return {
             "status": "alive",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     
     async def get_readiness(self) -> Dict[str, Any]:
@@ -291,19 +291,19 @@ class HealthMonitor:
             if db_health["status"] == "healthy":
                 return {
                     "status": "ready",
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
             else:
                 return {
                     "status": "not_ready",
                     "reason": "database_unavailable",
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
         except Exception as e:
             return {
                 "status": "not_ready",
                 "reason": str(e),
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
 
 

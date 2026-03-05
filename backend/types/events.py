@@ -4,7 +4,7 @@ Event type definitions
 """
 
 from typing import Any, Dict, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 
 
@@ -15,14 +15,15 @@ class AppEvent(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
     timestamp: datetime = None
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "event_type": "task_created",
                 "user_id": 1,
                 "metadata": {"task_id": "123", "title": "My Task"},
             }
         }
+    )
 
 
 class UserMetrics(BaseModel):
@@ -34,8 +35,8 @@ class UserMetrics(BaseModel):
     deep_work_sessions: int
     timestamp: datetime = None
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "user_id": 1,
                 "productivity_score": 85.5,
@@ -44,6 +45,7 @@ class UserMetrics(BaseModel):
                 "deep_work_sessions": 2,
             }
         }
+    )
 
 
 class AnalyticsEvent(BaseModel):
@@ -55,8 +57,8 @@ class AnalyticsEvent(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
     timestamp: Optional[datetime] = None
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "user_id": 1,
                 "event": "task_completed",
@@ -64,3 +66,4 @@ class AnalyticsEvent(BaseModel):
                 "metadata": {"task_id": "123", "duration_minutes": 45},
             }
         }
+    )
