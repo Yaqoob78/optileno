@@ -86,10 +86,14 @@
 /* Base Container */
 .dashboard-container {
   min-height: 100vh;
+  width: 100%;
+  max-width: 100%;
   background: var(--bg-primary);
   color: var(--text-primary);
   position: relative;
   overflow-x: hidden;
+  overscroll-behavior-x: none;
+  touch-action: pan-y pinch-zoom;
   transition: var(--transition-smooth);
 }
 
@@ -97,6 +101,8 @@
 .background-canvas {
   position: fixed;
   inset: 0;
+  contain: paint;
+  overflow: hidden;
   pointer-events: none;
   z-index: 0;
 }
@@ -153,9 +159,48 @@
 .dashboard-content {
   position: relative;
   z-index: 1;
+  width: 100%;
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
+}
+
+.header-left,
+.header-right,
+.brand-logo,
+.logo-text,
+.welcome-greeting,
+.greeting-text,
+.user-display,
+.user-info,
+.analytics-header,
+.analytics-title,
+.title-text,
+.metric-header,
+.activity-item,
+.activity-content,
+.action-card,
+.action-content,
+.message-content,
+.message-text {
+  min-width: 0;
+}
+
+.user-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.title-main,
+.title-sub,
+.activity-text,
+.action-title,
+.action-subtitle,
+.quote-text,
+.message-text {
+  overflow-wrap: anywhere;
 }
 
 /* Header */
@@ -979,6 +1024,34 @@
     padding: 1rem;
   }
 
+  .background-canvas {
+    position: absolute;
+    overflow: hidden;
+  }
+
+  .sphere-1 {
+    width: 240px;
+    height: 240px;
+    top: -120px;
+    right: -120px;
+    filter: blur(70px);
+  }
+
+  .sphere-2 {
+    width: 200px;
+    height: 200px;
+    bottom: -100px;
+    left: -100px;
+    filter: blur(70px);
+  }
+
+  .sphere-3 {
+    width: 140px;
+    height: 140px;
+    filter: blur(80px);
+    opacity: 0.12;
+  }
+
   .dashboard-header {
     flex-direction: column;
     align-items: flex-start;
@@ -995,8 +1068,26 @@
     align-items: flex-start;
   }
 
+  .user-display {
+    max-width: 100%;
+  }
+
   .greeting-line.emphasis {
     font-size: 2rem;
+  }
+
+  .analytics-header {
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .analytics-title,
+  .plan-indicator {
+    width: 100%;
+  }
+
+  .plan-indicator {
+    align-items: flex-start;
   }
 
   .analytics-grid {
@@ -1025,6 +1116,18 @@
 @media (max-width: 480px) {
   .dashboard-content {
     padding: 1rem;
+  }
+
+  .brand-logo {
+    gap: 0.75rem;
+  }
+
+  .logo-primary {
+    font-size: 1.25rem;
+  }
+
+  .logo-version {
+    font-size: 0.75rem;
   }
 
   .greeting-line.emphasis {

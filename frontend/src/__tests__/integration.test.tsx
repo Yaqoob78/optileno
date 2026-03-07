@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 
 import App from '../App';
 import { useSessionBootstrap } from '../hooks/useSessionBootstrap';
@@ -64,11 +65,19 @@ describe('App Integration', () => {
     jest.clearAllMocks();
   });
 
+  const renderApp = () => {
+    return render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>
+    );
+  };
+
   it('shows loading state until hydration/session checks finish', () => {
     (useStoreHydration as jest.Mock).mockReturnValueOnce({ isHydrated: false, error: null });
     (useSessionBootstrap as jest.Mock).mockReturnValueOnce({ checked: false });
 
-    render(<App />);
+    renderApp();
 
     expect(screen.getByText(/loading your data/i)).toBeInTheDocument();
   });
@@ -77,7 +86,7 @@ describe('App Integration', () => {
     (useStoreHydration as jest.Mock).mockReturnValue({ isHydrated: true, error: null });
     (useSessionBootstrap as jest.Mock).mockReturnValue({ checked: true });
 
-    render(<App />);
+    renderApp();
 
     expect(screen.getByText('AppRoutesMock')).toBeInTheDocument();
     expect(screen.getByText('CookieConsentMock')).toBeInTheDocument();

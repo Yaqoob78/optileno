@@ -121,22 +121,33 @@ export const AgentChat: React.FC<AgentChatProps> = ({ conversationId }) => {
   }, [messages]);
 
   useEffect(() => {
-    // Listen for agent updates
-    socket.on('agent:thinking', () => {
-      setAgentThinking(true);
-    });
+    const handleThinking = (data?: { session_id?: string }) => {
+      if (data?.session_id && data.session_id !== sessionId) {
+        return;
+      }
 
-    socket.on('agent:conversation:updated', (data: any) => {
-      if (data.update.state === 'complete') {
+      setAgentThinking(true);
+    };
+
+    const handleConversationUpdated = (data?: { session_id?: string; update?: { state?: string } }) => {
+      if (data?.session_id && data.session_id !== sessionId) {
+        return;
+      }
+
+      if (data?.update?.state === 'complete') {
         setAgentThinking(false);
       }
-    });
+    };
+
+    // Listen for agent updates
+    socket.on('agent:thinking', handleThinking);
+    socket.on('agent:conversation:updated', handleConversationUpdated);
 
     return () => {
-      socket.off('agent:thinking');
-      socket.off('agent:conversation:updated');
+      socket.off('agent:thinking', handleThinking);
+      socket.off('agent:conversation:updated', handleConversationUpdated);
     };
-  }, []);
+  }, [sessionId]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

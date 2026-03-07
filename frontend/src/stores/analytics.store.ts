@@ -650,7 +650,7 @@ export const useAnalyticsStore = create<AnalyticsState>()(
 
           if (response.success && response.data) {
             const data = response.data;
-            const backendMetrics = data.metrics;
+            const backendMetrics = data.metrics || {};
 
             // Map nested backend metrics to flat UserMetrics
             const mappedMetrics: UserMetrics = {
@@ -693,14 +693,12 @@ export const useAnalyticsStore = create<AnalyticsState>()(
             }));
 
             // Store historical data
-            const historicalData = data.historical || {};
-
             set({
               isLoading: false,
               userInsights: mappedInsights.length > 0 ? mappedInsights : get().userInsights, // Keep old if new is empty
               currentMetrics: mappedMetrics,
               detectedPatterns: mappedPatterns.length > 0 ? mappedPatterns : get().detectedPatterns,
-              historicalMetrics: [...get().historicalMetrics, mappedMetrics], // Add to history
+              historicalMetrics: [...get().historicalMetrics, mappedMetrics].slice(-50),
               lastSynced: new Date()
             });
           } else {

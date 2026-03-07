@@ -4,8 +4,8 @@ test.describe('Public smoke', () => {
   test('landing page renders CTA', async ({ page }) => {
     await page.goto('/');
 
-    await expect(page.getByText(/Orchestrate Your Life/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: /Begin Journey/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Stop planning\. Start finishing\./i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Start Free Trial/i }).first()).toBeVisible();
   });
 
   test('login page renders form', async ({ page }) => {

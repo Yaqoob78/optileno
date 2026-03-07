@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
+import { useMobile } from "../../hooks/useMobile";
 import "../../styles/layout/layout.css"; // CSS CONNECTION";
 
 interface MenuItem {
@@ -19,17 +20,26 @@ interface MenuItem {
   label: string;
   gradient: string;
 }
-
-import { useMobile } from "../../hooks/useMobile";
-
 export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useMobile();
 
   // Mobile: default closed, Desktop: default open
-  const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window === "undefined") {
+      return true;
+    }
+
+    return window.innerWidth >= 768;
+  });
   const [currentPage, setCurrentPage] = useState("Chat");
+
+  useEffect(() => {
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
+  }, [isMobile]);
 
   // Lock background scroll when mobile sidebar is open.
   useEffect(() => {

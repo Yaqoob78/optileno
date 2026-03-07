@@ -127,7 +127,7 @@ function StoreInitializer({ children }: { children: React.ReactNode }) {
   }, [theme]);
 
   if (!isHydrated || (shouldValidateSession && !sessionChecked)) {
-    return <FullScreenLoader size={96} />;
+    return <FullScreenLoader size={96} text="Loading your data" />;
   }
 
   return children as React.ReactElement;
