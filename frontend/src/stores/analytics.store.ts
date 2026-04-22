@@ -13,6 +13,7 @@ import {
   createEventId
 } from '../types/events.types';
 import { socket } from '../services/realtime/socket-client';
+import { normalizeTaskStatus } from '../services/api/planner.service';
 
 // Helper function for consistency score
 function calculateConsistencyScore(streakCount: number): number {
@@ -20,6 +21,9 @@ function calculateConsistencyScore(streakCount: number): number {
   if (streakCount >= 30) return 100;
   return Math.min(100, (streakCount / 30) * 100);
 }
+
+let realtimeListenersInitialized = false;
+let socketListenersInitialized = false;
 
 // Analytics State
 interface AnalyticsState {
@@ -152,6 +156,106 @@ const initialMetrics: UserMetrics = {
   lastUpdated: new Date(0),
 };
 
+const toDate = (value: unknown, fallback = new Date(0)): Date => {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return new Date(value.getTime());
+  }
+
+  if (typeof value === 'string' || typeof value === 'number') {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed;
+    }
+  }
+
+  return new Date(fallback.getTime());
+};
+
+const normalizeEvent = (event: AppEvent): AppEvent => {
+  const timestamp = toDate(event.timestamp);
+  const normalizedEvent: AppEvent = {
+    ...event,
+    timestamp,
+  };
+
+  if (normalizedEvent.type === 'goal_event') {
+    return {
+      ...normalizedEvent,
+      goal: {
+        ...normalizedEvent.goal,
+        targetDate: normalizedEvent.goal.targetDate
+          ? toDate(normalizedEvent.goal.targetDate, timestamp)
+          : undefined,
+      },
+    };
+  }
+
+  if (normalizedEvent.type === 'analytics_event') {
+    return {
+      ...normalizedEvent,
+      metadata: {
+        ...normalizedEvent.metadata,
+        firstObserved: toDate(normalizedEvent.metadata.firstObserved, timestamp),
+        lastObserved: toDate(normalizedEvent.metadata.lastObserved, timestamp),
+      },
+    };
+  }
+
+  return normalizedEvent;
+};
+
+const normalizeMetrics = (metrics?: Partial<UserMetrics>): UserMetrics => ({
+  ...initialMetrics,
+  ...metrics,
+  lastUpdated: toDate(metrics?.lastUpdated, initialMetrics.lastUpdated),
+});
+
+const normalizeDetectedPattern = (
+  pattern: AnalyticsState['detectedPatterns'][number],
+): AnalyticsState['detectedPatterns'][number] => ({
+  ...pattern,
+  lastSeen: toDate(pattern.lastSeen),
+});
+
+const normalizeFocusSession = (
+  session: AnalyticsState['focusSessions'][number],
+): AnalyticsState['focusSessions'][number] => ({
+  ...session,
+  startTime: toDate(session.startTime),
+  endTime: session.endTime ? toDate(session.endTime, session.startTime) : undefined,
+});
+
+const normalizeUserInsight = (
+  insight: AnalyticsState['userInsights'][number],
+): AnalyticsState['userInsights'][number] => ({
+  ...insight,
+  timestamp: toDate(insight.timestamp),
+});
+
+const toAnalyticsEvent = (event: AnalyticsEvent): AnalyticsEvent =>
+  normalizeEvent(event) as AnalyticsEvent;
+
+const getInsightKey = (insight: AnalyticsEvent) =>
+  `${insight.subtype}:${insight.insight?.title || ''}:${insight.insight?.description || ''}`;
+
+const mergeInsights = (
+  existing: AnalyticsEvent[],
+  incoming: AnalyticsEvent[],
+): AnalyticsEvent[] => {
+  const merged = existing.map(toAnalyticsEvent);
+  const seen = new Set(merged.map(getInsightKey));
+
+  incoming.map(toAnalyticsEvent).forEach((insight) => {
+    const key = getInsightKey(insight);
+    if (!seen.has(key)) {
+      seen.add(key);
+      merged.push(insight);
+    }
+  });
+
+  return merged.slice(-100);
+};
+
 export const useAnalyticsStore = create<AnalyticsState>()(
   persist(
     (set, get) => ({
@@ -170,10 +274,12 @@ export const useAnalyticsStore = create<AnalyticsState>()(
       // Actions
       addEvent: (event) => {
         set((state) => {
-          const newEvents = [...state.events, event];
+          const normalizedEvent = normalizeEvent(event);
+          const newEvents = [...state.events, normalizedEvent].slice(-1000);
 
           return {
             events: newEvents,
+            currentMetrics: computeRealTimeMetrics(newEvents, state.focusSessions),
           };
         });
 
@@ -185,12 +291,18 @@ export const useAnalyticsStore = create<AnalyticsState>()(
 
       addEvents: (events) => {
         set((state) => {
-          const newEvents = [...state.events, ...events];
+          const normalizedEvents = events.map((event) => normalizeEvent(event));
+          const newEvents = [...state.events, ...normalizedEvents].slice(-1000);
 
           return {
             events: newEvents,
+            currentMetrics: computeRealTimeMetrics(newEvents, state.focusSessions),
           };
         });
+
+        setTimeout(() => {
+          get().detectPatterns();
+        }, 0);
       },
 
       clearEvents: () => {
@@ -205,9 +317,23 @@ export const useAnalyticsStore = create<AnalyticsState>()(
 
       // Initialize real-time listeners
       initRealtimeListeners: () => {
+        if (typeof window === 'undefined' || realtimeListenersInitialized) {
+          return;
+        }
+
+        realtimeListenersInitialized = true;
+
         // Listen for planner events that affect analytics
         window.addEventListener('task_created', (e: any) => {
           const task = e.detail;
+          const normalizedStatus = normalizeTaskStatus(task.status);
+          const plannedDuration = Number(
+            task.estimatedDuration ??
+            task.plannedDuration ??
+            task.estimated_duration_minutes ??
+            task.duration ??
+            60,
+          );
           const event: TaskEvent = {
             id: `task_created_${Date.now()}`,
             type: 'task_event',
@@ -216,8 +342,12 @@ export const useAnalyticsStore = create<AnalyticsState>()(
             taskId: task.id,
             task: {
               title: task.title,
-              plannedDuration: task.plannedDuration || 60,
-              status: 'planned',
+              plannedDuration,
+              status: normalizedStatus === 'done'
+                ? 'completed'
+                : normalizedStatus === 'in-progress'
+                  ? 'in-progress'
+                  : 'planned',
               category: task.category || 'work',
               priority: task.priority || 'medium',
               energy: task.energy || 'medium',
@@ -235,16 +365,32 @@ export const useAnalyticsStore = create<AnalyticsState>()(
 
         window.addEventListener('task_updated', (e: any) => {
           const task = e.detail;
+          const normalizedStatus = normalizeTaskStatus(task.status);
+          const plannedDuration = Number(
+            task.estimatedDuration ??
+            task.plannedDuration ??
+            task.estimated_duration_minutes ??
+            task.duration ??
+            60,
+          );
           const event: TaskEvent = {
             id: `task_updated_${Date.now()}`,
             type: 'task_event',
-            subtype: task.status === 'completed' ? 'task_completed' : 'task_started',
+            subtype: normalizedStatus === 'done'
+              ? 'task_completed'
+              : normalizedStatus === 'in-progress'
+                ? 'task_started'
+                : 'task_edited',
             timestamp: new Date(),
             taskId: task.id,
             task: {
               title: task.title,
-              plannedDuration: task.plannedDuration || 60,
-              status: task.status === 'completed' ? 'completed' : 'in-progress',
+              plannedDuration,
+              status: normalizedStatus === 'done'
+                ? 'completed'
+                : normalizedStatus === 'in-progress'
+                  ? 'in-progress'
+                  : 'planned',
               category: task.category || 'work',
               priority: task.priority || 'medium',
               energy: task.energy || 'medium',
@@ -255,13 +401,14 @@ export const useAnalyticsStore = create<AnalyticsState>()(
             },
             sessionId: `session_${Date.now()}`,
             source: 'planner',
-            metadata: { taskId: task.id, status: task.status }
+            metadata: { taskId: task.id, status: normalizedStatus }
           };
           get().addEvent(event);
         });
 
         window.addEventListener('goal_created', (e: any) => {
           const goal = e.detail;
+          const progress = goal.progress ?? goal.current_progress ?? 0;
           const event: GoalEvent = {
             id: `goal_created_${Date.now()}`,
             type: 'goal_event',
@@ -270,8 +417,8 @@ export const useAnalyticsStore = create<AnalyticsState>()(
             goalId: goal.id,
             goal: {
               title: goal.title,
-              targetDate: goal.targetDate,
-              progress: 0,
+              targetDate: goal.targetDate || goal.target_date,
+              progress,
               category: goal.category || 'personal',
               priority: goal.priority || 'medium'
             },
@@ -288,6 +435,7 @@ export const useAnalyticsStore = create<AnalyticsState>()(
 
         window.addEventListener('goal_updated', (e: any) => {
           const goal = e.detail;
+          const progress = goal.progress ?? goal.current_progress ?? 0;
           const event: GoalEvent = {
             id: `goal_updated_${Date.now()}`,
             type: 'goal_event',
@@ -296,18 +444,18 @@ export const useAnalyticsStore = create<AnalyticsState>()(
             goalId: goal.id,
             goal: {
               title: goal.title,
-              targetDate: goal.targetDate,
-              progress: goal.progress || 0,
+              targetDate: goal.targetDate || goal.target_date,
+              progress,
               category: goal.category || 'personal',
               priority: goal.priority || 'medium'
             },
             metrics: {
-              progressChange: goal.progressChange || 0,
+              progressChange: goal.progressChange ?? goal.progress_change ?? 0,
               velocity: 0
             },
             sessionId: `session_${Date.now()}`,
             source: 'planner',
-            metadata: { goalId: goal.id, progress: goal.progress }
+            metadata: { goalId: goal.id, progress }
           };
           get().addEvent(event);
         });
@@ -321,7 +469,7 @@ export const useAnalyticsStore = create<AnalyticsState>()(
             timestamp: new Date(),
             habitId: habit.id,
             habit: {
-              title: habit.name,
+              title: habit.name || habit.title,
               frequency: habit.frequency || 'daily',
               category: habit.category || 'health',
               difficulty: habit.difficulty || 'medium'
@@ -341,6 +489,7 @@ export const useAnalyticsStore = create<AnalyticsState>()(
 
         window.addEventListener('habit_completed', (e: any) => {
           const habit = e.detail;
+          const streakCount = habit.streak ?? habit.currentStreak ?? 0;
           const event: HabitEvent = {
             id: `habit_completed_${Date.now()}`,
             type: 'habit_event',
@@ -348,20 +497,20 @@ export const useAnalyticsStore = create<AnalyticsState>()(
             timestamp: new Date(),
             habitId: habit.id,
             habit: {
-              title: habit.name,
+              title: habit.name || habit.title,
               frequency: habit.frequency || 'daily',
               category: habit.category || 'health',
               difficulty: habit.difficulty || 'medium'
             },
             metrics: {
-              streakCount: habit.streak || 0,
+              streakCount,
               streakMaintained: true,
               timeOfDay: new Date().getHours(),
-              consistencyScore: calculateConsistencyScore(habit.streak || 0)
+              consistencyScore: calculateConsistencyScore(streakCount)
             },
             sessionId: `session_${Date.now()}`,
             source: 'planner',
-            metadata: { habitId: habit.id, name: habit.name, streak: habit.streak }
+            metadata: { habitId: habit.id, name: habit.name || habit.title, streak: streakCount }
           };
           get().addEvent(event);
         });
@@ -369,6 +518,12 @@ export const useAnalyticsStore = create<AnalyticsState>()(
 
       // Initialize socket listeners for real-time updates
       initSocketListeners: () => {
+        if (socketListenersInitialized) {
+          return;
+        }
+
+        socketListenersInitialized = true;
+
         // Subscribe to analytics updates from backend
         socket.on('analytics:updated', (data: any) => {
           // Update metrics from backend broadcast
@@ -411,177 +566,6 @@ export const useAnalyticsStore = create<AnalyticsState>()(
           }
         });
 
-        // Subscribe to goal events
-        socket.on('planner:goal:created', (data: any) => {
-          const event: GoalEvent = {
-            id: `goal_created_${Date.now()}`,
-            type: 'goal_event',
-            subtype: 'goal_created',
-            timestamp: new Date(),
-            goalId: data.id,
-            goal: {
-              title: data.title,
-              targetDate: undefined,
-              progress: 0,
-              category: 'personal',
-              priority: 'medium'
-            },
-            metrics: {
-              progressChange: 0,
-              velocity: 0
-            },
-            sessionId: `session_${Date.now()}`,
-            source: 'planner',
-            metadata: { goalId: data.id, title: data.title }
-          };
-          get().addEvent(event);
-          // Sync to backend
-          get().logEvent('goal_created', 'planner', { goalId: data.id, title: data.title });
-        });
-
-        socket.on('planner:goal:updated', (data: any) => {
-          const event: GoalEvent = {
-            id: `goal_updated_${Date.now()}`,
-            type: 'goal_event',
-            subtype: 'goal_progressed',
-            timestamp: new Date(),
-            goalId: data.id,
-            goal: {
-              title: data.title || '',
-              targetDate: undefined,
-              progress: data.progress || 0,
-              category: 'personal',
-              priority: 'medium'
-            },
-            metrics: {
-              progressChange: data.progressChange || 0,
-              velocity: 0
-            },
-            sessionId: `session_${Date.now()}`,
-            source: 'planner',
-            metadata: { goalId: data.id, progress: data.progress }
-          };
-          get().addEvent(event);
-          // Sync to backend
-          get().logEvent('goal_updated', 'planner', { goalId: data.id, progress: data.progress });
-        });
-
-        // Subscribe to task events
-        socket.on('planner:task:created', (data: any) => {
-          const event: TaskEvent = {
-            id: `task_created_${Date.now()}`,
-            type: 'task_event',
-            subtype: 'task_created',
-            timestamp: new Date(),
-            taskId: data.id,
-            task: {
-              title: data.title,
-              plannedDuration: 60,
-              status: 'planned',
-              category: 'work',
-              priority: 'medium',
-              energy: 'medium',
-              tags: []
-            },
-            metrics: {
-              startTimeOfDay: new Date().getHours()
-            },
-            sessionId: `session_${Date.now()}`,
-            source: 'planner',
-            metadata: { taskId: data.id, title: data.title }
-          };
-          get().addEvent(event);
-          // Sync to backend
-          get().logEvent('task_created', 'planner', { taskId: data.id, title: data.title });
-        });
-
-        socket.on('planner:task:updated', (data: any) => {
-          const event: TaskEvent = {
-            id: `task_updated_${Date.now()}`,
-            type: 'task_event',
-            subtype: data.status === 'completed' ? 'task_completed' : 'task_started',
-            timestamp: new Date(),
-            taskId: data.id,
-            task: {
-              title: data.title || '',
-              plannedDuration: 60,
-              status: data.status === 'completed' ? 'completed' : 'in-progress',
-              category: 'work',
-              priority: 'medium',
-              energy: 'medium',
-              tags: []
-            },
-            metrics: {
-              startTimeOfDay: new Date().getHours()
-            },
-            sessionId: `session_${Date.now()}`,
-            source: 'planner',
-            metadata: { taskId: data.id, status: data.status }
-          };
-          get().addEvent(event);
-          // Sync to backend for completed tasks
-          if (data.status === 'completed') {
-            get().logEvent('task_completed', 'planner', { taskId: data.id, title: data.title });
-          }
-        });
-
-        // Subscribe to habit events
-        socket.on('planner:habit:created', (data: any) => {
-          const event: HabitEvent = {
-            id: `habit_created_${Date.now()}`,
-            type: 'habit_event',
-            subtype: 'habit_created',
-            timestamp: new Date(),
-            habitId: data.id,
-            habit: {
-              title: data.name,
-              frequency: data.frequency || 'daily',
-              category: 'health',
-              difficulty: 'medium'
-            },
-            metrics: {
-              streakCount: 0,
-              streakMaintained: true,
-              timeOfDay: new Date().getHours(),
-              consistencyScore: 0
-            },
-            sessionId: `session_${Date.now()}`,
-            source: 'planner',
-            metadata: { habitId: data.id, name: data.name, frequency: data.frequency }
-          };
-          get().addEvent(event);
-          // Sync to backend
-          get().logEvent('habit_created', 'planner', { habitId: data.id, name: data.name });
-        });
-
-        socket.on('planner:habit:completed', (data: any) => {
-          const event: HabitEvent = {
-            id: `habit_completed_${Date.now()}`,
-            type: 'habit_event',
-            subtype: 'habit_completed',
-            timestamp: new Date(),
-            habitId: data.id,
-            habit: {
-              title: data.name,
-              frequency: 'daily',
-              category: 'health',
-              difficulty: 'medium'
-            },
-            metrics: {
-              streakCount: data.streak || 0,
-              streakMaintained: true,
-              timeOfDay: new Date().getHours(),
-              consistencyScore: calculateConsistencyScore(data.streak || 0)
-            },
-            sessionId: `session_${Date.now()}`,
-            source: 'planner',
-            metadata: { habitId: data.id, name: data.name, streak: data.streak }
-          };
-          get().addEvent(event);
-          // Sync to backend
-          get().logEvent('habit_completed', 'planner', { habitId: data.id, name: data.name, streak: data.streak });
-        });
-
         // Subscribe to focus score updates
         socket.on('focus_score_updated', (data: any) => {
           if (data?.focus !== undefined) {
@@ -607,7 +591,10 @@ export const useAnalyticsStore = create<AnalyticsState>()(
       },
 
       computeMetrics: () => {
-        return get().currentMetrics;
+        const { events, focusSessions } = get();
+        const metrics = computeRealTimeMetrics(events, focusSessions);
+        set({ currentMetrics: metrics });
+        return metrics;
       },
 
       detectPatterns: () => {
@@ -620,7 +607,7 @@ export const useAnalyticsStore = create<AnalyticsState>()(
         const insights = generatePatternInsights(patterns, events);
         if (insights.length > 0) {
           set((state) => ({
-            insights: [...state.insights, ...insights],
+            insights: mergeInsights(state.insights, insights),
           }));
         }
       },
@@ -630,7 +617,7 @@ export const useAnalyticsStore = create<AnalyticsState>()(
         const insights = generateAnalyticsInsights(events, currentMetrics);
 
         set((state) => ({
-          insights: [...state.insights, ...insights],
+          insights: mergeInsights(state.insights, insights),
         }));
 
         return insights;
@@ -695,10 +682,14 @@ export const useAnalyticsStore = create<AnalyticsState>()(
             // Store historical data
             set({
               isLoading: false,
-              userInsights: mappedInsights.length > 0 ? mappedInsights : get().userInsights, // Keep old if new is empty
-              currentMetrics: mappedMetrics,
-              detectedPatterns: mappedPatterns.length > 0 ? mappedPatterns : get().detectedPatterns,
-              historicalMetrics: [...get().historicalMetrics, mappedMetrics].slice(-50),
+              userInsights: mappedInsights.length > 0
+                ? mappedInsights.map((insight) => normalizeUserInsight(insight))
+                : get().userInsights,
+              currentMetrics: normalizeMetrics(mappedMetrics),
+              detectedPatterns: mappedPatterns.length > 0
+                ? mappedPatterns.map((pattern) => normalizeDetectedPattern(pattern))
+                : get().detectedPatterns,
+              historicalMetrics: [...get().historicalMetrics, normalizeMetrics(mappedMetrics)].slice(-50),
               lastSynced: new Date()
             });
           } else {
@@ -901,7 +892,9 @@ export const useAnalyticsStore = create<AnalyticsState>()(
 
             // Merge backend insights
             set((state) => ({
-              insights: backendInsights.length > 0 ? [...state.insights, ...backendInsights] : state.insights,
+              insights: backendInsights.length > 0
+                ? mergeInsights(state.insights, backendInsights as AnalyticsEvent[])
+                : state.insights,
               lastSynced: new Date(),
             }));
           }
@@ -937,6 +930,53 @@ export const useAnalyticsStore = create<AnalyticsState>()(
         detectedPatterns: state.detectedPatterns,
         focusSessions: state.focusSessions.slice(-50), // Keep last 50 sessions
       }),
+      merge: (persistedState, currentState) => {
+        const typedState = (persistedState || {}) as Partial<AnalyticsState>;
+        const events = Array.isArray(typedState.events)
+          ? typedState.events.map((event) => normalizeEvent(event as AppEvent)).slice(-1000)
+          : currentState.events;
+        const focusSessions = Array.isArray(typedState.focusSessions)
+          ? typedState.focusSessions.map((session) =>
+              normalizeFocusSession(session as AnalyticsState['focusSessions'][number]),
+            ).slice(-50)
+          : currentState.focusSessions;
+        const historicalMetrics = Array.isArray(typedState.historicalMetrics)
+          ? typedState.historicalMetrics.map((metrics) => normalizeMetrics(metrics)).slice(-100)
+          : currentState.historicalMetrics;
+        const insights = Array.isArray(typedState.insights)
+          ? typedState.insights.map((insight) => toAnalyticsEvent(insight as AnalyticsEvent)).slice(-50)
+          : currentState.insights;
+        const detectedPatterns =
+          Array.isArray(typedState.detectedPatterns) && typedState.detectedPatterns.length > 0
+            ? typedState.detectedPatterns.map((pattern) =>
+                normalizeDetectedPattern(pattern as AnalyticsState['detectedPatterns'][number]),
+              )
+            : detectBehavioralPatterns(events);
+        const userInsights = Array.isArray(typedState.userInsights)
+          ? typedState.userInsights.map((insight) =>
+              normalizeUserInsight(insight as AnalyticsState['userInsights'][number]),
+            )
+          : currentState.userInsights;
+        const currentMetrics =
+          events.length > 0 || focusSessions.length > 0
+            ? computeRealTimeMetrics(events, focusSessions)
+            : normalizeMetrics(typedState.currentMetrics);
+
+        return {
+          ...currentState,
+          ...typedState,
+          events,
+          focusSessions,
+          historicalMetrics,
+          insights,
+          detectedPatterns,
+          userInsights,
+          currentMetrics,
+          lastSynced: typedState.lastSynced
+            ? toDate(typedState.lastSynced)
+            : currentState.lastSynced,
+        };
+      },
     }
   )
 );
@@ -960,24 +1000,27 @@ function computeRealTimeMetrics(events: AppEvent[], focusSessions: AnalyticsStat
   const habitEvents = recentEvents.filter((e): e is HabitEvent => e.type === 'habit_event');
   const deepWorkEvents = recentEvents.filter((e): e is DeepWorkEvent => e.type === 'deep_work_event');
   const chatEvents = recentEvents.filter((e): e is ChatEvent => e.type === 'chat_event');
+  const focusScore = computeFocusScore(deepWorkEvents, focusSessions);
+  const planningAccuracy = computePlanningAccuracy(taskEvents);
+  const habitConsistency = computeHabitConsistency(habitEvents);
 
   // Compute metrics
   return {
     // Focus & Productivity
-    focusScore: computeFocusScore(deepWorkEvents, focusSessions),
-    productivityScore: (computeFocusScore(deepWorkEvents, focusSessions) + computePlanningAccuracy(taskEvents) + computeHabitConsistency(habitEvents)) / 3,
+    focusScore,
+    productivityScore: (focusScore + planningAccuracy + habitConsistency) / 3,
     focusDecayRate: computeFocusDecayRate(deepWorkEvents),
     deepWorkRatio: computeDeepWorkRatio(deepWorkEvents, taskEvents),
     averageFocusDuration: computeAverageFocusDuration(focusSessions),
 
     // Planning & Execution
-    planningAccuracy: computePlanningAccuracy(taskEvents),
+    planningAccuracy,
     executionRatio: computeExecutionRatio(taskEvents),
     overplanningIndex: computeOverplanningIndex(taskEvents),
     procrastinationScore: computeProcrastinationScore(taskEvents, chatEvents),
 
     // Consistency
-    habitConsistency: computeHabitConsistency(habitEvents),
+    habitConsistency,
     streakVariance: computeStreakVariance(habitEvents),
     routineStability: computeRoutineStability(taskEvents, habitEvents),
 
@@ -1275,44 +1318,58 @@ function computeDistractionPatterns(deepWorkEvents: DeepWorkEvent[]): Array<{ ti
   })).slice(0, 5); // Last 5 interruptions
 }
 
+function getLatestEventTime(events: Array<{ timestamp: Date }>, fallback = new Date()): Date {
+  if (events.length === 0) {
+    return fallback;
+  }
+
+  return events.reduce((latest, event) => {
+    const timestamp = toDate(event.timestamp, latest);
+    return timestamp.getTime() > latest.getTime() ? timestamp : latest;
+  }, toDate(events[0].timestamp, fallback));
+}
+
 function detectBehavioralPatterns(events: AppEvent[]): Array<{ pattern: string, frequency: number, impact: 'positive' | 'negative' | 'neutral', lastSeen: Date }> {
   const patterns: Array<{ pattern: string, frequency: number, impact: 'positive' | 'negative' | 'neutral', lastSeen: Date }> = [];
 
   // Pattern 1: Overplanning in mornings
-  const morningPlanning = events.filter(e =>
+  const morningPlanningEvents = events.filter(e =>
     e.type === 'task_event' &&
     e.subtype === 'task_created' &&
     new Date(e.timestamp).getHours() >= 5 && new Date(e.timestamp).getHours() <= 10
-  ).length;
+  );
+  const morningPlanning = morningPlanningEvents.length;
 
   if (morningPlanning > 5) {
     patterns.push({
       pattern: 'Morning overplanning',
       frequency: morningPlanning,
       impact: 'negative',
-      lastSeen: new Date(),
+      lastSeen: getLatestEventTime(morningPlanningEvents),
     });
   }
 
   // Pattern 2: Afternoon productivity dip
-  const afternoonTasks = events.filter(e =>
+  const afternoonTaskEvents = events.filter(e =>
     e.type === 'task_event' &&
     e.subtype === 'task_completed' &&
     new Date(e.timestamp).getHours() >= 13 && new Date(e.timestamp).getHours() <= 17
-  ).length;
+  );
 
-  const morningTasks = events.filter(e =>
+  const morningTaskEvents = events.filter(e =>
     e.type === 'task_event' &&
     e.subtype === 'task_completed' &&
     new Date(e.timestamp).getHours() >= 8 && new Date(e.timestamp).getHours() <= 12
-  ).length;
+  );
+  const afternoonTasks = afternoonTaskEvents.length;
+  const morningTasks = morningTaskEvents.length;
 
-  if (afternoonTasks < morningTasks * 0.5) {
+  if (morningTasks >= 3 && afternoonTasks < morningTasks * 0.5) {
     patterns.push({
       pattern: 'Afternoon productivity dip',
-      frequency: Math.round(morningTasks / afternoonTasks),
+      frequency: Math.round(morningTasks / Math.max(1, afternoonTasks)),
       impact: 'negative',
-      lastSeen: new Date(),
+      lastSeen: getLatestEventTime([...morningTaskEvents, ...afternoonTaskEvents]),
     });
   }
 
@@ -1327,12 +1384,12 @@ function detectBehavioralPatterns(events: AppEvent[]): Array<{ pattern: string, 
       pattern: 'Strong habit consistency',
       frequency: habitCompletions.length,
       impact: 'positive',
-      lastSeen: new Date(),
+      lastSeen: getLatestEventTime(habitCompletions),
     });
   }
 
   // Pattern 4: Task switching
-  const taskSwitches = events.filter(e =>
+  const taskSwitchEvents = events.filter(e =>
     e.type === 'task_event' &&
     (e.subtype === 'task_paused' || e.subtype === 'task_started') &&
     events.some(e2 =>
@@ -1340,14 +1397,15 @@ function detectBehavioralPatterns(events: AppEvent[]): Array<{ pattern: string, 
       e2.taskId !== e.taskId &&
       Math.abs(new Date(e2.timestamp).getTime() - new Date(e.timestamp).getTime()) < 600000 // 10 minutes
     )
-  ).length;
+  );
+  const taskSwitches = taskSwitchEvents.length;
 
   if (taskSwitches > 3) {
     patterns.push({
       pattern: 'Frequent task switching',
       frequency: taskSwitches,
       impact: 'negative',
-      lastSeen: new Date(),
+      lastSeen: getLatestEventTime(taskSwitchEvents),
     });
   }
 

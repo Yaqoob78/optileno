@@ -26,6 +26,7 @@ import HabitTracker from '../../components/planner/HabitTracker';
 import TaskCard from '../../components/planner/TaskCard';
 import PlannerDashboard from '../../components/planner/Plannerdashboard';
 import { Modal } from '../../components/common/Modal';
+import { normalizeTaskStatus } from '../../services/api/planner.service';
 
 import '../../styles/pages/planner.css';
 
@@ -510,7 +511,7 @@ export default function PlannerPage() {
 
   // ── Stats ─────────────────────────────────────────────────────────
   const totalTasks = tasks.length;
-  const completedTasks = tasks.filter(t => t.status === 'done').length;
+  const completedTasks = tasks.filter((task) => normalizeTaskStatus(task.status) === 'done').length;
   // ── Transform API tasks to TaskCard format ────────────────────────
   const transformTaskForCard = (task: any) => {
     const dueDateVal = task.dueDate || task.due_date;

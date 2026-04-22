@@ -1,7 +1,5 @@
-// src/pages/chat.tsx - PERSISTENT STATE VERSION
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../services/api/client";
-import { useRealtime } from "../../hooks/useRealtime";
 import { useNavStatePreservation } from "../../hooks/useNavStatePreservation";
 import "../../styles/pages/chat.css";
 import ChatBubble from "../../components/chat/ChatBubble";
@@ -9,14 +7,12 @@ import ChatInput from "../../components/chat/ChatInput";
 import ChatHeader from "../../components/chat/ChatHeader";
 import { ErrorBoundary } from "../../components/common/ErrorBoundary";
 import { useUserStore } from "../../stores/useUserStore";
-import { useChatStore } from "../../stores/chat.store"; // IMPORT STORE
+import { useChatStore } from "../../stores/chat.store";
 import { usePlannerStore } from "../../stores/planner.store";
-import { Lock } from "lucide-react";
 
-// Types compatible with store
 interface Message {
   id: string | number;
-  role: 'user' | 'assistant' | 'system';
+  role: "user" | "assistant" | "system";
   content: string;
   timestamp: string | Date;
   provider?: string;
@@ -24,8 +20,8 @@ interface Message {
   metadata?: any;
 }
 
-type ChatMode = 'NORMAL' | 'KEEP' | 'CLEAR_FLOW';
-type AIMode = 'CHAT' | 'PLAN' | 'ANALYZE' | 'TASK';
+type ChatMode = "NORMAL" | "KEEP" | "CLEAR_FLOW";
+type AIMode = "CHAT" | "PLAN" | "ANALYZE" | "TASK";
 
 interface Suggestion {
   id: number;
@@ -34,530 +30,520 @@ interface Suggestion {
   description: string;
 }
 
+interface ToastState {
+  message: string;
+  type: "success" | "info";
+}
+
+interface PlannerRefreshTargets {
+  tasks?: boolean;
+  goals?: boolean;
+  habits?: boolean;
+}
+
+const SUGGESTIONS: Suggestion[] = [
+  { id: 1, text: "Let's just talk", aiMode: "CHAT", description: "Casual conversation" },
+  { id: 2, text: "Help me plan something", aiMode: "PLAN", description: "Planning assistance" },
+  { id: 3, text: "Show my progress", aiMode: "ANALYZE", description: "Progress analysis" },
+  { id: 4, text: "Give me a small task", aiMode: "TASK", description: "Quick tasks" },
+];
+
+const formatTimestamp = (value: string | Date) => {
+  const parsed = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+};
+
+const readUsage = (key: string) => {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) || "{}");
+    return {
+      conversations: Number(parsed.conversations) || 0,
+      tokens: Number(parsed.tokens) || 0,
+    };
+  } catch {
+    return { conversations: 0, tokens: 0 };
+  }
+};
+
 export default function Chat() {
-  // Ensure state persists when navigating to this page
   useNavStatePreservation();
 
-  // GLOBAL STORE STATE
   const activeConversation = useChatStore((state) => state.activeConversation);
   const createConversation = useChatStore((state) => state.createConversation);
   const addMessage = useChatStore((state) => state.addMessage);
-  const updateContext = useChatStore((state) => state.updateContext);
   const toggleKeep = useChatStore((state) => state.toggleKeepConversation);
-  const deleteMessage = useChatStore((state) => state.deleteMessage); // Import deleteMessage
+  const deleteMessage = useChatStore((state) => state.deleteMessage);
 
-  // Local UI State
-  const [inputValue, setInputValue] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Mode states
-  const [chatMode, setChatMode] = useState<ChatMode>(activeConversation?.isKept ? 'KEEP' : 'NORMAL');
-  const [aiMode, setAiMode] = useState<AIMode>('CHAT');
-  const [uiActiveTab, setUiActiveTab] = useState<'keep' | 'clear' | null>(activeConversation?.isKept ? 'keep' : null);
-
-  // Suggestion states
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [userHasTyped, setUserHasTyped] = useState(false);
-  const [suggestionTimer, setSuggestionTimer] = useState<number | null>(null);
-
-  // Session management
-  const [sessionId, setSessionId] = useState<string | null>(null);
-
-  // Real-time integration
-  const { onMessageReceived, onConversationUpdated } = useRealtime();
   const isUltra = useUserStore((state) => state.isUltra);
   const userProfile = useUserStore((state) => state.profile);
 
-  useEffect(() => {
-    const prefill = localStorage.getItem('optileno_chat_prefill');
-    if (prefill && prefill.trim()) {
-      setInputValue(prefill.trim());
-      localStorage.removeItem('optileno_chat_prefill');
-    }
+  const [inputValue, setInputValue] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [chatMode, setChatMode] = useState<ChatMode>(
+    activeConversation?.isKept ? "KEEP" : "NORMAL",
+  );
+  const [aiMode, setAiMode] = useState<AIMode>("CHAT");
+  const [uiActiveTab, setUiActiveTab] = useState<"keep" | "clear" | null>(
+    activeConversation?.isKept ? "keep" : null,
+  );
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [userHasTyped, setUserHasTyped] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastState | null>(null);
 
-    const preferredMode = localStorage.getItem('optileno_chat_mode');
-    if (preferredMode === 'CHAT' || preferredMode === 'PLAN' || preferredMode === 'ANALYZE' || preferredMode === 'TASK') {
-      setAiMode(preferredMode as AIMode);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const suggestionTimerRef = useRef<number | null>(null);
+  const isMountedRef = useRef(true);
+
+  const clearSuggestionTimer = useCallback(() => {
+    if (suggestionTimerRef.current) {
+      window.clearTimeout(suggestionTimerRef.current);
+      suggestionTimerRef.current = null;
     }
-    localStorage.removeItem('optileno_chat_mode');
   }, []);
 
-  // Initialize Conversation if missing
+  const startFreshConversation = useCallback(() => {
+    clearSuggestionTimer();
+    createConversation("New Chat");
+    setSessionId(null);
+    setShowSuggestions(false);
+    setUserHasTyped(false);
+  }, [clearSuggestionTimer, createConversation]);
+
+  const refreshPlannerState = useCallback(
+    async ({ tasks, goals, habits }: PlannerRefreshTargets) => {
+      const plannerStore = usePlannerStore.getState();
+      const refreshers: Array<Promise<void>> = [];
+
+      if (tasks) refreshers.push(plannerStore.fetchTasks());
+      if (goals) refreshers.push(plannerStore.fetchGoals());
+      if (habits) refreshers.push(plannerStore.fetchHabits());
+
+      if (refreshers.length === 0) return;
+      await Promise.allSettled(refreshers);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      clearSuggestionTimer();
+    };
+  }, [clearSuggestionTimer]);
+
+  useEffect(() => {
+    const prefill = localStorage.getItem("optileno_chat_prefill");
+    if (prefill && prefill.trim()) {
+      setInputValue(prefill.trim());
+      localStorage.removeItem("optileno_chat_prefill");
+    }
+
+    const preferredMode = localStorage.getItem("optileno_chat_mode");
+    if (
+      preferredMode === "CHAT" ||
+      preferredMode === "PLAN" ||
+      preferredMode === "ANALYZE" ||
+      preferredMode === "TASK"
+    ) {
+      setAiMode(preferredMode);
+    }
+    localStorage.removeItem("optileno_chat_mode");
+  }, []);
+
   useEffect(() => {
     if (!activeConversation) {
       createConversation("New Chat");
     }
-  }, [activeConversation, createConversation]); // Removed addMessage from dependencies to prevent duplication
+  }, [activeConversation, createConversation]);
 
-  // Add welcome message if conversation is new and has no messages
   useEffect(() => {
-    if (activeConversation && activeConversation.messages.length === 0) {
+    if (!activeConversation) return;
+
+    const hasUserMessages = activeConversation.messages.some(
+      (message) => message.role === "user",
+    );
+    setUserHasTyped(hasUserMessages);
+    setSessionId(null);
+
+    if (activeConversation.isKept) {
+      setChatMode("KEEP");
+      setUiActiveTab("keep");
+      return;
+    }
+
+    setUiActiveTab((current) => (current === "keep" ? null : current));
+    setChatMode((current) => (current === "KEEP" ? "NORMAL" : current));
+  }, [activeConversation?.id, activeConversation?.isKept, activeConversation?.messages]);
+
+  useEffect(() => {
+    if (
+      activeConversation &&
+      activeConversation.messages.length === 0
+    ) {
       addMessage({
-        role: 'assistant',
+        role: "assistant",
         content: "Hello! I'm Leno, your AI assistant. How can I help you today?",
-        metadata: { welcome: true }
+        metadata: { welcome: true },
       });
     }
   }, [activeConversation, addMessage]);
 
-  // Sync Keep Mode state
   useEffect(() => {
-    if (activeConversation?.isKept) {
-      setChatMode('KEEP');
-      setUiActiveTab('keep');
-    }
-  }, [activeConversation?.isKept]);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [activeConversation?.messages, isTyping]);
 
-  // Check Daily Limits
-  const getDailyUsageKey = (): string => {
-    const today = new Date().toISOString().split('T')[0];
-    const userKey = userProfile?.id ? String(userProfile.id) : 'anon';
+  useEffect(() => {
+    if (chatMode !== "CLEAR_FLOW" || !activeConversation) return;
+
+    const messages = activeConversation.messages;
+    if (messages.length <= 6) return;
+
+    messages
+      .slice(0, messages.length - 6)
+      .forEach((message) => deleteMessage(String(message.id)));
+  }, [activeConversation, chatMode, deleteMessage]);
+
+  useEffect(() => {
+    clearSuggestionTimer();
+
+    const messageCount = activeConversation?.messages.length || 0;
+    if (messageCount <= 1 && !userHasTyped) {
+      suggestionTimerRef.current = window.setTimeout(() => {
+        if (isMountedRef.current) {
+          setShowSuggestions(true);
+        }
+      }, 900);
+      return;
+    }
+
+    setShowSuggestions(false);
+  }, [activeConversation?.id, activeConversation?.messages.length, clearSuggestionTimer, userHasTyped]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(null), 2800);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
+  const getDailyUsageKey = () => {
+    const today = new Date().toISOString().split("T")[0];
+    const userKey = userProfile?.id ? String(userProfile.id) : "anon";
     return `daily_usage_${userKey}_${today}`;
   };
 
-  const getChatDailyLimit = (): number => {
+  const getChatDailyLimit = () => {
     const profileLimit = Number(userProfile?.limits?.chat_daily_limit);
     if (Number.isFinite(profileLimit) && profileLimit > 0) return profileLimit;
     return isUltra ? 150 : 15;
   };
 
-  const checkDailyLimits = (): boolean => {
+  const checkDailyLimits = () => {
     const key = getDailyUsageKey();
-    const usage = JSON.parse(localStorage.getItem(key) || '{"conversations": 0, "tokens": 0}');
+    const usage = readUsage(key);
     const dailyLimit = getChatDailyLimit();
 
     if (usage.conversations >= dailyLimit) {
-      alert(`Daily request limit (${dailyLimit}) reached. Please try again after reset.`);
+      setToast({
+        message: `Daily request limit (${dailyLimit}) reached.`,
+        type: "info",
+      });
       return false;
     }
+
     return true;
   };
 
   const updateDailyUsage = (inputLength: number) => {
     const key = getDailyUsageKey();
-    const usage = JSON.parse(localStorage.getItem(key) || '{"conversations": 0, "tokens": 0}');
-
-    // Estimate tokens: ~1 token per 4 chars + base cost
+    const usage = readUsage(key);
     const estimatedTokens = Math.ceil(inputLength / 4) + 10;
 
-    const newUsage = {
-      conversations: usage.conversations + 1,
-      tokens: usage.tokens + estimatedTokens
-    };
-
-    localStorage.setItem(key, JSON.stringify(newUsage));
+    localStorage.setItem(
+      key,
+      JSON.stringify({
+        conversations: usage.conversations + 1,
+        tokens: usage.tokens + estimatedTokens,
+      }),
+    );
   };
 
-  // Suggestions data
-  const suggestions: Suggestion[] = [
-    { id: 1, text: "Let's just talk", aiMode: 'CHAT', description: "Casual conversation" },
-    { id: 2, text: "Help me plan something", aiMode: 'PLAN', description: "Planning assistance" },
-    { id: 3, text: "Show my progress", aiMode: 'ANALYZE', description: "Progress analysis" },
-    { id: 4, text: "Give me a small task", aiMode: 'TASK', description: "Quick tasks" }
-  ];
-
-  // Scroll page up a bit on load
-  useEffect(() => {
-    window.scrollTo({
-      top: 100,
-      behavior: 'smooth'
-    });
-  }, []);
-
-  // Auto-scroll to bottom for new messages
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, []);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [activeConversation?.messages, scrollToBottom]);
-
-  // Subscribe to real-time message events
-  useEffect(() => {
-    onMessageReceived((data) => {
-      // Add the received message to the store
-      if (data?.message?.ai_response) {
-        addMessage({
-          role: 'assistant',
-          content: data.message.ai_response,
-          metadata: {
-            provider: data.message.provider,
-            model: data.message.model,
-            intent: data.message.intent
-          }
-        });
-      }
-      scrollToBottom();
-    });
-
-    onConversationUpdated(() => {
-      // Conversation updated, refresh UI
-      scrollToBottom();
-    });
-  }, [scrollToBottom, onMessageReceived, onConversationUpdated, addMessage]);
-
-  // Enforce Clear Flow limits (3 exchanges = 6 messages)
-  useEffect(() => {
-    if (chatMode === 'CLEAR_FLOW' && activeConversation) {
-      const msgs = activeConversation.messages;
-      // 3 exchanges = User + AI + User + AI + User + AI = 6 messages
-      if (msgs.length > 6) {
-        // Delete oldest messages to keep only last 6
-        const messagesToDelete = msgs.slice(0, msgs.length - 6);
-        messagesToDelete.forEach(msg => {
-          // Add a small delay/stagger or just delete
-          deleteMessage(msg.id);
-        });
-      }
-    }
-  }, [chatMode, activeConversation?.messages, deleteMessage]);
-
-  // Initialize suggestion timer (5 seconds)
-  useEffect(() => {
-    const msgCount = activeConversation?.messages.length || 0;
-    // Only show if just welcome message (length 1) and user hasn't typed
-    if (msgCount <= 1 && !userHasTyped) {
-      const timer = window.setTimeout(() => {
-        setShowSuggestions(true);
-      }, 1000); // Faster suggestion show
-
-      setSuggestionTimer(timer);
-    } else {
-      setShowSuggestions(false);
-    }
-
-    return () => {
-      if (suggestionTimer) {
-        window.clearTimeout(suggestionTimer);
-      }
-    };
-  }, [activeConversation?.messages.length, userHasTyped]);
-
-  // Handle Keep button
-  const handleKeepClick = () => {
-    if (activeConversation) {
-      if (activeConversation.isKept) {
-        // EXITING Keep Mode:
-        // 1. Do NOT toggle 'isKept' off (we want it saved on dashboard)
-        // 2. Start a fresh conversation (refresh only on exit)
-        createConversation("New Chat");
-
-        setChatMode('NORMAL');
-        setUiActiveTab(null);
-        setToast({ message: "Chat saved to Dashboard!", type: "success" });
-      } else {
-        // ENTERING Keep Mode:
-        toggleKeep(activeConversation.id); // Set isKept = true
-        setChatMode('KEEP');
-        setUiActiveTab('keep');
-        setToast({ message: "Keep mode enabled.", type: "success" });
-      }
-    }
-  };
-
-  // Handle Clear Flow button
-  const handleClearFlowClick = () => {
-    if (chatMode === 'CLEAR_FLOW') {
-      // Exit Clear Flow -> Fresh Start
-      createConversation("New Chat"); // Start fresh
-      setChatMode('NORMAL');
-      setUiActiveTab(null);
-      setToast({ message: "Clear flow disabled.", type: "info" });
-    } else if (chatMode === 'KEEP') {
-      setToast({ message: "Disable Keep mode first.", type: "info" });
-    } else {
-      setChatMode('CLEAR_FLOW');
-      setUiActiveTab('clear');
-      setToast({ message: "Clear flow enabled.", type: "success" });
-    }
-  };
-
-  // Added sendMessage helper with API session support
   const sendMessage = async (
     userMessage: string,
     currentAiMode: AIMode,
-    conversationHistory: Array<{ role: string, content: string }>,
-    sessionId: string | null
-  ): Promise<any> => {
-    try {
-      // Use the standard api client instead of raw fetch to avoid consistency issues
-      const response = await api.post('/chat/send', {
-        message: userMessage,
-        mode: currentAiMode,
-        history: conversationHistory,
-        session_id: sessionId,
+    conversationHistory: Array<{ role: string; content: string }>,
+    currentSessionId: string | null,
+  ) => {
+    const response = await api.post("/chat/send", {
+      message: userMessage,
+      mode: currentAiMode,
+      history: conversationHistory,
+      session_id: currentSessionId,
+    });
+
+    if (!response.success) {
+      throw new Error(response.error?.message || "Chat failed");
+    }
+
+    return response.data as {
+      message?: string;
+      session_id?: string;
+      actions?: any[];
+      provider?: string;
+      model?: string;
+    };
+  };
+
+  const getAIResponse = async (userMessage: string, currentAiMode: AIMode) => {
+    const conversationHistory = (activeConversation?.messages || [])
+      .slice(-10)
+      .map((message) => ({
+        role: message.role,
+        content: message.content,
+      }));
+
+    const data = await sendMessage(
+      userMessage,
+      currentAiMode,
+      conversationHistory,
+      sessionId,
+    );
+
+    if (data.session_id && data.session_id !== sessionId) {
+      setSessionId(data.session_id);
+    }
+
+    return {
+      content: data.message || "I received your message.",
+      actions: Array.isArray(data.actions) ? data.actions : [],
+      provider: data.provider,
+      model: data.model,
+    };
+  };
+
+  const handleAIActions = useCallback(
+    async (actions: any[]) => {
+      if (!Array.isArray(actions) || actions.length === 0) return;
+
+      const refreshTargets: PlannerRefreshTargets = {};
+      let nextToast: ToastState | null = null;
+
+      actions.forEach((action) => {
+        switch (action.type) {
+          case "CREATE_TASK":
+          case "PLANNER_CREATE_TASK":
+          case "PLANNER_UPDATE_TASK":
+          case "PLANNER_COMPLETE_TASK":
+          case "DELETE_TASK":
+            refreshTargets.tasks = true;
+            nextToast =
+              nextToast ||
+              {
+                message:
+                  action.type === "DELETE_TASK"
+                    ? "Task updated."
+                    : `Task ready: ${action.result?.task?.title || action.result?.title || "Planner updated"}`,
+                type: action.type === "DELETE_TASK" ? "info" : "success",
+              };
+            break;
+
+          case "CREATE_GOAL":
+          case "CREATE_GOAL_CASCADE":
+          case "PLANNER_CREATE_GOAL":
+          case "PLANNER_ADD_GOAL":
+          case "DELETE_GOAL":
+            refreshTargets.goals = true;
+            if (action.type === "CREATE_GOAL_CASCADE" || action.type === "PLANNER_CREATE_GOAL") {
+              refreshTargets.tasks = true;
+              refreshTargets.habits = true;
+            }
+            nextToast =
+              nextToast ||
+              {
+                message:
+                  action.type === "DELETE_GOAL"
+                    ? "Goal updated."
+                    : `Goal ready: ${action.result?.goal?.title || action.result?.title || "Planner updated"}`,
+                type: action.type === "DELETE_GOAL" ? "info" : "success",
+              };
+            break;
+
+          case "CREATE_HABIT":
+          case "PLANNER_CREATE_HABIT":
+          case "PLANNER_TRACK_HABIT":
+          case "DELETE_HABIT":
+            refreshTargets.habits = true;
+            nextToast =
+              nextToast ||
+              {
+                message:
+                  action.type === "PLANNER_TRACK_HABIT"
+                    ? "Habit tracked."
+                    : action.type === "DELETE_HABIT"
+                      ? "Habit updated."
+                      : `Habit ready: ${
+                          action.result?.habit?.name ||
+                          action.result?.name ||
+                          action.result?.title ||
+                          "Planner updated"
+                        }`,
+                type:
+                  action.type === "DELETE_HABIT" ? "info" : "success",
+              };
+            break;
+
+          case "BREAKDOWN_GOAL":
+          case "PLANNER_CREATE_PLAN":
+            refreshTargets.tasks = true;
+            refreshTargets.goals = true;
+            refreshTargets.habits = true;
+            nextToast =
+              nextToast || {
+                message: "Planner updated from your chat.",
+                type: "success",
+              };
+            break;
+
+          case "PLANNER_START_DEEP_WORK":
+            nextToast =
+              nextToast || {
+                message: "Deep work session started.",
+                type: "success",
+              };
+            break;
+
+          case "GET_DAILY_ACHIEVEMENT_SCORE":
+          case "GET_GOAL_PROGRESS_REPORT":
+          case "ANALYTICS_ANALYZE_PATTERNS":
+          case "SHOW_ANALYTICS":
+          case "ANALYTICS_VIEW_DASHBOARD":
+            nextToast =
+              nextToast || {
+                message: "Analytics refreshed.",
+                type: "info",
+              };
+            break;
+
+          default:
+            break;
+        }
       });
 
-      if (!response.success) {
-        throw new Error(response.error?.message || 'Chat failed');
+      if (nextToast) {
+        setToast(nextToast);
       }
 
-      return response.data;
-    } catch (error) {
-      console.error('Failed to send message:', error);
-      throw error;
-    }
-  };
+      await refreshPlannerState(refreshTargets);
+    },
+    [refreshPlannerState],
+  );
 
-  // Get AI response from API service
-  const getAIResponse = async (userMessage: string, currentAiMode: AIMode): Promise<{ content: string, session_id: string, actions: any[], provider?: string, model?: string }> => {
+  const submitMessage = async (message: string, requestedMode: AIMode) => {
+    const trimmedMessage = message.trim();
+    if (!trimmedMessage || isSending) return;
+    if (!checkDailyLimits()) return;
+
+    updateDailyUsage(trimmedMessage.length);
+    clearSuggestionTimer();
+    setShowSuggestions(false);
+    setUserHasTyped(true);
+    setAiMode(requestedMode);
+
+    addMessage({
+      role: "user",
+      content: trimmedMessage,
+    });
+
+    setInputValue("");
+    setIsTyping(true);
+    setIsSending(true);
 
     try {
-      // Prepare conversation history
-      const msgs = activeConversation?.messages || [];
-      const conversationHistory = msgs
-        .slice(-10)
-        .map(msg => ({
-          role: msg.role,
-          content: msg.content
-        })) as any;
+      const response = await getAIResponse(trimmedMessage, requestedMode);
 
-      // Call the API with session management
-      const data = await sendMessage(
-        userMessage,
-        currentAiMode,
-        conversationHistory,
-        sessionId
-      );
+      addMessage({
+        role: "assistant",
+        content: response.content,
+        metadata: {
+          provider: response.provider,
+          model: response.model,
+        },
+      });
 
-      // Update session ID from response
-      if (data.session_id && data.session_id !== sessionId) {
-        setSessionId(data.session_id);
-      }
-
-      return {
-        content: data.message || "I received your message.",
-        session_id: data.session_id,
-        actions: data.actions || [],
-        provider: data.provider,
-        model: data.model
-      };
-
+      await handleAIActions(response.actions);
     } catch (error: any) {
-      console.error("getAIResponse failed:", error.message || error);
-      throw new Error(`API failed: ${error.message}`);
-    }
-  };
+      console.error("Chat request failed:", error);
 
-  // Toast state
-  const [toast, setToast] = useState<{ message: string, type: 'success' | 'info' } | null>(null);
+      addMessage({
+        role: "assistant",
+        content: "Something went wrong. Please try again in a moment.",
+      });
 
-  // Clear toast after 3 seconds
-  useEffect(() => {
-    if (toast) {
-      const timer = setTimeout(() => setToast(null), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [toast]);
-
-  // Handle AI Actions
-  const handleAIActions = (actions: any[]) => {
-    if (!actions || actions.length === 0) return;
-
-    actions.forEach(action => {
-
-      switch (action.type) {
-        case 'CREATE_TASK':
-          setToast({ message: `Task created: ${action.result?.title || 'New Task'}`, type: 'success' });
-          // Refresh planner store to show new task
-          usePlannerStore.getState().fetchTasks();
-          break;
-
-        case 'CREATE_GOAL':
-          setToast({ message: `Goal created: ${action.result?.title || 'New Goal'}`, type: 'success' });
-          // Refresh planner store to show new goal
-          usePlannerStore.getState().fetchGoals();
-          break;
-
-        case 'CREATE_HABIT':
-          setToast({ message: `Habit created: ${action.result?.name || 'New Habit'}`, type: 'success' });
-          // Refresh planner store to show new habit
-          usePlannerStore.getState().fetchHabits();
-          break;
-
-        case 'BREAKDOWN_GOAL':
-          setToast({ message: `Plan generated for ${action.result?.goal?.title || action.result?.title || 'goal'}`, type: 'success' });
-          usePlannerStore.getState().fetchGoals();
-          usePlannerStore.getState().fetchTasks();
-          usePlannerStore.getState().fetchHabits();
-          break;
-
-        case 'CREATE_GOAL_CASCADE':
-        case 'PLANNER_CREATE_GOAL':
-          setToast({ message: `Goal created: ${action.result?.goal?.title || action.result?.title || 'New Goal'}`, type: 'success' });
-          // Cascade may create tasks/habits too
-          usePlannerStore.getState().fetchGoals();
-          usePlannerStore.getState().fetchTasks();
-          usePlannerStore.getState().fetchHabits();
-          break;
-
-        case 'PLANNER_CREATE_TASK':
-          setToast({ message: `Task created: ${action.result?.task?.title || 'New Task'}`, type: 'success' });
-          usePlannerStore.getState().fetchTasks();
-          break;
-
-        case 'PLANNER_TRACK_HABIT':
-          setToast({ message: `Habit tracked.`, type: 'success' });
-          usePlannerStore.getState().fetchHabits();
-          break;
-
-        case 'DELETE_TASK':
-          setToast({ message: `Task deleted.`, type: 'info' });
-          usePlannerStore.getState().fetchTasks();
-          break;
-
-        case 'DELETE_GOAL':
-          setToast({ message: `Goal deleted.`, type: 'info' });
-          usePlannerStore.getState().fetchGoals();
-          break;
-
-        case 'DELETE_HABIT':
-          setToast({ message: `Habit deleted.`, type: 'info' });
-          usePlannerStore.getState().fetchHabits();
-          break;
-
-        case 'PLANNER_START_DEEP_WORK':
-          setToast({ message: "Deep work session started.", type: 'success' });
-          break;
-
-        case 'ANALYTICS_VIEW_DASHBOARD':
-        case 'SHOW_ANALYTICS': // Fallback legacy intent name if passed as action
-          setToast({ message: "Opening Analytics...", type: 'info' });
-          // In a real app, use useNavigate here: navigate('/analytics')
-          break;
-
-        case 'GET_DAILY_ACHIEVEMENT_SCORE':
-        case 'GET_GOAL_PROGRESS_REPORT':
-        case 'ANALYTICS_ANALYZE_PATTERNS':
-          setToast({ message: "Analytics updated", type: 'info' });
-          break;
-
-        case 'ANALYTICS_LOG_EVENT':
-          // Background event, no UI needed
-          break;
-
-        default:
-          console.warn("Unknown action type:", action.type);
+      setToast({
+        message: "Message failed to send cleanly.",
+        type: "info",
+      });
+    } finally {
+      if (isMountedRef.current) {
+        setIsTyping(false);
+        setIsSending(false);
       }
-    });
+    }
   };
 
-  // Handle suggestion click
   const handleSuggestionClick = async (suggestion: Suggestion) => {
-    if (!checkDailyLimits()) return;
-    updateDailyUsage(suggestion.text.length);
-
-    // Add user message to store
-    addMessage({
-      role: 'user',
-      content: suggestion.text
-    });
-
-    setAiMode(suggestion.aiMode);
-    setShowSuggestions(false);
-    setUserHasTyped(true);
-
-    if (suggestionTimer) {
-      window.clearTimeout(suggestionTimer);
-    }
-
-    setIsTyping(true);
-
-    try {
-      const response = await getAIResponse(suggestion.text, suggestion.aiMode);
-
-      // Add AI response to store
-      addMessage({
-        role: 'assistant',
-        content: response.content,
-        metadata: {
-          provider: response.provider,
-          model: response.model
-        }
-      });
-
-      // Execute Actions
-      handleAIActions(response.actions);
-
-    } catch (error: any) {
-      console.error("Suggestion API error:", error);
-
-      // Show user-friendly error, log details to console only
-      addMessage({
-        role: 'assistant',
-        content: "Something went wrong. Please try again in a moment."
-      });
-    } finally {
-      setIsTyping(false);
-    }
+    await submitMessage(suggestion.text, suggestion.aiMode);
   };
 
-  // Handle manual message send
   const handleSend = async (message: string) => {
-    if (!message.trim()) return;
-
-    if (!checkDailyLimits()) return;
-    updateDailyUsage(message.length);
-
-    if (suggestionTimer) {
-      window.clearTimeout(suggestionTimer);
-    }
-
-    setShowSuggestions(false);
-    setUserHasTyped(true);
-
-    // Add user message to store
-    addMessage({
-      role: 'user',
-      content: message
-    });
-
-    setInputValue('');
-    setIsTyping(true);
-
-    try {
-      const response = await getAIResponse(message, aiMode);
-
-      // Add AI response to store
-      addMessage({
-        role: 'assistant',
-        content: response.content,
-        metadata: {
-          provider: response.provider,
-          model: response.model
-        }
-      });
-
-      // Execute Actions
-      handleAIActions(response.actions);
-
-    } catch (error: any) {
-      console.error("Send API error:", error);
-
-      // Show user-friendly error, log details to console only
-      addMessage({
-        role: 'assistant',
-        content: "Something went wrong. Please try again in a moment."
-      });
-
-    } finally {
-      setIsTyping(false);
-    }
+    await submitMessage(message, aiMode);
   };
 
-  // Handle input change
   const handleInputChange = (value: string) => {
     setInputValue(value);
     if (!userHasTyped && value.trim()) {
       setUserHasTyped(true);
       setShowSuggestions(false);
-
-      if (suggestionTimer) {
-        window.clearTimeout(suggestionTimer);
-      }
+      clearSuggestionTimer();
     }
+  };
+
+  const handleKeepClick = () => {
+    if (!activeConversation) return;
+
+    if (activeConversation.isKept) {
+      startFreshConversation();
+      setChatMode("NORMAL");
+      setUiActiveTab(null);
+      setToast({ message: "Chat saved to Dashboard.", type: "success" });
+      return;
+    }
+
+    toggleKeep(activeConversation.id);
+    setChatMode("KEEP");
+    setUiActiveTab("keep");
+    setToast({ message: "Keep mode enabled.", type: "success" });
+  };
+
+  const handleClearFlowClick = () => {
+    if (chatMode === "CLEAR_FLOW") {
+      startFreshConversation();
+      setChatMode("NORMAL");
+      setUiActiveTab(null);
+      setToast({ message: "Clear flow disabled.", type: "info" });
+      return;
+    }
+
+    if (chatMode === "KEEP") {
+      setToast({ message: "Disable Keep mode first.", type: "info" });
+      return;
+    }
+
+    setChatMode("CLEAR_FLOW");
+    setUiActiveTab("clear");
+    setToast({ message: "Clear flow enabled.", type: "success" });
   };
 
   const handleFocusMode = () => {
@@ -572,43 +558,46 @@ export default function Chat() {
         <ChatHeader
           activeTab={uiActiveTab}
           onTabChange={(tab) => {
-            if (tab === 'keep') handleKeepClick();
-            if (tab === 'clear') handleClearFlowClick();
+            if (tab === "keep") handleKeepClick();
+            if (tab === "clear") handleClearFlowClick();
           }}
         />
 
-        {/* Toast Notification */}
         {toast && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50">
-            <div className={`px-4 py-2 rounded-lg shadow-md border flex items-center gap-2 ${toast.type === 'success' ? 'bg-emerald-950/80 border-emerald-700 text-emerald-200' : 'bg-slate-900/90 border-slate-700 text-slate-200'
-              }`}>
-              <div className={`w-1.5 h-1.5 rounded-full ${toast.type === 'success' ? 'bg-emerald-300' : 'bg-slate-300'
-                }`} />
-              <span className="text-sm font-medium">{toast.message}</span>
+          <div className="chat-toast-shell">
+            <div
+              className={`chat-toast ${
+                toast.type === "success" ? "chat-toast-success" : "chat-toast-info"
+              }`}
+            >
+              <div className="chat-toast-dot" />
+              <span>{toast.message}</span>
             </div>
           </div>
         )}
 
         <div className="chat-messages-area">
-          <div className="max-w-3xl mx-auto space-y-4 p-4 md:p-6">
-            {messages.map((message: any) => (
-              <ChatBubble key={message.id} message={{
-                ...message,
-                // Normalize timestamp for bubble component
-                timestamp: typeof message.timestamp === 'object'
-                  ? message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                  : message.timestamp
-              }} />
+          <div className="chat-thread-shell">
+            {messages.map((message: Message) => (
+              <ChatBubble
+                key={message.id}
+                message={{
+                  ...message,
+                  provider: message.metadata?.provider ?? message.provider,
+                  model: message.metadata?.model ?? message.model,
+                  timestamp: formatTimestamp(message.timestamp),
+                }}
+              />
             ))}
 
             {showSuggestions && messages.length <= 1 && !userHasTyped && (
               <div className="suggestions-container">
                 <p className="suggestions-title">How would you like to start?</p>
                 <div className="suggestions-grid">
-                  {suggestions.map((suggestion) => (
+                  {SUGGESTIONS.map((suggestion) => (
                     <button
                       key={suggestion.id}
-                      onClick={() => handleSuggestionClick(suggestion)}
+                      onClick={() => void handleSuggestionClick(suggestion)}
                       className="suggestion-button"
                       title={suggestion.description}
                     >
@@ -625,9 +614,9 @@ export default function Chat() {
                 <div className="typing-indicator">
                   <div className="flex items-center gap-2">
                     <div className="flex space-x-1">
-                      <div className="typing-dot" style={{ animationDelay: '0ms' }} />
-                      <div className="typing-dot" style={{ animationDelay: '150ms' }} />
-                      <div className="typing-dot" style={{ animationDelay: '300ms' }} />
+                      <div className="typing-dot" style={{ animationDelay: "0ms" }} />
+                      <div className="typing-dot" style={{ animationDelay: "150ms" }} />
+                      <div className="typing-dot" style={{ animationDelay: "300ms" }} />
                     </div>
                     <span className="text-sm text-tertiary">Assistant is typing...</span>
                   </div>
@@ -642,8 +631,9 @@ export default function Chat() {
         <ChatInput
           inputValue={inputValue}
           onInputChange={handleInputChange}
-          onSend={handleSend}
+          onSend={(message) => void handleSend(message)}
           onFocusMode={handleFocusMode}
+          disabled={isSending}
         />
       </div>
     </ErrorBoundary>

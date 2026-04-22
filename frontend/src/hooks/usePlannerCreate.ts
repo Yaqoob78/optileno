@@ -37,7 +37,7 @@ interface CreateHabitPayload {
  */
 export const usePlannerCreate = () => {
   const profile = useUserStore((state) => state.profile);
-  const { addTask, addGoal, setHabits } = usePlannerStore();
+  const { addTask, addGoal, addHabit } = usePlannerStore();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,32 +64,11 @@ export const usePlannerCreate = () => {
         throw new Error(response.error?.message || 'Failed to create task');
       }
 
-      const data: any = response.data;
-
-      // Update local store with complete task object
-      const newTask = {
-        id: data.id,
-        title: data.title,
-        description: data.description || '',
-        priority: data.priority || 'medium',
-        status: data.status || 'pending',
-        estimatedDuration: data.estimated_duration_minutes || 60,
-        actualDuration: data.actual_duration_minutes || 0,
-        dueDate: data.due_date ? new Date(data.due_date) : null,
-        category: data.category || 'work',
-        tags: data.tags || [],
-        createdAt: new Date(data.created_at),
-        updatedAt: new Date(data.updated_at),
-        completedAt: data.completed_at ? new Date(data.completed_at) : null,
-      };
-      addTask(newTask);
-
-      console.log('✓ Task created and added to store:', data.title);
-      return { success: true, data };
+      addTask(response.data as any);
+      return { success: true, data: response.data };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       setError(message);
-      console.error('✗ Task creation failed:', message);
       return { success: false, error: message };
     } finally {
       setIsLoading(false);
@@ -117,30 +96,11 @@ export const usePlannerCreate = () => {
         throw new Error(response.error?.message || 'Failed to create goal');
       }
 
-      const data: any = response.data;
-
-      // Update local store with complete goal object
-      const newGoal = {
-        id: data.id,
-        title: data.title,
-        description: data.description || '',
-        targetDate: data.target_date,
-        target_date: data.target_date,
-        category: data.category || 'personal',
-        priority: data.priority || 'medium',
-        progress: 0,
-        current_progress: 0,
-        milestones: data.milestones || [],
-        createdAt: new Date(data.created_at),
-      };
-      addGoal(newGoal);
-
-      console.log('✓ Goal created and added to store:', data.title);
-      return { success: true, data };
+      addGoal(response.data as any);
+      return { success: true, data: response.data };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       setError(message);
-      console.error('✗ Goal creation failed:', message);
       return { success: false, error: message };
     } finally {
       setIsLoading(false);
@@ -168,40 +128,16 @@ export const usePlannerCreate = () => {
         throw new Error(response.error?.message || 'Failed to create habit');
       }
 
-      const data: any = response.data;
-
-      // Update local store with complete habit object
-      const newHabit = {
-        id: data.id,
-        name: data.title || data.name,
-        description: data.description || '',
-        frequency: data.frequency || 'daily',
-        category: data.category || 'personal',
-        tags: data.tags || [],
-        targetCount: data.target_count || 1,
-        currentStreak: 0,
-        longestStreak: 0,
-        status: data.status || 'active',
-        lastCompleted: null,
-        createdAt: new Date(data.created_at),
-        updatedAt: new Date(data.updated_at),
-      };
-      
-      // Append new habit to existing ones instead of replacing
-      const currentHabits = usePlannerStore.getState().habits;
-      setHabits([...currentHabits, newHabit]);
-
-      console.log('✓ Habit created and added to store:', data.title);
-      return { success: true, data };
+      addHabit(response.data as any);
+      return { success: true, data: response.data };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       setError(message);
-      console.error('✗ Habit creation failed:', message);
       return { success: false, error: message };
     } finally {
       setIsLoading(false);
     }
-  }, [profile.id, setHabits]);
+  }, [profile.id, addHabit]);
 
   return {
     createTask,

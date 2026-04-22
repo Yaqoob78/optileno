@@ -9,13 +9,15 @@ interface ChatInputProps {
   onInputChange: (value: string) => void;
   onSend: (message: string) => void;
   onFocusMode: () => void;
+  disabled?: boolean;
 }
 
 export default function ChatInput({ 
   inputValue, 
   onInputChange, 
   onSend, 
-  onFocusMode 
+  onFocusMode,
+  disabled = false,
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -29,6 +31,7 @@ export default function ChatInput({
   }, [inputValue]);
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (disabled) return;
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       onSend(inputValue);
@@ -37,16 +40,17 @@ export default function ChatInput({
 
   return (
     <div className="chat-input-container">
-      <div className="max-w-3xl mx-auto p-4 md:p-6">
+      <div className="chat-input-inner">
         <div className="chat-input-wrapper">
           <textarea
             ref={textareaRef}
             value={inputValue}
             onChange={(e) => onInputChange(e.target.value)}
             onKeyDown={handleKeyPress}
-            placeholder="Type your message... (Shift+Enter for new line)"
+            placeholder="Ask Leno anything. Shift+Enter for a new line."
             className="chat-input-field"
             rows={1}
+            disabled={disabled}
           />
           <div className="chat-input-actions">
             {/* Focus Button */}
@@ -55,6 +59,7 @@ export default function ChatInput({
               className="focus-button"
               aria-label="Focus mode"
               title="Focus mode"
+              disabled={disabled}
             >
               <Focus size={18} />
             </button>
@@ -62,7 +67,7 @@ export default function ChatInput({
             {/* Send Button */}
             <button
               onClick={() => onSend(inputValue)}
-              disabled={!inputValue.trim()}
+              disabled={disabled || !inputValue.trim()}
               className="send-button"
               aria-label="Send message"
             >

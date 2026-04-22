@@ -3,6 +3,9 @@ import { useEffect, useCallback } from 'react';
 import { apiClient } from '../services/api/client';
 import { useUserStore } from "../stores/useUserStore";
 import { usePlannerStore } from "../stores/planner.store";
+import { useChatStore } from "../stores/chat.store";
+import { useAnalyticsStore } from "../stores/analytics.store";
+import { realtimeClient } from "../services/realtime/socket-client";
 import type { UserProfile } from "../types/user.types";
 import { canonicalPlanTypeForTier, resolvePlanTierFromProfile } from "../utils/plan";
 
@@ -52,6 +55,16 @@ export const useUser = () => {
     setProfile,
   } = useUserStore();
 
+  const resetSessionScopedStores = useCallback(() => {
+    realtimeClient.disconnect();
+    usePlannerStore.getState().resetPlanner();
+    useChatStore.getState().clearAll();
+    useAnalyticsStore.getState().clearEvents();
+    sessionStorage.removeItem('chat_preserved');
+    sessionStorage.removeItem('planner_preserved');
+    sessionStorage.removeItem('user_preserved');
+  }, []);
+
   const handleLogin = useCallback(
     async (credentials: LoginCredentials): Promise<{ success: boolean; error?: string }> => {
       try {
@@ -99,6 +112,7 @@ export const useUser = () => {
           },
         };
 
+        resetSessionScopedStores();
         storeLogin(profileData);
         return { success: true };
       } catch (err: any) {
@@ -109,14 +123,14 @@ export const useUser = () => {
         };
       }
     },
-    [storeLogin]
+    [resetSessionScopedStores, storeLogin]
   );
 
   const handleLogout = useCallback(() => {
     apiClient.clearAuthTokens();
+    resetSessionScopedStores();
     storeLogout();
-    usePlannerStore.getState().resetPlanner();
-  }, [storeLogout]);
+  }, [resetSessionScopedStores, storeLogout]);
 
   useEffect(() => {
     const handleAuthLogout = () => {

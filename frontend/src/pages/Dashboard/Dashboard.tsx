@@ -5,29 +5,22 @@ import {
   Brain,
   Target,
   Calendar,
-  ArrowRight,
   Clock,
   TrendingUp,
   Users,
   MessageSquare,
   CheckCircle,
   Award,
-  Coffee,
   Sun,
   Moon,
-  Bell,
-  Settings,
   ChevronRight,
   BarChart3,
-  X, // Added X icon
-  Target as TargetIcon
+  X,
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAnalytics } from '../../hooks/useAnalytics';
 import { useProductivityScore } from '../../hooks/useProductivityScore';
 
-
-import { usePlanner } from '../../hooks/usePlanner';
 import { useUser } from '../../hooks/useUser';
 import { useTheme } from '../../hooks/useTheme';
 import { useRealtime } from '../../hooks/useRealtime';
@@ -36,9 +29,9 @@ import { userService } from '../../services/api/user.service';
 import { useChatStore } from '../../stores/chat.store';
 import { useAnalyticsStore } from '../../stores/analytics.store';
 import { usePlannerStore } from '../../stores/planner.store';
+import { normalizeTaskStatus } from '../../services/api/planner.service';
 import SEO from '../../components/common/SEO';
 
-import DashboardStatsCard from '../../components/dashboard/DashboardStatsCard';
 import RecentActivityWidget from '../../components/dashboard/RecentActivityWidget';
 import '../../styles/pages/dashboard.css';
 
@@ -50,12 +43,15 @@ export default function Dashboard() {
   const location = useLocation();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  const { user, login, isPremium } = useUser();
+  const { user, isPremium } = useUser();
   const { getFocusMetrics, getRecentInsights } = useAnalytics();
 
   // Use Global Stores for Real-Time Sync
   const plannerTasks = usePlannerStore((state) => state.tasks);
   const activeConversation = useChatStore((state) => state.activeConversation);
+  const conversations = useChatStore((state) => state.conversations);
+  const setActiveConversation = useChatStore((state) => state.setActiveConversation);
+  const toggleKeepConversation = useChatStore((state) => state.toggleKeepConversation);
   const userStats = useUserStore((state) => state.profile.stats);
 
   // Determine Productivity Score using the same hook as Analytics page for consistency
@@ -67,7 +63,10 @@ export default function Dashboard() {
 
   // Determine Task Counts (Real-time from store)
   const totalTasks = plannerTasks.length;
-  const completedTasks = plannerTasks.filter(t => t.status === 'done').length;
+  const completedTasks = plannerTasks.filter((task) => normalizeTaskStatus(task.status) === 'done').length;
+  const keptConversations = conversations
+    .filter((conversation) => conversation.isKept && conversation.id !== activeConversation?.id)
+    .slice(0, 3);
 
   // Action to fetch analytics if stale
   const fetchAnalytics = useAnalyticsStore((state) => state.fetchAnalytics);
@@ -145,7 +144,7 @@ export default function Dashboard() {
       setShowSuccessModal(true);
       navigate('/dashboard', { replace: true });
     }
-  }, [location, login, navigate]);
+  }, [location, navigate]);
 
   // Subscribe to real-time events
   useEffect(() => {
@@ -358,11 +357,11 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                {useChatStore.getState().conversations.filter(c => c.isKept && c.id !== activeConversation?.id).slice(0, 3).map(chat => (
+                {keptConversations.map(chat => (
                   <div
                     key={chat.id}
                     onClick={() => {
-                      useChatStore.getState().setActiveConversation(chat.id);
+                      setActiveConversation(chat.id);
                       navigate('/chat');
                     }}
                     className="saved-chat-item group"
@@ -382,7 +381,7 @@ export default function Dashboard() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          useChatStore.getState().toggleKeepConversation(chat.id);
+                          toggleKeepConversation(chat.id);
                         }}
                         className="text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
                         style={{ padding: '2px' }}
@@ -396,7 +395,7 @@ export default function Dashboard() {
                   </div>
                 ))}
 
-                {!activeConversation?.isKept && useChatStore.getState().conversations.filter(c => c.isKept).length === 0 && (
+                {!activeConversation?.isKept && keptConversations.length === 0 && (
                   <div style={{ textAlign: 'center', padding: '10px', color: '#94a3b8', fontSize: '0.85rem' }}>
                     No chats saved yet. <br /> Use toggle in Chat.
                   </div>

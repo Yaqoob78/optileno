@@ -141,7 +141,7 @@ export const useAnalytics = () => {
   // Pattern detection
   const getActivePatterns = useCallback(() => {
     return detectedPatterns.filter(pattern =>
-      new Date().getTime() - pattern.lastSeen.getTime() < 7 * 24 * 60 * 60 * 1000
+      new Date().getTime() - new Date(pattern.lastSeen).getTime() < 7 * 24 * 60 * 60 * 1000
     );
   }, [detectedPatterns]);
 

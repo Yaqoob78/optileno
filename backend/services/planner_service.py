@@ -630,6 +630,8 @@ class PlannerService:
                 
                 if not goal:
                     return False
+
+                previous_progress = int(goal.current_progress or old_progress or 0)
                 
                 new_progress = min(100, max(0, new_progress))
                 
@@ -659,37 +661,51 @@ class PlannerService:
                         db, int(goal_id), int(user_id), is_ultra=is_ultra
                     )
                 
-                # 🔥 ANALYTICS TRACKING: Track goal progress
+                actual_progress = int(goal.current_progress or new_progress or 0)
+
+                # Analytics tracking: track goal progress changes against the real persisted value.
                 try:
-                    # Track any progress change
                     await realtime_analytics.track_event(
                         user_id=int(user_id),
                         event_type='goal_progress',
                         metadata={
                             'goal_id': goal_id,
-                            'old_progress': old_progress,
-                            'new_progress': new_progress
+                            'old_progress': previous_progress,
+                            'new_progress': actual_progress
                         }
                     )
                     
-                    # Track milestones (25%, 50%, 75%, 100%)
                     milestones = [25, 50, 75, 100]
                     for milestone in milestones:
-                        if old_progress < milestone <= new_progress:
+                        if previous_progress < milestone <= actual_progress:
                             await realtime_analytics.track_event(
                                 user_id=int(user_id),
                                 event_type='goal_milestone',
                                 metadata={
                                     'goal_id': goal_id,
                                     'milestone': milestone,
-                                    'progress': new_progress
+                                    'progress': actual_progress
                                 }
                             )
                             logger.info(f"Tracked goal_milestone {milestone}% for goal {goal_id}")
                     
-                    logger.info(f"Tracked goal_progress event for goal {goal_id}: {old_progress}% → {new_progress}%")
+                    logger.info(f"Tracked goal_progress event for goal {goal_id}: {previous_progress}% -> {actual_progress}%")
                 except Exception as e:
                     logger.error(f"Failed to track analytics event: {e}")
+
+                try:
+                    from backend.realtime.socket_manager import broadcast_goal_progress_changed
+
+                    await broadcast_goal_progress_changed(
+                        int(user_id),
+                        {
+                            'goal_id': str(goal.id),
+                            'progress': actual_progress,
+                            'previous_progress': previous_progress,
+                        }
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to broadcast goal progress: {e}")
                 
                 return True
         except Exception as e:
@@ -1038,6 +1054,26 @@ class PlannerService:
                     logger.info(f"Tracked habit_completed event for habit {habit_id}, streak: {new_streak}, best: {longest_streak}")
                 except Exception as e:
                     logger.error(f"Failed to track analytics event: {e}")
+
+                try:
+                    from backend.realtime.socket_manager import broadcast_habit_completed
+
+                    await broadcast_habit_completed(
+                        int(user_id),
+                        {
+                            "id": str(plan.id),
+                            "name": plan.name,
+                            "description": plan.description,
+                            "frequency": schedule.get("frequency", "daily"),
+                            "category": schedule.get("category", "Wellness"),
+                            "streak": new_streak,
+                            "currentStreak": new_streak,
+                            "longestStreak": longest_streak,
+                            "lastCompleted": schedule["lastCompleted"],
+                        },
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to broadcast habit completion: {e}")
                     
                 # Update goal probability if habit is linked to a goal
                 if plan.goal_id:

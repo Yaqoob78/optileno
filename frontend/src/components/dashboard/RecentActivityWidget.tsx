@@ -1,53 +1,93 @@
-// frontend/src/components/dashboard/RecentActivityWidget.tsx
-import React, { useState, useEffect } from 'react';
-import { CheckCircle2, Target, Zap, Calendar, ArrowRight } from 'lucide-react';
-import { usePlanner } from '../../hooks/usePlanner';
+import React from 'react';
+import { CheckCircle2, Target, Zap, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useAnalyticsStore } from '../../stores/analytics.store';
+import type { AppEvent } from '../../types/events.types';
 
 interface Activity {
   id: string;
-  type: 'task_completed' | 'goal_updated' | 'habit_completed' | 'habit_streak';
+  type: 'task' | 'goal' | 'habit';
   title: string;
   description?: string;
   timestamp: Date;
-  value?: string | number;
 }
 
+const toDate = (value: Date): Date => {
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? new Date(0) : parsed;
+};
+
+const buildActivity = (event: AppEvent): Activity | null => {
+  if (event.type === 'task_event') {
+    if (event.subtype === 'task_completed') {
+      return {
+        id: event.id,
+        type: 'task',
+        title: event.task.title,
+        description: `Completed ${event.task.category} task`,
+        timestamp: toDate(event.timestamp),
+      };
+    }
+
+    if (event.subtype === 'task_created') {
+      return {
+        id: event.id,
+        type: 'task',
+        title: event.task.title,
+        description: 'Task added to planner',
+        timestamp: toDate(event.timestamp),
+      };
+    }
+  }
+
+  if (event.type === 'goal_event' && ['goal_created', 'goal_progressed', 'goal_completed'].includes(event.subtype)) {
+    const progress = Math.round(event.goal.progress ?? 0);
+    return {
+      id: event.id,
+      type: 'goal',
+      title: event.goal.title,
+      description: event.subtype === 'goal_created'
+        ? 'Goal added to planner'
+        : `Progress updated to ${progress}%`,
+      timestamp: toDate(event.timestamp),
+    };
+  }
+
+  if (event.type === 'habit_event' && ['habit_created', 'habit_completed'].includes(event.subtype)) {
+    const streakCount = event.metrics.streakCount ?? 0;
+    return {
+      id: event.id,
+      type: 'habit',
+      title: event.habit.title,
+      description: event.subtype === 'habit_created'
+        ? 'Habit added to tracker'
+        : streakCount > 1
+          ? `${streakCount}-day streak`
+          : 'Habit completed',
+      timestamp: toDate(event.timestamp),
+    };
+  }
+
+  return null;
+};
+
 export default function RecentActivityWidget() {
-  const { tasks } = usePlanner();
-  const [activities, setActivities] = useState<Activity[]>([]);
+  const events = useAnalyticsStore((state) => state.events);
 
-  useEffect(() => {
-    // Build activities from recent tasks
-    const recentActivities: Activity[] = [];
-
-    // Add completed tasks
-    tasks
-      ?.filter(t => t.status === 'done')
-      ?.slice(0, 3)
-      ?.forEach(task => {
-        recentActivities.push({
-          id: task.id,
-          type: 'task_completed',
-          title: task.title,
-          timestamp: new Date(),
-          description: task.category
-        });
-      });
-
-    // Sort by timestamp descending
-    setActivities(recentActivities.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()).slice(0, 5));
-  }, [tasks]);
+  const activities = events
+    .map(buildActivity)
+    .filter((activity): activity is Activity => activity !== null)
+    .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+    .slice(0, 5);
 
   const getActivityIcon = (type: Activity['type']) => {
     switch (type) {
-      case 'task_completed':
+      case 'task':
         return <CheckCircle2 size={16} className="text-green-400" />;
-      case 'goal_updated':
+      case 'goal':
         return <Target size={16} className="text-blue-400" />;
-      case 'habit_completed':
+      case 'habit':
         return <Zap size={16} className="text-yellow-400" />;
-      case 'habit_streak':
-        return <Calendar size={16} className="text-purple-400" />;
       default:
         return null;
     }
@@ -70,9 +110,9 @@ export default function RecentActivityWidget() {
     <div className="bg-gradient-to-br from-gray-900/50 to-black/50 border border-white/10 rounded-xl p-6 backdrop-blur-sm">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-bold text-white">Recent Activity</h3>
-        <a href="/planner" className="text-xs font-semibold text-blue-400 hover:text-blue-300 flex items-center gap-1">
+        <Link to="/planner" className="text-xs font-semibold text-blue-400 hover:text-blue-300 flex items-center gap-1">
           View All <ArrowRight size={12} />
-        </a>
+        </Link>
       </div>
 
       {activities.length === 0 ? (

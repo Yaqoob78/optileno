@@ -7,6 +7,173 @@ import { realtimeClient } from '../realtime/socket-client';
 
 export type { Task, DeepWorkSession, Goal, Habit };
 
+const toDateOrNull = (value: unknown): Date | null => {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  if (typeof value === 'string' || typeof value === 'number') {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  return null;
+};
+
+export const normalizeTaskStatus = (status: unknown): TaskStatus => {
+  switch (status) {
+    case 'pending':
+      return 'todo';
+    case 'completed':
+      return 'done';
+    case 'in_progress':
+      return 'in-progress';
+    case 'todo':
+    case 'in-progress':
+    case 'done':
+    case 'planned':
+    case 'overdue':
+      return status;
+    default:
+      return 'planned';
+  }
+};
+
+export const normalizePlannerTask = (task: any): Task => {
+  const dueDate = toDateOrNull(task?.due_date ?? task?.dueDate);
+  const createdAt = toDateOrNull(task?.created_at ?? task?.createdAt) ?? new Date();
+  const updatedAt = toDateOrNull(task?.updated_at ?? task?.updatedAt) ?? createdAt;
+  const completedAt = toDateOrNull(task?.completed_at ?? task?.completedAt);
+  const estimatedDuration = Number(
+    task?.estimated_duration_minutes ??
+    task?.estimatedDuration ??
+    task?.duration ??
+    60,
+  );
+  const actualDuration = Number(
+    task?.actual_duration_minutes ??
+    task?.actual_minutes ??
+    task?.actualDuration ??
+    0,
+  );
+
+  return {
+    ...task,
+    id: String(task?.id ?? ''),
+    status: normalizeTaskStatus(task?.status),
+    dueDate,
+    due_date: dueDate,
+    estimatedDuration,
+    estimated_duration_minutes: estimatedDuration,
+    duration: estimatedDuration,
+    actualDuration,
+    actual_duration_minutes: actualDuration,
+    createdAt,
+    created_at: createdAt.toISOString(),
+    updatedAt,
+    updated_at: updatedAt.toISOString(),
+    completedAt,
+    completed_at: completedAt ? completedAt.toISOString() : null,
+    goalId: task?.goal_id ?? task?.related_goal_id ?? task?.goalId ?? task?.relatedGoalId,
+    originalId: String(task?.id ?? task?.originalId ?? ''),
+    tags: Array.isArray(task?.tags) ? task.tags : [],
+    description: task?.description ?? '',
+    category: task?.category ?? 'work',
+    priority: task?.priority ?? 'medium',
+    meta: task?.meta ?? {},
+  } as Task;
+};
+
+export const normalizePlannerGoal = (goal: any): Goal => {
+  const createdAt = toDateOrNull(goal?.created_at ?? goal?.createdAt);
+  const targetDate = goal?.target_date ?? goal?.targetDate ?? null;
+  const progress = Number(goal?.current_progress ?? goal?.progress ?? 0);
+
+  return {
+    ...goal,
+    id: String(goal?.id ?? ''),
+    title: goal?.title ?? '',
+    description: goal?.description ?? '',
+    category: goal?.category ?? 'personal',
+    target_date: targetDate,
+    targetDate,
+    current_progress: progress,
+    progress,
+    milestones: Array.isArray(goal?.milestones) ? goal.milestones : [],
+    created_at: createdAt ? createdAt.toISOString() : goal?.created_at ?? null,
+    createdAt: createdAt ?? goal?.createdAt,
+  } as Goal;
+};
+
+export const normalizePlannerHabit = (habit: any): Habit => {
+  const schedule = typeof habit?.schedule === 'object' && habit?.schedule ? habit.schedule : {};
+  const createdAt = toDateOrNull(habit?.createdAt ?? habit?.created_at) ?? new Date();
+  const updatedAt = toDateOrNull(habit?.updatedAt ?? habit?.updated_at) ?? createdAt;
+  const lastCompleted = toDateOrNull(
+    habit?.lastCompleted ?? habit?.last_completed ?? schedule?.lastCompleted ?? schedule?.last_completed,
+  );
+  const currentStreak = Number(
+    habit?.currentStreak ??
+    habit?.current_streak ??
+    habit?.streak ??
+    schedule?.currentStreak ??
+    schedule?.current_streak ??
+    schedule?.streak ??
+    0,
+  );
+  const longestStreak = Number(
+    habit?.longestStreak ??
+    habit?.longest_streak ??
+    schedule?.longestStreak ??
+    schedule?.longest_streak ??
+    currentStreak,
+  );
+
+  return {
+    ...habit,
+    id: String(habit?.id ?? ''),
+    name: habit?.name ?? habit?.title ?? '',
+    title: habit?.title ?? habit?.name ?? '',
+    description: habit?.description ?? '',
+    frequency: habit?.frequency ?? schedule?.frequency ?? 'daily',
+    category: habit?.category ?? schedule?.category ?? 'Wellness',
+    targetCount: Number(habit?.targetCount ?? habit?.target_count ?? schedule?.target ?? 1),
+    currentStreak,
+    longestStreak,
+    status: habit?.status ?? 'active',
+    lastCompleted,
+    last_completed: lastCompleted ? lastCompleted.toISOString() : null,
+    createdAt,
+    created_at: createdAt.toISOString(),
+    updatedAt,
+    updated_at: updatedAt.toISOString(),
+    history: Array.isArray(habit?.history) ? habit.history : [],
+    goal_id: habit?.goal_id ?? null,
+  } as Habit;
+};
+
+export const normalizeDeepWorkSession = (session: any): DeepWorkSession => {
+  const startedAt = toDateOrNull(session?.started_at ?? session?.startTime);
+  const scheduledStartAt = toDateOrNull(session?.scheduled_start_at);
+  const completedAt = toDateOrNull(session?.completed_at ?? session?.ended_at);
+  const pausedAt = toDateOrNull(session?.paused_at);
+  const createdAt = toDateOrNull(session?.created_at);
+
+  return {
+    ...session,
+    id: String(session?.id ?? ''),
+    startTime: startedAt?.toISOString(),
+    started_at: startedAt?.toISOString(),
+    scheduled_start_at: scheduledStartAt?.toISOString(),
+    completed_at: completedAt?.toISOString(),
+    ended_at: completedAt?.toISOString(),
+    paused_at: pausedAt?.toISOString(),
+    created_at: createdAt?.toISOString(),
+    status: session?.status ?? 'active',
+    focus_goal: session?.focus_goal ?? session?.focusGoal,
+  } as DeepWorkSession;
+};
+
 // Create / Update payloads (match backend Pydantic)
 export interface TaskCreate {
   title: string;
@@ -91,12 +258,22 @@ class PlannerService {
 
   private mapTask(t: any): Task {
     if (!t) return t;
-    return {
-      ...t,
-      dueDate: t.due_date || t.dueDate || null,
-      duration: t.estimated_duration_minutes || t.estimatedDuration || t.duration || 60,
-      actualDuration: t.actual_minutes || t.actualDuration || 0,
-    } as Task;
+    return normalizePlannerTask(t);
+  }
+
+  private mapGoal(goal: any): Goal {
+    if (!goal) return goal;
+    return normalizePlannerGoal(goal);
+  }
+
+  private mapHabit(habit: any): Habit {
+    if (!habit) return habit;
+    return normalizePlannerHabit(habit);
+  }
+
+  private mapDeepWorkSession(session: any): DeepWorkSession {
+    if (!session) return session;
+    return normalizeDeepWorkSession(session);
   }
 
   async createTask(data: TaskCreate): Promise<ApiResponse<Task>> {
@@ -155,63 +332,95 @@ class PlannerService {
   // ── Deep Work Sessions ───────────────────────────────────────────
 
   async startDeepWork(data: DeepWorkStart): Promise<ApiResponse<DeepWorkSession>> {
-    return api.post<DeepWorkSession>(`${this.basePath}/deep-work/start`, data);
+    const res = await api.post<DeepWorkSession>(`${this.basePath}/deep-work/start`, data);
+    if (res.success && res.data) res.data = this.mapDeepWorkSession(res.data);
+    return res;
   }
 
   async startScheduledDeepWork(sessionId: string): Promise<ApiResponse<DeepWorkSession>> {
-    return api.post<DeepWorkSession>(`${this.basePath}/deep-work/${sessionId}/start`, {});
+    const res = await api.post<DeepWorkSession>(`${this.basePath}/deep-work/${sessionId}/start`, {});
+    if (res.success && res.data) res.data = this.mapDeepWorkSession(res.data);
+    return res;
   }
 
   async completeDeepWork(data: DeepWorkComplete): Promise<ApiResponse<DeepWorkSession>> {
-    return api.post<DeepWorkSession>(`${this.basePath}/deep-work/${data.sessionId}/complete`, {
+    const res = await api.post<DeepWorkSession>(`${this.basePath}/deep-work/${data.sessionId}/complete`, {
       actual_duration_minutes: data.actualDurationMinutes
     });
+    if (res.success && res.data) res.data = this.mapDeepWorkSession(res.data);
+    return res;
   }
 
   async getActiveDeepWork(): Promise<ApiResponse<DeepWorkSession | null>> {
-    return api.get<DeepWorkSession | null>(`${this.basePath}/deep-work/active`);
+    const res = await api.get<DeepWorkSession | null>(`${this.basePath}/deep-work/active`);
+    if (res.success && res.data) res.data = this.mapDeepWorkSession(res.data);
+    return res;
   }
 
   async pauseDeepWork(sessionId: string): Promise<ApiResponse<DeepWorkSession>> {
-    return api.post<DeepWorkSession>(`${this.basePath}/deep-work/${sessionId}/pause`, {});
+    const res = await api.post<DeepWorkSession>(`${this.basePath}/deep-work/${sessionId}/pause`, {});
+    if (res.success && res.data) res.data = this.mapDeepWorkSession(res.data);
+    return res;
   }
 
   async resumeDeepWork(sessionId: string): Promise<ApiResponse<DeepWorkSession>> {
-    return api.post<DeepWorkSession>(`${this.basePath}/deep-work/${sessionId}/resume`, {});
+    const res = await api.post<DeepWorkSession>(`${this.basePath}/deep-work/${sessionId}/resume`, {});
+    if (res.success && res.data) res.data = this.mapDeepWorkSession(res.data);
+    return res;
   }
 
   async cancelDeepWork(sessionId: string): Promise<ApiResponse<DeepWorkSession>> {
-    return api.delete<DeepWorkSession>(`${this.basePath}/deep-work/${sessionId}`);
+    const res = await api.delete<DeepWorkSession>(`${this.basePath}/deep-work/${sessionId}`);
+    if (res.success && res.data) res.data = this.mapDeepWorkSession(res.data);
+    return res;
   }
 
   async scheduleDeepWork(data: DeepWorkScheduleRequest): Promise<ApiResponse<DeepWorkSession[]>> {
-    return api.post<DeepWorkSession[]>(`${this.basePath}/deep-work/schedule`, data);
+    const res = await api.post<DeepWorkSession[]>(`${this.basePath}/deep-work/schedule`, data);
+    if (res.success && res.data) {
+      res.data = res.data.map((session) => this.mapDeepWorkSession(session));
+    }
+    return res;
   }
 
   async getScheduledDeepWork(params?: {
     includeMissed?: boolean;
     daysAhead?: number;
   }): Promise<ApiResponse<DeepWorkSession[]>> {
-    return api.get<DeepWorkSession[]>(`${this.basePath}/deep-work/schedule`, {
+    const res = await api.get<DeepWorkSession[]>(`${this.basePath}/deep-work/schedule`, {
       params: {
         include_missed: params?.includeMissed ?? true,
         days_ahead: params?.daysAhead ?? 14,
       },
     });
+    if (res.success && res.data) {
+      res.data = res.data.map((session) => this.mapDeepWorkSession(session));
+    }
+    return res;
   }
 
   // ── Goals ────────────────────────────────────────────────────────
 
   async getGoals(): Promise<ApiResponse<Goal[]>> {
-    return api.get<Goal[]>(`${this.basePath}/goals`);
+    const res = await api.get<Goal[]>(`${this.basePath}/goals`);
+    if (res.success && res.data) {
+      res.data = res.data.map((goal) => this.mapGoal(goal));
+    }
+    return res;
   }
 
   async getGoalTimeline(): Promise<ApiResponse<Goal[]>> {
-    return api.get<Goal[]>(`${this.basePath}/goals/timeline`);
+    const res = await api.get<Goal[]>(`${this.basePath}/goals/timeline`);
+    if (res.success && res.data) {
+      res.data = res.data.map((goal) => this.mapGoal(goal));
+    }
+    return res;
   }
 
   async createGoal(data: GoalCreate): Promise<ApiResponse<Goal>> {
-    return api.post<Goal>(`${this.basePath}/goals`, data);
+    const res = await api.post<Goal>(`${this.basePath}/goals`, data);
+    if (res.success && res.data) res.data = this.mapGoal(res.data);
+    return res;
   }
 
   async updateGoalProgress(goalId: string, progress: number): Promise<ApiResponse<{ message: string; progress: number }>> {
@@ -282,14 +491,20 @@ class PlannerService {
   // ── Habits ───────────────────────────────────────────────────────
 
   async getHabits(timezone?: string): Promise<ApiResponse<Habit[]>> {
-    return api.get<Habit[]>(`${this.basePath}/habits`, { params: timezone ? { timezone } : undefined });
+    const res = await api.get<Habit[]>(`${this.basePath}/habits`, { params: timezone ? { timezone } : undefined });
+    if (res.success && res.data) {
+      res.data = res.data.map((habit) => this.mapHabit(habit));
+    }
+    return res;
   }
 
   async createHabit(data: HabitCreate): Promise<ApiResponse<Habit>> {
-    return api.post<Habit>(`${this.basePath}/habits`, {
+    const res = await api.post<Habit>(`${this.basePath}/habits`, {
       ...data,
       goal_id: data.goal_id ?? data.goalId ?? null,
     });
+    if (res.success && res.data) res.data = this.mapHabit(res.data);
+    return res;
   }
 
   async trackHabit(habitId: string, timezone?: string): Promise<ApiResponse<{ streak: number; habit_id: string }>> {
@@ -321,7 +536,7 @@ class PlannerService {
   onDeepWorkStarted(callback: (session: DeepWorkSession) => void) {
     realtimeClient.on('planner:deepwork:started', (data: any) => {
       if (data && data.session) {
-        callback(data.session);
+        callback(this.mapDeepWorkSession(data.session));
       }
     });
   }
@@ -345,7 +560,7 @@ class PlannerService {
   onHabitCreated(callback: (habit: Habit) => void) {
     realtimeClient.on('planner:habit:created', (data: any) => {
       if (data && data.habit) {
-        callback(data.habit);
+        callback(this.mapHabit(data.habit));
       }
     });
   }
@@ -362,7 +577,7 @@ class PlannerService {
   onGoalCreated(callback: (goal: Goal) => void) {
     realtimeClient.on('planner:goal:created', (data: any) => {
       if (data && data.goal) {
-        callback(data.goal);
+        callback(this.mapGoal(data.goal));
       }
     });
   }
@@ -370,7 +585,7 @@ class PlannerService {
   onGoalUpdated(callback: (goal: Goal) => void) {
     realtimeClient.on('planner:goal:updated', (data: any) => {
       if (data && data.goal) {
-        callback(data.goal);
+        callback(this.mapGoal(data.goal));
       }
     });
   }
@@ -388,7 +603,7 @@ class PlannerService {
   onHabitCompleted(callback: (habit: Habit) => void) {
     realtimeClient.on('planner:habit:completed', (data: any) => {
       if (data && data.habit) {
-        callback(data.habit);
+        callback(this.mapHabit(data.habit));
       }
     });
   }

@@ -68,6 +68,18 @@ const mergeById = <T extends { id: unknown }>(existing: T[], incoming: T[]): T[]
 
 const uniqueById = <T extends { id: unknown }>(items: T[]): T[] => mergeById([], items);
 
+const mergeDefinedFields = <T extends Record<string, any>>(existing: T, incoming: Partial<T>): T => {
+  const merged = { ...existing };
+
+  Object.entries(incoming).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      merged[key as keyof T] = value as T[keyof T];
+    }
+  });
+
+  return merged;
+};
+
 export const usePlannerStore = create<PlannerState>()(
   persist(
     (set, get) => ({
@@ -87,18 +99,22 @@ export const usePlannerStore = create<PlannerState>()(
           tasks: uniqueById(tasks as Task[]),
         }),
       addTask: (task) => {
+        let eventName: 'task_created' | 'task_updated' = 'task_created';
+        let emittedTask = task;
         set((state) => {
           const taskId = toId(task.id);
           const existingIndex = state.tasks.findIndex((t) => toId(t.id) === taskId);
           if (existingIndex >= 0) {
+            eventName = 'task_updated';
             const updated = [...state.tasks];
-            updated[existingIndex] = task;
+            emittedTask = mergeDefinedFields(updated[existingIndex], task);
+            updated[existingIndex] = emittedTask;
             return { tasks: updated };
           }
+          emittedTask = task;
           return { tasks: [task, ...state.tasks] };
         });
-        // Dispatch custom event for analytics
-        window.dispatchEvent(new CustomEvent('task_created', { detail: task }));
+        window.dispatchEvent(new CustomEvent(eventName, { detail: emittedTask }));
       },
 
       updateTask: (taskId, updates) =>
@@ -127,18 +143,22 @@ export const usePlannerStore = create<PlannerState>()(
           goals: uniqueById(goals as Goal[]),
         }),
       addGoal: (goal) => {
+        let eventName: 'goal_created' | 'goal_updated' = 'goal_created';
+        let emittedGoal = goal;
         set((state) => {
           const goalId = toId(goal.id);
           const existingIndex = state.goals.findIndex((g) => toId(g.id) === goalId);
           if (existingIndex >= 0) {
+            eventName = 'goal_updated';
             const updated = [...state.goals];
-            updated[existingIndex] = goal;
+            emittedGoal = mergeDefinedFields(updated[existingIndex], goal);
+            updated[existingIndex] = emittedGoal;
             return { goals: updated };
           }
+          emittedGoal = goal;
           return { goals: [goal, ...state.goals] };
         });
-        // Dispatch custom event for analytics
-        window.dispatchEvent(new CustomEvent('goal_created', { detail: goal }));
+        window.dispatchEvent(new CustomEvent(eventName, { detail: emittedGoal }));
       },
       removeGoal: (goalId) => {
         const goalIdStr = String(goalId);
@@ -153,18 +173,24 @@ export const usePlannerStore = create<PlannerState>()(
         }),
 
       addHabit: (habit) => {
+        let isNewHabit = true;
+        let emittedHabit = habit;
         set((state) => {
           const habitId = toId(habit.id);
           const existingIndex = state.habits.findIndex((h) => toId(h.id) === habitId);
           if (existingIndex >= 0) {
+            isNewHabit = false;
             const updated = [...state.habits];
-            updated[existingIndex] = habit;
+            emittedHabit = mergeDefinedFields(updated[existingIndex], habit);
+            updated[existingIndex] = emittedHabit;
             return { habits: updated };
           }
+          emittedHabit = habit;
           return { habits: [habit, ...state.habits] };
         });
-        // Dispatch custom event for analytics
-        window.dispatchEvent(new CustomEvent('habit_created', { detail: habit }));
+        if (isNewHabit) {
+          window.dispatchEvent(new CustomEvent('habit_created', { detail: emittedHabit }));
+        }
       },
 
       // AI-Service Compatible Habit Toggle
@@ -404,6 +430,7 @@ export const usePlannerStore = create<PlannerState>()(
         plannerApi.onHabitCompleted((habit) => {
           console.log('✨ Socket Event: Habit Completed', habit);
           get().addHabit(habit);
+          window.dispatchEvent(new CustomEvent('habit_completed', { detail: habit }));
         });
 
         // NEW: Goal Events
@@ -419,13 +446,25 @@ export const usePlannerStore = create<PlannerState>()(
 
         plannerApi.onGoalProgressChanged(({ goalId, progress }) => {
           console.log('✨ Socket Event: Goal Progress Changed', goalId, progress);
+          let updatedGoal: Goal | null = null;
           set((state) => ({
             goals: state.goals.map((g) =>
               String(g.id) === String(goalId)
-                ? { ...g, current_progress: progress }
+                ? (() => {
+                    updatedGoal = {
+                      ...g,
+                      current_progress: progress,
+                      progress,
+                    };
+                    return updatedGoal;
+                  })()
                 : g
             ),
           }));
+
+          if (updatedGoal) {
+            window.dispatchEvent(new CustomEvent('goal_updated', { detail: updatedGoal }));
+          }
         });
 
         // Deep Work Started

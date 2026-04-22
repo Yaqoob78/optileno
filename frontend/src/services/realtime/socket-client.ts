@@ -14,18 +14,52 @@ class RealtimeClient {
   private userId: string | null = null;
   private connected = false;
   private listeners: Map<string, Set<Function>> = new Map();
+  private connectingPromise: Promise<void> | null = null;
+
+  private resetSocketState(): void {
+    this.socket = null;
+    this.connected = false;
+    this.connectingPromise = null;
+  }
 
   connect(userId: string, token?: string): Promise<void> {
-    return new Promise((resolve, reject) => {
+    if (this.socket && this.connected && this.userId === userId) {
+      return Promise.resolve();
+    }
+
+    if (this.connectingPromise && this.userId === userId) {
+      return this.connectingPromise;
+    }
+
+    if (this.socket && !this.connected) {
+      this.disconnect();
+    }
+
+    if (this.socket && this.userId !== userId) {
+      this.disconnect();
+    }
+
+    this.connectingPromise = new Promise((resolve, reject) => {
       let settled = false;
+      let authTimeout: number | null = null;
+
       const finishResolve = () => {
         if (settled) return;
         settled = true;
+        if (authTimeout) {
+          window.clearTimeout(authTimeout);
+        }
+        this.connectingPromise = null;
         resolve();
       };
+
       const finishReject = (error: any) => {
         if (settled) return;
         settled = true;
+        if (authTimeout) {
+          window.clearTimeout(authTimeout);
+        }
+        this.connectingPromise = null;
         reject(error);
       };
 
@@ -42,7 +76,7 @@ class RealtimeClient {
           reconnectionAttempts: 5,
         });
 
-        const authTimeout = window.setTimeout(() => {
+        authTimeout = window.setTimeout(() => {
           // Cookie-auth sessions may connect without explicit authenticated event.
           finishResolve();
         }, 5000);
@@ -76,23 +110,26 @@ class RealtimeClient {
 
         this.socket.on('disconnect', () => {
           this.connected = false;
+          this.connectingPromise = null;
         });
 
         this.socket.onAny((event: string, ...args: any[]) => {
           this.emit(event, ...args);
         });
       } catch (error) {
+        this.resetSocketState();
         finishReject(error);
       }
     });
+
+    return this.connectingPromise;
   }
 
   disconnect(): void {
     if (this.socket) {
       this.socket.disconnect();
-      this.socket = null;
-      this.connected = false;
     }
+    this.resetSocketState();
   }
 
   on(event: string, callback: (data: any) => void): void {
@@ -171,4 +208,3 @@ export const socket = {
   isConnected: () => realtimeClient.isConnected(),
   getSocketId: () => realtimeClient.getSocketId(),
 };
-
