@@ -412,8 +412,9 @@ export default function Landing() {
   return (
     <>
       <SEO
-        title="Optileno | Stop planning. Start finishing. AI Productivity"
-        description="Optileno turns your goals into daily execution with AI planning, focus sessions, and behavioral analytics. Join ambitious operators running our smart system."
+        title="Optileno - AI Productivity Planner and Task Management Platform"
+        description="Optileno turns goals into daily execution with AI planning, task management, focus sessions, and behavior analytics."
+        canonicalUrl="https://www.optileno.com/"
       />
       <div className="landing-page">
         <div className="scene-bg" aria-hidden="true" ref={sceneRef}>

@@ -1,6 +1,7 @@
-import { useEffect, type ReactElement } from "react";
+import { type ReactElement } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, BarChart3, Bot, CalendarCheck2, LayoutDashboard, Target } from "lucide-react";
+import SEO from "../../components/common/SEO";
 import "./feature-page.css";
 
 type FeatureKey =
@@ -22,6 +23,7 @@ type FeatureConfig = {
   bullets: string[];
   metaTitle: string;
   metaDescription: string;
+  canonicalPath: string;
 };
 
 const FEATURE_CONFIG: Record<FeatureKey, FeatureConfig> = {
@@ -36,7 +38,8 @@ const FEATURE_CONFIG: Record<FeatureKey, FeatureConfig> = {
       "Clear follow-up suggestions when momentum drops.",
     ],
     metaTitle: "Chat Leno - AI Productivity Coaching by Optileno",
-    metaDescription: "Use Chat Leno for practical planning, coaching, and daily execution support.",
+    metaDescription: "Use Chat Leno, Optileno's AI productivity coach, for practical planning, task decisions, and daily execution support.",
+    canonicalPath: "/chat-leno",
   },
   "plan-task": {
     title: "Plan Task",
@@ -48,8 +51,9 @@ const FEATURE_CONFIG: Record<FeatureKey, FeatureConfig> = {
       "Daily structure aligned with your current focus window.",
       "Cleaner handoff from planning to deep-work execution.",
     ],
-    metaTitle: "Plan Task - Structured Task Planning in Optileno",
-    metaDescription: "Build better daily plans with smart task structure and timing in Optileno.",
+    metaTitle: "Plan Task - AI Task Management in Optileno",
+    metaDescription: "Plan Task helps you build better daily plans with AI task management, smart structure, timing, and execution blocks in Optileno.",
+    canonicalPath: "/plan-task",
   },
   "show-analytics": {
     title: "Show Analytics",
@@ -61,8 +65,9 @@ const FEATURE_CONFIG: Record<FeatureKey, FeatureConfig> = {
       "Burnout risk and behavior-based AI insights.",
       "Metrics that map to your actual planner and chat activity.",
     ],
-    metaTitle: "Show Analytics - Focus and Productivity Intelligence",
-    metaDescription: "Track productivity, focus, and burnout signals with analytics that reflect real behavior.",
+    metaTitle: "Show Analytics - AI Productivity Analytics by Optileno",
+    metaDescription: "Track productivity, focus, and burnout signals with Optileno analytics that reflect real planning, task, and behavior patterns.",
+    canonicalPath: "/show-analytics",
   },
   "dashboard-preview": {
     title: "Dashboard",
@@ -74,8 +79,9 @@ const FEATURE_CONFIG: Record<FeatureKey, FeatureConfig> = {
       "Quick transitions from review to action.",
       "Clear navigation for daily execution.",
     ],
-    metaTitle: "Dashboard - Optileno Command Center",
-    metaDescription: "Use the Optileno dashboard to manage planning, chat, and analytics from one place.",
+    metaTitle: "Dashboard - Optileno AI Productivity Command Center",
+    metaDescription: "Use the Optileno dashboard to manage AI planning, task management, chat, goals, and analytics from one productivity command center.",
+    canonicalPath: "/dashboard-preview",
   },
   "goal-progress": {
     title: "Goal Progress",
@@ -88,72 +94,53 @@ const FEATURE_CONFIG: Record<FeatureKey, FeatureConfig> = {
       "Actionable next-step suggestions from AI patterns.",
     ],
     metaTitle: "Goal Progress - AI Goal Intelligence by Optileno",
-    metaDescription: "Track and improve goal progress with AI-backed feedback tied to your planner activity.",
+    metaDescription: "Track and improve goal progress with AI-backed feedback tied to your Optileno planner, tasks, and daily execution activity.",
+    canonicalPath: "/goal-progress",
   },
 };
-
-function upsertMetaTag(name: string, content: string) {
-  let tag = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement | null;
-  if (!tag) {
-    tag = document.createElement("meta");
-    tag.setAttribute("name", name);
-    document.head.appendChild(tag);
-  }
-  tag.setAttribute("content", content);
-}
 
 export default function FeaturePage({ featureKey }: FeaturePageProps) {
   const navigate = useNavigate();
   const feature = FEATURE_CONFIG[featureKey];
-
-  useEffect(() => {
-    const previousTitle = document.title;
-    const previousDescription =
-      document.querySelector('meta[name="description"]')?.getAttribute("content") || "";
-
-    document.title = feature.metaTitle;
-    upsertMetaTag("description", feature.metaDescription);
-
-    return () => {
-      document.title = previousTitle;
-      upsertMetaTag("description", previousDescription);
-    };
-  }, [feature.metaDescription, feature.metaTitle]);
+  const canonicalUrl = `https://www.optileno.com${feature.canonicalPath}`;
 
   return (
-    <div className="feature-page-shell">
-      <div className="feature-page-noise" />
-      <main className="feature-page-card">
-        <div className="feature-page-header">
-          <Link to="/" className="feature-page-brand">
-            <img src="/logo-light.svg" alt="Optileno" />
-            <span>Optileno</span>
-          </Link>
-          <span className="feature-page-eyebrow">{feature.eyebrow}</span>
-        </div>
+    <>
+      <SEO title={feature.metaTitle} description={feature.metaDescription} canonicalUrl={canonicalUrl} />
+      <div className="feature-page-shell">
+        <div className="feature-page-noise" />
+        <main className="feature-page-card">
+          <div className="feature-page-header">
+            <Link to="/" className="feature-page-brand">
+              <img src="/logo-light.svg" alt="Optileno" />
+              <span>Optileno</span>
+            </Link>
+            <span className="feature-page-eyebrow">{feature.eyebrow}</span>
+          </div>
 
-        <div className="feature-page-body">
-          <div className="feature-page-icon">{feature.icon}</div>
-          <h1>{feature.title}</h1>
-          <p className="feature-page-subtitle">{feature.subtitle}</p>
+          <div className="feature-page-body">
+            <div className="feature-page-icon">{feature.icon}</div>
+            <h1>{feature.title}</h1>
+            <p className="feature-page-subtitle">{feature.subtitle}</p>
 
-          <ul className="feature-page-list">
-            {feature.bullets.map((bullet) => (
-              <li key={bullet}>{bullet}</li>
-            ))}
-          </ul>
-        </div>
+            <ul className="feature-page-list">
+              {feature.bullets.map((bullet) => (
+                <li key={bullet}>{bullet}</li>
+              ))}
+            </ul>
+          </div>
 
-        <div className="feature-page-actions">
-          <button type="button" className="feature-primary-btn" onClick={() => navigate("/register")}>
-            Start With Optileno
-            <ArrowRight size={16} />
-          </button>
-          <button type="button" className="feature-secondary-btn" onClick={() => navigate("/")}>
-            Back to Home
-          </button>
-        </div>
-      </main>
-    </div>
+          <div className="feature-page-actions">
+            <button type="button" className="feature-primary-btn" onClick={() => navigate("/register")}>
+              Start With Optileno
+              <ArrowRight size={16} />
+            </button>
+            <button type="button" className="feature-secondary-btn" onClick={() => navigate("/")}>
+              Back to Home
+            </button>
+          </div>
+        </main>
+      </div>
+    </>
   );
 }

@@ -16,6 +16,7 @@ import {
   ChevronRight,
   BarChart3,
   X,
+  Quote,
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAnalytics } from '../../hooks/useAnalytics';
@@ -42,6 +43,7 @@ export default function Dashboard() {
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [paymentErrorMessage, setPaymentErrorMessage] = useState<string | null>(null);
 
   const { user, isPremium } = useUser();
   const { getFocusMetrics, getRecentInsights } = useAnalytics();
@@ -131,7 +133,7 @@ export default function Dashboard() {
           setShowSuccessModal(true);
         } catch (error) {
           console.error("Payment verification failed", error);
-          alert("Payment verification failed. Please contact support.");
+          setPaymentErrorMessage("We could not confirm your payment yet. Please refresh in a moment or contact support if it continues.");
         } finally {
           // Clean up URL
           navigate('/dashboard', { replace: true });
@@ -148,23 +150,34 @@ export default function Dashboard() {
 
   // Subscribe to real-time events
   useEffect(() => {
-    onTaskCreated(() => {
+    const unsubscribeTaskCreated = onTaskCreated(() => {
       // Task created, component will update via context
     });
 
-    onDeepWorkCompleted(() => {
+    const unsubscribeDeepWorkCompleted = onDeepWorkCompleted(() => {
       // Deep work completed, component will update
     });
 
-    onAnalyticsUpdate(() => {
+    const unsubscribeAnalyticsUpdate = onAnalyticsUpdate(() => {
       // Analytics updated, refresh metrics display
     });
+
+    return () => {
+      unsubscribeTaskCreated?.();
+      unsubscribeDeepWorkCompleted?.();
+      unsubscribeAnalyticsUpdate?.();
+    };
   }, [onTaskCreated, onDeepWorkCompleted, onAnalyticsUpdate]);
 
   const formatTime = (minutes: number) => {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+  };
+
+  const getChatPreview = (content?: string) => {
+    if (!content?.trim()) return 'Start typing...';
+    return content.length > 30 ? `${content.substring(0, 30)}...` : content;
   };
 
   return (
@@ -183,7 +196,7 @@ export default function Dashboard() {
 
         {/* Payment Success Banner */}
         {showSuccessModal && (
-          <div className="mb-6 p-4 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-between animate-fade-in">
+          <div className="dashboard-status-banner is-success">
             <div className="flex items-center gap-4">
               <div className="w-10 height-10 rounded-full bg-primary flex items-center justify-center text-white">
                 <Award size={20} />
@@ -195,6 +208,18 @@ export default function Dashboard() {
             </div>
             <button onClick={() => setShowSuccessModal(false)} className="text-muted hover:text-main">
               <CheckCircle size={20} />
+            </button>
+          </div>
+        )}
+
+        {paymentErrorMessage && (
+          <div className="dashboard-status-banner is-error">
+            <div>
+              <h4 className="font-bold text-main">Payment Verification Pending</h4>
+              <p className="text-secondary text-sm">{paymentErrorMessage}</p>
+            </div>
+            <button onClick={() => setPaymentErrorMessage(null)} className="text-muted hover:text-main" aria-label="Dismiss payment warning">
+              <X size={20} />
             </button>
           </div>
         )}
@@ -352,7 +377,7 @@ export default function Dashboard() {
                   >
                     <div className="chat-title" style={{ fontSize: '0.9rem', fontWeight: 600, color: '#fff' }}>Current Session</div>
                     <div className="chat-preview" style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {activeConversation.messages[activeConversation.messages.length - 1]?.content.substring(0, 30) || "Start typing..."}...
+                      {getChatPreview(activeConversation.messages[activeConversation.messages.length - 1]?.content)}
                     </div>
                   </div>
                 )}
@@ -390,7 +415,7 @@ export default function Dashboard() {
                       </button>
                     </div>
                     <div className="chat-preview" style={{ fontSize: '0.75rem', color: '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: '10px' }}>
-                      {chat.messages[chat.messages.length - 1]?.content.substring(0, 30)}...
+                      {getChatPreview(chat.messages[chat.messages.length - 1]?.content)}
                     </div>
                   </div>
                 ))}
@@ -409,9 +434,9 @@ export default function Dashboard() {
                 <span className="metric-label">Achievements</span>
               </div>
               <div className="achievements-preview">
-                <div className="achievement-badge" data-tooltip="Focus Master">🎯</div>
-                <div className="achievement-badge" data-tooltip="Early Bird">☀️</div>
-                <div className="achievement-badge" data-tooltip="Task Ninja">⚡</div>
+                <div className="achievement-badge" data-tooltip="Focus Master"><Target size={16} /></div>
+                <div className="achievement-badge" data-tooltip="Early Bird"><Sun size={16} /></div>
+                <div className="achievement-badge" data-tooltip="Task Ninja"><Zap size={16} /></div>
                 <div className="achievement-count">+3 more</div>
               </div>
             </div>
@@ -468,7 +493,7 @@ export default function Dashboard() {
 
           <div className="testimonial-grid">
             <div className="testimonial-card">
-              <div className="testimonial-icon">🎯</div>
+              <div className="testimonial-icon"><Target size={24} /></div>
               <div className="testimonial-text">
                 "The Deep Work Blocks transformed my focus. Unmatched efficiency!"
               </div>
@@ -478,7 +503,7 @@ export default function Dashboard() {
             </div>
 
             <div className="testimonial-card">
-              <div className="testimonial-icon">📊</div>
+              <div className="testimonial-icon"><BarChart3 size={24} /></div>
               <div className="testimonial-text">
                 "Analytics gave me insights I didn't know I needed. Game changer!"
               </div>
@@ -488,7 +513,7 @@ export default function Dashboard() {
             </div>
 
             <div className="testimonial-card">
-              <div className="testimonial-icon">✨</div>
+              <div className="testimonial-icon"><Sparkles size={24} /></div>
               <div className="testimonial-text">
                 "Mood tracking + AI suggestions = Best work-life balance ever"
               </div>
@@ -540,14 +565,14 @@ export default function Dashboard() {
 
             <button
               className="action-card action-accent"
-              onClick={() => navigate('/habits')}
+              onClick={() => navigate('/planner')}
             >
               <div className="action-icon-wrapper">
                 <CheckCircle className="action-icon" />
               </div>
               <div className="action-content">
-                <div className="action-title">Add Habit</div>
-                <div className="action-subtitle">Track new routine</div>
+                <div className="action-title">Habit Tracker</div>
+                <div className="action-subtitle">Open your routines</div>
               </div>
               <ChevronRight className="action-arrow" />
             </button>
@@ -585,7 +610,7 @@ export default function Dashboard() {
         <div className="quotes-section">
           <div className="quotes-container">
             <div className="quote-card">
-              <div className="quote-mark">❝</div>
+              <div className="quote-mark"><Quote size={40} /></div>
               <div className="quote-text">
                 {quotes[quoteIndex].text}
               </div>

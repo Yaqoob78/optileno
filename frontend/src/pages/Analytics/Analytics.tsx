@@ -43,6 +43,7 @@ import { useTheme } from '../../hooks/useTheme';
 export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [loading, setLoading] = useState<boolean>(false);
+  const [refreshMessage, setRefreshMessage] = useState<{ type: 'info' | 'error'; text: string } | null>(null);
   const { theme, setTheme } = useTheme();
   const resolvedTheme: 'dark' | 'light' =
     theme === 'auto'
@@ -356,17 +357,20 @@ export default function AnalyticsPage() {
   // Handle refresh
   const handleRefresh = async () => {
     setLoading(true);
+    setRefreshMessage(null);
     try {
       await Promise.all([
         refreshProductivity(),
         refreshFocus(),
         ...(isUltra ? [refreshBurnout()] : []),
       ]);
+      setRefreshMessage({ type: 'info', text: 'Analytics refreshed with the latest data.' });
     } catch (error) {
       console.error('Failed to refresh analytics:', error);
-      alert('Failed to refresh analytics data. Please check your connection.');
+      setRefreshMessage({ type: 'error', text: 'Refresh failed. Please check your connection and try again.' });
+    } finally {
+      window.setTimeout(() => setLoading(false), 800);
     }
-    setTimeout(() => setLoading(false), 800);
   };
 
   // Handle time range change
@@ -426,7 +430,7 @@ export default function AnalyticsPage() {
               </div>
 
               <div className="nav-actions">
-                <button className="nav-action-btn" onClick={handleRefresh} title="Refresh Analytics">
+                <button className={`nav-action-btn ${loading ? 'loading' : ''}`} onClick={handleRefresh} title="Refresh Analytics" disabled={loading}>
                   <RefreshCw size={18} className={loading ? 'spinning' : ''} />
                 </button>
                 <button
@@ -439,6 +443,12 @@ export default function AnalyticsPage() {
               </div>
             </div>
           </div>
+
+          {refreshMessage && (
+            <div className={`analytics-inline-notice ${refreshMessage.type === 'error' ? 'is-error' : 'is-info'}`}>
+              <span>{refreshMessage.text}</span>
+            </div>
+          )}
 
           {/* Stats Dashboard - 4 Cards at Top */}
           <div className="stats-overview-grid">

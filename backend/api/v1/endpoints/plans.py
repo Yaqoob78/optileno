@@ -107,6 +107,12 @@ async def get_tasks(
     )
 
 
+@router.get("/tasks/recurrence", response_model=List[dict])
+async def get_task_recurrence(current_user: User = Depends(get_current_user)):
+    """Get active task recurring patterns for the current user."""
+    return await planner_service.get_task_recurrence_patterns(str(current_user.id))
+
+
 @router.get("/tasks/{task_id}", response_model=Dict[str, Any])
 async def get_task(task_id: str, current_user: User = Depends(get_current_user)):
     task = await planner_service.get_task_by_id(str(current_user.id), task_id)
@@ -477,11 +483,6 @@ async def delete_recurrence_pattern(
         raise HTTPException(status_code=404, detail="Recurrence pattern not found")
     return {"success": True, "message": "Recurring schedule deactivated"}
 
-
-@router.get("/tasks/recurrence", response_model=List[dict])
-async def get_task_recurrence(current_user: User = Depends(get_current_user)):
-    """Get active task recurring patterns for the current user."""
-    return await planner_service.get_task_recurrence_patterns(str(current_user.id))
 
 @router.delete("/tasks/recurrence/{pattern_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_task_recurrence(pattern_id: str, current_user: User = Depends(get_current_user)):

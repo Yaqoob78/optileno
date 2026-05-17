@@ -8,26 +8,28 @@ RUN apt-get update && apt-get install -y \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
-COPY backend/requirements.txt .
+# Install Python dependencies.
+# This Dockerfile expects the repository root as the build context.
+COPY backend/requirements.txt /app/requirements.txt
 
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY backend/ /app/backend/
-COPY alembic.ini /app/
-COPY alembic/ /app/alembic/
+COPY backend /app/backend
+COPY backend/start.sh /app/start.sh
+RUN chmod +x /app/start.sh
 
-# Run migrations
-RUN alembic upgrade head || true
+# Create non-root user
+RUN useradd -m appuser \
+    && mkdir -p /app/data/media \
+    && chown -R appuser:appuser /app
+USER appuser
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
-ENV PORT=8000
 
 # Expose port
 EXPOSE 8000
 
-# Run application
-CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run migrations at container startup, then launch Uvicorn with Railway's PORT.
+CMD ["/app/start.sh"]

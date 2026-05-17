@@ -3,12 +3,12 @@ Health check endpoints for monitoring and load balancers.
 """
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from datetime import datetime, timezone
 import psutil
-import asyncio
-from typing import Dict, Any
+import time
 
 from backend.db.database import get_db
 from backend.core.redis_rate_limiter import redis_rate_limiter
@@ -31,10 +31,12 @@ async def readiness_check(db: AsyncSession = Depends(get_db)):
     
     # Database check
     try:
+        start = time.perf_counter()
         result = await db.execute(text("SELECT 1"))
+        result.scalar()
         checks["database"] = {
             "status": "healthy",
-            "response_time_ms": 0  # Would need to measure actual time
+            "response_time_ms": round((time.perf_counter() - start) * 1000, 2),
         }
     except Exception as e:
         checks["database"] = {
@@ -46,10 +48,11 @@ async def readiness_check(db: AsyncSession = Depends(get_db)):
     try:
         await redis_rate_limiter.initialize()
         if redis_rate_limiter.redis_client:
+            start = time.perf_counter()
             await redis_rate_limiter.redis_client.ping()
             checks["redis"] = {
                 "status": "healthy",
-                "response_time_ms": 0
+                "response_time_ms": round((time.perf_counter() - start) * 1000, 2),
             }
         else:
             checks["redis"] = {
@@ -67,11 +70,12 @@ async def readiness_check(db: AsyncSession = Depends(get_db)):
     
     status_code = 200 if all_healthy else 503
     
-    return {
+    payload = {
         "status": "ready" if all_healthy else "not_ready",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "checks": checks
     }
+    return JSONResponse(status_code=status_code, content=payload)
 
 @router.get("/health/live")
 async def liveness_check():
@@ -188,5 +192,6 @@ async def detailed_health_check(db: AsyncSession = Depends(get_db)):
     )
     
     health_info["status"] = "healthy" if all_healthy else "unhealthy"
+    status_code = 200 if all_healthy else 503
     
-    return health_info
+    return JSONResponse(status_code=status_code, content=health_info)

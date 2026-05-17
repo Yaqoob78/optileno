@@ -551,15 +551,34 @@ class CSRFMiddleware(BaseHTTPMiddleware):
 
     SKIP_CSRF_PATHS = {
         "/health",
+        "/health/ready",
+        "/health/live",
+        "/health/full",
         "/docs",
         "/redoc",
         "/openapi.json",
+        "/api/v1/health",
+        "/api/v1/health/ready",
+        "/api/v1/health/live",
+        "/api/v1/health/detailed",
         "/api/v1/auth/login",
         "/api/v1/auth/register",
+        "/api/v1/auth/access/register",
         "/api/v1/auth/refresh",
         "/api/v1/auth/validate",
+        "/api/v1/auth/forgot-password",
+        "/api/v1/auth/reset-password",
         "/api/v1/webhooks/webhook",
         "/api/v1/webhooks/stripe",
+        "/api/v1/payments/webhook",
+        "/api/v1/payments/complete-return",
+        "/auth/login",
+        "/auth/register",
+        "/auth/access/register",
+        "/auth/refresh",
+        "/auth/validate",
+        "/auth/forgot-password",
+        "/auth/reset-password",
         "/metrics",
     }
 
@@ -570,11 +589,8 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         if request.url.path in self.SKIP_CSRF_PATHS:
             return await call_next(request)
         
-        # Skip for paths starting with skipped prefixes
-        # Also skip /api/v1/ and legacy /auth/ paths — they use X-Requested-With header
-        # as CSRF mitigation and backend-issued csrf_token cookies.
-        # and the backend does not issue csrf_token cookies for cookie-auth sessions.
-        if any(request.url.path.startswith(p) for p in ["/socket.io", "/ws", "/api/v1/", "/auth/"]):
+        # Skip realtime transports; normal API routes use csrf_token cookies.
+        if any(request.url.path.startswith(p) for p in ["/socket.io", "/ws"]):
             return await call_next(request)
 
         # Skip CSRF check for safe methods

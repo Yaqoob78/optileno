@@ -502,6 +502,52 @@ class UserInsight(Base):
     read_at = Column(DateTime(timezone=True))
     dismissed_at = Column(DateTime(timezone=True))
 
+
+# ==================================================
+# GROWTH LEAD
+# ==================================================
+class GrowthLead(Base):
+    """Email leads captured from free public growth tools."""
+
+    __tablename__ = "growth_leads"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    tool = Column(String, nullable=False, index=True)
+    source_path = Column(String, nullable=True)
+    source_url = Column(String, nullable=True)
+    utm = Column(JSON, default=dict)
+    result_snapshot = Column(JSON, default=dict)
+    consent = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+
+# ==================================================
+# GROWTH EVENT
+# ==================================================
+class GrowthEvent(Base):
+    """Anonymous or user-linked growth funnel events."""
+
+    __tablename__ = "growth_events"
+
+    __table_args__ = (
+        Index("ix_growth_events_type_created", "event_type", "created_at"),
+        Index("ix_growth_events_tool_created", "tool", "created_at"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    event_type = Column(String, nullable=False)
+    tool = Column(String, nullable=True, index=True)
+    anonymous_id = Column(String, nullable=True, index=True)
+    lead_email = Column(String, nullable=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    source_path = Column(String, nullable=True)
+    source_url = Column(String, nullable=True)
+    utm = Column(JSON, default=dict)
+    meta = Column(JSON, default=dict)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
 # ==================================================
 # ACCESS GRANT
 # ==================================================
@@ -847,6 +893,8 @@ __all__ = [
     "AnalyticsEvent",
     "RealTimeMetrics", 
     "UserInsight",
+    "GrowthLead",
+    "GrowthEvent",
     "BehavioralPattern",
     "AIAnalysis",
     "UserAnalytics",

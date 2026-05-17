@@ -165,6 +165,29 @@
   padding: 2rem;
 }
 
+.dashboard-status-banner {
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.25rem;
+  border-radius: 1rem;
+  border: 1px solid transparent;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  backdrop-filter: blur(14px);
+  box-shadow: var(--shadow-soft);
+}
+
+.dashboard-status-banner.is-success {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.22);
+}
+
+.dashboard-status-banner.is-error {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.24);
+}
+
 .header-left,
 .header-right,
 .brand-logo,
@@ -580,6 +603,11 @@
   transition: var(--transition-smooth);
 }
 
+.achievement-badge svg {
+  width: 16px;
+  height: 16px;
+}
+
 .achievement-badge:hover {
   transform: translateY(-2px);
   border-color: var(--primary);
@@ -720,7 +748,12 @@
 }
 
 .testimonial-icon {
-  font-size: 2rem;
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
   margin-bottom: 1rem;
 }
 
@@ -974,11 +1007,11 @@
 }
 
 .quote-mark {
-  font-size: 3rem;
   color: var(--primary);
   opacity: 0.2;
   margin-bottom: 1rem;
   line-height: 1;
+  display: inline-flex;
 }
 
 .quote-text {

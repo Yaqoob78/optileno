@@ -70,6 +70,7 @@ export default function PlannerPage() {
   // ── NEW STATES FOR FIXING ISSUES ─────────────────────────────
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [plannerNotice, setPlannerNotice] = useState<{ type: 'info' | 'success' | 'error'; text: string } | null>(null);
   // ─────────────────────────────────────────────────────────────
 
   // ── Planner data & actions ────────────────────────────────────────
@@ -179,6 +180,12 @@ export default function PlannerPage() {
       editModalRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }, [isEditing]);
+
+  useEffect(() => {
+    if (!plannerNotice) return;
+    const timer = window.setTimeout(() => setPlannerNotice(null), 3200);
+    return () => window.clearTimeout(timer);
+  }, [plannerNotice]);
 
   // ── Smart Energy Logic ──────────────────────────────────────────
   const [isEnergyTouched, setIsEnergyTouched] = useState(false);
@@ -445,7 +452,10 @@ export default function PlannerPage() {
 
   const handleOpenRepeatModal = (task: any) => {
     if (!isUltra) {
-      alert("Task Recurrence is an Ultra feature. Please upgrade to unlock.");
+      setPlannerNotice({
+        type: 'info',
+        text: 'Task recurrence is available on the Ultra plan.',
+      });
       return;
     }
     setTaskToRepeat(task);
@@ -495,9 +505,12 @@ export default function PlannerPage() {
       const result = await createTask(payload as any);
 
       if (result.success) {
-        alert(`Successfully converted '${taskToRepeat.title}' to a ${type} recurring task!`);
         setIsRepeatModalOpen(false);
         setTaskToRepeat(null);
+        setPlannerNotice({
+          type: 'success',
+          text: `Recurring ${type} schedule created for "${taskToRepeat.title}".`,
+        });
         fetchTasks();
       } else {
         setRecurrenceError(result.error || 'Failed to apply recurrence.');
@@ -552,10 +565,28 @@ export default function PlannerPage() {
     };
   };
 
+  const handleRefreshPlanner = async () => {
+    setPlannerNotice(null);
+    try {
+      await forceRefresh();
+    } catch (refreshError: any) {
+      setPlannerNotice({
+        type: 'error',
+        text: refreshError?.message || 'Planner refresh failed. Please try again.',
+      });
+    }
+  };
+
   return (
     <ErrorBoundary componentName="Planner">
       <OnboardingFlow />
       <div className="planner-page" data-theme={theme}>
+        {plannerNotice && (
+          <div className={`planner-page-notice is-${plannerNotice.type}`}>
+            <span>{plannerNotice.text}</span>
+          </div>
+        )}
+
         {/* Header */}
         <div className="planner-header">
           <div className="header-left">
@@ -578,7 +609,7 @@ export default function PlannerPage() {
             </button>
             <button
               className="refresh-btn"
-              onClick={forceRefresh}
+              onClick={() => void handleRefreshPlanner()}
               title="Refresh all data"
               disabled={isLoading}
             >
@@ -853,9 +884,9 @@ export default function PlannerPage() {
                       className="planner-modal-select planner-modal-select-energy px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm w-full"
                       disabled={isSaving}
                     >
-                      <option value="high">High ⚡</option>
-                      <option value="medium">Medium 😐</option>
-                      <option value="low">Low 🍵</option>
+                      <option value="high">High</option>
+                      <option value="medium">Medium</option>
+                      <option value="low">Low</option>
                     </select>
                   </div>
                 </div>

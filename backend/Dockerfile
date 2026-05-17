@@ -25,6 +25,8 @@ RUN useradd -m appuser \
     && chown -R appuser:appuser /app
 USER appuser
 
+ENV PYTHONUNBUFFERED=1
+
 # Expose is optional but fine
 EXPOSE 8000
 
