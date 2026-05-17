@@ -9,7 +9,12 @@ type FeatureKey =
   | "plan-task"
   | "show-analytics"
   | "dashboard-preview"
-  | "goal-progress";
+  | "goal-progress"
+  | "ai-planner"
+  | "ai-task-manager"
+  | "ai-task"
+  | "ai-productivity"
+  | "ai-daily-productivity";
 
 interface FeaturePageProps {
   featureKey: FeatureKey;
@@ -54,6 +59,76 @@ const FEATURE_CONFIG: Record<FeatureKey, FeatureConfig> = {
     metaTitle: "Plan Task - AI Task Management in Optileno",
     metaDescription: "Plan Task helps you build better daily plans with AI task management, smart structure, timing, and execution blocks in Optileno.",
     canonicalPath: "/plan-task",
+  },
+  "ai-planner": {
+    title: "AI Planner",
+    subtitle: "AI-powered daily planning that turns goals into tasks, focus windows, and progress checkpoints.",
+    icon: <CalendarCheck2 size={26} />,
+    eyebrow: "AI Planner",
+    bullets: [
+      "Auto-suggested task planning for your most important work.",
+      "Daily schedules that adapt to your focus and capacity.",
+      "Planner insights linked directly to execution and goals.",
+    ],
+    metaTitle: "AI Planner - Optileno",
+    metaDescription: "Optileno is an AI planner that transforms goals into daily task plans, focus sessions, and productivity routines.",
+    canonicalPath: "/ai-planner",
+  },
+  "ai-task-manager": {
+    title: "AI Task Manager",
+    subtitle: "Manage your tasks with AI prioritization, execution structure, and progress visibility.",
+    icon: <CalendarCheck2 size={26} />,
+    eyebrow: "AI Task Manager",
+    bullets: [
+      "Smart task prioritization based on urgency, impact, and burnout risk.",
+      "Structured daily execution blocks for every task.",
+      "Progress tracking that keeps task work aligned with goals.",
+    ],
+    metaTitle: "AI Task Manager - Optileno",
+    metaDescription: "Optileno is an AI task manager for task prioritization, daily execution, and productivity tracking.",
+    canonicalPath: "/ai-task-manager",
+  },
+  "ai-task": {
+    title: "AI Task",
+    subtitle: "A smarter way to plan, prioritize, and complete task work with AI guidance.",
+    icon: <CalendarCheck2 size={26} />,
+    eyebrow: "AI Task",
+    bullets: [
+      "Task creation guided by context and goal alignment.",
+      "Daily execution recommendations to reduce task overload.",
+      "Clear next steps that keep task work moving forward.",
+    ],
+    metaTitle: "AI Task - Optileno",
+    metaDescription: "Optileno helps you manage AI task workflows, prioritize work, and keep daily productivity on track.",
+    canonicalPath: "/ai-task",
+  },
+  "ai-productivity": {
+    title: "AI Productivity App",
+    subtitle: "Boost daily productivity with AI planning, task management, and focus analytics.",
+    icon: <Target size={26} />,
+    eyebrow: "AI Productivity",
+    bullets: [
+      "AI-driven daily planning for more productive workdays.",
+      "Task, focus, and goal tracking in one productivity workspace.",
+      "Insights that help you keep work moving without overwhelm.",
+    ],
+    metaTitle: "AI Productivity App - Optileno",
+    metaDescription: "Optileno is an AI productivity app for daily planning, task management, focus analytics, and goal progress.",
+    canonicalPath: "/ai-productivity",
+  },
+  "ai-daily-productivity": {
+    title: "AI Daily Productivity Planner",
+    subtitle: "Create daily plans with AI-powered task execution, focus blocks, and goal momentum.",
+    icon: <Target size={26} />,
+    eyebrow: "Daily Productivity",
+    bullets: [
+      "AI-designed daily routines for peak productivity.",
+      "Task and focus recommendations aligned with your real day.",
+      "Daily progress signals to prevent missed work and burnout.",
+    ],
+    metaTitle: "AI Daily Productivity Planner - Optileno",
+    metaDescription: "Optileno is an AI daily productivity planner for task execution, focus blocks, and goal-driven routines.",
+    canonicalPath: "/ai-daily-productivity",
   },
   "show-analytics": {
     title: "Show Analytics",

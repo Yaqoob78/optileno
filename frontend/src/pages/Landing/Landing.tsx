@@ -548,6 +548,17 @@ export default function Landing() {
               <p className="cta-note">Free for 3 days. No credit card. Full access.</p>
             </motion.div>
 
+            <motion.div className="hero-keyword-links" variants={revealVariants} custom={0.52}>
+              <span>Explore exact pages:</span>
+              <div className="hero-keyword-buttons">
+                <button type="button" className="keyword-chip" onClick={() => navigate('/ai-planner')}>AI Planner</button>
+                <button type="button" className="keyword-chip" onClick={() => navigate('/ai-task-manager')}>AI Task Manager</button>
+                <button type="button" className="keyword-chip" onClick={() => navigate('/ai-productivity')}>AI Productivity</button>
+                <button type="button" className="keyword-chip" onClick={() => navigate('/ai-daily-productivity')}>AI Daily Productivity</button>
+                <button type="button" className="keyword-chip" onClick={() => navigate('/ai-task')}>AI Task</button>
+              </div>
+            </motion.div>
+
             {/* Scroll indicator */}
             <motion.div
               className="scroll-indicator"

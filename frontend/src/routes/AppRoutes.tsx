@@ -38,6 +38,11 @@ export default function AppRoutes() {
         <Route path="/get-access" element={<GetAccess />} />
         <Route path="/chat-leno" element={<FeaturePage featureKey="chat-leno" />} />
         <Route path="/plan-task" element={<FeaturePage featureKey="plan-task" />} />
+        <Route path="/ai-planner" element={<FeaturePage featureKey="ai-planner" />} />
+        <Route path="/ai-task-manager" element={<FeaturePage featureKey="ai-task-manager" />} />
+        <Route path="/ai-task" element={<FeaturePage featureKey="ai-task" />} />
+        <Route path="/ai-productivity" element={<FeaturePage featureKey="ai-productivity" />} />
+        <Route path="/ai-daily-productivity" element={<FeaturePage featureKey="ai-daily-productivity" />} />
         <Route path="/show-analytics" element={<FeaturePage featureKey="show-analytics" />} />
         <Route path="/dashboard-preview" element={<FeaturePage featureKey="dashboard-preview" />} />
         <Route path="/goal-progress" element={<FeaturePage featureKey="goal-progress" />} />
