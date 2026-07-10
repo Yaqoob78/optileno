@@ -9,6 +9,7 @@ interface SEOProps {
     canonicalUrl?: string;
     imageUrl?: string;
     robots?: string;
+    keywords?: string;
 }
 
 export default function SEO({
@@ -19,6 +20,7 @@ export default function SEO({
     canonicalUrl,
     imageUrl = "https://www.optileno.com/social-preview.png",
     robots = "index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1",
+    keywords,
 }: SEOProps) {
     const currentUrl = typeof window !== 'undefined'
         ? `${window.location.origin}${window.location.pathname}`
@@ -30,6 +32,7 @@ export default function SEO({
             {/* Standard metadata tags */}
             <title>{title}</title>
             <meta name='description' content={description} />
+            {keywords && <meta name="keywords" content={keywords} />}
             <meta name="robots" content={robots} />
             <link rel="canonical" href={resolvedCanonicalUrl} />
 

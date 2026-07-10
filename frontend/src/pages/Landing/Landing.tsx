@@ -1,4 +1,4 @@
-﻿import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, useReducedMotion, type Variants } from 'framer-motion';
 import {
@@ -417,8 +417,9 @@ export default function Landing() {
   return (
     <>
       <SEO
-        title="Optileno - AI Planner, Task Manager, and Productivity Analytics"
-        description="Optileno turns goals into daily execution with AI planning, task management, focus sessions, goal tracking, and productivity analytics."
+        title="AI Calendar Planner for Solo Agency Owners & Operators | Optileno"
+        description="Learn how to turn high level goals into daily tasks with AI. A daily focus app to prevent developer burnout and protect your deep work time."
+        keywords="ai calendar planner for solo agency owners, daily focus app to prevent developer burnout, how to turn high level goals into daily tasks with ai, optileno, focus app, daily task planner"
         canonicalUrl="https://www.optileno.com/"
       />
       <div className="landing-page">
@@ -519,12 +520,13 @@ export default function Landing() {
             </motion.h1>
 
             <motion.h2 className="hero-subtitle" variants={revealVariants} custom={0.16}>
-              Optileno turns your goals into daily execution with AI planning,
-              focus sessions, and behavioral analytics — so nothing slips.
+              Optileno is the daily focus app designed to prevent developer burnout. 
+              Learn how to turn high-level goals into daily tasks with AI planning, 
+              habit tracking, and behavioral analytics.
             </motion.h2>
 
             <motion.p className="hero-social-proof" variants={revealVariants} custom={0.2}>
-              Trusted by founders, agency owners, and operators shipping real products.
+              The go-to AI calendar planner for solo agency owners, creators, and high-output builders.
             </motion.p>
 
             <div className="hero-stats">
@@ -558,14 +560,11 @@ export default function Landing() {
             </motion.div>
 
             <motion.div className="hero-keyword-links" variants={revealVariants} custom={0.52}>
-              <span>Explore exact pages:</span>
+              <span>Target Use Cases:</span>
               <div className="hero-keyword-buttons">
-                <button type="button" className="keyword-chip" onClick={() => navigate('/ai-planner')}>AI Planner</button>
-                <button type="button" className="keyword-chip" onClick={() => navigate('/ai-task-manager')}>AI Task Manager</button>
-                <button type="button" className="keyword-chip" onClick={() => navigate('/ai-productivity')}>AI Productivity</button>
-                <button type="button" className="keyword-chip" onClick={() => navigate('/ai-daily-productivity')}>AI Daily Productivity</button>
-                <button type="button" className="keyword-chip" onClick={() => navigate('/ai-task')}>AI Task</button>
-                <button type="button" className="keyword-chip" onClick={() => navigate('/tools')}>Free AI Tools</button>
+                <button type="button" className="keyword-chip" onClick={() => navigate('/ai-planner')}>AI Calendar Planner for Solo Agency Owners</button>
+                <button type="button" className="keyword-chip" onClick={() => navigate('/ai-productivity')}>Daily Focus App to Prevent Developer Burnout</button>
+                <button type="button" className="keyword-chip" onClick={() => navigate('/tools')}>Turn Goals Into Tasks with AI</button>
               </div>
             </motion.div>
 
