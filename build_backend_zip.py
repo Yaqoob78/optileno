@@ -320,34 +320,9 @@ EXPOSE 8000
 CMD ["bash", "/app/eb_start.sh"]
 """
 
-EB_NGINX_CONF = """user nginx;
-worker_processes auto;
-worker_rlimit_nofile 65535;
+# NOTE: No custom nginx.conf — EB's default nginx handles Docker proxy
+# and includes healthd.conf correctly inside a server block.
 
-events {
-    worker_connections 8192;
-    multi_accept on;
-}
-
-http {
-    include /etc/nginx/mime.types;
-    default_type application/octet-stream;
-
-    server_tokens off;
-    client_max_body_size 20m;
-    keepalive_timeout 65;
-    types_hash_max_size 4096;
-    types_hash_bucket_size 128;
-
-    map $http_upgrade $connection_upgrade {
-        default upgrade;
-        '' close;
-    }
-
-    include /etc/nginx/conf.d/*.conf;
-    include /etc/nginx/conf.d/elasticbeanstalk/*.conf;
-}
-"""
 
 
 def should_skip(path: Path) -> bool:
@@ -397,9 +372,8 @@ def write_boot_files() -> None:
     (BUILD_ROOT / "eb_start.sh").write_text(EB_START, encoding="utf-8", newline="\n")
     (BUILD_ROOT / "Dockerfile").write_text(DOCKERFILE, encoding="utf-8", newline="\n")
 
-    nginx_conf = BUILD_ROOT / ".platform" / "nginx" / "nginx.conf"
-    nginx_conf.parent.mkdir(parents=True, exist_ok=True)
-    nginx_conf.write_text(EB_NGINX_CONF, encoding="utf-8", newline="\n")
+    # No custom nginx.conf — let EB use its default which properly handles
+    # healthd.conf and Docker proxy configuration.
 
 
 def create_zip() -> int:
