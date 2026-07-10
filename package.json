@@ -5,7 +5,14 @@
   "main": "index.js",
   "author": "Friends",
   "license": "MIT",
-  "keywords": [],
+  "keywords": [
+    "ai-planner",
+    "ai-task-manager",
+    "ai-productivity",
+    "task-prioritizer",
+    "goal-tracking",
+    "focus-analytics"
+  ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

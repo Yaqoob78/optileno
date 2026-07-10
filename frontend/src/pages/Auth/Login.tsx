@@ -113,7 +113,7 @@ export default function Login() {
 
     return (
         <div className="auth-page dark">
-            <SEO title="Login | Optileno" description="Sign in to your Optileno account to access your AI productivity system." />
+            <SEO title="Login | Optileno" description="Sign in to your Optileno account to access your AI productivity system." robots="noindex,nofollow" />
             <div className="auth-background">
                 <div className="auth-sphere sphere-1" />
                 <div className="auth-sphere sphere-2" />

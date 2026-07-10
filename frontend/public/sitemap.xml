@@ -16,6 +16,46 @@
     <priority>0.9</priority>
   </url>
   <url>
+    <loc>https://www.optileno.com/ai-planner</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.92</priority>
+  </url>
+  <url>
+    <loc>https://www.optileno.com/ai-task-manager</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.92</priority>
+  </url>
+  <url>
+    <loc>https://www.optileno.com/ai-task</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.86</priority>
+  </url>
+  <url>
+    <loc>https://www.optileno.com/ai-productivity</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.92</priority>
+  </url>
+  <url>
+    <loc>https://www.optileno.com/ai-daily-productivity</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://www.optileno.com/tools</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.92</priority>
+  </url>
+  <url>
+    <loc>https://www.optileno.com/tools/ai-task-prioritizer</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://www.optileno.com/tools/ai-weekly-planner</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.88</priority>
+  </url>
+  <url>
     <loc>https://www.optileno.com/show-analytics</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
@@ -29,16 +69,6 @@
     <loc>https://www.optileno.com/goal-progress</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://www.optileno.com/login</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://www.optileno.com/register</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
   </url>
   <url>
     <loc>https://www.optileno.com/privacy</loc>

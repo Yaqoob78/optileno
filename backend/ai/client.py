@@ -91,12 +91,16 @@ class DualAIClient:
         
         # Initialize Clients
         # Secondary: Groq
-        self.groq_client = AsyncGroq(api_key=settings.GROQ_API_KEY)
+        self.groq_client = AsyncGroq(
+            api_key=settings.GROQ_API_KEY,
+            timeout=settings.AI_PROVIDER_TIMEOUT_SECONDS,
+        )
         
         # Primary: NVIDIA (via OpenAI compatible endpoint)
         self.nvidia_client = AsyncOpenAI(
             api_key=settings.NVIDIA_API_KEY,
-            base_url="https://integrate.api.nvidia.com/v1"
+            base_url=settings.NVIDIA_BASE_URL,
+            timeout=settings.AI_PROVIDER_TIMEOUT_SECONDS,
         )
         
         self.primary_provider = "nvidia" 
@@ -263,11 +267,14 @@ class DualAIClient:
             # If no key, force failover by raising error
             raise ValueError("NVIDIA API Key missing")
             
-        completion = await self.nvidia_client.chat.completions.create(
-            model=model or settings.NVIDIA_BRAIN_MODEL, # Use passed, setting, or default
-            messages=messages,
-            temperature=0.7,
-            max_tokens=2048
+        completion = await asyncio.wait_for(
+            self.nvidia_client.chat.completions.create(
+                model=model or settings.NVIDIA_BRAIN_MODEL, # Use passed, setting, or default
+                messages=messages,
+                temperature=0.7,
+                max_tokens=2048
+            ),
+            timeout=settings.AI_PROVIDER_TIMEOUT_SECONDS,
         )
         return completion.choices[0].message.content
 
@@ -275,11 +282,14 @@ class DualAIClient:
         if not settings.GROQ_API_KEY:
             raise ValueError("Groq API Key missing")
             
-        completion = await self.groq_client.chat.completions.create(
-            model=model,
-            messages=messages,
-            temperature=0.7,
-            max_tokens=2048
+        completion = await asyncio.wait_for(
+            self.groq_client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=0.7,
+                max_tokens=2048
+            ),
+            timeout=settings.AI_PROVIDER_TIMEOUT_SECONDS,
         )
         return completion.choices[0].message.content
 
@@ -434,10 +444,20 @@ class DualAIClient:
             logger.debug("🧠 Using cached AI context")
         else:
             try:
-                full_context = await ai_context_builder.build_full_context(self.user_id)
+                full_context = await asyncio.wait_for(
+                    ai_context_builder.build_full_context(self.user_id),
+                    timeout=settings.AI_CONTEXT_TIMEOUT_SECONDS,
+                )
                 context_prompt = ai_context_builder.format_for_prompt(full_context)
                 _CONTEXT_CACHE[cache_key] = (now_ts, full_context, context_prompt)
                 logger.info(f"🧠 AI Context built with {full_context.get('summary', {}).get('active_goals', 0)} goals, {full_context.get('tasks', {}).get('counts', {}).get('pending', 0)} pending tasks")
+            except asyncio.TimeoutError:
+                logger.warning(
+                    "Context building timed out after %.1fs",
+                    settings.AI_CONTEXT_TIMEOUT_SECONDS,
+                )
+                full_context = {}
+                context_prompt = "Context unavailable - please try again."
             except Exception as e:
                 logger.warning(f"Context building failed: {e}")
                 full_context = {}

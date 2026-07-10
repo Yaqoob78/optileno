@@ -8,6 +8,7 @@ import {
     CashfreeMode,
     loadCashfreeSdk,
     openCashfreeCheckout,
+    openCashfreeSubscriptionCheckout,
 } from '../../utils/cashfree';
 import SEO from '../../components/common/SEO';
 import '../../styles/pages/auth.css';
@@ -231,7 +232,7 @@ export default function Register() {
 
     return (
         <div className="auth-page dark">
-            <SEO title="Create Account | Optileno" description="Join Optileno to start converting unstructured ambitions into actionable execution plans." />
+            <SEO title="Create Account | Optileno" description="Join Optileno to start converting unstructured ambitions into actionable execution plans." robots="noindex,nofollow" />
             <div className="auth-background">
                 <div className="auth-sphere sphere-1" />
                 <div className="auth-sphere sphere-2" />

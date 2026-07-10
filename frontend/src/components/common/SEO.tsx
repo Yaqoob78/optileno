@@ -7,6 +7,8 @@ interface SEOProps {
     name?: string;
     type?: string;
     canonicalUrl?: string;
+    imageUrl?: string;
+    robots?: string;
 }
 
 export default function SEO({
@@ -15,6 +17,8 @@ export default function SEO({
     name = "Optileno",
     type = "website",
     canonicalUrl,
+    imageUrl = "https://www.optileno.com/social-preview.png",
+    robots = "index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1",
 }: SEOProps) {
     const currentUrl = typeof window !== 'undefined'
         ? `${window.location.origin}${window.location.pathname}`
@@ -26,6 +30,7 @@ export default function SEO({
             {/* Standard metadata tags */}
             <title>{title}</title>
             <meta name='description' content={description} />
+            <meta name="robots" content={robots} />
             <link rel="canonical" href={resolvedCanonicalUrl} />
 
             {/* OpenGraph tags */}
@@ -34,12 +39,15 @@ export default function SEO({
             <meta property="og:description" content={description} />
             <meta property="og:site_name" content={name} />
             <meta property="og:url" content={resolvedCanonicalUrl} />
+            <meta property="og:image" content={imageUrl} />
+            <meta property="og:image:alt" content="Optileno AI productivity platform preview" />
 
             {/* Twitter tags */}
             <meta name="twitter:creator" content={name} />
             <meta name="twitter:card" content="summary_large_image" />
             <meta name="twitter:title" content={title} />
             <meta name="twitter:description" content={description} />
+            <meta name="twitter:image" content={imageUrl} />
         </Helmet>
     );
 }

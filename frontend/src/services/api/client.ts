@@ -183,11 +183,14 @@ class APIClient {
         },
       };
     } else if (error.request) {
+      const timedOut = error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT';
       return {
         success: false,
         error: {
-          code: 'NETWORK_ERROR',
-          message: 'No response received from server',
+          code: timedOut ? 'REQUEST_TIMEOUT' : 'NETWORK_ERROR',
+          message: timedOut
+            ? 'The server took too long to respond. Please try again.'
+            : 'No response received from server',
         },
         meta: {
           timestamp: new Date().toISOString(),

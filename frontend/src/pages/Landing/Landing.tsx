@@ -18,6 +18,7 @@ import {
   ChevronDown,
   Plus,
   Minus,
+  Wrench,
 } from 'lucide-react';
 import { Logo } from '../../components/common/Logo';
 import { Interactive3DCard } from '../../components/landing/Interactive3DCard';
@@ -213,8 +214,8 @@ const TESTIMONIALS: Testimonial[] = [
 
 const FAQ_ITEMS: FAQItem[] = [
   {
-    question: 'How is Optileno different from Notion or Todoist?',
-    answer: 'Optileno isn\'t a blank canvas or a simple checklist. It\'s an AI execution layer that breaks your goals into daily tasks, manages deep work sessions, and tracks behavioral patterns like burnout risk — all in one system. You don\'t organize. You execute.',
+    question: 'How is Optileno different from Taskade, Motion, Morgen, Sunsama, Notion, or Todoist?',
+    answer: 'Optileno is not trying to be another blank workspace, team wiki, or pure calendar scheduler. It focuses on AI execution: turning goals into daily tasks, protecting deep work, and showing behavior analytics like focus score, goal progress, and burnout risk in one system.',
   },
   {
     question: 'Is my data safe?',
@@ -231,6 +232,10 @@ const FAQ_ITEMS: FAQItem[] = [
   {
     question: 'How fast can I get started?',
     answer: 'Under 90 seconds. Sign up, tell Leno your top goal, and you\'ll have a prioritized daily plan before you finish your coffee.',
+  },
+  {
+    question: 'Can I try Optileno before creating an account?',
+    answer: 'Yes. The free AI tools let you prioritize tasks or generate a weekly plan first. If the result is useful, you can save it and continue inside Optileno.',
   },
   {
     question: 'Can I cancel anytime?',
@@ -412,8 +417,8 @@ export default function Landing() {
   return (
     <>
       <SEO
-        title="Optileno - AI Productivity Planner and Task Management Platform"
-        description="Optileno turns goals into daily execution with AI planning, task management, focus sessions, and behavior analytics."
+        title="Optileno - AI Planner, Task Manager, and Productivity Analytics"
+        description="Optileno turns goals into daily execution with AI planning, task management, focus sessions, goal tracking, and productivity analytics."
         canonicalUrl="https://www.optileno.com/"
       />
       <div className="landing-page">
@@ -453,6 +458,10 @@ export default function Landing() {
               <span className="logo-text">Optileno</span>
             </div>
             <div className="nav-actions">
+              <button className="nav-link nav-link-tools btn-premium" onClick={() => navigate('/tools')}>
+                <Wrench size={15} />
+                Free AI Tools
+              </button>
               <button
                 className="nav-btn-access btn-premium"
                 onClick={() => navigate('/get-access')}
@@ -556,6 +565,7 @@ export default function Landing() {
                 <button type="button" className="keyword-chip" onClick={() => navigate('/ai-productivity')}>AI Productivity</button>
                 <button type="button" className="keyword-chip" onClick={() => navigate('/ai-daily-productivity')}>AI Daily Productivity</button>
                 <button type="button" className="keyword-chip" onClick={() => navigate('/ai-task')}>AI Task</button>
+                <button type="button" className="keyword-chip" onClick={() => navigate('/tools')}>Free AI Tools</button>
               </div>
             </motion.div>
 
@@ -829,6 +839,7 @@ export default function Landing() {
               <span className="footer-brand-name">Optileno</span>
             </div>
             <div className="footer-links">
+              <button onClick={() => navigate('/tools')}>Free AI Tools</button>
               <button onClick={() => navigate('/privacy')}>Privacy Policy</button>
               <button onClick={() => navigate('/terms')}>Terms of Service</button>
               <button onClick={() => navigate('/login')}>Login</button>

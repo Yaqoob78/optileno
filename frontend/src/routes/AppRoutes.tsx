@@ -16,6 +16,7 @@ const GetAccess = lazy(() => import("../pages/Auth/GetAccess"));
 const ForgotPassword = lazy(() => import("../pages/Auth/ForgotPassword"));
 const ResetPassword = lazy(() => import("../pages/Auth/ResetPassword"));
 const FeaturePage = lazy(() => import("../pages/Marketing/FeaturePage"));
+const AITools = lazy(() => import("../pages/Tools/AITools"));
 const TermsOfService = lazy(() => import("../pages/Legal/TermsOfService"));
 const PrivacyPolicy = lazy(() => import("../pages/Legal/PrivacyPolicy"));
 const RefundPolicy = lazy(() => import("../pages/Legal/RefundPolicy"));
@@ -43,6 +44,10 @@ export default function AppRoutes() {
         <Route path="/ai-task" element={<FeaturePage featureKey="ai-task" />} />
         <Route path="/ai-productivity" element={<FeaturePage featureKey="ai-productivity" />} />
         <Route path="/ai-daily-productivity" element={<FeaturePage featureKey="ai-daily-productivity" />} />
+        <Route path="/tools" element={<AITools initialTool="task-prioritizer" />} />
+        <Route path="/free-ai-tools" element={<AITools initialTool="task-prioritizer" />} />
+        <Route path="/tools/ai-task-prioritizer" element={<AITools initialTool="task-prioritizer" />} />
+        <Route path="/tools/ai-weekly-planner" element={<AITools initialTool="weekly-planner" />} />
         <Route path="/show-analytics" element={<FeaturePage featureKey="show-analytics" />} />
         <Route path="/dashboard-preview" element={<FeaturePage featureKey="dashboard-preview" />} />
         <Route path="/goal-progress" element={<FeaturePage featureKey="goal-progress" />} />

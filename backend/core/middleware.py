@@ -548,6 +548,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
     """
 
     STATE_CHANGING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+    APP_STATE_CHANGING_PREFIXES = ("/api/", "/auth")
 
     SKIP_CSRF_PATHS = {
         "/health",
@@ -568,6 +569,10 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         "/api/v1/auth/validate",
         "/api/v1/auth/forgot-password",
         "/api/v1/auth/reset-password",
+        "/api/v1/growth/events",
+        "/api/v1/growth/leads",
+        "/api/v1/tools/task-prioritizer",
+        "/api/v1/tools/weekly-planner",
         "/api/v1/webhooks/webhook",
         "/api/v1/webhooks/stripe",
         "/api/v1/payments/webhook",
@@ -581,6 +586,18 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         "/auth/reset-password",
         "/metrics",
     }
+
+    @classmethod
+    def _log_csrf_failure(cls, request: Request, reason: str) -> None:
+        message = f"CSRF token {reason} for {request.method} {request.url.path}"
+        if (
+            settings.ENVIRONMENT == "production"
+            and not request.url.path.startswith(cls.APP_STATE_CHANGING_PREFIXES)
+        ):
+            logger.debug(message)
+            return
+
+        logger.warning(message)
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Validate CSRF token for state-changing requests."""
@@ -609,7 +626,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         if not csrf_cookie or not csrf_header:
             middleware_metrics.csrf_failures += 1
             middleware_metrics.blocked_requests += 1
-            logger.warning(f"CSRF token missing for {request.method} {request.url.path}")
+            self._log_csrf_failure(request, "missing")
             return Response(
                 content='{"error": "CSRF token required"}',
                 status_code=403,
@@ -619,7 +636,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         if not hmac.compare_digest(csrf_cookie, csrf_header):
             middleware_metrics.csrf_failures += 1
             middleware_metrics.blocked_requests += 1
-            logger.warning(f"CSRF token mismatch for {request.method} {request.url.path}")
+            self._log_csrf_failure(request, "mismatch")
             return Response(
                 content='{"error": "CSRF token invalid"}',
                 status_code=403,

@@ -683,11 +683,11 @@ export const useAnalyticsStore = create<AnalyticsState>()(
             set({
               isLoading: false,
               userInsights: mappedInsights.length > 0
-                ? mappedInsights.map((insight) => normalizeUserInsight(insight))
+                ? mappedInsights.map((insight: any) => normalizeUserInsight(insight))
                 : get().userInsights,
               currentMetrics: normalizeMetrics(mappedMetrics),
               detectedPatterns: mappedPatterns.length > 0
-                ? mappedPatterns.map((pattern) => normalizeDetectedPattern(pattern))
+                ? mappedPatterns.map((pattern: any) => normalizeDetectedPattern(pattern))
                 : get().detectedPatterns,
               historicalMetrics: [...get().historicalMetrics, normalizeMetrics(mappedMetrics)].slice(-50),
               lastSynced: new Date()

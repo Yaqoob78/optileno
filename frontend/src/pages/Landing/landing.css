@@ -261,6 +261,14 @@ body {
   transition: color 200ms ease;
 }
 
+.landing-nav .nav-link-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(15, 30, 44, 0.45);
+}
+
 .landing-nav .nav-link:hover {
   color: #d0deed;
 }

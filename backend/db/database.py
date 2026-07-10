@@ -9,6 +9,7 @@ Enterprise-grade database connection management with:
 """
 
 import logging
+import ssl
 import time
 from typing import Optional, Dict, Any
 from contextlib import asynccontextmanager
@@ -20,8 +21,10 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.orm import declarative_base
 from sqlalchemy import text
+from sqlalchemy.engine import make_url
 
 from backend.app.config import settings
+from backend.db.rds_iam import generate_db_auth_token
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +67,58 @@ db_metrics = DatabaseMetrics()
 _last_session_error_log_ts: float = 0.0
 
 
+def _build_ssl_context(ssl_mode: str):
+    mode = (ssl_mode or "").strip().lower()
+    if mode in {"", "disable", "false", "0", "no"}:
+        return None
+
+    if mode in {"require", "prefer", "allow", "true", "1", "yes"}:
+        context = ssl.create_default_context()
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+        return context
+
+    context = ssl.create_default_context()
+    if mode == "verify-ca":
+        context.check_hostname = False
+    return context
+
+
+def _build_asyncpg_iam_creator():
+    url = make_url(settings.DATABASE_URL)
+    if not url.host or not url.username:
+        raise ValueError("DATABASE_URL must include host and username when DATABASE_IAM_AUTH=true")
+
+    ssl_context = _build_ssl_context(settings.DATABASE_SSL_MODE or "require")
+    connect_kwargs = {
+        "host": url.host,
+        "port": int(url.port or 5432),
+        "user": url.username,
+        "database": url.database,
+        "timeout": max(5, min(30, settings.DB_POOL_TIMEOUT)),
+        "command_timeout": max(5, settings.DB_STATEMENT_TIMEOUT // 1000),
+        "server_settings": {
+            "statement_timeout": str(settings.DB_STATEMENT_TIMEOUT),
+            "application_name": "optileno-api",
+        },
+    }
+    if ssl_context is not None:
+        connect_kwargs["ssl"] = ssl_context
+
+    async def connect():
+        import asyncpg
+
+        token = generate_db_auth_token(
+            hostname=url.host,
+            port=int(url.port or 5432),
+            username=url.username,
+            region_name=settings.DATABASE_AWS_REGION or None,
+        )
+        return await asyncpg.connect(password=token, **connect_kwargs)
+
+    return connect
+
+
 # ==================================================
 # Async Engine - Enterprise Configuration
 # ==================================================
@@ -82,14 +137,20 @@ def create_database_engine() -> AsyncEngine:
         engine_kwargs["pool_timeout"] = settings.DB_POOL_TIMEOUT
         engine_kwargs["pool_recycle"] = settings.DB_POOL_RECYCLE
         engine_kwargs["pool_use_lifo"] = True
-        engine_kwargs["connect_args"] = {
-            "timeout": max(5, min(30, settings.DB_POOL_TIMEOUT)),
-            "command_timeout": max(5, settings.DB_STATEMENT_TIMEOUT // 1000),
-            "server_settings": {
-                "statement_timeout": str(settings.DB_STATEMENT_TIMEOUT),
-                "application_name": "optileno-api",
-            },
-        }
+        if settings.DATABASE_IAM_AUTH:
+            engine_kwargs["async_creator"] = _build_asyncpg_iam_creator()
+        else:
+            engine_kwargs["connect_args"] = {
+                "timeout": max(5, min(30, settings.DB_POOL_TIMEOUT)),
+                "command_timeout": max(5, settings.DB_STATEMENT_TIMEOUT // 1000),
+                "server_settings": {
+                    "statement_timeout": str(settings.DB_STATEMENT_TIMEOUT),
+                    "application_name": "optileno-api",
+                },
+            }
+            ssl_context = _build_ssl_context(settings.DATABASE_SSL_MODE)
+            if ssl_context is not None:
+                engine_kwargs["connect_args"]["ssl"] = ssl_context
 
     engine = create_async_engine(settings.DATABASE_URL, **engine_kwargs)
 

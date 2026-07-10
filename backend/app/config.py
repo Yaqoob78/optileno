@@ -7,11 +7,36 @@ from dotenv import load_dotenv
 # backend/app/config.py
 
 # ==================================================
-# Force backend to load ONLY backend/.env
+# Environment loading
 # ==================================================
 BASE_DIR = Path(__file__).resolve().parents[2]
-ENV_PATH = BASE_DIR / "backend" / ".env"
-load_dotenv(ENV_PATH)
+
+
+def _resolve_env_path() -> Path | None:
+    explicit_env_file = os.getenv("OPTILENO_ENV_FILE", "").strip()
+    candidates = []
+
+    if explicit_env_file:
+        explicit_path = Path(explicit_env_file)
+        candidates.append(explicit_path if explicit_path.is_absolute() else BASE_DIR / explicit_path)
+
+    # Keep local development behavior first. The EB bundle excludes backend/.env,
+    # so deployed builds naturally fall through to env/.env.
+    candidates.extend([
+        BASE_DIR / "backend" / ".env",
+        BASE_DIR / "env" / ".env",
+        BASE_DIR / ".env",
+    ])
+
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return None
+
+
+ENV_PATH = _resolve_env_path()
+if ENV_PATH:
+    load_dotenv(ENV_PATH, override=False)
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -110,6 +135,26 @@ def _is_unresolved_template(value: str) -> bool:
     return (v.startswith("${") and v.endswith("}")) or (v.startswith("$") and "{" in v and "}" in v)
 
 
+def _is_postgres_database_url(url: str) -> bool:
+    normalized = _strip_wrapping_quotes(url or "").lower()
+    return normalized.startswith(("postgres://", "postgresql://", "postgresql+", "postgresql+asyncpg://"))
+
+
+def _remove_url_query_params(url: str, names: set[str]) -> str:
+    parsed = urllib.parse.urlsplit(url)
+    if not parsed.query:
+        return url
+
+    filtered_query = [
+        (key, value)
+        for key, value in urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+        if key.lower() not in names
+    ]
+    return urllib.parse.urlunsplit(
+        parsed._replace(query=urllib.parse.urlencode(filtered_query))
+    )
+
+
 # ... (imports)
 
 def _normalize_database_url(url: str) -> str:
@@ -126,12 +171,16 @@ def _normalize_database_url(url: str) -> str:
 
     # Force asyncpg driver for general app usage
     if normalized.startswith("postgres://"):
-        return "postgresql+asyncpg://" + normalized[len("postgres://"):]
-    if normalized.startswith("postgresql://"):
-        return "postgresql+asyncpg://" + normalized[len("postgresql://"):]
+        normalized = "postgresql+asyncpg://" + normalized[len("postgres://"):]
+    elif normalized.startswith("postgresql://"):
+        normalized = "postgresql+asyncpg://" + normalized[len("postgresql://"):]
+    elif normalized.startswith("postgresql+psycopg2://"):
+        normalized = "postgresql+asyncpg://" + normalized[len("postgresql+psycopg2://"):]
 
-    if normalized.startswith("postgresql+psycopg2://"):
-        return "postgresql+asyncpg://" + normalized[len("postgresql+psycopg2://"):]
+    if normalized.startswith("postgresql+asyncpg://"):
+        # asyncpg does not use libpq sslmode from the URL; database.py supplies SSL
+        # through connect_args based on DATABASE_SSL_MODE.
+        return _remove_url_query_params(normalized, {"sslmode"})
 
     return normalized
 
@@ -254,7 +303,29 @@ class Settings:
         "none" if COOKIE_SECURE else "lax"
     )
     COOKIE_SAMESITE: str = _strip_wrapping_quotes(COOKIE_SAMESITE)
-    COOKIE_DOMAIN: Optional[str] = _strip_wrapping_quotes(os.getenv("COOKIE_DOMAIN", "")) or None
+    _cookie_domain_env = _strip_wrapping_quotes(os.getenv("COOKIE_DOMAIN", "")) or None
+    # In production, auto-derive cookie domain from FRONTEND_URL for cross-subdomain sharing
+    # e.g. www.optileno.com → .optileno.com (allows api.optileno.com to set cookies)
+    if _cookie_domain_env:
+        COOKIE_DOMAIN: Optional[str] = _cookie_domain_env
+    elif ENVIRONMENT == "production":
+        _frontend_for_cookie = _normalize_origin(os.getenv("FRONTEND_URL", ""))
+        if _frontend_for_cookie:
+            try:
+                _parsed_frontend = urllib.parse.urlsplit(_frontend_for_cookie)
+                _host = _parsed_frontend.netloc.lower()
+                _parts = _host.split(".")
+                if len(_parts) >= 2:
+                    COOKIE_DOMAIN = "." + ".".join(_parts[-2:])
+                else:
+                    COOKIE_DOMAIN = None
+            except Exception:
+                COOKIE_DOMAIN = None
+        else:
+            COOKIE_DOMAIN = None
+    else:
+        COOKIE_DOMAIN = None
+
 
     # Owner Account (Auto-provisioned)
     OWNER_EMAIL: str = _strip_wrapping_quotes(os.getenv("OWNER_EMAIL", ""))
@@ -294,8 +365,14 @@ class Settings:
         os.getenv("CORS_ALLOW_ORIGIN_REGEX", "")
     ) or None
     if not CORS_ALLOW_ORIGIN_REGEX:
-        if ".vercel.app" in FRONTEND_URL.lower() or ".vercel.app" in PRODUCTION_FRONTEND_URL.lower():
+        # Always allow Vercel preview URLs in production (frontend deploys via Vercel)
+        if (
+            ENVIRONMENT == "production"
+            or ".vercel.app" in FRONTEND_URL.lower()
+            or ".vercel.app" in PRODUCTION_FRONTEND_URL.lower()
+        ):
             CORS_ALLOW_ORIGIN_REGEX = r"^https://([a-z0-9-]+\.)*vercel\.app$"
+
 
     # =========================
     # Database - Enterprise Scaling
@@ -304,6 +381,16 @@ class Settings:
         _pick_database_url_candidate()
         or _build_database_url_from_pg_env()
         or ""
+    )
+    DATABASE_SSL_MODE: str = _strip_wrapping_quotes(
+        os.getenv(
+            "DATABASE_SSL_MODE",
+            "require" if ENVIRONMENT == "production" and _is_postgres_database_url(DATABASE_URL) else "",
+        )
+    ).strip().lower()
+    DATABASE_IAM_AUTH: bool = _env_bool("DATABASE_IAM_AUTH", False)
+    DATABASE_AWS_REGION: str = _strip_wrapping_quotes(
+        os.getenv("DATABASE_AWS_REGION", os.getenv("AWS_REGION", os.getenv("AWS_DEFAULT_REGION", "")))
     )
     
     # Connection Pool Settings (tuned for 8 workers w/ 300 max_conn)
@@ -350,6 +437,8 @@ class Settings:
     # =========================
     OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
     OPENAI_MODEL: str = "gpt-3.5-turbo"
+    AI_PROVIDER_TIMEOUT_SECONDS: float = _env_float("AI_PROVIDER_TIMEOUT_SECONDS", 25.0)
+    AI_CONTEXT_TIMEOUT_SECONDS: float = _env_float("AI_CONTEXT_TIMEOUT_SECONDS", 8.0)
 
     # =========================
     # Limits & Quotas (Configurable)
@@ -536,7 +625,14 @@ class Settings:
         if _is_unresolved_template(self.DATABASE_URL):
             raise ValueError(
                 "DATABASE_URL appears unresolved (e.g. ${VAR} or ${{Service.VAR}}). "
-                "Set DATABASE_URL to the actual connection string in Railway."
+                "Set DATABASE_URL to the actual connection string in Railway/AWS."
+            )
+
+        # Production MUST use PostgreSQL — never SQLite.
+        if self.ENVIRONMENT == "production" and "sqlite" in self.DATABASE_URL.lower():
+            raise ValueError(
+                "DATABASE_URL is set to SQLite but ENVIRONMENT=production. "
+                "Set DATABASE_URL to your PostgreSQL connection string in AWS/EB environment variables."
             )
 
         # Fail early with a clear message if SQLAlchemy cannot parse the URL.

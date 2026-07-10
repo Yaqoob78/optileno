@@ -447,20 +447,22 @@ export const usePlannerStore = create<PlannerState>()(
         plannerApi.onGoalProgressChanged(({ goalId, progress }) => {
           console.log('✨ Socket Event: Goal Progress Changed', goalId, progress);
           let updatedGoal: Goal | null = null;
-          set((state) => ({
-            goals: state.goals.map((g) =>
-              String(g.id) === String(goalId)
-                ? (() => {
-                    updatedGoal = {
-                      ...g,
-                      current_progress: progress,
-                      progress,
-                    };
-                    return updatedGoal;
-                  })()
-                : g
-            ),
-          }));
+          set((state) => {
+            const goals = state.goals.map((g) => {
+              if (String(g.id) !== String(goalId)) {
+                return g;
+              }
+
+              const nextGoal: Goal = {
+                ...g,
+                current_progress: progress,
+              };
+              updatedGoal = nextGoal;
+              return nextGoal;
+            });
+
+            return { goals };
+          });
 
           if (updatedGoal) {
             window.dispatchEvent(new CustomEvent('goal_updated', { detail: updatedGoal }));

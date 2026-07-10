@@ -926,7 +926,7 @@ export default function PlannerPage() {
                 >
                   <option value="">-- No Blockers --</option>
                   {tasks.filter(t => t.id !== editForm.id && String(t.status) !== 'done' && String(t.status) !== 'completed').map(t => (
-                    <option key={t.id || t._id} value={t.id || t._id}>{t.title}</option>
+                    <option key={t.id} value={t.id}>{t.title}</option>
                   ))}
                 </select>
               </div>

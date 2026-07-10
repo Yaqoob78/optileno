@@ -57,15 +57,17 @@ frontend/build/
 frontend/.cache/
 frontend/coverage/
 
-# Environment Variables
+# Environment Variables (secrets)
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 *.env
-# Allow .env.example
+env/
+# Allow templates and non-secret build-time configs
 !*.example
+!frontend/.env.production
 
 # IDEs and Editors
 .idea/

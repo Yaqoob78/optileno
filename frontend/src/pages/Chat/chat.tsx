@@ -47,6 +47,7 @@ const SUGGESTIONS: Suggestion[] = [
   { id: 3, text: "Show my progress", aiMode: "ANALYZE", description: "Progress analysis" },
   { id: 4, text: "Give me a small task", aiMode: "TASK", description: "Quick tasks" },
 ];
+const CHAT_REQUEST_TIMEOUT_MS = 75000;
 
 const formatTimestamp = (value: string | Date) => {
   const parsed = value instanceof Date ? value : new Date(value);
@@ -281,6 +282,8 @@ export default function Chat() {
       mode: currentAiMode,
       history: conversationHistory,
       session_id: currentSessionId,
+    }, {
+      timeout: CHAT_REQUEST_TIMEOUT_MS,
     });
 
     if (!response.success) {

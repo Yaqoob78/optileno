@@ -73,7 +73,7 @@ export default function GetAccess() {
 
   return (
     <div className="auth-page dark">
-      <SEO title="Get Access | Optileno" description="Invite-only access: sign in with your granted email and password." />
+      <SEO title="Get Access | Optileno" description="Invite-only access: sign in with your granted email and password." robots="noindex,nofollow" />
       <div className="auth-background">
         <div className="auth-sphere sphere-1" />
         <div className="auth-sphere sphere-2" />

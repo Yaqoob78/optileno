@@ -34,7 +34,7 @@ services:
       - key: ENABLE_DOCS
         value: false
       - key: PRODUCTION_FRONTEND_URL
-        value: https://your-vercel-domain.vercel.app  # Replace with your Vercel domain
+        value: https://www.optileno.com
 
 databases:
   - name: optileno-db

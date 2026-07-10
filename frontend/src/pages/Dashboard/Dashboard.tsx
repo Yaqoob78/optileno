@@ -182,7 +182,7 @@ export default function Dashboard() {
 
   return (
     <div className={`dashboard-container theme-${theme}`}>
-      <SEO title="Dashboard | Optileno" description="Your AI productivity command center overview." />
+      <SEO title="Dashboard | Optileno" description="Your AI productivity command center overview." robots="noindex,nofollow" />
 
       {/* Animated Background Elements */}
       <div className="background-canvas">

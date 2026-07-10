@@ -1,6 +1,18 @@
 from fastapi import APIRouter
 from backend.auth import auth_router
-from backend.api.v1.endpoints import chat, plans, analytics, system as system_endpoint, advanced_features, goals, subscriptions, agentic, health
+from backend.api.v1.endpoints import (
+    chat,
+    plans,
+    analytics,
+    system as system_endpoint,
+    advanced_features,
+    goals,
+    subscriptions,
+    agentic,
+    health,
+    growth,
+    tools,
+)
 from backend.payments.cashfree_routes import router as cashfree_router
 from backend.payments.stripe_routes import router as stripe_router
 from backend.payments.webhooks import router as webhook_router
@@ -23,6 +35,8 @@ api_router.include_router(system_endpoint.router, prefix="/system", tags=["Syste
 api_router.include_router(advanced_features.router, tags=["Advanced Features"])
 api_router.include_router(subscriptions.router, prefix="/subscriptions", tags=["Subscriptions"])
 api_router.include_router(agentic.router, prefix="/agentic", tags=["Agentic"])
+api_router.include_router(growth.router, prefix="/growth", tags=["Growth"])
+api_router.include_router(tools.router, prefix="/tools", tags=["Public AI Tools"])
 
 from backend.api.v1.endpoints import users
 api_router.include_router(users.router, prefix="/users", tags=["Users"])

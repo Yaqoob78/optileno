@@ -91,20 +91,26 @@ class RealtimeClient {
         });
 
         this.socket.on('authenticated', () => {
-          window.clearTimeout(authTimeout);
+          if (authTimeout !== null) {
+            window.clearTimeout(authTimeout);
+          }
           finishResolve();
         });
 
         this.socket.on('error', (error) => {
           // Non-fatal when cookie auth succeeds but explicit token auth was omitted.
           if (token) {
-            window.clearTimeout(authTimeout);
+            if (authTimeout !== null) {
+              window.clearTimeout(authTimeout);
+            }
             finishReject(error);
           }
         });
 
         this.socket.on('connect_error', (error) => {
-          window.clearTimeout(authTimeout);
+          if (authTimeout !== null) {
+            window.clearTimeout(authTimeout);
+          }
           finishReject(error);
         });
 

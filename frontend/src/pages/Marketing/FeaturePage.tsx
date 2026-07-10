@@ -70,8 +70,8 @@ const FEATURE_CONFIG: Record<FeatureKey, FeatureConfig> = {
       "Daily schedules that adapt to your focus and capacity.",
       "Planner insights linked directly to execution and goals.",
     ],
-    metaTitle: "AI Planner - Optileno",
-    metaDescription: "Optileno is an AI planner that transforms goals into daily task plans, focus sessions, and productivity routines.",
+    metaTitle: "AI Planner for Daily Tasks, Goals, and Focus - Optileno",
+    metaDescription: "Use Optileno as an AI planner for daily task planning, focus blocks, goal tracking, and productivity analytics.",
     canonicalPath: "/ai-planner",
   },
   "ai-task-manager": {
@@ -84,8 +84,8 @@ const FEATURE_CONFIG: Record<FeatureKey, FeatureConfig> = {
       "Structured daily execution blocks for every task.",
       "Progress tracking that keeps task work aligned with goals.",
     ],
-    metaTitle: "AI Task Manager - Optileno",
-    metaDescription: "Optileno is an AI task manager for task prioritization, daily execution, and productivity tracking.",
+    metaTitle: "AI Task Manager for Priorities and Execution - Optileno",
+    metaDescription: "Optileno is an AI task manager for prioritizing work, planning focus sessions, tracking goals, and improving daily productivity.",
     canonicalPath: "/ai-task-manager",
   },
   "ai-task": {
@@ -98,8 +98,8 @@ const FEATURE_CONFIG: Record<FeatureKey, FeatureConfig> = {
       "Daily execution recommendations to reduce task overload.",
       "Clear next steps that keep task work moving forward.",
     ],
-    metaTitle: "AI Task - Optileno",
-    metaDescription: "Optileno helps you manage AI task workflows, prioritize work, and keep daily productivity on track.",
+    metaTitle: "AI Task Planning and Prioritization - Optileno",
+    metaDescription: "Plan AI task workflows with Optileno, prioritize important work, and turn daily tasks into measurable goal progress.",
     canonicalPath: "/ai-task",
   },
   "ai-productivity": {
@@ -112,8 +112,8 @@ const FEATURE_CONFIG: Record<FeatureKey, FeatureConfig> = {
       "Task, focus, and goal tracking in one productivity workspace.",
       "Insights that help you keep work moving without overwhelm.",
     ],
-    metaTitle: "AI Productivity App - Optileno",
-    metaDescription: "Optileno is an AI productivity app for daily planning, task management, focus analytics, and goal progress.",
+    metaTitle: "AI Productivity App for Planning and Analytics - Optileno",
+    metaDescription: "Optileno is an AI productivity app for daily planning, task management, focus analytics, burnout signals, and goal progress.",
     canonicalPath: "/ai-productivity",
   },
   "ai-daily-productivity": {
@@ -126,8 +126,8 @@ const FEATURE_CONFIG: Record<FeatureKey, FeatureConfig> = {
       "Task and focus recommendations aligned with your real day.",
       "Daily progress signals to prevent missed work and burnout.",
     ],
-    metaTitle: "AI Daily Productivity Planner - Optileno",
-    metaDescription: "Optileno is an AI daily productivity planner for task execution, focus blocks, and goal-driven routines.",
+    metaTitle: "AI Daily Productivity Planner for Focus Work - Optileno",
+    metaDescription: "Use Optileno as an AI daily productivity planner for task execution, focus blocks, routines, and goal-driven workdays.",
     canonicalPath: "/ai-daily-productivity",
   },
   "show-analytics": {
@@ -212,6 +212,9 @@ export default function FeaturePage({ featureKey }: FeaturePageProps) {
             </button>
             <button type="button" className="feature-secondary-btn" onClick={() => navigate("/")}>
               Back to Home
+            </button>
+            <button type="button" className="feature-secondary-btn" onClick={() => navigate("/tools")}>
+              Try Free AI Tools
             </button>
           </div>
         </main>

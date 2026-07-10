@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Optileno - AI Life Operating System",
+  "name": "Optileno - AI Planner and Task Manager",
   "short_name": "Optileno",
-  "description": "Optileno turns goals, planning, and focus into measurable AI-powered progress.",
+  "description": "Optileno turns goals, daily planning, focus sessions, and task management into measurable AI-powered progress.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -37,6 +37,11 @@
       "name": "Plan Tasks",
       "short_name": "Planner",
       "url": "/plan-task"
+    },
+    {
+      "name": "Free AI Tools",
+      "short_name": "Tools",
+      "url": "/tools"
     },
     {
       "name": "Show Analytics",
