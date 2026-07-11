@@ -15,16 +15,16 @@
 }
 
 [data-theme='light'] {
-  --s-bg-main: #e9eef6;
-  --s-bg-surface: #f2f5fa;
-  --s-bg-item: #f6f8fc;
+  --s-bg-main: #edeae0;
+  --s-bg-surface: #f6f4ec;
+  --s-bg-item: #f8f6ef;
   --s-border: rgba(31, 35, 40, 0.12);
   --s-accent: #0969da;
-  --s-text-primary: #1f2328;
-  --s-text-secondary: #656d76;
-  --s-text-muted: #8c959f;
-  --s-input-bg: #f6f8fc;
-  --s-input-border: #c7d2e0;
+  --s-text-primary: #292524;
+  --s-text-secondary: #57534e;
+  --s-text-muted: #8a8578;
+  --s-input-bg: #f8f6ef;
+  --s-input-border: #cfc9b8;
 }
 
 @keyframes settings-spin {

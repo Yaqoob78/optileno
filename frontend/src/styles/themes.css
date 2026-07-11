@@ -3,18 +3,18 @@
 
 /* Light Theme */
 [data-theme="light"] {
-  /* Soft cool-tinted surfaces — deliberately not pure white,
-     so light mode reads calm instead of glaring */
-  --color-bg-primary: 233 238 246;
-  --color-bg-secondary: 222 230 240;
-  --color-bg-tertiary: 208 218 231;
+  /* Warm cream/ivory light theme (Claude-style) — deliberately muted,
+     never pure white, with warm stone-gray text */
+  --color-bg-primary: 237 234 224;
+  --color-bg-secondary: 228 224 211;
+  --color-bg-tertiary: 216 211 195;
 
-  --color-text-primary: var(--color-gray-800);
-  --color-text-secondary: var(--color-gray-600);
-  --color-text-tertiary: var(--color-gray-500);
+  --color-text-primary: 41 37 36;
+  --color-text-secondary: 87 83 78;
+  --color-text-tertiary: 120 113 108;
 
-  --color-border-light: 203 213 226;
-  --color-border-medium: var(--color-gray-400);
+  --color-border-light: 211 206 190;
+  --color-border-medium: 168 162 148;
 
   --color-primary: 5 150 105;
   --color-primary-dark: 13 148 136;
@@ -27,8 +27,8 @@
   --shadow-base: 0 20px 60px rgba(15, 23, 42, 0.08);
   --shadow-glow: 0 0 40px rgba(5, 150, 105, 0.2);
 
-  --glass-bg: rgba(242, 246, 250, 0.78);
-  --glass-border: rgba(203, 213, 226, 0.45);
+  --glass-bg: rgba(246, 244, 236, 0.78);
+  --glass-border: rgba(211, 206, 190, 0.5);
 }
 
 /* Dark Theme (Default) */
@@ -326,22 +326,22 @@
 }
 
 [data-theme="light"] {
-  --background-primary: #e9eef6;
-  --background-secondary: #f2f5fa;
-  --background-tertiary: #dde5ef;
-  --card-background: rgba(242, 246, 250, 0.85);
-  --card-border: rgba(203, 213, 226, 0.7);
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
+  --background-primary: #edeae0;
+  --background-secondary: #f6f4ec;
+  --background-tertiary: #e1ded1;
+  --card-background: rgba(246, 244, 236, 0.88);
+  --card-border: rgba(211, 206, 190, 0.7);
+  --text-primary: #292524;
+  --text-secondary: #57534e;
   --text-on-primary: #ffffff;
-  --border-light: rgba(219, 227, 238, 0.85);
-  --border-primary: #d3ddea;
+  --border-light: rgba(211, 206, 190, 0.85);
+  --border-primary: #cfc9b8;
   --primary: #8b5cf6;
   /* purple-500 */
   --primary-hover: #7c3aed;
   /* purple-600 */
   --success: #10b981;
-  --gradient-background: linear-gradient(135deg, #e9eef6 0%, #dce4ef 100%);
+  --gradient-background: linear-gradient(135deg, #edeae0 0%, #e0dccd 100%);
   --gradient-primary: linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%);
   --gradient-blue: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
   --gradient-success: linear-gradient(to bottom right, #10b981, #34d399);

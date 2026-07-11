@@ -373,8 +373,8 @@
 /* ========== LIGHT THEME SUPPORT ========== */
 [data-theme="light"] .layout-container {
   background: linear-gradient(135deg,
-      #f8fafc 0%,
-      #e2e8f0 100%);
+      #edeae0 0%,
+      #e0dccd 100%);
 }
 
 [data-theme="light"] .layout-background {
@@ -383,8 +383,8 @@
 
 [data-theme="light"] .main-content-area {
   background: linear-gradient(180deg,
-      #ffffff 0%,
-      #f8fafc 100%);
+      #f2efe6 0%,
+      #edeae0 100%);
   border-left: 1px solid rgba(0, 0, 0, 0.05);
   /* Should help with separation */
 }
@@ -395,9 +395,9 @@
 }
 
 [data-theme="light"] .glass-effect {
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(246, 244, 236, 0.85);
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(226, 232, 240, 0.8);
+  border: 1px solid rgba(213, 209, 194, 0.8);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
 }
 

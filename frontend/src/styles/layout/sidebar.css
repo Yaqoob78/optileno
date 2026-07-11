@@ -496,8 +496,8 @@
 /* ========== LIGHT THEME SUPPORT ========== */
 [data-theme="light"] .premium-sidebar {
   background: linear-gradient(180deg,
-      #ffffff 0%,
-      #f8fafc 100%);
+      #f6f4ec 0%,
+      #edeae0 100%);
   border-right: 1px solid rgba(0, 0, 0, 0.05);
   box-shadow:
     12px 0 50px rgba(0, 0, 0, 0.05),
@@ -507,8 +507,8 @@
 [data-theme="light"] .sidebar-header {
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
   background: linear-gradient(180deg,
-      #ffffff 0%,
-      #f8fafc 100%);
+      #f6f4ec 0%,
+      #edeae0 100%);
 }
 
 [data-theme="light"] .sidebar-title {
@@ -524,14 +524,14 @@
 }
 
 [data-theme="light"] .sidebar-toggle {
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
+  background: #e9e5d9;
+  border: 1px solid #d5d1c2;
   color: #64748b;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 [data-theme="light"] .sidebar-toggle:hover {
-  background: #e2e8f0;
+  background: #ddd8c9;
   color: #3b82f6;
   border-color: #cbd5e1;
 }
