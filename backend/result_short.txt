@@ -1,3 +1,0 @@
-Starting short test
-Hash created successfully: $2b$12$vN42/kIV09KjHYB42825OOQ6Hb37hgfaz9bNxd9mt7FmynY80Mptq
-Verify result: True

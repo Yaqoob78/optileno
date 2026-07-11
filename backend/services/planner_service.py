@@ -8,7 +8,7 @@ No business logic. No validation. No ORM exposure.
 from __future__ import annotations
 
 from typing import Any, Optional
-from datetime import datetime, date, time, timedelta, timezone
+from datetime import datetime, date, time, timedelta, timezone, tzinfo
 import logging
 import json
 from zoneinfo import ZoneInfo
@@ -58,9 +58,11 @@ class PlannerService:
     def _utc_now(self) -> datetime:
         return datetime.now(timezone.utc)
 
-    def _get_timezone(self, timezone_name: Optional[str]) -> ZoneInfo:
+    def _get_timezone(self, timezone_name: Optional[str]) -> tzinfo:
+        # timezone.utc fallbacks need no tz database, so habit/streak logic keeps
+        # working even on hosts without tzdata (Windows, slim Docker images)
         if not timezone_name:
-            return ZoneInfo("UTC")
+            return timezone.utc
         timezone_aliases = {
             "Asia/Calcutta": "Asia/Kolkata",
             "Asia/Katmandu": "Asia/Kathmandu",
@@ -70,11 +72,13 @@ class PlannerService:
             "US/Pacific": "America/Los_Angeles",
         }
         normalized_timezone = timezone_aliases.get(str(timezone_name), str(timezone_name))
+        if normalized_timezone.upper() == "UTC":
+            return timezone.utc
         try:
             return ZoneInfo(normalized_timezone)
         except Exception:
             logger.warning("Invalid timezone '%s'; falling back to UTC", timezone_name)
-            return ZoneInfo("UTC")
+            return timezone.utc
 
     def _ensure_utc(self, value: datetime) -> datetime:
         if value.tzinfo is None:
@@ -487,7 +491,7 @@ class PlannerService:
                     milestones=goal_data.get("milestones", []),
                     ai_suggestions=goal_data.get("ai_suggestions", []),
                     is_tracked=goal_data.get("is_tracked", False),
-                    probability_status=goal_data.get("probability_status", "Medium"),
+                    probability_status=goal_data.get("probability_status"),
                     # V2 profile fields
                     scoring_version=goal_data.get("scoring_version", "v2"),
                     goal_type=goal_data.get("goal_type") or goal_data.get("category", "custom"),
@@ -561,7 +565,11 @@ class PlannerService:
                         "milestones": g.milestones,
                         "ai_suggestions": g.ai_suggestions,
                         "is_tracked": g.is_tracked if is_ultra else False,
-                        "probability_status": g.probability_status if is_ultra else "Medium",
+                        "probability_status": (
+                            g.probability_status
+                            if is_ultra and bool(g.is_tracked) and g.last_analyzed_at
+                            else None
+                        ),
                         "created_at": g.created_at.isoformat() if g.created_at else None,
                     }
                     for g in goals

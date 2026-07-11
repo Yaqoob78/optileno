@@ -113,6 +113,14 @@
   color: rgb(var(--color-text-primary));
 }
 
+.focus-button-active,
+.focus-button-active:hover:not(:disabled) {
+  border-color: rgba(var(--color-secondary), 0.58);
+  background: rgba(var(--color-secondary), 0.16);
+  color: rgb(var(--color-text-primary));
+  box-shadow: 0 0 0 3px rgba(var(--color-secondary), 0.1);
+}
+
 .send-button {
   background: linear-gradient(
     135deg,

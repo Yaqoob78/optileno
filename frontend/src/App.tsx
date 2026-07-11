@@ -61,8 +61,9 @@ class ErrorBoundary extends React.Component<
         <div style={{
           padding: '2rem',
           textAlign: 'center',
-          color: 'var(--color-text-primary)',
-          background: 'var(--color-bg-primary)'
+          color: 'rgb(var(--color-text-primary))',
+          background: 'rgb(var(--color-bg-primary))',
+          minHeight: '100dvh',
         }}>
           <h2>Something went wrong.</h2>
           <button
@@ -70,7 +71,7 @@ class ErrorBoundary extends React.Component<
             style={{
               marginTop: '1rem',
               padding: '0.5rem 1rem',
-              background: 'var(--color-primary)',
+              background: 'rgb(var(--color-primary))',
               color: 'white',
               border: 'none',
               borderRadius: '0.375rem',

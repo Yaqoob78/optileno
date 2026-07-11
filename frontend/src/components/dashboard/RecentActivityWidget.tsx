@@ -83,11 +83,11 @@ export default function RecentActivityWidget() {
   const getActivityIcon = (type: Activity['type']) => {
     switch (type) {
       case 'task':
-        return <CheckCircle2 size={16} className="text-green-400" />;
+        return <CheckCircle2 size={16} />;
       case 'goal':
-        return <Target size={16} className="text-blue-400" />;
+        return <Target size={16} />;
       case 'habit':
-        return <Zap size={16} className="text-yellow-400" />;
+        return <Zap size={16} />;
       default:
         return null;
     }
@@ -106,38 +106,31 @@ export default function RecentActivityWidget() {
     return `${days}d ago`;
   };
 
-  return (
-    <div className="bg-gradient-to-br from-gray-900/50 to-black/50 border border-white/10 rounded-xl p-6 backdrop-blur-sm">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-bold text-white">Recent Activity</h3>
-        <Link to="/planner" className="text-xs font-semibold text-blue-400 hover:text-blue-300 flex items-center gap-1">
-          View All <ArrowRight size={12} />
+  if (activities.length === 0) {
+    return (
+      <div className="activity-empty">
+        <p>No activity yet. Complete a task, habit, or goal and it will show up here.</p>
+        <Link to="/planner" className="activity-empty-link">
+          Open Planner <ArrowRight size={12} />
         </Link>
       </div>
+    );
+  }
 
-      {activities.length === 0 ? (
-        <div className="flex items-center justify-center py-8 text-gray-500">
-          <p className="text-sm">No recent activity</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {activities.map((activity) => (
-            <div
-              key={activity.id}
-              className="flex items-start gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
-            >
-              <div className="mt-1">{getActivityIcon(activity.type)}</div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">{activity.title}</p>
-                {activity.description && (
-                  <p className="text-xs text-gray-400 mt-0.5">{activity.description}</p>
-                )}
-              </div>
-              <span className="text-xs text-gray-500 whitespace-nowrap">{formatTime(activity.timestamp)}</span>
+  return (
+    <div className="activity-feed">
+      {activities.map((activity) => (
+        <div key={activity.id} className="activity-item">
+          <div className="activity-icon">{getActivityIcon(activity.type)}</div>
+          <div className="activity-content">
+            <div className="activity-text">
+              <span className="user-mention">{activity.title}</span>
+              {activity.description && <> — {activity.description}</>}
             </div>
-          ))}
+            <div className="activity-time">{formatTime(activity.timestamp)}</div>
+          </div>
         </div>
-      )}
+      ))}
     </div>
   );
 }

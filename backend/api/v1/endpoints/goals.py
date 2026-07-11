@@ -46,7 +46,7 @@ class GoalOut(BaseModel):
     # AI Fields
     ai_suggestions: dict = Field(default_factory=dict)
     is_tracked: bool = False
-    probability_status: str = "Medium"
+    probability_status: Optional[str] = None
     
     created_at: Optional[str] = None
 

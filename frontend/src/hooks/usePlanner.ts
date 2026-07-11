@@ -15,6 +15,7 @@ interface UsePlannerReturn {
   dailyDeepWorkCount: number;
   isLoading: boolean;
   error: string | null;
+  dataFetched: boolean;
 
   // Actions
   fetchTasks: (params?: { status?: string; day?: string; timezone?: string; dueFrom?: string; dueTo?: string }) => Promise<void>;
@@ -66,6 +67,21 @@ interface UsePlannerReturn {
   forceRefresh: () => Promise<void>;
 }
 
+const inFlightPlannerFetches = new Map<string, Promise<void>>();
+
+const runSharedPlannerFetch = (key: string, request: () => Promise<void>) => {
+  const existing = inFlightPlannerFetches.get(key);
+  if (existing) return existing;
+
+  const pending = request().finally(() => {
+    if (inFlightPlannerFetches.get(key) === pending) {
+      inFlightPlannerFetches.delete(key);
+    }
+  });
+  inFlightPlannerFetches.set(key, pending);
+  return pending;
+};
+
 export const usePlanner = (): UsePlannerReturn => {
   const { userId } = useUser();
   const timezone = useSettingsStore((state) => state.timezone);
@@ -89,6 +105,7 @@ export const usePlanner = (): UsePlannerReturn => {
     setActiveDeepWork,
     clearActiveDeepWork,
     setDataFetched,
+    setError: setStoreError,
   } = usePlannerStore();
 
   const [localLoading, setLocalLoading] = useState(false);
@@ -98,43 +115,63 @@ export const usePlanner = (): UsePlannerReturn => {
 
   const fetchTasks = useCallback(async (params?: { status?: string; day?: string; timezone?: string; dueFrom?: string; dueTo?: string }) => {
     if (!userId) return;
-    try {
-      const effectiveTimezone = params?.timezone || timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const effectiveTimezone = params?.timezone || timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const requestParams = { ...params, timezone: effectiveTimezone };
+
+    await runSharedPlannerFetch(`tasks:${userId}:${JSON.stringify(requestParams)}`, async () => {
+      try {
       const response = await plannerApi.getTasks({
-        ...params,
-        timezone: effectiveTimezone,
+          ...requestParams,
       });
-      if (response.success && response.data) {
-        setTasks(response.data);
+        if (!response.success) {
+          throw new Error(response.error?.message || 'Failed to load tasks.');
+        }
+        setTasks(response.data || []);
+        setStoreError(null);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to load tasks.';
+        setStoreError(message);
+        throw error;
       }
-    } catch (err: any) {
-      console.error('Failed to fetch tasks:', err);
-    }
-  }, [userId, setTasks, timezone]);
+    });
+  }, [userId, setStoreError, setTasks, timezone]);
 
   const fetchGoals = useCallback(async () => {
     if (!userId) return;
-    try {
-      const resp = await plannerApi.getGoals();
-      if (resp.success && resp.data) {
-        setGoals(resp.data);
+    await runSharedPlannerFetch(`goals:${userId}`, async () => {
+      try {
+        const response = await plannerApi.getGoals();
+        if (!response.success) {
+          throw new Error(response.error?.message || 'Failed to load goals.');
+        }
+        setGoals(response.data || []);
+        setStoreError(null);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to load goals.';
+        setStoreError(message);
+        throw error;
       }
-    } catch (e) {
-      console.error('Failed to fetch goals:', e);
-    }
-  }, [userId, setGoals]);
+    });
+  }, [setGoals, setStoreError, userId]);
 
   const fetchHabits = useCallback(async () => {
     if (!userId) return;
-    try {
-      const resp = await plannerApi.getHabits(timezone);
-      if (resp.success && resp.data) {
-        setHabits(resp.data);
+    const effectiveTimezone = timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    await runSharedPlannerFetch(`habits:${userId}:${effectiveTimezone}`, async () => {
+      try {
+        const response = await plannerApi.getHabits(effectiveTimezone);
+        if (!response.success) {
+          throw new Error(response.error?.message || 'Failed to load habits.');
+        }
+        setHabits(response.data || []);
+        setStoreError(null);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to load habits.';
+        setStoreError(message);
+        throw error;
       }
-    } catch (e) {
-      console.error('Failed to fetch habits:', e);
-    }
-  }, [userId, setHabits, timezone]);
+    });
+  }, [setHabits, setStoreError, timezone, userId]);
 
   // ── Unified initial data load ──────────────────────────────────────
   useEffect(() => {
@@ -156,11 +193,8 @@ export const usePlanner = (): UsePlannerReturn => {
         ]);
         setDataFetched(true);
         console.log('✓ Initial data loaded and cached');
-      } catch (err: any) {
-        console.error('Planner sync error:', err);
-        if (err.name !== 'CanceledError') {
-          setLocalError('Failed to synchronize planner data');
-        }
+      } catch (error) {
+        setLocalError(error instanceof Error ? error.message : 'Failed to synchronize planner data.');
       } finally {
         setLocalLoading(false);
       }
@@ -670,6 +704,7 @@ export const usePlanner = (): UsePlannerReturn => {
     dailyDeepWorkCount,
     isLoading: isLoading || localLoading,
     error: error || localError,
+    dataFetched,
 
     fetchTasks,
     fetchGoals,

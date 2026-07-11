@@ -110,3 +110,13 @@ render.yaml
 nixpacks.toml
 railway.toml
 backend/render.env
+
+# Local scratch / debug output — never commit
+result*.txt
+*_output.txt
+*_out.txt
+*.zip
+.venv-1/
+.venv*/
+frontend/test-results/
+frontend/playwright-report/

@@ -1,3 +1,0 @@
-Starting truncate test 71
-Truncated type: <class 'bytes'>
-Truncated length: 71

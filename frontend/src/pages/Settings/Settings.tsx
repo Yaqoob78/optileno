@@ -18,7 +18,7 @@ import AboutSettings from '../../components/settings/AboutSettings';
 import BillingSettings from '../../components/settings/BillingSettings';
 import AdminAccessSettings from '../../components/settings/AdminAccessSettings';
 import { useUserStore } from '../../stores/useUserStore';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { userService } from '../../services/api/user.service';
 import '../../styles/pages/settings.css';
 
@@ -28,13 +28,26 @@ interface Tab {
   icon: React.ReactNode;
 }
 
+const VALID_TABS = ['general', 'notifications', 'data', 'profile', 'billing', 'admin', 'about'];
+
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<string>('general');
+  const location = useLocation();
+  const { tab: pathTab } = useParams<{ tab?: string }>();
+  const requestedTab = pathTab || (location.state as { tab?: string } | null)?.tab;
+  const [activeTab, setActiveTab] = useState<string>(
+    requestedTab && VALID_TABS.includes(requestedTab) ? requestedTab : 'general'
+  );
   const logout = useUserStore((state) => state.logout);
   const setProfile = useUserStore((state) => state.setProfile);
   const profile = useUserStore((state) => state.profile);
   const navigate = useNavigate();
   const isAdmin = profile?.role === 'admin';
+
+  useEffect(() => {
+    if (requestedTab && VALID_TABS.includes(requestedTab)) {
+      setActiveTab(requestedTab);
+    }
+  }, [requestedTab]);
 
   useEffect(() => {
     let cancelled = false;

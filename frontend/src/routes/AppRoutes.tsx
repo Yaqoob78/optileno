@@ -23,6 +23,7 @@ const RefundPolicy = lazy(() => import("../pages/Legal/RefundPolicy"));
 const CookiesPolicy = lazy(() => import("../pages/Legal/CookiesPolicy"));
 
 import { FullScreenLoader } from '../components/common/loader/Loader';
+import NotFound from '../components/common/NotFound';
 
 function RouteLoader() {
   return <FullScreenLoader size={88} />;
@@ -65,16 +66,11 @@ export default function AppRoutes() {
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/planner" element={<Planner />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/settings/:tab" element={<Settings />} />
         </Route>
 
         {/* Error / Catch-all */}
-        <Route path="*" element={
-          <div style={{ padding: '2rem', color: 'white', background: '#020617', minHeight: '100vh' }}>
-            <h2>404 - Page Not Found</h2>
-            <p>Current path: {window.location.pathname}</p>
-            <a href="/" style={{ color: '#3b82f6' }}>Go back to Landing Page</a>
-          </div>
-        } />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
   );

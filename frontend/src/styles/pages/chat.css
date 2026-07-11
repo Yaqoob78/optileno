@@ -13,6 +13,23 @@
     );
 }
 
+.chat-container.chat-focus-mode {
+  min-height: calc(100dvh - 4.5rem);
+}
+
+.chat-focus-mode .chat-tabs-container {
+  display: none;
+}
+
+.chat-focus-mode .chat-thread-shell,
+.chat-focus-mode .chat-input-inner {
+  width: min(100%, 60rem);
+}
+
+.chat-focus-mode .chat-messages-area {
+  padding-top: 2rem;
+}
+
 .chat-messages-area {
   flex: 1;
   overflow-y: auto;

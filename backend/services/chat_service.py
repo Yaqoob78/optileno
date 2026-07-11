@@ -13,7 +13,7 @@ class ChatService:
     Chat persistence service.
     """
 
-    async def get_history(self, session_id: str) -> List[Dict[str, str]]:
+    async def get_history(self, user_id: int, session_id: str) -> List[Dict[str, str]]:
         """Retrieve chat history for context."""
         history = []
         if not session_id:
@@ -21,7 +21,12 @@ class ChatService:
 
         async for db in get_db():
             # Find session
-            result = await db.execute(select(ChatSession).where(ChatSession.session_id == session_id))
+            result = await db.execute(
+                select(ChatSession).where(
+                    ChatSession.session_id == session_id,
+                    ChatSession.user_id == user_id,
+                )
+            )
             session = result.scalar_one_or_none()
             
             if session:
@@ -46,7 +51,12 @@ class ChatService:
 
         async for db in get_db():
             # 1. Get or Create Session
-            result = await db.execute(select(ChatSession).where(ChatSession.session_id == session_id))
+            result = await db.execute(
+                select(ChatSession).where(
+                    ChatSession.session_id == session_id,
+                    ChatSession.user_id == user_id,
+                )
+            )
             session = result.scalar_one_or_none()
             
             if not session:

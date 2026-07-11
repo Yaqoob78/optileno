@@ -43,6 +43,7 @@ async def send_message(
     Send a message to the AI.
     """
     user_id = str(user.id)
+    session_id = payload.session_id or None
     
     try:
         # 1. Init Client (Per request for user context)
@@ -50,9 +51,9 @@ async def send_message(
         
         # 2. Get history (if not provided or if we want server-side history)
         history = payload.history or []
-        if not history and payload.session_id:
+        if not history and session_id:
             try:
-                history = await chat_service.get_history(payload.session_id)
+                history = await chat_service.get_history(int(user_id), session_id)
             except Exception as e:
                 logger.warning(f"Failed to get history: {e}")
                 history = []
@@ -62,15 +63,15 @@ async def send_message(
             message=payload.message,
             mode=payload.mode,
             history=history,
-            session_id=payload.session_id
+            session_id=session_id
         )
         
         # 4. Save to DB (non-blocking)
-        if payload.session_id:
+        if session_id:
             try:
                 await chat_service.save_interaction(
                     user_id=int(user_id),
-                    session_id=payload.session_id,
+                    session_id=session_id,
                     user_msg=payload.message,
                     ai_msg=response["message"]
                 )
@@ -80,7 +81,7 @@ async def send_message(
         # 5. Broadcast comprehensive message update to connected clients (single event)
         try:
             await broadcast_message_received(int(user_id), {
-                "session_id": payload.session_id,
+                "session_id": session_id,
                 "user_message": payload.message,
                 "ai_response": response["message"],
                 "intent": response.get("intent", "CHAT"),
@@ -114,6 +115,7 @@ async def send_message(
         except Exception as e:
             logger.warning(f"Analytics logging failed: {e}")
 
+        response["session_id"] = session_id
         return response
 
     except Exception as e:
@@ -128,7 +130,7 @@ async def send_message(
             intent="CHAT",
             actions=[],
             pending_confirmations=[],
-            session_id=payload.session_id,
+            session_id=session_id,
             ui={},
             data={},
             provider=None,

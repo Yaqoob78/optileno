@@ -1,25 +1,76 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { User, Mail, Zap, Edit2, Save, X } from 'lucide-react';
+import { userService } from '../../services/api/user.service';
 import { useUserStore } from '../../stores/useUserStore';
 
 const ProfileSettings: React.FC = () => {
-  const { profile, updateProfile, isUltra } = useUserStore();
+  const { profile, setProfile, isUltra } = useUserStore();
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: profile.name || '',
     email: profile.email || '',
   });
 
-  const planName = isUltra ? 'Ultra' : 'Explorer';
-  const joinedDate = profile?.stats?.joinedAt
-    ? new Date(profile.stats.joinedAt).toLocaleDateString()
-    : '—';
+  useEffect(() => {
+    if (!isEditing) {
+      setFormData({ name: profile.name || '', email: profile.email || '' });
+    }
+  }, [isEditing, profile.email, profile.name]);
 
-  const handleSave = () => {
-    updateProfile({
-      name: formData.name,
-      email: formData.email,
-    });
+  const planName = isUltra ? 'Ultra' : 'Explorer';
+  const joinedDate = profile.stats?.joinedAt
+    ? new Date(profile.stats.joinedAt).toLocaleDateString()
+    : '--';
+
+  const membershipStatus = useMemo(() => {
+    const accountStatus = profile.metadata?.accountStatus;
+    const subscriptionStatus = String(
+      (profile.subscription as { status?: string })?.status || '',
+    ).toLowerCase();
+
+    if (accountStatus === 'suspended') return { label: 'Suspended', tone: 'negative' };
+    if (subscriptionStatus === 'active') return { label: 'Active', tone: 'positive' };
+    if (subscriptionStatus === 'trialing') return { label: 'Trial', tone: 'positive' };
+    if (subscriptionStatus === 'past_due') return { label: 'Past due', tone: 'negative' };
+    if (subscriptionStatus === 'cancelled' || subscriptionStatus === 'canceled') {
+      return { label: 'Cancelled', tone: 'negative' };
+    }
+
+    return { label: planName, tone: 'neutral' };
+  }, [planName, profile.metadata?.accountStatus, profile.subscription]);
+
+  const handleSave = async () => {
+    const name = formData.name.trim();
+    const email = formData.email.trim();
+
+    if (!name || !email) {
+      setSaveError('Enter a name and email address before saving.');
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveError(null);
+
+    try {
+      const response = await userService.updateProfile({ name, email });
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || 'Unable to save profile changes.');
+      }
+
+      setProfile(response.data as any);
+      setIsEditing(false);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Unable to save profile changes.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setFormData({ name: profile.name || '', email: profile.email || '' });
+    setSaveError(null);
     setIsEditing(false);
   };
 
@@ -36,8 +87,10 @@ const ProfileSettings: React.FC = () => {
           </div>
         </div>
         <button
-          onClick={() => setIsEditing(!isEditing)}
+          type="button"
+          onClick={isEditing ? handleCancel : () => setIsEditing(true)}
           className="profile-edit-btn"
+          disabled={isSaving}
         >
           {isEditing ? (
             <>
@@ -58,30 +111,37 @@ const ProfileSettings: React.FC = () => {
           <div className="profile-edit-card">
             <div className="profile-form">
               <div className="profile-form-group">
-                <label>Full Name</label>
+                <label htmlFor="profile-name">Full Name</label>
                 <input
+                  id="profile-name"
                   type="text"
                   placeholder="Full Name"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(event) => setFormData({ ...formData, name: event.target.value })}
+                  disabled={isSaving}
                 />
               </div>
               <div className="profile-form-group">
-                <label>Email Address</label>
+                <label htmlFor="profile-email">Email Address</label>
                 <input
+                  id="profile-email"
                   type="email"
                   placeholder="Email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={(event) => setFormData({ ...formData, email: event.target.value })}
+                  disabled={isSaving}
                 />
               </div>
               <button
-                onClick={handleSave}
+                type="button"
+                onClick={() => void handleSave()}
                 className="btn-primary profile-save-btn"
+                disabled={isSaving}
               >
                 <Save size={18} />
-                Save Changes
+                {isSaving ? 'Saving...' : 'Save Changes'}
               </button>
+              {saveError && <p className="profile-save-error" role="alert">{saveError}</p>}
             </div>
           </div>
         ) : (
@@ -89,7 +149,7 @@ const ProfileSettings: React.FC = () => {
             <div className="profile-info-grid">
               <div className="profile-card">
                 <p className="profile-label">Full Name</p>
-                <p className="profile-value">{profile.name || '—'}</p>
+                <p className="profile-value">{profile.name || '--'}</p>
               </div>
 
               <div className="profile-card">
@@ -112,7 +172,9 @@ const ProfileSettings: React.FC = () => {
                 </div>
               </div>
               <div className="membership-right">
-                <div className="membership-badge">Active</div>
+                <div className={`membership-badge membership-badge-${membershipStatus.tone}`}>
+                  {membershipStatus.label}
+                </div>
                 <p className="membership-date">Joined {joinedDate}</p>
               </div>
             </div>

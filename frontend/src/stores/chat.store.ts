@@ -30,6 +30,7 @@ interface Conversation {
     wordCount?: number;
     duration?: number;
     category?: string;
+    sessionId?: string;
   };
 }
 
@@ -387,14 +388,14 @@ export const useChatStore = create<ChatState>()(
             });
 
           const shouldRetitle =
-            baseConversation.messages.length === 0 &&
+            !baseConversation.messages.some((message) => message.role === "user") &&
             newMessage.role === "user" &&
             (!baseConversation.title || baseConversation.title.startsWith("Conversation "));
 
           const updatedConversation = normalizeConversation({
             ...baseConversation,
             title: shouldRetitle
-              ? newMessage.content.trim().slice(0, 48) || "New Chat"
+              ? newMessage.content.replace(/\s+/g, " ").trim().slice(0, 48) || "New Chat"
               : baseConversation.title,
             messages: [...baseConversation.messages, newMessage],
             updatedAt: newMessage.timestamp,

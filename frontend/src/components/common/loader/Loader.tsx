@@ -15,7 +15,8 @@ export function FullScreenLoader({ text, size = 80 }: FullScreenLoaderProps) {
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: 'rgba(5, 11, 17, 0.85)',
+            backgroundColor: 'rgb(var(--color-bg-primary))',
+            color: 'rgb(var(--color-text-primary))',
             backdropFilter: 'blur(10px)',
             zIndex: 9999
         }}>
@@ -25,9 +26,7 @@ export function FullScreenLoader({ text, size = 80 }: FullScreenLoaderProps) {
                     marginTop: '1.5rem',
                     fontSize: '1.1rem',
                     fontWeight: 500,
-                    background: 'linear-gradient(135deg, #60a5fa, #fbbf24)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
+                    color: 'rgb(var(--color-text-secondary))',
                     letterSpacing: '0.05em'
                 }}>
                     {text}

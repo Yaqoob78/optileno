@@ -10,6 +10,7 @@ export interface Subscription {
   tier: SubscriptionTier;
   expiresAt: Date | null;
   features: string[];
+  status?: string;
   paymentMethod?: {
     type: 'card' | 'paypal' | 'other';
     lastFour?: string;
@@ -58,6 +59,7 @@ export interface UserProfile {
     timezone?: string;
     language?: string;
   };
+  preferences?: Partial<UserPreferences>;
 }
 
 // Preferences types

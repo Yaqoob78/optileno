@@ -1,5 +1,0 @@
-Starting truncate test 50
-Truncated type: <class 'bytes'>
-Truncated length: 50
-Hash created successfully: $2b$12$BgQfZDrs.BpRJkp.QFqHrOD0CpaqyH.3P3UF8OhwAkQxHAI1YEOb.
-Verify result: True

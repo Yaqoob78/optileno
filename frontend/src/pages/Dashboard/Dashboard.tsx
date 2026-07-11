@@ -1,13 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Sparkles,
   Zap,
   Brain,
   Target,
-  Calendar,
+  Activity,
   Clock,
   TrendingUp,
-  Users,
   MessageSquare,
   CheckCircle,
   Award,
@@ -24,7 +23,6 @@ import { useProductivityScore } from '../../hooks/useProductivityScore';
 
 import { useUser } from '../../hooks/useUser';
 import { useTheme } from '../../hooks/useTheme';
-import { useRealtime } from '../../hooks/useRealtime';
 import { useUserStore } from '../../stores/useUserStore';
 import { userService } from '../../services/api/user.service';
 import { useChatStore } from '../../stores/chat.store';
@@ -36,6 +34,12 @@ import SEO from '../../components/common/SEO';
 import RecentActivityWidget from '../../components/dashboard/RecentActivityWidget';
 import '../../styles/pages/dashboard.css';
 
+interface AchievementBadge {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -46,7 +50,8 @@ export default function Dashboard() {
   const [paymentErrorMessage, setPaymentErrorMessage] = useState<string | null>(null);
 
   const { user, isPremium } = useUser();
-  const { getFocusMetrics, getRecentInsights } = useAnalytics();
+  // Retained for its side effects: page-view tracking and periodic backend sync
+  useAnalytics();
 
   // Use Global Stores for Real-Time Sync
   const plannerTasks = usePlannerStore((state) => state.tasks);
@@ -55,6 +60,7 @@ export default function Dashboard() {
   const setActiveConversation = useChatStore((state) => state.setActiveConversation);
   const toggleKeepConversation = useChatStore((state) => state.toggleKeepConversation);
   const userStats = useUserStore((state) => state.profile.stats);
+  const accountAge = useUserStore((state) => state.accountAge);
 
   // Determine Productivity Score using the same hook as Analytics page for consistency
   const { score: productivityData } = useProductivityScore('daily');
@@ -70,14 +76,36 @@ export default function Dashboard() {
     .filter((conversation) => conversation.isKept && conversation.id !== activeConversation?.id)
     .slice(0, 3);
 
+  // Honest usage average: total minutes spread over the account's lifetime
+  const daysActive = Math.max(1, (accountAge ?? 0) + 1);
+  const avgMinutesPerDay = Math.round((userStats.totalTimeSpent || 0) / daysActive);
+
+  // Achievements earned from real usage data only
+  const achievements = useMemo<AchievementBadge[]>(() => {
+    const earned: AchievementBadge[] = [];
+    if (completedTasks >= 1) {
+      earned.push({ id: 'first-task', label: 'Task Finisher', icon: <CheckCircle size={16} /> });
+    }
+    if (completedTasks >= 10) {
+      earned.push({ id: 'task-ninja', label: 'Task Ninja', icon: <Zap size={16} /> });
+    }
+    if ((userStats.timeSpentToday || 0) >= 60) {
+      earned.push({ id: 'deep-focus', label: 'Deep Focus', icon: <Brain size={16} /> });
+    }
+    if (productivityScoreValue >= 70) {
+      earned.push({ id: 'peak-performer', label: 'Peak Performer', icon: <TrendingUp size={16} /> });
+    }
+    if ((accountAge ?? 0) >= 7) {
+      earned.push({ id: 'week-strong', label: 'One Week Strong', icon: <Sun size={16} /> });
+    }
+    return earned;
+  }, [completedTasks, userStats.timeSpentToday, productivityScoreValue, accountAge]);
+  const visibleAchievements = achievements.slice(0, 4);
+  const extraAchievements = achievements.length - visibleAchievements.length;
+
   // Action to fetch analytics if stale
   const fetchAnalytics = useAnalyticsStore((state) => state.fetchAnalytics);
-
-  // Real-time integration
-  const { onTaskCreated, onDeepWorkCompleted, onAnalyticsUpdate } = useRealtime();
-
-  const metrics = getFocusMetrics();
-  const insights = getRecentInsights(2);
+  const fetchTasks = usePlannerStore((state) => state.fetchTasks);
 
   const quotes = [
     { text: "Productivity is never an accident. It is always the result of a commitment to excellence.", author: "Paul J. Meyer" },
@@ -101,10 +129,14 @@ export default function Dashboard() {
     };
   }, []);
 
-  // Fetch fresh analytics data on mount
+  // Fetch fresh analytics and planner data on mount so stats are
+  // accurate even on a fresh device where the persisted stores are empty
   useEffect(() => {
     fetchAnalytics();
-  }, [fetchAnalytics]);
+    fetchTasks().catch((error) => {
+      console.error('Failed to refresh planner tasks', error);
+    });
+  }, [fetchAnalytics, fetchTasks]);
 
   useEffect(() => {
     // Check for payment success
@@ -113,15 +145,19 @@ export default function Dashboard() {
     const orderId = params.get('order_id');
     const subscriptionId = params.get('subscription_id');
 
-    if (paymentStatus === 'success' && (orderId || subscriptionId)) {
+    if (paymentStatus === 'success') {
       const verifyAndRefresh = async () => {
         try {
-          // Verify payment on backend to ensure DB is updated
-          const { paymentService } = await import('../../services/api/payment.service');
-          if (subscriptionId) {
-            await paymentService.verifySubscription(subscriptionId);
-          } else if (orderId) {
-            await paymentService.verifyPayment(orderId);
+          // Verify payment on backend to ensure DB is updated.
+          // Never show a confirmation banner without server-side verification.
+          if (orderId || subscriptionId) {
+            const { paymentService } = await import('../../services/api/payment.service');
+            if (subscriptionId) {
+              await paymentService.verifySubscription(subscriptionId);
+            } else if (orderId) {
+              await paymentService.verifyPayment(orderId);
+            }
+            setShowSuccessModal(true);
           }
 
           // Refresh user profile so ProtectedRoute updates subscription_status
@@ -129,8 +165,6 @@ export default function Dashboard() {
           if (profileRes.success && profileRes.data) {
             useUserStore.getState().setProfile(profileRes.data as any);
           }
-
-          setShowSuccessModal(true);
         } catch (error) {
           console.error("Payment verification failed", error);
           setPaymentErrorMessage("We could not confirm your payment yet. Please refresh in a moment or contact support if it continues.");
@@ -141,39 +175,8 @@ export default function Dashboard() {
       };
 
       verifyAndRefresh();
-    } else if (paymentStatus === 'success') {
-      // Legacy fallback or if order_id missing
-      setShowSuccessModal(true);
-      navigate('/dashboard', { replace: true });
     }
   }, [location, navigate]);
-
-  // Subscribe to real-time events
-  useEffect(() => {
-    const unsubscribeTaskCreated = onTaskCreated(() => {
-      // Task created, component will update via context
-    });
-
-    const unsubscribeDeepWorkCompleted = onDeepWorkCompleted(() => {
-      // Deep work completed, component will update
-    });
-
-    const unsubscribeAnalyticsUpdate = onAnalyticsUpdate(() => {
-      // Analytics updated, refresh metrics display
-    });
-
-    return () => {
-      unsubscribeTaskCreated?.();
-      unsubscribeDeepWorkCompleted?.();
-      unsubscribeAnalyticsUpdate?.();
-    };
-  }, [onTaskCreated, onDeepWorkCompleted, onAnalyticsUpdate]);
-
-  const formatTime = (minutes: number) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
-  };
 
   const getChatPreview = (content?: string) => {
     if (!content?.trim()) return 'Start typing...';
@@ -198,7 +201,7 @@ export default function Dashboard() {
         {showSuccessModal && (
           <div className="dashboard-status-banner is-success">
             <div className="flex items-center gap-4">
-              <div className="w-10 height-10 rounded-full bg-primary flex items-center justify-center text-white">
+              <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white">
                 <Award size={20} />
               </div>
               <div>
@@ -206,8 +209,8 @@ export default function Dashboard() {
                 <p className="text-secondary text-sm">Your subscription is now active.</p>
               </div>
             </div>
-            <button onClick={() => setShowSuccessModal(false)} className="text-muted hover:text-main">
-              <CheckCircle size={20} />
+            <button onClick={() => setShowSuccessModal(false)} className="text-muted hover:text-main" aria-label="Dismiss payment confirmation">
+              <X size={20} />
             </button>
           </div>
         )}
@@ -247,7 +250,11 @@ export default function Dashboard() {
             </div>
 
             <div className="theme-toggle-container">
-              <button className="theme-toggle-btn" onClick={toggleTheme}>
+              <button
+                className="theme-toggle-btn"
+                onClick={toggleTheme}
+                aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+              >
                 {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
               </button>
             </div>
@@ -307,9 +314,9 @@ export default function Dashboard() {
                 <span className="metric-label">Time Invested</span>
               </div>
               <div className="metric-value">{userStats.timeSpentToday || 0}m today</div>
-              <div className="metric-trend trend-up">
-                <TrendingUp size={14} />
-                <span>+{Math.floor((userStats.totalTimeSpent || 0) / 7)}m/week avg</span>
+              <div className="metric-trend">
+                <Clock size={14} />
+                <span>{avgMinutesPerDay}m/day average</span>
               </div>
             </div>
 
@@ -332,7 +339,7 @@ export default function Dashboard() {
               </div>
               <div className="metric-value">{productivityScore === null ? '--' : `${Math.round(productivityScore)}%`}</div>
               <div className="progress-ring">
-                <svg width="60" height="60" viewBox="0 0 60 60">
+                <svg width="60" height="60" viewBox="0 0 60 60" role="img" aria-label={productivityScore === null ? 'Productivity score not available yet' : `Productivity score ${Math.round(productivityScore)} percent`}>
                   <circle className="progress-ring-background" cx="30" cy="30" r="26" />
                   <circle
                     className="progress-ring-foreground"
@@ -346,83 +353,67 @@ export default function Dashboard() {
             </div>
 
             {/* KEEP MODE: Saved Chat Box */}
-            <div
-              className="analytics-metric saved-chat-metric"
-              style={{
-                background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1))',
-                border: '1px solid rgba(139, 92, 246, 0.2)',
-                cursor: 'default' // Container itself isn't the link anymore
-              }}
-            >
-              <div className="metric-header" style={{ marginBottom: '10px' }}>
-                <MessageSquare className="metric-icon" size={20} style={{ color: '#a78bfa' }} />
-                <span className="metric-label" style={{ color: '#d8b4fe' }}>Saved Chats (Keep Mode)</span>
+            <div className="analytics-metric saved-chat-metric">
+              <div className="metric-header">
+                <MessageSquare className="metric-icon" size={20} />
+                <span className="metric-label">Saved Chats (Keep Mode)</span>
               </div>
 
-              <div className="saved-chats-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '120px', overflowY: 'auto' }}>
+              <div className="saved-chats-list">
                 {activeConversation?.isKept && (
-                  // Show current active one first if kept
-                  <div
+                  <button
                     key="active"
+                    type="button"
                     onClick={() => navigate('/chat')}
                     className="saved-chat-item active"
-                    style={{
-                      padding: '8px',
-                      background: 'rgba(59, 130, 246, 0.2)',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      border: '1px solid rgba(59, 130, 246, 0.4)',
-                      animation: 'pulse-soft 2s infinite'
-                    }}
                   >
-                    <div className="chat-title" style={{ fontSize: '0.9rem', fontWeight: 600, color: '#fff' }}>Current Session</div>
-                    <div className="chat-preview" style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div className="chat-title">Current Session</div>
+                    <div className="chat-preview">
                       {getChatPreview(activeConversation.messages[activeConversation.messages.length - 1]?.content)}
                     </div>
-                  </div>
+                  </button>
                 )}
 
                 {keptConversations.map(chat => (
                   <div
                     key={chat.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => {
                       setActiveConversation(chat.id);
                       navigate('/chat');
                     }}
-                    className="saved-chat-item group"
-                    style={{
-                      padding: '8px',
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      transition: 'background 0.2s',
-                      position: 'relative'
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setActiveConversation(chat.id);
+                        navigate('/chat');
+                      }
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                    className="saved-chat-item"
                   >
-                    <div className="flex justify-between items-start">
-                      <div className="chat-title" style={{ fontSize: '0.85rem', fontWeight: 500, color: '#e2e8f0', maxWidth: '85%' }}>{chat.title || "Untitled Chat"}</div>
+                    <div className="saved-chat-row">
+                      <div className="chat-title">{chat.title || "Untitled Chat"}</div>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           toggleKeepConversation(chat.id);
                         }}
-                        className="text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                        style={{ padding: '2px' }}
+                        className="saved-chat-remove"
+                        aria-label={`Remove "${chat.title || 'Untitled Chat'}" from saved chats`}
                       >
                         <X size={14} />
                       </button>
                     </div>
-                    <div className="chat-preview" style={{ fontSize: '0.75rem', color: '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: '10px' }}>
+                    <div className="chat-preview">
                       {getChatPreview(chat.messages[chat.messages.length - 1]?.content)}
                     </div>
                   </div>
                 ))}
 
                 {!activeConversation?.isKept && keptConversations.length === 0 && (
-                  <div style={{ textAlign: 'center', padding: '10px', color: '#94a3b8', fontSize: '0.85rem' }}>
-                    No chats saved yet. <br /> Use toggle in Chat.
+                  <div className="saved-chats-empty">
+                    No chats saved yet. <br /> Use the keep toggle in Chat.
                   </div>
                 )}
               </div>
@@ -433,95 +424,37 @@ export default function Dashboard() {
                 <Award className="metric-icon" size={20} />
                 <span className="metric-label">Achievements</span>
               </div>
-              <div className="achievements-preview">
-                <div className="achievement-badge" data-tooltip="Focus Master"><Target size={16} /></div>
-                <div className="achievement-badge" data-tooltip="Early Bird"><Sun size={16} /></div>
-                <div className="achievement-badge" data-tooltip="Task Ninja"><Zap size={16} /></div>
-                <div className="achievement-count">+3 more</div>
-              </div>
+              {achievements.length > 0 ? (
+                <div className="achievements-preview">
+                  {visibleAchievements.map((badge) => (
+                    <div key={badge.id} className="achievement-badge" data-tooltip={badge.label}>
+                      {badge.icon}
+                    </div>
+                  ))}
+                  {extraAchievements > 0 && (
+                    <div className="achievement-count">+{extraAchievements} more</div>
+                  )}
+                </div>
+              ) : (
+                <div className="achievements-empty">
+                  Complete tasks and focus sessions to earn your first badge.
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Community Activity Section */}
+        {/* Recent Activity Section */}
         <div className="community-section glass-card">
           <div className="section-header">
             <div className="section-title">
-              <Users className="section-title-icon" />
-              <span>Optileno Activity</span>
+              <Activity className="section-title-icon" />
+              <span>Your Activity</span>
             </div>
-            <div className="section-subtitle">Real-time community updates</div>
+            <div className="section-subtitle">What you've accomplished recently</div>
           </div>
 
-          <div className="activity-feed">
-            <div className="activity-item">
-              <div className="activity-icon">
-                <Sparkles size={16} />
-              </div>
-              <div className="activity-content">
-                <div className="activity-text">
-                  <span className="user-mention">@Sarah Chen</span> just completed a 3-hour deep work session
-                </div>
-                <div className="activity-time">2 minutes ago</div>
-              </div>
-            </div>
-
-            <div className="activity-item">
-              <div className="activity-icon">
-                <Calendar size={16} />
-              </div>
-              <div className="activity-content">
-                <div className="activity-text">
-                  <span className="user-mention">@Alex Morgan</span> has planned their entire week using AI
-                </div>
-                <div className="activity-time">15 minutes ago</div>
-              </div>
-            </div>
-
-            <div className="activity-item">
-              <div className="activity-icon">
-                <Brain size={16} />
-              </div>
-              <div className="activity-content">
-                <div className="activity-text">
-                  <span className="user-mention">@James Wilson</span> improved productivity by 40% this month
-                </div>
-                <div className="activity-time">1 hour ago</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="testimonial-grid">
-            <div className="testimonial-card">
-              <div className="testimonial-icon"><Target size={24} /></div>
-              <div className="testimonial-text">
-                "The Deep Work Blocks transformed my focus. Unmatched efficiency!"
-              </div>
-              <div className="testimonial-author">
-                — <span className="author-name">Marcus R.</span>, Software Engineer
-              </div>
-            </div>
-
-            <div className="testimonial-card">
-              <div className="testimonial-icon"><BarChart3 size={24} /></div>
-              <div className="testimonial-text">
-                "Analytics gave me insights I didn't know I needed. Game changer!"
-              </div>
-              <div className="testimonial-author">
-                — <span className="author-name">Lisa M.</span>, Project Manager
-              </div>
-            </div>
-
-            <div className="testimonial-card">
-              <div className="testimonial-icon"><Sparkles size={24} /></div>
-              <div className="testimonial-text">
-                "Mood tracking + AI suggestions = Best work-life balance ever"
-              </div>
-              <div className="testimonial-author">
-                — <span className="author-name">David K.</span>, Entrepreneur
-              </div>
-            </div>
-          </div>
+          <RecentActivityWidget />
         </div>
 
         {/* Quick Actions */}

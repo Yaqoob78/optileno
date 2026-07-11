@@ -9,6 +9,7 @@ interface ChatInputProps {
   onInputChange: (value: string) => void;
   onSend: (message: string) => void;
   onFocusMode: () => void;
+  focusModeActive?: boolean;
   disabled?: boolean;
 }
 
@@ -17,6 +18,7 @@ export default function ChatInput({
   onInputChange, 
   onSend, 
   onFocusMode,
+  focusModeActive = false,
   disabled = false,
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -53,12 +55,12 @@ export default function ChatInput({
             disabled={disabled}
           />
           <div className="chat-input-actions">
-            {/* Focus Button */}
             <button
               onClick={onFocusMode}
-              className="focus-button"
-              aria-label="Focus mode"
-              title="Focus mode"
+              className={`focus-button ${focusModeActive ? 'focus-button-active' : ''}`}
+              aria-label={focusModeActive ? 'Exit focus mode' : 'Enter focus mode'}
+              aria-pressed={focusModeActive}
+              title={focusModeActive ? 'Exit distraction-free focus mode' : 'Enter distraction-free focus mode'}
               disabled={disabled}
             >
               <Focus size={18} />

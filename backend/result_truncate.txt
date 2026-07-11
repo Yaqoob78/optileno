@@ -1,6 +1,0 @@
-Starting truncate test
-Truncated type: <class 'bytes'>
-Truncated length: 72
-Hash created successfully with truncated input: $2b$12$fw50pZlt7FDzI21iEXdm9e81Vze3jlG69tTAUzo9jwFjhgkU6iejS
-Verification result with truncated input: True
-Verification result with fix logic: True

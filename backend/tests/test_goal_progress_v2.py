@@ -229,7 +229,7 @@ class TestUltraGatingV2:
             assert result.confidence_state == "calibrating"
             assert result.composite_score == 0.0
 
-        asyncio.get_event_loop().run_until_complete(_run())
+        asyncio.run(_run())
 
     def test_api_gate_blocks_explorer(self):
         from backend.services.entitlements_service import require_ultra_feature

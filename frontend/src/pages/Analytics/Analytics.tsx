@@ -13,18 +13,11 @@ import {
   TrendingUp,
   Brain,
   Activity,
-  BarChart3,
   Target,
   Zap,
   Clock,
   TrendingDown,
-  ChevronRight,
-  Download,
   RefreshCw,
-  Info,
-  Shield,
-  Cpu,
-  ArrowUpRight,
   AlertTriangle,
   Calendar,
   Fingerprint
@@ -346,7 +339,7 @@ export default function AnalyticsPage() {
   const hasAnyMetricData =
     displayProductivityScore !== null ||
     currentFocusScore !== null ||
-    (!isUltra || burnoutRiskValue !== null);
+    (isUltra && burnoutRiskValue !== null);
   const dataIntegrityLabel = isAnyMetricLoading
     ? 'Syncing'
     : hasAnyMetricData
@@ -430,13 +423,14 @@ export default function AnalyticsPage() {
               </div>
 
               <div className="nav-actions">
-                <button className={`nav-action-btn ${loading ? 'loading' : ''}`} onClick={handleRefresh} title="Refresh Analytics" disabled={loading}>
+                <button className={`nav-action-btn ${loading ? 'loading' : ''}`} onClick={handleRefresh} title="Refresh Analytics" aria-label="Refresh analytics" disabled={loading}>
                   <RefreshCw size={18} className={loading ? 'spinning' : ''} />
                 </button>
                 <button
                   className="nav-action-btn"
                   onClick={() => setTheme(isDarkMode ? 'light' : 'dark')}
                   title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                  aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
                 >
                   {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
                 </button>

@@ -18,6 +18,34 @@ const normalizeTimezone = (timezone?: string): string => {
   }
 };
 
+let systemThemeMediaQuery: MediaQueryList | null = null;
+let systemThemeListener: ((event: MediaQueryListEvent) => void) | null = null;
+
+const resolveTheme = (theme: SettingsState['theme']) => {
+  if (theme !== 'auto' || typeof window === 'undefined') return theme;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+};
+
+const applyTheme = (theme: SettingsState['theme']) => {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return;
+
+  if (systemThemeMediaQuery && systemThemeListener) {
+    systemThemeMediaQuery.removeEventListener('change', systemThemeListener);
+  }
+  systemThemeMediaQuery = null;
+  systemThemeListener = null;
+
+  document.documentElement.setAttribute('data-theme', resolveTheme(theme));
+
+  if (theme === 'auto') {
+    systemThemeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    systemThemeListener = (event) => {
+      document.documentElement.setAttribute('data-theme', event.matches ? 'dark' : 'light');
+    };
+    systemThemeMediaQuery.addEventListener('change', systemThemeListener);
+  }
+};
+
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set, get) => ({
@@ -52,27 +80,8 @@ export const useSettingsStore = create<SettingsState>()(
 
       // Actions - Theme & Language
       setTheme: (theme) => {
-        // Update store state
         set({ theme });
-
-        // Apply theme to HTML immediately
-        const appliedTheme = theme === 'auto'
-          ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-          : theme;
-
-        document.documentElement.setAttribute('data-theme', appliedTheme);
-
-        // Setup system theme listener for auto mode
-        if (theme === 'auto') {
-          const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-          const handleSystemThemeChange = (e: MediaQueryListEvent) => {
-            document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
-          };
-
-          // Remove previous listener and add new one
-          mediaQuery.removeEventListener('change', handleSystemThemeChange);
-          mediaQuery.addEventListener('change', handleSystemThemeChange);
-        }
+        applyTheme(theme);
       },
 
       setLanguage: (language) => set({ language }),
@@ -251,8 +260,7 @@ export const useSettingsStore = create<SettingsState>()(
 
       // Reset & Defaults
       resetToDefaults: () => {
-        // Apply default theme to HTML
-        document.documentElement.setAttribute('data-theme', 'dark');
+        applyTheme('dark');
 
         set({
           theme: 'dark',
@@ -281,7 +289,7 @@ export const useSettingsStore = create<SettingsState>()(
 
         if (section in defaults) {
           if (section === 'theme') {
-            document.documentElement.setAttribute('data-theme', defaults[section]);
+            applyTheme(defaults[section]);
           }
           set({ [section]: defaults[section] });
         }
@@ -298,12 +306,8 @@ export const useSettingsStore = create<SettingsState>()(
       },
 
       importSettings: (settings) => {
-        // Apply theme if imported
         if (settings.theme !== undefined) {
-          const appliedTheme = settings.theme === 'auto'
-            ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-            : settings.theme;
-          document.documentElement.setAttribute('data-theme', appliedTheme);
+          applyTheme(settings.theme);
         }
 
         set({
@@ -317,6 +321,7 @@ export const useSettingsStore = create<SettingsState>()(
       storage: createJSONStorage(() => localStorage),
       onRehydrateStorage: () => (state) => {
         if (!state) return;
+        applyTheme(state.theme);
         const normalized = normalizeTimezone(state.timezone);
         if (normalized !== state.timezone) {
           state.setTimezone(normalized);

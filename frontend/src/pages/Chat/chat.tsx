@@ -91,8 +91,8 @@ export default function Chat() {
   );
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [userHasTyped, setUserHasTyped] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [isFocusMode, setIsFocusMode] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const suggestionTimerRef = useRef<number | null>(null);
@@ -108,7 +108,6 @@ export default function Chat() {
   const startFreshConversation = useCallback(() => {
     clearSuggestionTimer();
     createConversation("New Chat");
-    setSessionId(null);
     setShowSuggestions(false);
     setUserHasTyped(false);
   }, [clearSuggestionTimer, createConversation]);
@@ -167,7 +166,6 @@ export default function Chat() {
       (message) => message.role === "user",
     );
     setUserHasTyped(hasUserMessages);
-    setSessionId(null);
 
     if (activeConversation.isKept) {
       setChatMode("KEEP");
@@ -311,12 +309,8 @@ export default function Chat() {
       userMessage,
       currentAiMode,
       conversationHistory,
-      sessionId,
+      activeConversation?.id ?? null,
     );
-
-    if (data.session_id && data.session_id !== sessionId) {
-      setSessionId(data.session_id);
-    }
 
     return {
       content: data.message || "I received your message.",
@@ -549,15 +543,13 @@ export default function Chat() {
     setToast({ message: "Clear flow enabled.", type: "success" });
   };
 
-  const handleFocusMode = () => {
-    setToast({ message: "Focus mode activated.", type: "info" });
-  };
+  const handleFocusMode = () => setIsFocusMode((active) => !active);
 
   const messages = activeConversation?.messages || [];
 
   return (
     <ErrorBoundary componentName="Chat">
-      <div className="chat-container">
+      <div className={`chat-container ${isFocusMode ? 'chat-focus-mode' : ''}`}>
         <ChatHeader
           activeTab={uiActiveTab}
           onTabChange={(tab) => {
@@ -636,6 +628,7 @@ export default function Chat() {
           onInputChange={handleInputChange}
           onSend={(message) => void handleSend(message)}
           onFocusMode={handleFocusMode}
+          focusModeActive={isFocusMode}
           disabled={isSending}
         />
       </div>

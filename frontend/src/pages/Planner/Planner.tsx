@@ -4,7 +4,6 @@ import { Calendar as CalendarIcon, Maximize2, Minimize2, Plus, Timer, CheckCircl
 
 import { useTheme } from '../../hooks/useTheme';
 import { usePlanner } from '../../hooks/usePlanner';
-import { useRealtime } from '../../hooks/useRealtime';
 import { useNavStatePreservation } from '../../hooks/useNavStatePreservation';
 import { useUserStore } from '../../stores/useUserStore';
 import { useSettingsStore } from '../../stores/useSettingsStore';
@@ -61,7 +60,6 @@ export default function PlannerPage() {
 
   const { theme } = useTheme();
   const isUltra = useUserStore((state) => state.isUltra);
-  const user = useUserStore((state) => state.profile);
   const timezone = useSettingsStore((state) => state.timezone);
 
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -82,17 +80,12 @@ export default function PlannerPage() {
     isLoading,
     error,
     fetchTasks,
-    fetchGoals,
-    fetchHabits,
     createTask,
     updateTask,
     startTask,
     deleteTask,
     forceRefresh
   } = usePlanner();
-
-  // ── Real-time integration ─────────────────────────────────────────
-  const { onTaskCreated, onTaskUpdated, onTaskDeleted } = useRealtime();
 
   // ── Edit modal state ──────────────────────────────────────────────
   const [isEditing, setIsEditing] = useState(false);
@@ -108,68 +101,6 @@ export default function PlannerPage() {
   const [recurrenceError, setRecurrenceError] = useState<string | null>(null);
 
   // ── Effects ───────────────────────────────────────────────────────
-  useEffect(() => {
-    fetchTasks();
-  }, [fetchTasks]);
-
-  // Real-time connection
-  useEffect(() => {
-    if (!user?.id) return;
-
-    // Only subscribe to events; don't refetch on every event
-    // Local state updates are already handled in the hooks
-    const unsubscribe1 = onTaskCreated((data) => {
-      // Backend broadcasts tasks, so we could insert it here if payload matches
-      if (data && typeof data === 'object') fetchTasks(); // Fallback to fetch for now
-    });
-
-    const unsubscribe2 = onTaskUpdated(() => {
-      fetchTasks();
-    });
-
-    const unsubscribe3 = onTaskDeleted(() => {
-      fetchTasks();
-    });
-
-    return () => {
-      unsubscribe1?.();
-      unsubscribe2?.();
-      unsubscribe3?.();
-    };
-  }, [user?.id, onTaskCreated, onTaskUpdated, onTaskDeleted, fetchTasks]);
-
-  // Separate effect for Goal/Habit listeners to avoid complex deps
-  const { onGoalCreated, onGoalUpdated, onGoalProgressChanged, onHabitCreated, onHabitCompleted } = useRealtime();
-
-  useEffect(() => {
-    if (!user?.id) return;
-
-    const unsub1 = onGoalCreated(() => {
-      fetchGoals();
-    });
-
-    const unsub2 = onGoalUpdated(() => fetchGoals());
-    const unsub3 = onGoalProgressChanged(() => fetchGoals());
-
-    // Add habit creation listener
-    const unsub4 = onHabitCreated(() => {
-      fetchHabits();
-    });
-
-    // Add habit completion listener
-    const unsub5 = onHabitCompleted(() => {
-      fetchHabits();
-    });
-
-    return () => {
-      unsub1();
-      unsub2();
-      unsub3();
-      unsub4();
-      unsub5();
-    }
-  }, [onGoalCreated, onGoalUpdated, onGoalProgressChanged, onHabitCreated, onHabitCompleted, fetchGoals, fetchHabits, user?.id]);
-
   useEffect(() => {
     const interval = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(interval);
@@ -280,8 +211,6 @@ export default function PlannerPage() {
       if (result.success) {
         setIsEditing(false);
         setEditForm(null);
-        // Refresh tasks list
-        await fetchTasks();
       } else {
         setSaveError(result.error || 'Failed to create task');
       }
@@ -421,11 +350,6 @@ export default function PlannerPage() {
       setIsNewTask(false);
       setEditForm(null);
 
-      // Refresh tasks with delay to ensure DB sync
-      setTimeout(() => {
-        fetchTasks();
-      }, 300);
-
     } catch (error: any) {
       console.error('Error saving task:', error);
       setSaveError(`Error saving task: ${error.message || 'Unknown error'}`);
@@ -511,7 +435,7 @@ export default function PlannerPage() {
           type: 'success',
           text: `Recurring ${type} schedule created for "${taskToRepeat.title}".`,
         });
-        fetchTasks();
+        await forceRefresh();
       } else {
         setRecurrenceError(result.error || 'Failed to apply recurrence.');
       }
@@ -1008,7 +932,7 @@ export default function PlannerPage() {
             ) : error ? (
               <div className="error-state">
                 <p>{error}</p>
-                <button onClick={() => fetchTasks()}>Try again</button>
+                <button onClick={() => void handleRefreshPlanner()}>Try again</button>
               </div>
             ) : tasks.length === 0 ? (
               <div className="empty-tasks">

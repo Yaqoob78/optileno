@@ -1,5 +1,0 @@
-Starting truncate test 50 str
-Truncated type: <class 'str'>
-Truncated length: 50
-Hash created successfully: $2b$12$ffeW1fu1X8IAE7ApLJFFfewLT7TPgawO9eM8W4By4gqp9I5.av4Vq
-Verify result: True

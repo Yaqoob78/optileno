@@ -41,7 +41,7 @@ export const LockedFeature: React.FC<LockedFeatureProps> = ({
                 </p>
 
                 <button
-                    onClick={() => navigate('/settings/billing')}
+                    onClick={() => navigate('/settings', { state: { tab: 'billing' } })}
                     className="group/btn relative flex items-center gap-2 bg-gradient-to-r from-blue-600/90 to-purple-600/90 px-5 py-2 rounded-full text-sm font-semibold text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 transition-all hover:scale-105 active:scale-95"
                 >
                     <Sparkles className="w-3.5 h-3.5" />
