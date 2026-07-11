@@ -3,9 +3,9 @@
 /* Theme Variables */
 .dashboard-container {
   /* Light Theme */
-  --bg-primary: #f5f8fc;
-  --bg-secondary: #fbfcff;
-  --bg-tertiary: #edf2f8;
+  --bg-primary: #e9eef6;
+  --bg-secondary: #f2f5fa;
+  --bg-tertiary: #dde5ef;
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --text-tertiary: #64748b;
@@ -30,7 +30,7 @@
   /* Gradients - Warm Shift */
   --gradient-primary: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
   --gradient-accent: linear-gradient(135deg, #f97316 0%, #fbbf24 100%);
-  --gradient-glass: linear-gradient(135deg, rgba(251, 253, 255, 0.95) 0%, rgba(243, 248, 253, 0.88) 100%);
+  --gradient-glass: linear-gradient(135deg, rgba(244, 247, 251, 0.95) 0%, rgba(233, 239, 247, 0.88) 100%);
 
   /* Shadows - Warm Glow */
   --shadow-subtle: 0 1px 3px 0 rgba(0, 0, 0, 0.05);

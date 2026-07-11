@@ -146,10 +146,10 @@ export function useMoodTracker(): UseMoodTrackerReturn {
         refresh();
     }, [refresh, isAuthenticated]);
 
-    // Real-time updates
+    // Real-time updates. Listeners are registered on the client's own emitter,
+    // so this works even before the socket finishes connecting.
     useEffect(() => {
         if (!isAuthenticated) return;
-        if (!realtimeClient.isConnected()) return;
 
         const handleUpdate = () => refresh();
 

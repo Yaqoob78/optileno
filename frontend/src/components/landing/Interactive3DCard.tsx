@@ -63,9 +63,18 @@ export const Interactive3DCard: React.FC<Interactive3DCardProps> = ({ fileName, 
             <div
                 className="screen-frame interactive-frame group cursor-pointer"
                 ref={inlineRef}
+                role="button"
+                tabIndex={0}
+                aria-label={`View ${title} full screen`}
                 onMouseMove={handleInlineMouseMove}
                 onMouseLeave={handleInlineMouseLeave}
                 onClick={() => setIsOpen(true)}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setIsOpen(true);
+                    }
+                }}
             >
                 {/* Glow overlay effect */}
                 <motion.div
@@ -74,10 +83,10 @@ export const Interactive3DCard: React.FC<Interactive3DCardProps> = ({ fileName, 
                 />
 
                 {/* Floating maximize icon */}
-                <div className="absolute inset-0 z-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded-lg">
-                    <div className="bg-[var(--bg-primary)] p-3 rounded-full shadow-2xl flex items-center gap-2">
-                        <Maximize2 size={24} className="text-[var(--brand-accent)]" />
-                        <span className="font-medium">View Full Screen</span>
+                <div className="absolute inset-0 z-20 flex items-center justify-center opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity bg-black/40 rounded-lg">
+                    <div className="bg-[#0b1420] p-3 rounded-full shadow-2xl flex items-center gap-2">
+                        <Maximize2 size={24} className="text-[#fbbf24]" />
+                        <span className="font-medium text-white">View Full Screen</span>
                     </div>
                 </div>
 
@@ -117,10 +126,18 @@ export const Interactive3DCard: React.FC<Interactive3DCardProps> = ({ fileName, 
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             className="fixed inset-0 z-[999999] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 sm:p-8"
+                            role="dialog"
+                            aria-modal="true"
+                            aria-label={`${title} full screen view`}
                             onClick={() => setIsOpen(false)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Escape') setIsOpen(false);
+                            }}
                         >
                             <button
                                 className="absolute top-6 right-6 z-[9999999] bg-white/10 hover:bg-white/20 p-3 rounded-full text-white transition-colors"
+                                aria-label="Close full screen view"
+                                autoFocus
                                 onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}
                             >
                                 <X size={24} />

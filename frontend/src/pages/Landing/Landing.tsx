@@ -4,7 +4,6 @@ import { motion, useReducedMotion, type Variants } from 'framer-motion';
 import {
   ArrowRight,
   Bot,
-  BrainCircuit,
   Building2,
   Briefcase,
   Calendar,
@@ -187,26 +186,26 @@ const USE_CASE_GROUPS: UseCaseGroup[] = [
 
 const TESTIMONIALS: Testimonial[] = [
   {
-    author: 'Alex M.',
-    initials: 'AM',
-    title: 'SaaS Founder',
-    quote: '"Before Optileno, I was losing 15+ hours a week context-switching between tools. Now, Leno handles task breakdown and my execution speed is flawless."',
+    author: 'For SaaS Founders',
+    initials: 'SF',
+    title: 'Kill context-switching',
+    quote: 'Leno breaks your roadmap into prioritized daily tasks, so execution never stalls between five different tools.',
     gradientFrom: '#60a5fa',
     gradientTo: '#3b82f6',
   },
   {
-    author: 'Jordan L.',
-    initials: 'JL',
-    title: 'Agency Owner',
-    quote: '"The Burnout Prediction alone justified the cost. It literally stopped me from crashing during our biggest launch week. A deeply intelligent operating system."',
+    author: 'For Agency Owners',
+    initials: 'AO',
+    title: 'Protect your peak weeks',
+    quote: 'Burnout-risk tracking watches your workload patterns and flags overload before a launch week crashes you.',
     gradientFrom: '#fbbf24',
     gradientTo: '#d97706',
   },
   {
-    author: 'Sarah J.',
-    initials: 'SJ',
-    title: 'Senior Executive',
-    quote: '"This isn\'t another glorified to-do list. The way it synchronizes goals with daily focus sprints forces you to execute on what actually moves the needle."',
+    author: 'For Senior Executives',
+    initials: 'SE',
+    title: 'Execute what matters',
+    quote: 'Goals synchronize with daily focus sprints, so the work that actually moves the needle gets scheduled first.',
     gradientFrom: '#34d399',
     gradientTo: '#059669',
   },
@@ -223,7 +222,7 @@ const FAQ_ITEMS: FAQItem[] = [
   },
   {
     question: 'What happens after the 3-day free trial?',
-    answer: 'You choose a plan that fits your needs. No surprise charges — you\'ll get a clear reminder before your trial ends. If you don\'t upgrade, your account stays accessible with limited features.',
+    answer: 'You\'ll get a clear reminder before your trial ends. After the trial, billing for your chosen plan starts automatically unless you cancel first — cancelling takes two clicks in Settings, any time.',
   },
   {
     question: 'Can I use Optileno on mobile?',
@@ -246,11 +245,11 @@ const FAQ_ITEMS: FAQItem[] = [
 const HERO_STATS = [
   {
     icon: <TrendingUp size={18} />,
-    label: '↑ 2.3x Task Completion',
+    label: 'Goals → Daily Tasks, Automatically',
   },
   {
     icon: <Zap size={18} />,
-    label: '↓ 67% Context Switching',
+    label: 'Tasks, Focus & Analytics in One',
   },
   {
     icon: <Timer size={18} />,
@@ -306,8 +305,10 @@ export default function Landing() {
   useEffect(() => {
     let animationFrameId: number;
     let time = 0;
+    let heroVisible = true;
 
     const renderWaves = () => {
+      if (!heroVisible) return;
       time += 0.003;
       if (!sceneRef.current) return;
 
@@ -332,7 +333,21 @@ export default function Landing() {
       animationFrameId = requestAnimationFrame(renderWaves);
     };
 
-    renderWaves();
+    // Honor reduced-motion and stop burning frames when the hero is offscreen
+    let waveObserver: IntersectionObserver | undefined;
+    if (!shouldReduceMotion) {
+      renderWaves();
+
+      if (sceneRef.current && typeof IntersectionObserver !== 'undefined') {
+        waveObserver = new IntersectionObserver(([entry]) => {
+          const wasVisible = heroVisible;
+          heroVisible = entry.isIntersecting;
+          if (heroVisible && !wasVisible) renderWaves();
+          if (!heroVisible) cancelAnimationFrame(animationFrameId);
+        });
+        waveObserver.observe(sceneRef.current);
+      }
+    }
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!sceneRef.current) return;
@@ -355,8 +370,9 @@ export default function Landing() {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('scroll', handleScroll);
       cancelAnimationFrame(animationFrameId);
+      waveObserver?.disconnect();
     };
-  }, []);
+  }, [shouldReduceMotion]);
 
   const revealVariants = React.useMemo<Variants>(
     () => ({
@@ -502,7 +518,7 @@ export default function Landing() {
             custom={0.02}
           >
             <motion.span className="kicker" variants={revealVariants} custom={0.08}>
-              Free 3-day trial · No card required
+              Free 3-day trial · Cancel anytime
             </motion.span>
 
             <motion.h1
@@ -520,13 +536,13 @@ export default function Landing() {
             </motion.h1>
 
             <motion.h2 className="hero-subtitle" variants={revealVariants} custom={0.16}>
-              Optileno is the daily focus app designed to prevent developer burnout. 
-              Learn how to turn high-level goals into daily tasks with AI planning, 
-              habit tracking, and behavioral analytics.
+              Optileno turns high-level goals into daily tasks with AI planning,
+              habit tracking, and behavioral analytics — built to protect your
+              focus and catch burnout before it catches you.
             </motion.h2>
 
             <motion.p className="hero-social-proof" variants={revealVariants} custom={0.2}>
-              The go-to AI calendar planner for solo agency owners, creators, and high-output builders.
+              The AI planner for founders, agency owners, developers, and high-output builders.
             </motion.p>
 
             <div className="hero-stats">
@@ -556,15 +572,15 @@ export default function Landing() {
               <button className="cta-button-tertiary btn-premium" onClick={() => navigate('/get-access')}>
                 Have an invite? Get Access
               </button>
-              <p className="cta-note">Free for 3 days. No credit card. Full access.</p>
+              <p className="cta-note">Free for 3 days. Cancel anytime before billing starts.</p>
             </motion.div>
 
             <motion.div className="hero-keyword-links" variants={revealVariants} custom={0.52}>
-              <span>Target Use Cases:</span>
+              <span>Explore:</span>
               <div className="hero-keyword-buttons">
-                <button type="button" className="keyword-chip" onClick={() => navigate('/ai-planner')}>AI Calendar Planner for Solo Agency Owners</button>
-                <button type="button" className="keyword-chip" onClick={() => navigate('/ai-productivity')}>Daily Focus App to Prevent Developer Burnout</button>
-                <button type="button" className="keyword-chip" onClick={() => navigate('/tools')}>Turn Goals Into Tasks with AI</button>
+                <button type="button" className="keyword-chip" onClick={() => navigate('/ai-planner')}>For agency owners</button>
+                <button type="button" className="keyword-chip" onClick={() => navigate('/ai-productivity')}>For developers</button>
+                <button type="button" className="keyword-chip" onClick={() => navigate('/tools')}>Free AI tools</button>
               </div>
             </motion.div>
 
@@ -730,7 +746,7 @@ export default function Landing() {
           {/* ─── Testimonials ─── */}
           <motion.section
             className="testimonials-section capabilities-section"
-            aria-label="Social Proof"
+            aria-label="Who Optileno is built for"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, amount: 0.2 }}
@@ -738,10 +754,10 @@ export default function Landing() {
             custom={0.04}
           >
             <div className="section-heading">
-              <span>Real Feedback</span>
-              <h2>What operators are saying</h2>
+              <span>Built For Operators</span>
+              <h2>Designed around how operators work</h2>
               <p>
-                Execution outcomes from high-agency professionals using Optileno.
+                The workflows Optileno is engineered to power — from solo founders to executive teams.
               </p>
             </div>
 
@@ -776,7 +792,6 @@ export default function Landing() {
                 </motion.article>
               ))}
             </div>
-            <p className="testimonial-disclaimer">Names shortened for privacy. Based on real user feedback.</p>
           </motion.section>
 
           {/* ─── FAQ ─── */}
@@ -824,7 +839,7 @@ export default function Landing() {
                   Start Free Trial
                   <ArrowRight size={18} />
                 </button>
-                <p className="cta-note-alt">3-day trial. No credit card. Full access.</p>
+                <p className="cta-note-alt">3-day trial. Cancel anytime before billing starts.</p>
               </div>
             </div>
           </motion.section>
@@ -841,6 +856,8 @@ export default function Landing() {
               <button onClick={() => navigate('/tools')}>Free AI Tools</button>
               <button onClick={() => navigate('/privacy')}>Privacy Policy</button>
               <button onClick={() => navigate('/terms')}>Terms of Service</button>
+              <button onClick={() => navigate('/refund')}>Refund Policy</button>
+              <button onClick={() => navigate('/cookies')}>Cookies Policy</button>
               <button onClick={() => navigate('/login')}>Login</button>
             </div>
           </div>

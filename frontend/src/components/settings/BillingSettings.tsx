@@ -104,6 +104,8 @@ export default function BillingSettings() {
             if (subRes.success && subRes.data) {
                 setSubscriptionInfo(subRes.data);
             }
+        } catch {
+            setError('Could not load your subscription status. Please refresh to try again.');
         } finally {
             setSyncingPlan(false);
         }

@@ -550,11 +550,11 @@
 
 /* Light Theme Specific Styles */
 [data-theme="light"] .planner-page {
-  background: #f8fafc;
+  background: #e9eef6;
 }
 
 [data-theme="light"] .planner-header {
-  background: white;
+  background: #f2f5fa;
   border-color: rgba(0, 0, 0, 0.08);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
 }
@@ -573,7 +573,7 @@
 }
 
 [data-theme="light"] .maximize-btn {
-  background: #f7fafc;
+  background: #eef2f8;
   border-color: #e2e8f0;
   color: #4a5568;
 }
@@ -585,7 +585,7 @@
 }
 
 [data-theme="light"] .tasks-section {
-  background: white;
+  background: #f2f5fa;
   border-color: rgba(0, 0, 0, 0.06);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
 }
@@ -600,13 +600,13 @@
 
 [data-theme="light"] .task-count,
 [data-theme="light"] .completed-count {
-  background: #f7fafc;
+  background: #eef2f8;
   border-color: #e2e8f0;
   color: #4a5568;
 }
 
 [data-theme="light"] .empty-tasks {
-  background: #f7fafc;
+  background: #eef2f8;
   border-color: #e2e8f0;
 }
 
@@ -619,7 +619,7 @@
 }
 
 [data-theme="light"] .planner-legacy-edit-modal {
-  background: white;
+  background: #f2f5fa;
   border-color: rgba(0, 0, 0, 0.08);
 }
 
@@ -628,7 +628,7 @@
 }
 
 [data-theme="light"] .close-btn {
-  background: #f7fafc;
+  background: #eef2f8;
   border-color: #e2e8f0;
   color: #718096;
 }
@@ -641,7 +641,7 @@
 [data-theme="light"] .planner-task-modal input,
 [data-theme="light"] .planner-task-modal select,
 [data-theme="light"] .planner-task-modal textarea {
-  background: white;
+  background: #f2f5fa;
   border-color: #e2e8f0;
   color: #2d3748;
 }
@@ -649,17 +649,17 @@
 [data-theme="light"] .planner-task-modal input:focus,
 [data-theme="light"] .planner-task-modal select:focus,
 [data-theme="light"] .planner-task-modal textarea:focus {
-  background: white;
+  background: #f2f5fa;
   border-color: rgb(var(--color-primary));
 }
 
 [data-theme="light"] .planner-legacy-modal-actions {
-  background: #f8fafc;
+  background: #e9eef6;
   border-color: rgba(0, 0, 0, 0.06);
 }
 
 [data-theme="light"] .cancel-btn {
-  background: #f7fafc;
+  background: #eef2f8;
   border-color: #e2e8f0;
   color: #4a5568;
 }

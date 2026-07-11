@@ -1,4 +1,10 @@
 User-agent: *
 Allow: /
+Disallow: /dashboard
+Disallow: /chat
+Disallow: /planner
+Disallow: /analytics
+Disallow: /settings
+Disallow: /reset-password
 
 Sitemap: https://www.optileno.com/sitemap.xml

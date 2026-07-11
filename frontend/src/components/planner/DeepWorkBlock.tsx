@@ -685,7 +685,11 @@ export default function DeepWorkBlock({ currentTime }: DeepWorkBlockProps) {
               min={60}
               max={720}
               value={durationMinutes}
-              onChange={(event) => setDurationMinutes(Math.max(60, Number(event.target.value) || 60))}
+              onChange={(event) => setDurationMinutes(Number(event.target.value))}
+              onBlur={(event) => {
+                const raw = Number(event.target.value);
+                setDurationMinutes(Math.max(60, Math.min(720, Number.isFinite(raw) && raw > 0 ? raw : 60)));
+              }}
             />
           </div>
         </div>

@@ -33,6 +33,7 @@ interface Suggestion {
 interface ToastState {
   message: string;
   type: "success" | "info";
+  category?: "task" | "goal" | "habit" | "deepwork" | "analytics";
 }
 
 interface PlannerRefreshTargets {
@@ -299,6 +300,7 @@ export default function Chat() {
 
   const getAIResponse = async (userMessage: string, currentAiMode: AIMode) => {
     const conversationHistory = (activeConversation?.messages || [])
+      .filter((message) => !message.metadata?.error && !message.metadata?.welcome)
       .slice(-10)
       .map((message) => ({
         role: message.role,
@@ -343,6 +345,7 @@ export default function Chat() {
                     ? "Task updated."
                     : `Task ready: ${action.result?.task?.title || action.result?.title || "Planner updated"}`,
                 type: action.type === "DELETE_TASK" ? "info" : "success",
+                category: "task",
               };
             break;
 
@@ -364,6 +367,7 @@ export default function Chat() {
                     ? "Goal updated."
                     : `Goal ready: ${action.result?.goal?.title || action.result?.title || "Planner updated"}`,
                 type: action.type === "DELETE_GOAL" ? "info" : "success",
+                category: "goal",
               };
             break;
 
@@ -388,6 +392,7 @@ export default function Chat() {
                         }`,
                 type:
                   action.type === "DELETE_HABIT" ? "info" : "success",
+                category: "habit",
               };
             break;
 
@@ -400,6 +405,7 @@ export default function Chat() {
               nextToast || {
                 message: "Planner updated from your chat.",
                 type: "success",
+                category: "goal",
               };
             break;
 
@@ -408,6 +414,7 @@ export default function Chat() {
               nextToast || {
                 message: "Deep work session started.",
                 type: "success",
+                category: "deepwork",
               };
             break;
 
@@ -420,6 +427,7 @@ export default function Chat() {
               nextToast || {
                 message: "Analytics refreshed.",
                 type: "info",
+                category: "analytics",
               };
             break;
 
@@ -442,7 +450,6 @@ export default function Chat() {
     if (!trimmedMessage || isSending) return;
     if (!checkDailyLimits()) return;
 
-    updateDailyUsage(trimmedMessage.length);
     clearSuggestionTimer();
     setShowSuggestions(false);
     setUserHasTyped(true);
@@ -460,6 +467,9 @@ export default function Chat() {
     try {
       const response = await getAIResponse(trimmedMessage, requestedMode);
 
+      // Only successful sends count against the daily quota
+      updateDailyUsage(trimmedMessage.length);
+
       addMessage({
         role: "assistant",
         content: response.content,
@@ -476,6 +486,7 @@ export default function Chat() {
       addMessage({
         role: "assistant",
         content: "Something went wrong. Please try again in a moment.",
+        metadata: { error: true },
       });
 
       setToast({
@@ -563,7 +574,7 @@ export default function Chat() {
             <div
               className={`chat-toast ${
                 toast.type === "success" ? "chat-toast-success" : "chat-toast-info"
-              }`}
+              }${toast.category ? ` chat-toast-${toast.category}` : ""}`}
             >
               <div className="chat-toast-dot" />
               <span>{toast.message}</span>

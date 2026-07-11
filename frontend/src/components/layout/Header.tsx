@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Search, Bell, Menu } from "lucide-react";
+import { Bell, Menu } from "lucide-react";
 import { api } from "../../services/api/client";
 import { socket } from "../../services/realtime/socket-client";
 import { NotificationCenter } from "../notifications/NotificationCenter";
@@ -12,8 +12,6 @@ interface HeaderProps {
 }
 
 export default function Header({ page, onMenuToggle, isMobile }: HeaderProps) {
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -30,13 +28,6 @@ export default function Header({ page, onMenuToggle, isMobile }: HeaderProps) {
     if (unreadCount > 99) return "99+";
     return String(unreadCount);
   }, [unreadCount]);
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      console.log("Searching:", searchQuery);
-    }
-  };
 
   useEffect(() => {
     let mounted = true;
@@ -108,44 +99,6 @@ export default function Header({ page, onMenuToggle, isMobile }: HeaderProps) {
 
             {/* Right Section - Actions */}
             <div className="header-actions">
-              {/* Search */}
-              {searchOpen ? (
-                <form
-                  onSubmit={handleSearch}
-                  className="header-search-active"
-                >
-                  <div className="search-input-wrapper">
-                    <Search size={18} className="search-icon" />
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search conversations..."
-                      className="search-input"
-                      autoFocus
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchOpen(false);
-                      setSearchQuery("");
-                    }}
-                    className="search-cancel"
-                  >
-                    Cancel
-                  </button>
-                </form>
-              ) : (
-                <button
-                  onClick={() => setSearchOpen(true)}
-                  className="search-toggle"
-                  aria-label="Search"
-                >
-                  <Search size={20} />
-                </button>
-              )}
-
               {/* Notifications */}
               <div className="notification-container">
                 <button

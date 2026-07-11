@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Database, Download, AlertOctagon, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Database, AlertOctagon, ShieldCheck, AlertCircle } from 'lucide-react';
 import { userService } from '../../services/api/user.service';
 import { useUserStore } from '../../stores/useUserStore';
 import { usePlannerStore } from '../../stores/planner.store';
@@ -12,11 +12,6 @@ const DataSettings: React.FC = () => {
   const navigate = useNavigate();
   const logoutUser = useUserStore((state) => state.logout);
   const resetPlanner = usePlannerStore((state) => state.resetPlanner);
-
-  const handleExport = () => {
-    console.log('Exporting data...');
-    // Export logic here
-  };
 
   const clearClientData = () => {
     // Reset in-memory stores.

@@ -97,7 +97,7 @@ export default function Login() {
                 const profileRes = await userService.getProfile();
                 if (profileRes.success && profileRes.data) {
                     loginStore(profileRes.data as any, profileRes.data.preferences as any);
-                    navigate('/chat');
+                    navigate('/dashboard', { replace: true });
                 } else {
                     setError('Failed to load user profile');
                 }

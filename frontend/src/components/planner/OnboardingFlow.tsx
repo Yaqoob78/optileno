@@ -125,7 +125,7 @@ export const OnboardingFlow: React.FC = () => {
                     <div className="flex flex-col items-center justify-center gap-6 py-8 animate-in fade-in duration-500">
                         <div className="relative">
                             <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse"></div>
-                            <div className="relative bg-black/40 p-5 rounded-full border border-primary/30">
+                            <div className="relative bg-black/10 dark:bg-black/40 p-5 rounded-full border border-primary/30">
                                 <Loader2 size={40} className="text-primary animate-spin" />
                             </div>
                         </div>
@@ -194,10 +194,10 @@ export const OnboardingFlow: React.FC = () => {
                         )}
 
                         <button
-                            onClick={isUltra ? openLenoChat : handleDismiss}
-                            className={`w-full py-3 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 ${isUltra ? 'bg-[var(--primary)] text-white hover:bg-[var(--primary)]/90' : 'bg-white/5 hover:bg-white/10 text-[var(--text-primary)] border border-white/10'}`}
+                            onClick={openLenoChat}
+                            className="w-full py-3 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 bg-[var(--primary)] text-white hover:bg-[var(--primary)]/90"
                         >
-                            {isUltra ? 'Open Leno Chat' : "Let's execute"} <ArrowRight size={16} />
+                            Open Leno Chat <ArrowRight size={16} />
                         </button>
                     </div>
                 )}

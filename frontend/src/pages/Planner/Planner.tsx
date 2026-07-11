@@ -96,7 +96,7 @@ export default function PlannerPage() {
   // ── Recurrence Modal state ────────────────────────────────────────
   const [isRepeatModalOpen, setIsRepeatModalOpen] = useState(false);
   const [taskToRepeat, setTaskToRepeat] = useState<any>(null);
-  const [repeatConfig, setRepeatConfig] = useState({ type: 'daily', iterations: 7 });
+  const [repeatConfig, setRepeatConfig] = useState({ type: 'daily' });
   const [isCreatingRecurrence, setIsCreatingRecurrence] = useState(false);
   const [recurrenceError, setRecurrenceError] = useState<string | null>(null);
 
@@ -194,32 +194,38 @@ export default function PlannerPage() {
     setSaveError(null);
   };
 
-  const handleCreateTask = async (data: any) => {
-    setIsSaving(true);
-    setSaveError(null);
+  const handleDuplicateTask = async (task: any) => {
+    const baseDueDate = parseTaskDate(task.dueDate || task.due_date);
+    const dueLocalDate = baseDueDate
+      ? getDateKeyInTimezone(baseDueDate, timezone)
+      : getDateKeyInTimezone(new Date(), timezone);
+    const dueLocalTime = task.startTime
+      || (baseDueDate ? getTimeHHMMInTimezone(baseDueDate, timezone) : '09:00');
+
     try {
       const result = await createTask({
-        title: data.title,
-        description: data.description,
-        priority: data.priority || 'medium',
+        title: task.title,
+        description: task.description || '',
+        priority: task.priority || 'medium',
         status: 'todo',
-        estimated_duration_minutes: data.duration,
-        tags: data.tags,
-        category: data.category,
-        goal_id: isUltra ? data.goalId : null,
+        due_local_date: dueLocalDate,
+        due_local_time: dueLocalTime,
+        timezone,
+        estimated_duration_minutes: task.duration || 60,
+        tags: task.tags || [],
+        category: task.category || 'work',
+        goal_id: isUltra ? (task.related_goal_id || task.goal_id || task.goalId || null) : null,
       } as any);
-      if (result.success) {
-        setIsEditing(false);
-        setEditForm(null);
-      } else {
-        setSaveError(result.error || 'Failed to create task');
-      }
+
+      setPlannerNotice(
+        result.success
+          ? { type: 'success', text: `Duplicated "${task.title}".` }
+          : { type: 'error', text: result.error || 'Failed to duplicate task.' }
+      );
     } catch (error: any) {
-      setSaveError(error.message || 'Failed to create task');
-    } finally {
-      setIsSaving(false);
+      setPlannerNotice({ type: 'error', text: error?.message || 'Failed to duplicate task.' });
     }
-  }
+  };
 
   const handleEditTask = (task: any) => {
     setIsEnergyTouched(true); // Don't auto-estimate for existing tasks
@@ -965,7 +971,7 @@ export default function PlannerPage() {
                       onStartTask={(id) => handleStartTask(id.toString())}
                       onMarkComplete={(id) => handleCompleteTask(id.toString())}
                       onRepeat={(t) => handleOpenRepeatModal(t)}
-                      draggable
+                      onDuplicate={(t) => void handleDuplicateTask(t)}
                       onAutoUpdateStatus={(id, status) => updateTask(String(id), { status: status as any })}
                       onUpdateTask={(id, updates) => updateTask(String(id), updates)}
                     />
@@ -1070,19 +1076,9 @@ export default function PlannerPage() {
             </select>
           </div>
 
-          <div className="flex flex-col gap-2 mt-2">
-            <label className="text-sm font-medium text-[var(--text-primary)]">Number of iterations</label>
-            <input
-              type="number"
-              min="1"
-              max="30"
-              value={repeatConfig.iterations}
-              onChange={(e) => setRepeatConfig(p => ({ ...p, iterations: parseInt(e.target.value) || 1 }))}
-              className="p-3 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] text-[var(--text-primary)] transition-all w-full"
-              disabled={isCreatingRecurrence}
-            />
-            <span className="text-xs text-[var(--text-tertiary)]">Max 30 forward iterations.</span>
-          </div>
+          <p className="text-xs text-[var(--text-tertiary)] mt-2">
+            The task repeats on this schedule until you turn recurrence off from the task menu.
+          </p>
         </div>
       </Modal>
 

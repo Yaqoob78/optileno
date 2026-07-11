@@ -310,7 +310,23 @@ class APIClient {
 
   public put = async <T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> => {
     try {
-      const response = await this.axiosInstance.put<ApiResponse<T>>(url, data, config);
+      const response = await this.axiosInstance.put<any>(url, data, config);
+
+      if (response.data && typeof response.data === 'object') {
+        if ('success' in response.data) {
+          return response.data as ApiResponse<T>;
+        }
+
+        return {
+          success: true,
+          data: response.data as T,
+          meta: {
+            timestamp: new Date().toISOString(),
+            requestId: response.config?.headers?.['X-Request-ID'] as string || 'unknown',
+          },
+        };
+      }
+
       return response.data;
     } catch (error) {
       const passthrough = this.passthroughApiError<T>(error);

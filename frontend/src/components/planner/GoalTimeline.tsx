@@ -14,6 +14,8 @@ export default function GoalTimeline() {
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  // Slider position while dragging; committed to the API on release
+  const [draftProgress, setDraftProgress] = useState<number | null>(null);
 
   // Local form state
   const [newGoal, setNewGoal] = useState({
@@ -254,15 +256,27 @@ export default function GoalTimeline() {
             <div className="goal-details-progress">
               <label className="goal-details-progress-label">
                 <span>Update Progress</span>
-                <span className="goal-details-progress-value">{selectedGoal.current_progress || 0}%</span>
+                <span className="goal-details-progress-value">{draftProgress ?? selectedGoal.current_progress ?? 0}%</span>
               </label>
               <input
                 type="range"
                 className="goal-details-progress-slider"
                 min="0"
                 max="100"
-                value={selectedGoal.current_progress || 0}
-                onChange={e => updateProgress(selectedGoal, parseInt(e.target.value))}
+                value={draftProgress ?? selectedGoal.current_progress ?? 0}
+                onChange={e => setDraftProgress(parseInt(e.target.value))}
+                onPointerUp={() => {
+                  if (draftProgress !== null) {
+                    updateProgress(selectedGoal, draftProgress);
+                    setDraftProgress(null);
+                  }
+                }}
+                onBlur={() => {
+                  if (draftProgress !== null) {
+                    updateProgress(selectedGoal, draftProgress);
+                    setDraftProgress(null);
+                  }
+                }}
               />
             </div>
           </div>

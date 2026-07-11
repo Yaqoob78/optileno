@@ -35,7 +35,7 @@ export const GoalAnalytics: React.FC<GoalAnalyticsProps> = ({ goal, onUpdate }) 
 
   const handleToggleTracking = async () => {
     if (!isUltra) {
-      navigate('/settings/billing');
+      navigate('/settings', { state: { tab: 'billing' } });
       return;
     }
 

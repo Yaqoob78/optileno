@@ -7,7 +7,7 @@ const AboutSettings: React.FC = () => {
       <div className="setting-section">
         <div className="flex items-center justify-between mb-6">
           <p className="text-slate-500 text-xs">Product info & legal links</p>
-          <div className="version-badge">v2.1.0 (Stable)</div>
+          <div className="version-badge">v{import.meta.env.VITE_APP_VERSION || '1.0.0'}</div>
         </div>
 
         <div className="flex flex-col gap-2">
@@ -23,9 +23,9 @@ const AboutSettings: React.FC = () => {
             <HelpCircle size={14} className="opacity-30" />
           </a>
 
-          <a href="#" className="about-card">
+          <a href="mailto:optilenoai@gmail.com" className="about-card">
             <Info size={14} className="text-amber-400" />
-            <span className="flex-1">Documentation & Help</span>
+            <span className="flex-1">Contact Support</span>
             <HelpCircle size={14} className="opacity-30" />
           </a>
         </div>

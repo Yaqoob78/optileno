@@ -390,7 +390,9 @@ export const useChatStore = create<ChatState>()(
           const shouldRetitle =
             !baseConversation.messages.some((message) => message.role === "user") &&
             newMessage.role === "user" &&
-            (!baseConversation.title || baseConversation.title.startsWith("Conversation "));
+            (!baseConversation.title ||
+              baseConversation.title.startsWith("Conversation ") ||
+              baseConversation.title === "New Chat");
 
           const updatedConversation = normalizeConversation({
             ...baseConversation,

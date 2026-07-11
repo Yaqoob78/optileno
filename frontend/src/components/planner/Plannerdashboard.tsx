@@ -1,6 +1,6 @@
 // src/components/planner/PlannerDashboard.tsx
 import React from 'react';
-import { CheckCircle, Clock, Battery, Smile, Activity, Flame, TrendingUp, BarChart, Target, Zap, Brain } from 'lucide-react';
+import { CheckCircle, Clock, Activity, Flame, Target } from 'lucide-react';
 import '../../styles/components/planner/Plannerdashboard.css';
 
 interface PlannerDashboardProps {
@@ -36,6 +36,7 @@ export default function PlannerDashboard({
       icon: CheckCircle,
       color: "success",
       progress: taskProgress,
+      showProgress: true,
       description: "Completion rate"
     },
     {
@@ -81,7 +82,7 @@ export default function PlannerDashboard({
         </div>
       </div>
 
-      {/* Stats Grid - 6 main metrics */}
+      {/* Stats Grid - main metrics */}
       <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
         {stats.map((stat: any, index) => {
           const Icon = stat.icon;
