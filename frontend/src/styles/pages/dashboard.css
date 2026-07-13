@@ -3,15 +3,15 @@
 /* Theme Variables */
 .dashboard-container {
   /* Light Theme — warm cream (Claude-style) */
-  --bg-primary: #edeae0;
-  --bg-secondary: #f6f4ec;
-  --bg-tertiary: #e1ded1;
+  --bg-primary: #f3f1ea;
+  --bg-secondary: #faf9f4;
+  --bg-tertiary: #e9e6dd;
   --text-primary: #292524;
   --text-secondary: #57534e;
   --text-tertiary: #78716c;
   --text-muted: #a8a29e;
-  --border-color: #d5d1c2;
-  --border-light: #e5e1d4;
+  --border-color: #ddd9cd;
+  --border-light: #ebe8df;
 
   /* Colors - Warm Shift */
   --primary: #f59e0b;
@@ -30,7 +30,7 @@
   /* Gradients - Warm Shift */
   --gradient-primary: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
   --gradient-accent: linear-gradient(135deg, #f97316 0%, #fbbf24 100%);
-  --gradient-glass: linear-gradient(135deg, rgba(248, 246, 239, 0.95) 0%, rgba(237, 234, 224, 0.88) 100%);
+  --gradient-glass: linear-gradient(135deg, rgba(251, 250, 246, 0.95) 0%, rgba(243, 241, 234, 0.88) 100%);
 
   /* Shadows - Warm Glow */
   --shadow-subtle: 0 1px 3px 0 rgba(0, 0, 0, 0.05);

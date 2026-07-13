@@ -459,8 +459,8 @@
 [data-theme="light"] .premium-header,
 :root[data-theme="light"] .premium-header {
   background: linear-gradient(180deg,
-      rgba(246, 244, 236, 0.96) 0%,
-      rgba(237, 234, 224, 0.98) 100%);
+      rgba(250, 249, 244, 0.96) 0%,
+      rgba(243, 241, 234, 0.98) 100%);
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   box-shadow:
     0 4px 30px rgba(0, 0, 0, 0.1),
@@ -482,21 +482,21 @@
 [data-theme="light"] .notification-button,
 :root[data-theme="light"] .search-toggle,
 :root[data-theme="light"] .notification-button {
-  background: rgba(240, 237, 227, 0.92);
+  background: rgba(245, 243, 236, 0.92);
   border: 1px solid rgba(0, 0, 0, 0.08);
   color: rgba(15, 23, 42, 0.8);
 }
 
 [data-theme="light"] .mobile-menu-btn,
 :root[data-theme="light"] .mobile-menu-btn {
-  background: rgba(240, 237, 227, 0.92);
+  background: rgba(245, 243, 236, 0.92);
   border: 1px solid rgba(0, 0, 0, 0.08);
   color: rgba(15, 23, 42, 0.8);
 }
 
 [data-theme="light"] .mobile-menu-btn:hover,
 :root[data-theme="light"] .mobile-menu-btn:hover {
-  background: rgba(228, 224, 211, 0.95);
+  background: rgba(235, 232, 224, 0.95);
   border-color: rgba(59, 130, 246, 0.4);
   color: #2563eb;
 }
@@ -505,7 +505,7 @@
 [data-theme="light"] .notification-button:hover,
 :root[data-theme="light"] .search-toggle:hover,
 :root[data-theme="light"] .notification-button:hover {
-  background: rgba(228, 224, 211, 0.95);
+  background: rgba(235, 232, 224, 0.95);
   border-color: rgba(59, 130, 246, 0.4);
   color: #2563eb;
 }

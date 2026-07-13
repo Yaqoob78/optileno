@@ -294,6 +294,18 @@
   transform: translateY(-1px);
 }
 
+.app-modal-btn-danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #ffffff;
+  box-shadow: 0 10px 22px rgba(239, 68, 68, 0.28);
+}
+
+.app-modal-btn-danger:hover:not(:disabled) {
+  filter: brightness(1.05);
+  box-shadow: 0 14px 26px rgba(239, 68, 68, 0.38);
+  transform: translateY(-1px);
+}
+
 .app-modal-content input:not([type='range']),
 .app-modal-content textarea,
 .app-modal-content select {

@@ -550,11 +550,11 @@
 
 /* Light Theme Specific Styles */
 [data-theme="light"] .planner-page {
-  background: #edeae0;
+  background: #f3f1ea;
 }
 
 [data-theme="light"] .planner-header {
-  background: #f6f4ec;
+  background: #faf9f4;
   border-color: rgba(0, 0, 0, 0.08);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
 }
@@ -573,7 +573,7 @@
 }
 
 [data-theme="light"] .maximize-btn {
-  background: #e7e3d7;
+  background: #eceadf;
   border-color: #e2e8f0;
   color: #4a5568;
 }
@@ -585,7 +585,7 @@
 }
 
 [data-theme="light"] .tasks-section {
-  background: #f6f4ec;
+  background: #faf9f4;
   border-color: rgba(0, 0, 0, 0.06);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
 }
@@ -600,13 +600,13 @@
 
 [data-theme="light"] .task-count,
 [data-theme="light"] .completed-count {
-  background: #e7e3d7;
+  background: #eceadf;
   border-color: #e2e8f0;
   color: #4a5568;
 }
 
 [data-theme="light"] .empty-tasks {
-  background: #e7e3d7;
+  background: #eceadf;
   border-color: #e2e8f0;
 }
 
@@ -619,7 +619,7 @@
 }
 
 [data-theme="light"] .planner-legacy-edit-modal {
-  background: #f6f4ec;
+  background: #faf9f4;
   border-color: rgba(0, 0, 0, 0.08);
 }
 
@@ -628,7 +628,7 @@
 }
 
 [data-theme="light"] .close-btn {
-  background: #e7e3d7;
+  background: #eceadf;
   border-color: #e2e8f0;
   color: #718096;
 }
@@ -641,7 +641,7 @@
 [data-theme="light"] .planner-task-modal input,
 [data-theme="light"] .planner-task-modal select,
 [data-theme="light"] .planner-task-modal textarea {
-  background: #f6f4ec;
+  background: #faf9f4;
   border-color: #e2e8f0;
   color: #2d3748;
 }
@@ -649,17 +649,17 @@
 [data-theme="light"] .planner-task-modal input:focus,
 [data-theme="light"] .planner-task-modal select:focus,
 [data-theme="light"] .planner-task-modal textarea:focus {
-  background: #f6f4ec;
+  background: #faf9f4;
   border-color: rgb(var(--color-primary));
 }
 
 [data-theme="light"] .planner-legacy-modal-actions {
-  background: #edeae0;
+  background: #f3f1ea;
   border-color: rgba(0, 0, 0, 0.06);
 }
 
 [data-theme="light"] .cancel-btn {
-  background: #e7e3d7;
+  background: #eceadf;
   border-color: #e2e8f0;
   color: #4a5568;
 }

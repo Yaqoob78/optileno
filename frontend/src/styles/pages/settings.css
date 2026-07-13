@@ -15,16 +15,16 @@
 }
 
 [data-theme='light'] {
-  --s-bg-main: #edeae0;
-  --s-bg-surface: #f6f4ec;
-  --s-bg-item: #f8f6ef;
+  --s-bg-main: #f3f1ea;
+  --s-bg-surface: #faf9f4;
+  --s-bg-item: #fcfbf7;
   --s-border: rgba(31, 35, 40, 0.12);
   --s-accent: #0969da;
   --s-text-primary: #292524;
   --s-text-secondary: #57534e;
   --s-text-muted: #8a8578;
-  --s-input-bg: #f8f6ef;
-  --s-input-border: #cfc9b8;
+  --s-input-bg: #fcfbf7;
+  --s-input-border: #d8d4c8;
 }
 
 @keyframes settings-spin {

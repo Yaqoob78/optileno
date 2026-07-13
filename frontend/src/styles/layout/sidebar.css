@@ -496,8 +496,8 @@
 /* ========== LIGHT THEME SUPPORT ========== */
 [data-theme="light"] .premium-sidebar {
   background: linear-gradient(180deg,
-      #f6f4ec 0%,
-      #edeae0 100%);
+      #faf9f4 0%,
+      #f3f1ea 100%);
   border-right: 1px solid rgba(0, 0, 0, 0.05);
   box-shadow:
     12px 0 50px rgba(0, 0, 0, 0.05),
@@ -507,8 +507,8 @@
 [data-theme="light"] .sidebar-header {
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
   background: linear-gradient(180deg,
-      #f6f4ec 0%,
-      #edeae0 100%);
+      #faf9f4 0%,
+      #f3f1ea 100%);
 }
 
 [data-theme="light"] .sidebar-title {
@@ -524,14 +524,14 @@
 }
 
 [data-theme="light"] .sidebar-toggle {
-  background: #e9e5d9;
-  border: 1px solid #d5d1c2;
+  background: #eeece3;
+  border: 1px solid #ddd9cd;
   color: #64748b;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 [data-theme="light"] .sidebar-toggle:hover {
-  background: #ddd8c9;
+  background: #e5e2d8;
   color: #3b82f6;
   border-color: #cbd5e1;
 }
@@ -714,4 +714,40 @@
     width: 28px;
     height: 28px;
   }
+}
+
+/* ========== LIGHT THEME: ICON CLARITY FIXES ==========
+   Inactive icons/labels use text-gray-300 (built for the dark sidebar).
+   On light surfaces they wash out, and dark-tuned glows read as haze.
+   Give icons a crisp warm-dark ink and mute the glows. */
+[data-theme="light"] .premium-sidebar .menu-icon.text-gray-300,
+[data-theme="light"] .premium-sidebar .text-gray-300 {
+  color: #44403c;
+}
+
+[data-theme="light"] .nav-menu-item:hover .menu-icon.text-gray-300 {
+  color: #1c1917;
+}
+
+/* Colored chip behind inactive icons: barely-there on light */
+[data-theme="light"] .menu-icon-gradient {
+  opacity: 0.1;
+}
+
+[data-theme="light"] .nav-menu-item.active .menu-icon-gradient {
+  opacity: 1;
+}
+
+/* Glows tuned for dark backgrounds become subtle on light */
+[data-theme="light"] .nav-menu-item.active::before {
+  box-shadow: 0 0 6px rgba(59, 130, 246, 0.25);
+}
+
+[data-theme="light"] .active-indicator {
+  box-shadow: 0 0 6px rgba(59, 130, 246, 0.3);
+  border: 2px solid #faf9f4;
+}
+
+[data-theme="light"] .sidebar-subtitle {
+  color: #78716c;
 }

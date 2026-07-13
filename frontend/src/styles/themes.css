@@ -5,15 +5,15 @@
 [data-theme="light"] {
   /* Warm cream/ivory light theme (Claude-style) — deliberately muted,
      never pure white, with warm stone-gray text */
-  --color-bg-primary: 237 234 224;
-  --color-bg-secondary: 228 224 211;
-  --color-bg-tertiary: 216 211 195;
+  --color-bg-primary: 243 241 234;
+  --color-bg-secondary: 235 232 224;
+  --color-bg-tertiary: 227 223 213;
 
   --color-text-primary: 41 37 36;
   --color-text-secondary: 87 83 78;
   --color-text-tertiary: 120 113 108;
 
-  --color-border-light: 211 206 190;
+  --color-border-light: 221 217 205;
   --color-border-medium: 168 162 148;
 
   --color-primary: 5 150 105;
@@ -27,8 +27,8 @@
   --shadow-base: 0 20px 60px rgba(15, 23, 42, 0.08);
   --shadow-glow: 0 0 40px rgba(5, 150, 105, 0.2);
 
-  --glass-bg: rgba(246, 244, 236, 0.78);
-  --glass-border: rgba(211, 206, 190, 0.5);
+  --glass-bg: rgba(250, 249, 244, 0.78);
+  --glass-border: rgba(221, 217, 205, 0.5);
 }
 
 /* Dark Theme (Default) */
@@ -326,22 +326,22 @@
 }
 
 [data-theme="light"] {
-  --background-primary: #edeae0;
-  --background-secondary: #f6f4ec;
-  --background-tertiary: #e1ded1;
-  --card-background: rgba(246, 244, 236, 0.88);
-  --card-border: rgba(211, 206, 190, 0.7);
+  --background-primary: #f3f1ea;
+  --background-secondary: #faf9f4;
+  --background-tertiary: #e9e6dd;
+  --card-background: rgba(250, 249, 244, 0.88);
+  --card-border: rgba(221, 217, 205, 0.7);
   --text-primary: #292524;
   --text-secondary: #57534e;
   --text-on-primary: #ffffff;
-  --border-light: rgba(211, 206, 190, 0.85);
-  --border-primary: #cfc9b8;
+  --border-light: rgba(221, 217, 205, 0.85);
+  --border-primary: #d8d4c8;
   --primary: #8b5cf6;
   /* purple-500 */
   --primary-hover: #7c3aed;
   /* purple-600 */
   --success: #10b981;
-  --gradient-background: linear-gradient(135deg, #edeae0 0%, #e0dccd 100%);
+  --gradient-background: linear-gradient(135deg, #f3f1ea 0%, #e7e4d9 100%);
   --gradient-primary: linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%);
   --gradient-blue: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
   --gradient-success: linear-gradient(to bottom right, #10b981, #34d399);
