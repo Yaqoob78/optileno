@@ -51,6 +51,7 @@ const StrategicInsight: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [applyingId, setApplyingId] = useState<number | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [applyFeedback, setApplyFeedback] = useState<string | null>(null);
     const hasLoadedRef = useRef(false);
 
     const fetchInsights = useCallback(async (options?: { background?: boolean }) => {
@@ -88,16 +89,21 @@ const StrategicInsight: React.FC = () => {
         try {
             setApplyingId(insightId);
             setError(null);
-            const response = await api.post<{ applied_at?: string }>('/analytics/strategic-insight/apply', { insight_id: insightId });
+            const response = await api.post<{ applied_at?: string; message?: string }>('/analytics/strategic-insight/apply', { insight_id: insightId });
             if (!response.success) {
                 throw new Error(response.error?.message || 'Failed to apply insight');
             }
-            // Update the insight locally
+            // Update the insight locally and surface what actually happened
+            // (the backend may have created a planner task from this insight)
             setInsights(prev => prev.map(ins =>
                 ins.id === insightId
                     ? { ...ins, applied_at: response.data?.applied_at || new Date().toISOString() }
                     : ins
             ));
+            if (response.data?.message) {
+                setApplyFeedback(response.data.message);
+                window.setTimeout(() => setApplyFeedback(null), 5000);
+            }
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -139,7 +145,7 @@ const StrategicInsight: React.FC = () => {
         return (
             <div className="loading-placeholder">
                 <Loader2 className="spinning" size={24} />
-                <span>Synthesizing Strategy...</span>
+                <span>Analyzing your work patterns...</span>
             </div>
         );
     }
@@ -258,6 +264,12 @@ const StrategicInsight: React.FC = () => {
                     );
                 })}
             </div>
+
+            {applyFeedback && (
+                <div style={{ fontSize: '11px', color: 'var(--success, #10b981)', marginTop: '8px', padding: '0 4px' }} role="status">
+                    {applyFeedback}
+                </div>
+            )}
 
             {error && (
                 <div style={{ fontSize: '11px', color: 'var(--danger)', marginTop: '8px', padding: '0 4px' }}>

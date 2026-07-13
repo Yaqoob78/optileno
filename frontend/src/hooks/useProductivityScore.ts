@@ -134,9 +134,8 @@ export function useProductivityScore(timeRange: 'daily' | 'weekly' | 'monthly' =
             }
         } catch (err: any) {
             console.error('Error fetching productivity score:', err);
-            setScore(null);
-            setWeeklyAverage(null);
-            setMonthlyAverage(null);
+            // Keep the last good score on transient refresh failures —
+            // wiping it would blank the dashboard on every network blip
             setError(err.message);
         } finally {
             setIsLoading(false);

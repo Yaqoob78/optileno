@@ -173,7 +173,7 @@ export function useBurnoutRisk(
             }
         } catch (err: any) {
             console.error('Error fetching burnout risk:', err);
-            setRisk(null);
+            // Keep the last good reading on transient refresh failures
             setError(err.message);
         } finally {
             setIsLoading(false);

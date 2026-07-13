@@ -403,8 +403,8 @@ export default function AnalyticsPage() {
                   <div className="brand-pulse" />
                 </div>
                 <div className="brand-text">
-                  <h1 className="brand-title">Intelligence Nexus</h1>
-                  <p className="brand-subtitle">AI-Powered Performance Analytics</p>
+                  <h1 className="brand-title">Performance Analytics</h1>
+                  <p className="brand-subtitle">Live scores, behavior patterns, and AI insights</p>
                 </div>
               </div>
             </div>
@@ -557,7 +557,7 @@ export default function AnalyticsPage() {
                       <div className="component-title">
                         <Brain size={18} />
                         <h3>AI Intelligence Score</h3>
-                        <span className="component-badge ai-badge">Neural Link</span>
+                        <span className="component-badge ai-badge">6 Dimensions</span>
                       </div>
                     </div>
                     <div className="component-content">
@@ -680,20 +680,12 @@ export default function AnalyticsPage() {
           {/* Data Status Footer */}
           <div className="data-status-footer">
             <div className="status-item">
-              <div className="status-dot processing" />
-              <span>AI Processing: Real-time</span>
-            </div>
-            <div className="status-item">
               <div className={`status-dot ${dataIntegrityClass}`} />
-              <span>Data Integrity: {dataIntegrityLabel}</span>
+              <span>Data: {dataIntegrityLabel}</span>
             </div>
             <div className="status-item">
               <div className="status-dot success" />
               <span>Last analyzed: {getLastUpdatedText()}</span>
-            </div>
-            <div className="status-item">
-              <div className="status-dot" />
-              <span>Signals: Unified V3</span>
             </div>
           </div>
         </div>

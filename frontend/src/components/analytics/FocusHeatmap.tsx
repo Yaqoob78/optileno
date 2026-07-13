@@ -37,7 +37,7 @@ interface DailyScore {
 
 interface FocusStats {
   current_focus: {
-    score: number;
+    score: number | null;
     breakdown: DailyScore['breakdown'];
     color: { color: string; label: string };
   };
@@ -73,15 +73,18 @@ export default function FocusHeatmap({ timeRange = 'monthly' }: FocusHeatmapProp
   const [stats, setStats] = useState<FocusStats | null>(null);
   const [selectedCell, setSelectedCell] = useState<DailyScore | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasDataRef = React.useRef(false);
+  // Mirrors focus_score_service._get_color_for_score so labels match the data
   const getLabelForScore = useCallback((score: number | null | undefined) => {
     if (score == null) return 'Inactive';
-    if (score <= 10) return 'Critical';
-    if (score <= 20) return 'Very Low';
-    if (score <= 35) return 'Low';
-    if (score <= 60) return 'Moderate';
-    if (score <= 80) return 'Strong';
-    return 'Peak';
+    if (score <= 10) return 'Very Low';
+    if (score <= 20) return 'Low';
+    if (score <= 39) return 'Below Average';
+    if (score <= 70) return 'Good';
+    if (score <= 90) return 'Great';
+    return 'Excellent';
   }, []);
 
   const normalizeColor = useCallback((input: any, score: number | null | undefined) => {
@@ -135,7 +138,7 @@ export default function FocusHeatmap({ timeRange = 'monthly' }: FocusHeatmapProp
     if (!raw) return null;
     return {
       current_focus: {
-        score: raw.current_focus?.score ?? 0,
+        score: raw.current_focus?.score ?? null,
         breakdown: raw.current_focus?.breakdown ?? {},
         color: normalizeColor(raw.current_focus?.color, raw.current_focus?.score) || {
           color: '#2a2a2a',
@@ -171,7 +174,13 @@ export default function FocusHeatmap({ timeRange = 'monthly' }: FocusHeatmapProp
       return;
     }
 
-    setIsLoading(true);
+    // Stale-while-revalidate: realtime/poll refreshes update quietly
+    // behind existing data instead of flashing the grid into a spinner
+    if (hasDataRef.current) {
+      setIsRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
     setError(null);
 
     try {
@@ -219,11 +228,13 @@ export default function FocusHeatmap({ timeRange = 'monthly' }: FocusHeatmapProp
 
       setHeatmapData(normalizedHeatmap);
       setStats(normalizedStats);
+      hasDataRef.current = true;
     } catch (err: any) {
       console.error('Error fetching focus data:', err);
       setError(err?.message || 'Failed to load focus analytics');
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   }, [normalizeHeatmap, normalizeStats, timeRange, isAuthenticated]);
 
@@ -286,7 +297,7 @@ export default function FocusHeatmap({ timeRange = 'monthly' }: FocusHeatmapProp
     return `${MONTH_NAMES[heatmapData.month - 1]} ${heatmapData.year}`;
   })();
 
-  if (isLoading) {
+  if (isLoading && !heatmapData) {
     return (
       <div className="focus-heatmap loading">
         <div className="loading-spinner">
@@ -326,8 +337,14 @@ export default function FocusHeatmap({ timeRange = 'monthly' }: FocusHeatmapProp
         </div>
 
         <div className="header-actions">
-          <button className="refresh-btn" onClick={fetchFocusData} title="Refresh data">
-            <RefreshCw size={16} />
+          <button
+            className="refresh-btn"
+            onClick={fetchFocusData}
+            title="Refresh data"
+            aria-label="Refresh focus data"
+            disabled={isRefreshing}
+          >
+            <RefreshCw size={16} className={isRefreshing ? 'spin' : ''} />
           </button>
         </div>
       </div>
@@ -352,27 +369,16 @@ export default function FocusHeatmap({ timeRange = 'monthly' }: FocusHeatmapProp
                   <div
                     key={dayIndex}
                     className={`heatmap-cell ${!cell || cell.score === null ? 'empty' : ''} ${selectedCell?.date === cell?.date ? 'selected' : ''}`}
-                    style={{
-                      backgroundColor: !cell || cell.score === null ? '#2a2a2a' : (cell?.color?.color || '#e5e7eb'),
-                      backgroundImage: !cell || cell.score === null ? 'radial-gradient(circle, #3a3a3a 1px, transparent 1px)' : 'none',
-                      backgroundSize: '4px 4px',
-                      opacity: !cell || cell.score === null ? 0.6 : 1
-                    }}
+                    style={
+                      !cell || cell.score === null
+                        ? undefined
+                        : { backgroundColor: cell?.color?.color || 'var(--bg-tertiary)' }
+                    }
                     onClick={() => cell && cell.score !== null && setSelectedCell(cell)}
-                    onMouseEnter={(e) => {
-                      if (cell && cell.score !== null) {
-                        const tooltip = e.currentTarget.querySelector('.cell-tooltip') as HTMLElement;
-                        if (tooltip) tooltip.style.display = 'block';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      const tooltip = e.currentTarget.querySelector('.cell-tooltip') as HTMLElement;
-                      if (tooltip) tooltip.style.display = 'none';
-                    }}
                   >
                     {cell?.day != null && <span className="cell-day">{cell.day}</span>}
                     {cell?.score != null && <span className="cell-score">{cell.score}%</span>}
-                    {(!cell || cell.score === null) && <span className="cell-score" style={{ color: '#666', fontSize: '10px' }}>—</span>}
+                    {(!cell || cell.score === null) && <span className="cell-score cell-score-empty">—</span>}
 
                     {/* Tooltip */}
                     {cell && cell.score !== null && (
@@ -400,18 +406,18 @@ export default function FocusHeatmap({ timeRange = 'monthly' }: FocusHeatmapProp
             ))}
           </div>
 
-          {/* Legend */}
+          {/* Legend — mirrors the backend score→color bands exactly */}
           <div className="heatmap-legend">
             <span className="legend-label">Less</span>
             <div className="legend-scale">
-              <div className="legend-item" style={{ backgroundColor: '#2a2a2a', backgroundImage: 'radial-gradient(circle, #3a3a3a 1px, transparent 1px)', backgroundSize: '4px 4px' }} title="No Data" />
+              <div className="legend-item legend-item-empty" title="No activity recorded" />
               {[
-                { color: '#ef4444', label: '0-10%' },
-                { color: '#fecaca', label: '11-20%' },
-                { color: '#fde68a', label: '21-39%' },
-                { color: '#3b82f6', label: '40-70%' },
-                { color: '#16a34a', label: '71-90%' },
-                { color: '#15803d', label: '91-100%' },
+                { color: '#fee2e2', label: '0-10% · Very Low' },
+                { color: '#fecaca', label: '11-20% · Low' },
+                { color: '#fde68a', label: '21-39% · Below Average' },
+                { color: '#3b82f6', label: '40-70% · Good' },
+                { color: '#16a34a', label: '71-90% · Great' },
+                { color: '#15803d', label: '91-100% · Excellent' },
               ].map((item, i) => (
                 <div
                   key={i}
@@ -439,9 +445,9 @@ export default function FocusHeatmap({ timeRange = 'monthly' }: FocusHeatmapProp
                   className="score-circle"
                   style={{
                     background: stats?.current_focus.score != null
-                      ? `conic-gradient(${stats?.current_focus.color?.color || '#3b82f6'} ${(stats?.current_focus.score || 0) * 3.6}deg, #e5e7eb 0deg)`
-                      : '#2a2a2a',
-                    border: stats?.current_focus.score == null ? '1px dashed #444' : 'none'
+                      ? `conic-gradient(${stats?.current_focus.color?.color || '#3b82f6'} ${(stats?.current_focus.score || 0) * 3.6}deg, var(--bg-tertiary, #e5e7eb) 0deg)`
+                      : 'var(--bg-tertiary, #2a2a2a)',
+                    border: stats?.current_focus.score == null ? '1px dashed var(--border-color, #444)' : 'none'
                   }}
                 >
                   <div className="score-inner">

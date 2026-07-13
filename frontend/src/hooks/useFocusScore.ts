@@ -137,9 +137,7 @@ export function useFocusScore(timeRange: 'daily' | 'weekly' | 'monthly' = 'daily
             }
         } catch (err: any) {
             console.error('Error fetching focus score:', err);
-            setScore(null);
-            setWeeklyAverage(null);
-            setMonthlyAverage(null);
+            // Keep the last good score on transient refresh failures
             setError(err.message);
         } finally {
             setIsLoading(false);

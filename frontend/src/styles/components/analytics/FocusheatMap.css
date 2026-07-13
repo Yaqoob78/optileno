@@ -910,3 +910,17 @@
     font-weight: 700;
   }
 }
+/* Tooltip on hover (CSS-driven; no JS DOM toggling) */
+.heatmap-cell:hover:not(.empty) .cell-tooltip {
+  display: block;
+}
+
+.cell-score-empty {
+  color: var(--text-muted, #666);
+  font-size: 10px;
+}
+
+.legend-item-empty {
+  background: var(--bg-muted, #f9fafb);
+  border: 1px dashed var(--border-color, rgba(128, 128, 128, 0.4));
+}

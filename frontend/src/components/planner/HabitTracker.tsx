@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { CheckCircle, Flame, TrendingUp, Plus, X, Trash2, Calendar, Award, Zap, Trophy } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { CheckCircle, Flame, Plus, X, Award, Zap, Trophy, AlertTriangle } from 'lucide-react';
 import { usePlanner } from '../../hooks/usePlanner';
 import { useRealtime } from '../../hooks/useRealtime';
 import { useUserStore } from '../../stores/useUserStore';
@@ -33,12 +33,22 @@ export default function HabitTracker({ habits: propsHabits }: HabitTrackerProps)
   const [showNewHabitModal, setShowNewHabitModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [trackingInProgress, setTrackingInProgress] = useState<Set<string>>(new Set());
+  const [formError, setFormError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [habitPendingDelete, setHabitPendingDelete] = useState<UIHabit | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [newHabit, setNewHabit] = useState({
     name: '',
     description: '',
     category: 'Wellness',
     goalId: ''
   });
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
 
   // Listen for real-time habit updates
   useEffect(() => {
@@ -117,10 +127,10 @@ export default function HabitTracker({ habits: propsHabits }: HabitTrackerProps)
     try {
       const result = await trackHabit(id);
       if (!result.success) {
-        console.error('Failed to track habit:', result.error);
+        setNotice({ type: 'error', text: result.error || 'Could not save that check-in. Try again.' });
       }
-    } catch (e) {
-      console.error('Failed to track habit:', e);
+    } catch (e: any) {
+      setNotice({ type: 'error', text: e?.message || 'Could not save that check-in. Try again.' });
     } finally {
       // Remove from tracking-in-progress
       setTrackingInProgress(prev => {
@@ -131,12 +141,19 @@ export default function HabitTracker({ habits: propsHabits }: HabitTrackerProps)
     }
   };
 
-  const handleDeleteHabit = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this habit?')) {
-      const result = await deleteHabit(id);
-      if (!result.success) {
-        alert(result.error || 'Failed to delete habit');
+  const handleConfirmDelete = async () => {
+    if (!habitPendingDelete || isDeleting) return;
+    setIsDeleting(true);
+    try {
+      const result = await deleteHabit(habitPendingDelete.id);
+      if (result.success) {
+        setNotice({ type: 'success', text: `Habit "${habitPendingDelete.name}" deleted.` });
+      } else {
+        setNotice({ type: 'error', text: result.error || 'Failed to delete habit.' });
       }
+      setHabitPendingDelete(null);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -155,15 +172,15 @@ export default function HabitTracker({ habits: propsHabits }: HabitTrackerProps)
 
       const result = await createHabit(habitData);
       if (result.success) {
-        console.log('✓ Habit created successfully');
         setShowNewHabitModal(false);
         setNewHabit({ name: '', description: '', category: 'Wellness', goalId: '' });
+        setFormError(null);
+        setNotice({ type: 'success', text: `Habit "${habitData.name}" started. Day one begins now.` });
       } else {
-        alert(result.error || 'Failed to create habit');
+        setFormError(result.error || 'Failed to create habit. Please try again.');
       }
     } catch (error: any) {
-      console.error('Error creating habit:', error);
-      alert(error.message || 'Failed to create habit');
+      setFormError(error.message || 'Failed to create habit. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -221,6 +238,15 @@ export default function HabitTracker({ habits: propsHabits }: HabitTrackerProps)
         </div>
       </div>
 
+      {notice && (
+        <div className={`habit-tracker-notice is-${notice.type}`} role="status">
+          <span>{notice.text}</span>
+          <button onClick={() => setNotice(null)} aria-label="Dismiss notification">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
       <div className="habits-container">
         {trackingHabits.length === 0 ? (
           <div className="empty-habits">
@@ -238,8 +264,9 @@ export default function HabitTracker({ habits: propsHabits }: HabitTrackerProps)
                     </span>
                     <button
                       className="delete-icon-btn"
-                      onClick={(e) => { e.stopPropagation(); handleDeleteHabit(habit.id); }}
+                      onClick={(e) => { e.stopPropagation(); setHabitPendingDelete(habit); }}
                       title="Delete habit"
+                      aria-label={`Delete habit "${habit.name}"`}
                     >
                       <X size={14} />
                     </button>
@@ -331,6 +358,12 @@ export default function HabitTracker({ habits: propsHabits }: HabitTrackerProps)
         }
       >
         <div className="flex flex-col gap-4">
+          {formError && (
+            <div className="habit-form-error" role="alert">
+              <AlertTriangle size={14} />
+              <span>{formError}</span>
+            </div>
+          )}
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-[var(--text-secondary)]">Habit Name</label>
             <input
@@ -381,6 +414,43 @@ export default function HabitTracker({ habits: propsHabits }: HabitTrackerProps)
             </div>
           )}
         </div>
+      </Modal>
+
+      {/* Delete Confirmation */}
+      <Modal
+        isOpen={!!habitPendingDelete}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) setHabitPendingDelete(null);
+        }}
+        title="Delete Habit"
+        className="habit-modal-shell"
+        maxWidth="sm"
+        footer={
+          <div className="flex gap-3 justify-end">
+            <button
+              className="app-modal-btn app-modal-btn-secondary"
+              onClick={() => setHabitPendingDelete(null)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </button>
+            <button
+              className="app-modal-btn app-modal-btn-danger"
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete Habit'}
+            </button>
+          </div>
+        }
+      >
+        <p className="habit-delete-confirm-text">
+          Delete <strong>"{habitPendingDelete?.name}"</strong>?
+          {habitPendingDelete && habitPendingDelete.currentStreak > 0 && (
+            <> Your {habitPendingDelete.currentStreak}-day streak will be lost.</>
+          )}{' '}
+          This can't be undone.
+        </p>
       </Modal>
     </div>
   );

@@ -108,7 +108,7 @@ export default function MoodTracker() {
       <div className="mood-tracker-container loading">
         <div className="mood-loading-content">
           <Activity className="spinning" size={24} />
-          <span>Synchronizing emotional telemetry...</span>
+          <span>Reading your recent activity...</span>
         </div>
       </div>
     );
@@ -145,8 +145,8 @@ export default function MoodTracker() {
           <Activity size={18} />
         </div>
         <div>
-          <h3>Emotional Intelligence</h3>
-          <p>Real-time Bio-metric Sweep</p>
+          <h3>Mood Tracker</h3>
+          <p>Estimated from your tasks, focus, and chat activity</p>
         </div>
       </div>
 
