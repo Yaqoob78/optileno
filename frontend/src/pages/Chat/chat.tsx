@@ -591,6 +591,7 @@ export default function Chat() {
                   ...message,
                   provider: message.metadata?.provider ?? message.provider,
                   model: message.metadata?.model ?? message.model,
+                  isError: Boolean(message.metadata?.error),
                   timestamp: formatTimestamp(message.timestamp),
                 }}
               />

@@ -1938,3 +1938,56 @@
   border-color: rgba(251, 146, 60, 0.86);
   box-shadow: 0 10px 20px rgba(249, 115, 22, 0.3);
 }
+
+/* Notices + inline form errors (replaces native confirm/alert dialogs) */
+.habit-tracker-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+  padding: 0.55rem 0.8rem;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  border: 1px solid transparent;
+}
+
+.habit-tracker-notice.is-success {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #10b981;
+}
+
+.habit-tracker-notice.is-error {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+.habit-tracker-notice button {
+  display: inline-flex;
+  color: inherit;
+  opacity: 0.7;
+}
+
+.habit-tracker-notice button:hover {
+  opacity: 1;
+}
+
+.habit-form-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.8rem;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+  font-size: 0.8rem;
+}
+
+.habit-delete-confirm-text {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text-secondary, inherit);
+}

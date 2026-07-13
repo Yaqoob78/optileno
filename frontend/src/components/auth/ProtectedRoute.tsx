@@ -192,7 +192,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
                 width: '100vw',
                 alignItems: 'center',
                 justifyContent: 'center',
-                background: '#020617',
+                background: 'rgb(var(--color-bg-primary, 2 6 23))',
             }}>
                 <Loader2 className="animate-spin" style={{ height: '2rem', width: '2rem', color: '#3b82f6' }} />
             </div>
@@ -219,7 +219,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
                 minHeight: '100vh',
                 width: '100vw',
                 padding: '2rem',
-                background: 'linear-gradient(135deg, #020617 0%, #0f172a 50%, #020617 100%)',
+                background: 'rgb(var(--color-bg-primary, 2 6 23))',
             }}>
                 <div style={{
                     background: 'rgba(10, 15, 30, 0.85)',
@@ -232,7 +232,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
                     textAlign: 'center',
                 }}>
                     <Loader2 className="animate-spin" size={28} style={{ color: '#60a5fa', marginBottom: '1rem' }} />
-                    <h2 style={{ color: '#fff', fontSize: '1.2rem', marginBottom: '0.5rem' }}>
+                    <h2 style={{ color: 'rgb(var(--color-text-primary, 248 250 252))', fontSize: '1.2rem', marginBottom: '0.5rem' }}>
                         Verifying Payment
                     </h2>
                     <p style={{ color: '#94a3b8', fontSize: '0.9rem', lineHeight: '1.6' }}>
@@ -254,7 +254,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
                 minHeight: '100vh',
                 width: '100vw',
                 padding: '2rem',
-                background: 'linear-gradient(135deg, #020617 0%, #0f172a 50%, #020617 100%)',
+                background: 'rgb(var(--color-bg-primary, 2 6 23))',
             }}>
                 <div style={{
                     background: 'rgba(10, 15, 30, 0.85)',
@@ -282,7 +282,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
                     </div>
 
                     <h2 style={{
-                        color: '#fff',
+                        color: 'rgb(var(--color-text-primary, 248 250 252))',
                         fontSize: '1.5rem',
                         fontWeight: 700,
                         marginBottom: '0.75rem',

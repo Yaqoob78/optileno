@@ -144,13 +144,13 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
     <div id="notification-center" className="fixed inset-0 z-[120] overflow-hidden" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px]" onClick={onClose} />
 
-      <div className="absolute right-0 top-0 h-full w-[88vw] max-w-md border-l border-white/10 bg-slate-950/95 shadow-2xl backdrop-blur-xl flex flex-col">
+      <div className="absolute right-0 top-0 h-full w-[88vw] max-w-md border-l border-[rgba(var(--color-border-light),0.4)] bg-[rgba(var(--color-bg-primary),0.97)] shadow-2xl backdrop-blur-xl flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-white/10">
-          <h2 className="text-lg font-semibold text-white">Notifications</h2>
+        <div className="flex items-center justify-between p-5 border-b border-[rgba(var(--color-border-light),0.4)]">
+          <h2 className="text-lg font-semibold text-[rgb(var(--color-text-primary))]">Notifications</h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full text-slate-300 hover:text-white hover:bg-white/10 transition"
+            className="p-1.5 rounded-full text-[rgb(var(--color-text-secondary))] hover:text-[rgb(var(--color-text-primary))] hover:bg-[rgba(var(--color-bg-tertiary),0.7)] transition"
             aria-label="Close notifications"
           >
             <X className="w-5 h-5" />
@@ -158,12 +158,12 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
         </div>
 
         {/* Filters */}
-        <div className="flex gap-2 px-5 py-3 border-b border-white/10">
+        <div className="flex gap-2 px-5 py-3 border-b border-[rgba(var(--color-border-light),0.4)]">
           <button
             onClick={() => setFilter('all')}
             className={`px-3 py-1 rounded-full text-sm font-medium transition ${filter === 'all'
                 ? 'bg-blue-500 text-white'
-                : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                : 'bg-[rgba(var(--color-bg-tertiary),0.5)] text-[rgb(var(--color-text-secondary))] hover:bg-[rgba(var(--color-bg-tertiary),0.8)]'
               }`}
           >
             All ({notifications.length})
@@ -172,7 +172,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
             onClick={() => setFilter('unread')}
             className={`px-3 py-1 rounded-full text-sm font-medium transition ${filter === 'unread'
                 ? 'bg-blue-500 text-white'
-                : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                : 'bg-[rgba(var(--color-bg-tertiary),0.5)] text-[rgb(var(--color-text-secondary))] hover:bg-[rgba(var(--color-bg-tertiary),0.8)]'
               }`}
           >
             Unread ({unreadCount})
@@ -180,9 +180,9 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
         </div>
 
         {/* Notifications List */}
-        <div className="flex-1 overflow-y-auto bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+        <div className="flex-1 overflow-y-auto bg-[rgb(var(--color-bg-primary))]">
           {filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-slate-400">
+            <div className="flex flex-col items-center justify-center h-full text-[rgb(var(--color-text-tertiary))]">
               <Bell className="w-12 h-12 mb-4 opacity-50" />
               <p>No notifications</p>
             </div>
@@ -201,10 +201,10 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between">
                         <div>
-                          <p className="font-semibold text-white">
+                          <p className="font-semibold text-[rgb(var(--color-text-primary))]">
                             {notif.title}
                           </p>
-                          <p className="text-sm text-slate-300 mt-1 leading-relaxed">
+                          <p className="text-sm text-[rgb(var(--color-text-secondary))] mt-1 leading-relaxed">
                             {notif.message}
                           </p>
                         </div>
@@ -213,7 +213,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-3">
-                        <span className="text-xs text-slate-400">
+                        <span className="text-xs text-[rgb(var(--color-text-tertiary))]">
                           {new Date(notif.createdAt).toLocaleString()}
                         </span>
                         {!notif.read && (
@@ -237,7 +237,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                           className="ml-auto p-1 rounded transition hover:bg-white/10"
                           aria-label="Delete notification"
                         >
-                          <Trash2 className="w-4 h-4 text-slate-400 hover:text-white" />
+                          <Trash2 className="w-4 h-4 text-[rgb(var(--color-text-tertiary))] hover:text-[rgb(var(--color-text-primary))]" />
                         </button>
                       </div>
                     </div>
@@ -249,7 +249,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-white/10 bg-slate-950/95">
+        <div className="p-4 border-t border-[rgba(var(--color-border-light),0.4)] bg-[rgba(var(--color-bg-primary),0.97)]">
           <button
             onClick={markAllAsRead}
             className="w-full py-2 text-sm font-medium text-blue-300 hover:text-blue-200 transition disabled:opacity-50 disabled:cursor-not-allowed"

@@ -336,3 +336,14 @@
     font-size: 0.64rem;
   }
 }
+
+/* Failed AI responses are visually distinct from real replies */
+.error-message-bubble {
+  border: 1px solid rgba(239, 68, 68, 0.35) !important;
+  background: rgba(239, 68, 68, 0.06) !important;
+}
+
+.error-message-bubble .message-text {
+  color: rgb(var(--color-text-secondary, 148 163 184));
+  font-style: italic;
+}

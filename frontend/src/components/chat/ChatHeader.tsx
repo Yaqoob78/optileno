@@ -15,7 +15,10 @@ export default function ChatHeader({
       <button
         onClick={() => onTabChange('keep')}
         className={`chat-tab ${activeTab === 'keep' ? 'active keep-active' : ''}`}
-        title={activeTab === 'keep' ? "Keep mode is on" : "Enable keep mode"}
+        aria-pressed={activeTab === 'keep'}
+        title={activeTab === 'keep'
+          ? "Keep mode is on — this conversation is saved and pinned to your Dashboard"
+          : "Keep: save this conversation and pin it to your Dashboard"}
       >
         <div className="flex items-center justify-center gap-2">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -30,7 +33,10 @@ export default function ChatHeader({
       <button
         onClick={() => onTabChange('clear')}
         className={`chat-tab ${activeTab === 'clear' ? 'active clear-flow-active' : ''}`}
-        title={activeTab === 'clear' ? "Clear flow mode is on" : "Enable clear flow mode"}
+        aria-pressed={activeTab === 'clear'}
+        title={activeTab === 'clear'
+          ? "Clear Flow is on — only the latest messages are kept, older ones auto-clear"
+          : "Clear Flow: keep the thread short by auto-clearing older messages"}
       >
         <div className="flex items-center justify-center gap-2">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">

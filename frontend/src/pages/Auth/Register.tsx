@@ -193,7 +193,7 @@ export default function Register() {
 
                 // Owner account - no payment needed, go directly to dashboard
                 if (data.requires_payment === false) {
-                    navigate('/dashboard');
+                    navigate('/dashboard', { replace: true });
                     return;
                 }
 

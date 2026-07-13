@@ -11,6 +11,7 @@ interface ChatBubbleProps {
     timestamp: string;
     provider?: string;
     model?: string;
+    isError?: boolean;
   };
 }
 
@@ -141,7 +142,7 @@ export default function ChatBubble({ message }: ChatBubbleProps) {
       <article
         className={`message-bubble ${
           isUser ? "user-message-bubble" : "ai-message-bubble"
-        }`}
+        }${message.isError ? " error-message-bubble" : ""}`}
       >
         <div className="message-content-wrapper">
           {isUser ? (
