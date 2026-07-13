@@ -54,14 +54,21 @@ export default function Header({ page, onMenuToggle, isMobile }: HeaderProps) {
       setUnreadCount((prev) => prev + 1);
     };
 
+    // Drawer actions (mark read / delete / mark all) update the badge instantly
+    const onNotificationsChanged = () => {
+      fetchUnreadCount();
+    };
+
     fetchUnreadCount();
     socket.on("notification:new", onRealtimeNotification);
+    window.addEventListener('notifications:changed', onNotificationsChanged);
 
     const pollId = window.setInterval(fetchUnreadCount, 60_000);
 
     return () => {
       mounted = false;
       socket.off("notification:new", onRealtimeNotification);
+      window.removeEventListener('notifications:changed', onNotificationsChanged);
       window.clearInterval(pollId);
     };
   }, []);

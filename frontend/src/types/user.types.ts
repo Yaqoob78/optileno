@@ -259,7 +259,6 @@ export type UserState = {
   ) => void;
   login: (profile: UserProfile, preferences?: UserPreferences) => void;
   logout: () => void;
-  incrementStats: (stats: Partial<UserProfile['stats']>) => void;
   isPremium: boolean;
   isUltra: boolean;
   accountAge: number;

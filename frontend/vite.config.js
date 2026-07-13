@@ -4,6 +4,14 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   build: {
+    // Strip debug logging from production bundles; console.error/warn stay
+    // so real failures remain diagnosable in the field
+    minify: "terser",
+    terserOptions: {
+      compress: {
+        pure_funcs: ["console.log", "console.debug", "console.info"],
+      },
+    },
     rollupOptions: {
       output: {
         manualChunks(id) {

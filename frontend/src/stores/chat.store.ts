@@ -90,9 +90,6 @@ type ChatState = {
   updateContext: (updates: Partial<ChatSession["context"]>) => void;
   importConversations: (conversations: Conversation[]) => void;
   exportConversations: () => Conversation[];
-  recentConversations: Conversation[];
-  totalMessages: number;
-  conversationCount: number;
   searchConversations: (query: string) => Conversation[];
   filterByMode: (mode: ChatMode) => Conversation[];
   filterByTag: (tag: string) => Conversation[];
@@ -285,21 +282,6 @@ export const useChatStore = create<ChatState>()(
       currentMode: "general",
       modeSettings: defaultModeSettings,
       session: createSessionState(),
-
-      get recentConversations() {
-        return sortByUpdatedAt(get().conversations).slice(0, 10);
-      },
-
-      get totalMessages() {
-        return get().conversations.reduce(
-          (total, conversation) => total + conversation.messages.length,
-          0,
-        );
-      },
-
-      get conversationCount() {
-        return get().conversations.length;
-      },
 
       createConversation: (title, mode = "general") => {
         const conversation = normalizeConversation({

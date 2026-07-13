@@ -97,6 +97,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
       setNotifications((prev) =>
         prev.map((n) => (n.id === id ? { ...n, read: true } : n))
       );
+      window.dispatchEvent(new CustomEvent('notifications:changed'));
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
     }
@@ -106,6 +107,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
     try {
       await api.delete(`/users/me/notifications/${id}`);
       setNotifications((prev) => prev.filter((n) => n.id !== id));
+      window.dispatchEvent(new CustomEvent('notifications:changed'));
     } catch (error) {
       console.error('Failed to delete notification:', error);
     }
@@ -116,6 +118,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
       await api.post('/users/me/notifications/read-all');
       setNotifications((prev) => prev.map((notification) => ({ ...notification, read: true })));
       setFilter('all');
+      window.dispatchEvent(new CustomEvent('notifications:changed'));
     } catch (error) {
       console.error('Failed to mark all notifications as read:', error);
     }

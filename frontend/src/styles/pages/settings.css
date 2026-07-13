@@ -1515,3 +1515,52 @@
     width: 100%;
   }
 }
+
+/* Billing cycle segmented control */
+.billing-cycle-toggle {
+  margin-left: auto;
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--s-bg-item);
+  border: 1px solid var(--s-border);
+}
+
+.billing-cycle-toggle button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--s-text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.billing-cycle-toggle button:hover {
+  color: var(--s-text-primary);
+}
+
+.billing-cycle-toggle button.is-active {
+  background: var(--s-accent);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(9, 105, 218, 0.3);
+}
+
+.billing-cycle-save {
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.18);
+  color: #10b981;
+}
+
+.billing-cycle-toggle button.is-active .billing-cycle-save {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}

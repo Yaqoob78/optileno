@@ -138,21 +138,6 @@ export const useUserStore = create<UserState>()(
         isAuthenticated: false,
       }),
 
-      // Stats actions
-      incrementStats: (stats) => set((state) => {
-        const nextProfile = {
-          ...state.profile,
-          stats: {
-            ...state.profile.stats,
-            totalSessions: state.profile.stats.totalSessions + (stats.totalSessions || 0),
-            totalTokens: state.profile.stats.totalTokens + (stats.totalTokens || 0),
-            avgRating: stats.avgRating !== undefined
-              ? (state.profile.stats.avgRating + stats.avgRating) / 2
-              : state.profile.stats.avgRating,
-          },
-        };
-        return withDerived(nextProfile);
-      }),
 
       // Generic update for AI context
       updateUserContext: (payload) => {

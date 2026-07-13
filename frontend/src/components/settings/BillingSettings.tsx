@@ -365,9 +365,22 @@ export default function BillingSettings() {
                 <>
                     <div style={{ margin: '1.5rem 0 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                         <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Choose Your Plan</h3>
-                        <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.25rem' }}>
-                            <button onClick={() => setBillingCycle('monthly')}>Monthly</button>
-                            <button onClick={() => setBillingCycle('annual')}>Annual</button>
+                        <div className="billing-cycle-toggle" role="group" aria-label="Billing cycle">
+                            <button
+                                className={billingCycle === 'monthly' ? 'is-active' : ''}
+                                aria-pressed={billingCycle === 'monthly'}
+                                onClick={() => setBillingCycle('monthly')}
+                            >
+                                Monthly
+                            </button>
+                            <button
+                                className={billingCycle === 'annual' ? 'is-active' : ''}
+                                aria-pressed={billingCycle === 'annual'}
+                                onClick={() => setBillingCycle('annual')}
+                            >
+                                Annual
+                                <span className="billing-cycle-save">Save 33%</span>
+                            </button>
                         </div>
                     </div>
 

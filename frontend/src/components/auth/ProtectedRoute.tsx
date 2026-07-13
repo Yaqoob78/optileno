@@ -200,10 +200,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     }
 
     if (!isAuthenticated) {
-        const publicPaths = ['/', '/login', '/register', '/get-access'];
-        if (publicPaths.includes(location.pathname)) {
-            return <>{children}</>;
-        }
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
