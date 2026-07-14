@@ -6,7 +6,6 @@ import {
   Target,
   Activity,
   Clock,
-  TrendingUp,
   MessageSquare,
   CheckCircle,
   Award,
@@ -32,13 +31,9 @@ import { normalizeTaskStatus } from '../../services/api/planner.service';
 import SEO from '../../components/common/SEO';
 
 import RecentActivityWidget from '../../components/dashboard/RecentActivityWidget';
+import AchievementsModal from '../../components/dashboard/AchievementsModal';
+import { computeAchievements, AchievementInputs } from '../../components/dashboard/achievements';
 import '../../styles/pages/dashboard.css';
-
-interface AchievementBadge {
-  id: string;
-  label: string;
-  icon: React.ReactNode;
-}
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -55,6 +50,8 @@ export default function Dashboard() {
 
   // Use Global Stores for Real-Time Sync
   const plannerTasks = usePlannerStore((state) => state.tasks);
+  const plannerGoals = usePlannerStore((state) => state.goals);
+  const plannerHabits = usePlannerStore((state) => state.habits);
   const activeConversation = useChatStore((state) => state.activeConversation);
   const conversations = useChatStore((state) => state.conversations);
   const setActiveConversation = useChatStore((state) => state.setActiveConversation);
@@ -80,32 +77,110 @@ export default function Dashboard() {
   const daysActive = Math.max(1, (accountAge ?? 0) + 1);
   const avgMinutesPerDay = Math.round((userStats.totalTimeSpent || 0) / daysActive);
 
-  // Achievements earned from real usage data only
-  const achievements = useMemo<AchievementBadge[]>(() => {
-    const earned: AchievementBadge[] = [];
-    if (completedTasks >= 1) {
-      earned.push({ id: 'first-task', label: 'Task Finisher', icon: <CheckCircle size={16} /> });
+  // Achievements: every badge is derived live from real usage data.
+  // The catalog + unlock thresholds live in components/dashboard/achievements.ts
+  const achievementInputs = useMemo<AchievementInputs>(() => {
+    let highPriorityDone = 0;
+    let earlyBirdDone = false;
+    let nightOwlDone = false;
+    for (const task of plannerTasks) {
+      if (normalizeTaskStatus(task.status) !== 'done') continue;
+      if (task.priority === 'high' || task.priority === 'urgent') highPriorityDone += 1;
+      if (task.completedAt) {
+        const hour = new Date(task.completedAt).getHours();
+        if (!Number.isNaN(hour)) {
+          if (hour < 9) earlyBirdDone = true;
+          if (hour >= 22) nightOwlDone = true;
+        }
+      }
     }
-    if (completedTasks >= 10) {
-      earned.push({ id: 'task-ninja', label: 'Task Ninja', icon: <Zap size={16} /> });
+    const bestHabitStreak = plannerHabits.reduce(
+      (best, habit) => Math.max(best, habit.longestStreak || 0, habit.currentStreak || 0),
+      0
+    );
+    const bestGoalProgress = plannerGoals.reduce(
+      (best, goal) => Math.max(best, goal.current_progress || 0),
+      0
+    );
+    const goalsCompleted = plannerGoals.filter(
+      (goal) => (goal.current_progress || 0) >= 100
+    ).length;
+
+    return {
+      completedTasks,
+      highPriorityDone,
+      earlyBirdDone,
+      nightOwlDone,
+      timeSpentToday: userStats.timeSpentToday || 0,
+      totalTimeSpent: userStats.totalTimeSpent || 0,
+      accountAgeDays: accountAge ?? 0,
+      bestHabitStreak,
+      goalsStarted: plannerGoals.length,
+      bestGoalProgress,
+      goalsCompleted,
+      productivityScore,
+      conversationCount: conversations.length,
+    };
+  }, [
+    plannerTasks,
+    plannerHabits,
+    plannerGoals,
+    completedTasks,
+    userStats.timeSpentToday,
+    userStats.totalTimeSpent,
+    accountAge,
+    productivityScore,
+    conversations.length,
+  ]);
+
+  const achievements = useMemo(() => computeAchievements(achievementInputs), [achievementInputs]);
+  const earnedAchievements = useMemo(() => achievements.filter((a) => a.earned), [achievements]);
+  const visibleAchievements = earnedAchievements.slice(0, 4);
+  const extraAchievements = earnedAchievements.length - visibleAchievements.length;
+  const achievementPercent = achievements.length === 0
+    ? 0
+    : Math.round((earnedAchievements.length / achievements.length) * 100);
+
+  // "NEW" badge shine: remember which achievements the user has already seen,
+  // per account, so fresh unlocks get celebrated exactly once.
+  const [achievementsOpen, setAchievementsOpen] = useState(false);
+  const seenStorageKey = `optileno_achievements_seen:${user?.email || 'guest'}`;
+  const [seenAchievementIds, setSeenAchievementIds] = useState<Set<string>>(() => new Set());
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(seenStorageKey);
+      setSeenAchievementIds(raw ? new Set(JSON.parse(raw)) : new Set());
+    } catch {
+      setSeenAchievementIds(new Set());
     }
-    if ((userStats.timeSpentToday || 0) >= 60) {
-      earned.push({ id: 'deep-focus', label: 'Deep Focus', icon: <Brain size={16} /> });
+  }, [seenStorageKey]);
+
+  const unseenEarnedIds = useMemo(
+    () => new Set(earnedAchievements.filter((a) => !seenAchievementIds.has(a.id)).map((a) => a.id)),
+    [earnedAchievements, seenAchievementIds]
+  );
+
+  const handleAchievementsOpenChange = (open: boolean) => {
+    setAchievementsOpen(open);
+    if (!open && unseenEarnedIds.size > 0) {
+      // Closing the gallery acknowledges the new unlocks
+      const next = new Set(seenAchievementIds);
+      earnedAchievements.forEach((a) => next.add(a.id));
+      setSeenAchievementIds(next);
+      try {
+        localStorage.setItem(seenStorageKey, JSON.stringify([...next]));
+      } catch {
+        // Storage unavailable (private mode) — shine simply reappears next visit.
+      }
     }
-    if (productivityScoreValue >= 70) {
-      earned.push({ id: 'peak-performer', label: 'Peak Performer', icon: <TrendingUp size={16} /> });
-    }
-    if ((accountAge ?? 0) >= 7) {
-      earned.push({ id: 'week-strong', label: 'One Week Strong', icon: <Sun size={16} /> });
-    }
-    return earned;
-  }, [completedTasks, userStats.timeSpentToday, productivityScoreValue, accountAge]);
-  const visibleAchievements = achievements.slice(0, 4);
-  const extraAchievements = achievements.length - visibleAchievements.length;
+  };
 
   // Action to fetch analytics if stale
   const fetchAnalytics = useAnalyticsStore((state) => state.fetchAnalytics);
   const fetchTasks = usePlannerStore((state) => state.fetchTasks);
+  const fetchGoals = usePlannerStore((state) => state.fetchGoals);
+  const fetchHabits = usePlannerStore((state) => state.fetchHabits);
 
   const quotes = [
     { text: "Productivity is never an accident. It is always the result of a commitment to excellence.", author: "Paul J. Meyer" },
@@ -129,14 +204,21 @@ export default function Dashboard() {
     };
   }, []);
 
-  // Fetch fresh analytics and planner data on mount so stats are
-  // accurate even on a fresh device where the persisted stores are empty
+  // Fetch fresh analytics and planner data on mount so stats and
+  // achievements are accurate even on a fresh device where the
+  // persisted stores are empty
   useEffect(() => {
     fetchAnalytics();
     fetchTasks().catch((error) => {
       console.error('Failed to refresh planner tasks', error);
     });
-  }, [fetchAnalytics, fetchTasks]);
+    fetchGoals().catch((error) => {
+      console.error('Failed to refresh goals', error);
+    });
+    fetchHabits().catch((error) => {
+      console.error('Failed to refresh habits', error);
+    });
+  }, [fetchAnalytics, fetchTasks, fetchGoals, fetchHabits]);
 
   useEffect(() => {
     // Check for payment success
@@ -419,25 +501,68 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="analytics-metric">
+            <div className="analytics-metric achievements-metric">
               <div className="metric-header">
                 <Award className="metric-icon" size={20} />
                 <span className="metric-label">Achievements</span>
+                <span className="achievements-counter">
+                  {earnedAchievements.length}/{achievements.length}
+                </span>
               </div>
-              {achievements.length > 0 ? (
-                <div className="achievements-preview">
-                  {visibleAchievements.map((badge) => (
-                    <div key={badge.id} className="achievement-badge" data-tooltip={badge.label}>
-                      {badge.icon}
-                    </div>
-                  ))}
-                  {extraAchievements > 0 && (
-                    <div className="achievement-count">+{extraAchievements} more</div>
-                  )}
-                </div>
-              ) : (
-                <div className="achievements-empty">
-                  Complete tasks and focus sessions to earn your first badge.
+
+              <div className="achievements-track" aria-hidden="true">
+                <div
+                  className="achievements-track-fill"
+                  style={{ width: `${achievementPercent}%` }}
+                />
+              </div>
+
+              <button
+                type="button"
+                className="achievements-open-btn"
+                onClick={() => setAchievementsOpen(true)}
+                aria-haspopup="dialog"
+                aria-label={`View achievements: ${earnedAchievements.length} of ${achievements.length} unlocked`}
+              >
+                {earnedAchievements.length > 0 ? (
+                  <div className="achievements-preview">
+                    {visibleAchievements.map((badge) => {
+                      const BadgeIcon = badge.icon;
+                      const isNew = unseenEarnedIds.has(badge.id);
+                      return (
+                        <div
+                          key={badge.id}
+                          className={`achievement-badge achievement-tier-${badge.tier}${isNew ? ' achievement-badge-new' : ''}`}
+                          data-tooltip={badge.title}
+                        >
+                          <BadgeIcon size={16} />
+                          {isNew && <span className="achievement-new-dot" aria-hidden="true" />}
+                        </div>
+                      );
+                    })}
+                    {extraAchievements > 0 && (
+                      <div className="achievement-count">+{extraAchievements}</div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="achievements-empty">
+                    Your first badge is one completed task away.
+                  </div>
+                )}
+                <span className="achievements-view-all">
+                  View all
+                  <ChevronRight size={14} />
+                </span>
+              </button>
+
+              {unseenEarnedIds.size > 0 && (
+                <div className="achievement-unlock-note" role="status">
+                  <Sparkles size={12} aria-hidden="true" />
+                  <span>
+                    {unseenEarnedIds.size === 1
+                      ? 'New badge unlocked!'
+                      : `${unseenEarnedIds.size} new badges unlocked!`}
+                  </span>
                 </div>
               )}
             </div>
@@ -563,6 +688,13 @@ export default function Dashboard() {
         </div>
 
       </div>
+
+      <AchievementsModal
+        isOpen={achievementsOpen}
+        onOpenChange={handleAchievementsOpenChange}
+        achievements={achievements}
+        unseenIds={unseenEarnedIds}
+      />
     </div>
   );
 }
