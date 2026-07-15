@@ -336,7 +336,9 @@
 }
 
 .bf-trait-emoji {
-    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
 }
 
 .bf-trait-trend {
