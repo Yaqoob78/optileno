@@ -6,9 +6,15 @@ import {
   Target,
   Activity,
   Clock,
+  Hourglass,
+  ListChecks,
+  Bookmark,
   MessageSquare,
-  CheckCircle,
-  Award,
+  Timer,
+  Repeat,
+  Trophy,
+  BadgeCheck,
+  PartyPopper,
   Sun,
   Moon,
   ChevronRight,
@@ -293,7 +299,7 @@ export default function Dashboard() {
           <div className="dashboard-status-banner is-success">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white">
-                <Award size={20} />
+                <BadgeCheck size={20} />
               </div>
               <div>
                 <h4 className="font-bold text-main">Payment Confirmed</h4>
@@ -404,7 +410,7 @@ export default function Dashboard() {
           <div className="analytics-grid">
             <div className="analytics-metric">
               <div className="metric-header">
-                <Clock className="metric-icon" size={20} />
+                <Hourglass className="metric-icon" size={20} />
                 <span className="metric-label">Time Invested</span>
               </div>
               <div className="metric-value">{userStats.timeSpentToday || 0}m today</div>
@@ -415,7 +421,7 @@ export default function Dashboard() {
 
             <div className="analytics-metric">
               <div className="metric-header">
-                <Target className="metric-icon" size={20} />
+                <ListChecks className="metric-icon" size={20} />
                 <span className="metric-label">Tasks Ready</span>
               </div>
               <div className="metric-value">{totalTasks} Tasks</div>
@@ -447,7 +453,7 @@ export default function Dashboard() {
             {/* KEEP MODE: Saved Chat Box */}
             <div className="analytics-metric saved-chat-metric">
               <div className="metric-header">
-                <MessageSquare className="metric-icon" size={20} />
+                <Bookmark className="metric-icon" size={20} />
                 <span className="metric-label">Saved Chats (Keep Mode)</span>
               </div>
 
@@ -513,7 +519,7 @@ export default function Dashboard() {
 
             <div className="analytics-metric achievements-metric">
               <div className="metric-header">
-                <Award className="metric-icon" size={20} />
+                <Trophy className="metric-icon" size={20} />
                 <span className="metric-label">Achievements</span>
                 <span className="achievements-counter">
                   {earnedAchievements.length}/{achievements.length}
@@ -567,7 +573,7 @@ export default function Dashboard() {
 
               {unseenEarnedIds.size > 0 && (
                 <div className="achievement-unlock-note" role="status">
-                  <Sparkles size={12} aria-hidden="true" />
+                  <PartyPopper size={12} aria-hidden="true" />
                   <span>
                     {unseenEarnedIds.size === 1
                       ? 'New badge unlocked!'
@@ -621,7 +627,7 @@ export default function Dashboard() {
               onClick={() => navigate('/planner')}
             >
               <div className="action-icon-wrapper">
-                <Zap className="action-icon" />
+                <Timer className="action-icon" />
               </div>
               <div className="action-content">
                 <div className="action-title">Deep Work Session</div>
@@ -634,7 +640,7 @@ export default function Dashboard() {
               onClick={() => navigate('/planner')}
             >
               <div className="action-icon-wrapper">
-                <CheckCircle className="action-icon" />
+                <Repeat className="action-icon" />
               </div>
               <div className="action-content">
                 <div className="action-title">Habit Tracker</div>

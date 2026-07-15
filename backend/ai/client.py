@@ -466,7 +466,13 @@ class DualAIClient:
         # 2. Build enhanced system prompt with full context + anti-repetition
         session_key = session_id or f"{self.user_id}_default"
         recent_responses = _RECENT_RESPONSES.get(session_key, [])
-        system_prompt = self._get_system_prompt_with_context(mode, context_prompt, recent_responses)
+        system_prompt = self._get_system_prompt_with_context(
+            mode,
+            context_prompt,
+            recent_responses,
+            user_timezone=full_context.get("user_timezone", "UTC"),
+            now_local_iso=full_context.get("now_local_iso"),
+        )
         
         # 3. Generate AI response
         provider_info = {"provider": "unknown", "model": "unknown"}
@@ -699,10 +705,29 @@ class DualAIClient:
             "has_full_context": bool(full_context.get("goals")),
         }
     
-    def _get_system_prompt_with_context(self, mode: str, context_prompt: str, recent_responses: Optional[List[str]] = None) -> str:
+    def _get_system_prompt_with_context(
+        self,
+        mode: str,
+        context_prompt: str,
+        recent_responses: Optional[List[str]] = None,
+        user_timezone: str = "UTC",
+        now_local_iso: Optional[str] = None,
+    ) -> str:
         """Build system prompt with FULL user context for AI agent."""
-        
-        now_str = datetime.now(timezone.utc).strftime("%A, %Y-%m-%d %H:%M UTC")
+
+        # Scheduling must be expressed in the user's wall-clock time. Handing the
+        # model UTC made every round hour it chose land on :30 for offset zones
+        # such as Asia/Kolkata (UTC+5:30).
+        now_local = None
+        if now_local_iso:
+            try:
+                now_local = datetime.fromisoformat(now_local_iso)
+            except ValueError:
+                now_local = None
+        if now_local is None:
+            now_local = datetime.now(timezone.utc)
+            user_timezone = "UTC"
+        now_str = f"{now_local.strftime('%A, %Y-%m-%d %H:%M')} ({user_timezone})"
 
         # Build anti-repetition hint from recent responses
         anti_rep_hint = ""
@@ -724,7 +749,11 @@ class DualAIClient:
         base_agent_prompt = """You are Leno, an AI productivity coach built into Optileno.
 
 ## SYSTEM TIME:
-The current time is {now_str}. Never schedule events in the past.
+The current time is {now_str}. This is the user's LOCAL time.
+- Every time you schedule or mention is the user's LOCAL time. Never convert to UTC.
+- Never schedule events in the past.
+- Pick times that suit the work and the user's day. Do NOT default to the same
+  slot every time — vary start times and durations to fit what is being scheduled.
 
 ## YOUR KNOWLEDGE:
 {context}

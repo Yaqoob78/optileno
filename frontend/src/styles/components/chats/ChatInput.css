@@ -6,11 +6,23 @@
   bottom: 0;
   z-index: var(--z-above);
   padding: 0.75rem 0 calc(1rem + env(safe-area-inset-bottom, 0px));
+  /* Solid surface — messages must never show through the composer as it scrolls.
+     A short fade sits above it as a separate layer so the seam stays soft. */
+  background: rgb(var(--color-bg-primary));
+}
+
+.chat-input-container::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 1.75rem;
+  pointer-events: none;
   background: linear-gradient(
     180deg,
     rgba(var(--color-bg-primary), 0) 0%,
-    rgba(var(--color-bg-primary), 0.72) 34%,
-    rgba(var(--color-bg-primary), 0.95) 100%
+    rgb(var(--color-bg-primary)) 100%
   );
 }
 
@@ -20,27 +32,86 @@
   padding: 0 1rem;
 }
 
+/* Composer: opaque core with an animated Optileno-brand gradient ring.
+   The ring lives on ::before behind the padding-box background, so the
+   field stays fully opaque while the border itself carries the gradient. */
 .chat-input-wrapper {
+  position: relative;
   display: flex;
   flex-direction: column;
   width: 100%;
   border-radius: 1.4rem;
-  border: 1px solid rgba(var(--color-border-light), 0.4);
-  background: rgba(var(--color-bg-secondary), 0.92);
+  border: 1.5px solid transparent;
+  background: rgb(var(--color-bg-secondary));
+  background-clip: padding-box;
   box-shadow: 0 10px 32px rgba(2, 6, 23, 0.1);
   padding: 0.55rem 0.65rem 0.55rem 0.85rem;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  transition:
-    border-color var(--transition-base),
-    box-shadow var(--transition-base);
+  transition: box-shadow var(--transition-base);
+}
+
+.chat-input-wrapper::before,
+.chat-input-wrapper::after {
+  content: "";
+  position: absolute;
+  border-radius: inherit;
+  /* Optileno logo palette: sky → blue → gold */
+  background: linear-gradient(
+    115deg,
+    #0ea5e9 0%,
+    #3b82f6 22%,
+    #60a5fa 40%,
+    #fbbf24 68%,
+    #d97706 84%,
+    #0ea5e9 100%
+  );
+  background-size: 300% 100%;
+  animation: composer-sheen 8s linear infinite;
+}
+
+/* The visible ring */
+.chat-input-wrapper::before {
+  inset: -1.5px;
+  z-index: -1;
+  opacity: 0.5;
+  transition: opacity var(--transition-base);
+}
+
+/* The soft outer glow */
+.chat-input-wrapper::after {
+  inset: -3px;
+  z-index: -2;
+  filter: blur(10px);
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+
+.chat-input-wrapper:focus-within::before {
+  opacity: 1;
+}
+
+.chat-input-wrapper:focus-within::after {
+  opacity: 0.45;
 }
 
 .chat-input-wrapper:focus-within {
-  border-color: rgba(var(--color-primary), 0.45);
-  box-shadow:
-    0 0 0 3px rgba(var(--color-primary), 0.1),
-    0 14px 36px rgba(2, 6, 23, 0.12);
+  box-shadow: 0 14px 36px rgba(2, 6, 23, 0.14);
+}
+
+@keyframes composer-sheen {
+  from {
+    background-position: 0% 50%;
+  }
+
+  to {
+    background-position: 300% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-input-wrapper::before,
+  .chat-input-wrapper::after {
+    animation: none;
+  }
 }
 
 .chat-input-field {

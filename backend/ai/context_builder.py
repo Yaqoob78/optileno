@@ -15,14 +15,14 @@ from datetime import datetime, timedelta, timezone
 import logging
 import re
 
-from backend.db.database import get_db
+from backend.db.database import get_db, AsyncSessionLocal
 from backend.services.planner_service import planner_service
 from backend.db.models import (
-    User, Task, Goal, Plan, 
-    RealTimeMetrics, AnalyticsEvent, UserInsight, 
+    User, Task, Goal, Plan,
+    RealTimeMetrics, AnalyticsEvent, UserInsight,
     BehavioralPattern, FocusScore
 )
-from sqlalchemy import desc, and_, or_
+from sqlalchemy import desc, and_, or_, select
 
 logger = logging.getLogger(__name__)
 
@@ -377,18 +377,42 @@ class AIContextBuilder:
             if completed_at >= week_ago:
                 completed_this_week += 1
 
+        # The AI must reason in the user's wall-clock time, not UTC. Without this
+        # every "round hour" it picks lands on a half-hour for offset zones
+        # (e.g. Asia/Kolkata is UTC+5:30), which is why suggestions drifted to :30.
+        user_timezone = await fetch_safely(
+            "user_timezone", self._get_user_timezone(user_id), "UTC"
+        )
+        tz = planner_service._get_timezone(user_timezone)
+        now_local = now_utc.astimezone(tz)
+        context["user_timezone"] = user_timezone
+        context["now_local_iso"] = now_local.isoformat()
+
         context["summary"] = {
             "total_goals": len(goals_data),
             "active_goals": len([g for g in goals_data if g.get("progress", 0) < 100]),
             "total_tasks": len(all_tasks_data),
             "pending_tasks": len([t for t in all_tasks_data if t.get("status") == "pending"]),
             "completed_this_week": completed_this_week,
-            "current_date": today.isoformat(),
-            "current_time": now_utc.strftime("%H:%M"),
-            "day_of_week": now_utc.strftime("%A"),
+            "current_date": now_local.date().isoformat(),
+            "current_time": now_local.strftime("%H:%M"),
+            "day_of_week": now_local.strftime("%A"),
+            "timezone": user_timezone,
         }
 
         return context
+
+    async def _get_user_timezone(self, user_id: str) -> str:
+        """Read the user's preferred timezone; falls back to UTC."""
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(select(User).where(User.id == int(user_id)))
+            user = result.scalar_one_or_none()
+            preferences = getattr(user, "preferences", None) if user else None
+            if isinstance(preferences, dict):
+                timezone_name = preferences.get("timezone")
+                if isinstance(timezone_name, str) and timezone_name.strip():
+                    return timezone_name.strip()
+        return "UTC"
 
     async def _get_daily_achievement_score_context(self, user_id: str) -> Dict[str, Any]:
         """Fetch daily score safely."""

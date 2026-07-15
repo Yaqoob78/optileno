@@ -962,7 +962,25 @@ export default function PlannerPage() {
                     }
                     uniqueTasks.push(task);
                   });
-                  return uniqueTasks.map((task) => (
+
+                  // Chronological order: what's due next sits at the top, later work
+                  // below it, undated tasks after that, and finished work last.
+                  const rank = (task: any) =>
+                    normalizeTaskStatus(task.status) === 'done' ? 2 : 0;
+
+                  const sortedTasks = [...uniqueTasks].sort((a, b) => {
+                    const rankDiff = rank(a) - rank(b);
+                    if (rankDiff !== 0) return rankDiff;
+
+                    const aDate = parseTaskDate(a.dueDate || a.due_date);
+                    const bDate = parseTaskDate(b.dueDate || b.due_date);
+                    if (aDate && bDate) return aDate.getTime() - bDate.getTime();
+                    if (aDate) return -1;
+                    if (bDate) return 1;
+                    return String(a.title || '').localeCompare(String(b.title || ''));
+                  });
+
+                  return sortedTasks.map((task) => (
                     <TaskCard
                       key={task.id || task._id || `task-${crypto.randomUUID()}`}
                       task={transformTaskForCard(task)}

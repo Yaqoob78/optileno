@@ -1,5 +1,5 @@
 import React from 'react';
-import { Brain, TrendingUp, TrendingDown, Minus, Zap, Target, Lightbulb } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Zap, Target, Lightbulb } from 'lucide-react';
 import { useAIIntelligence } from '../../hooks/useAIIntelligence';
 
 interface MetricBarProps {
@@ -197,7 +197,7 @@ const AIIntelligenceScore: React.FC<{ timeRange: string }> = ({ timeRange }) => 
                 <div className="intelligence-category">
                     <div className="category-label">{categoryLabel}</div>
                     <div style={{ fontSize: '11px', opacity: 0.6, marginTop: '2px' }}>
-                        {data.context_label || "Cognitive Performance"}
+                        {data.context_label || "How you're working overall"}
                     </div>
                     {sparkline && sparkline.length >= 2 && (
                         <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -212,37 +212,37 @@ const AIIntelligenceScore: React.FC<{ timeRange: string }> = ({ timeRange }) => 
             {metrics ? (
                 <div className="intelligence-metrics" style={{ marginTop: '1.5rem', padding: '0 10px' }}>
                     <MetricBar
-                        label="Strategy"
+                        label={dimensionLabels.strategic_planning}
                         value={metrics.strategic_planning}
                         color={dimensionColors.strategic_planning}
                         weight={weights.strategic_planning}
                     />
                     <MetricBar
-                        label="Execution"
+                        label={dimensionLabels.execution_intelligence}
                         value={metrics.execution_intelligence}
                         color={dimensionColors.execution_intelligence}
                         weight={weights.execution_intelligence}
                     />
                     <MetricBar
-                        label="AI Synergy"
+                        label={dimensionLabels.ai_collaboration}
                         value={metrics.ai_collaboration}
                         color={dimensionColors.ai_collaboration}
                         weight={weights.ai_collaboration}
                     />
                     <MetricBar
-                        label="Adaptability"
+                        label={dimensionLabels.adaptive_capacity}
                         value={metrics.adaptive_capacity}
                         color={dimensionColors.adaptive_capacity}
                         weight={weights.adaptive_capacity}
                     />
                     <MetricBar
-                        label="Consistency"
+                        label={dimensionLabels.cognitive_consistency}
                         value={metrics.cognitive_consistency}
                         color={dimensionColors.cognitive_consistency}
                         weight={weights.cognitive_consistency}
                     />
                     <MetricBar
-                        label="Self-Regulation"
+                        label={dimensionLabels.self_regulation}
                         value={metrics.self_regulation}
                         color={dimensionColors.self_regulation}
                         weight={weights.self_regulation}
@@ -317,8 +317,7 @@ const AIIntelligenceScore: React.FC<{ timeRange: string }> = ({ timeRange }) => 
 
             <div className="intelligence-footer">
                 <div className="footer-note">
-                    <Brain size={12} />
-                    <span>6 dimensions: Strategy · Execution · AI Synergy · Adaptability · Consistency · Self-Regulation</span>
+                    <span>Based on your planning, execution, consistency and follow-through.</span>
                 </div>
             </div>
         </div>

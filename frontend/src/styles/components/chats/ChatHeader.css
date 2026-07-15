@@ -6,14 +6,10 @@
   align-items: center;
   justify-content: center;
   gap: 0.55rem;
-  padding: 0.95rem 1rem 0.6rem;
-  background: linear-gradient(
-    180deg,
-    rgba(var(--color-bg-primary), 0.92) 0%,
-    rgba(var(--color-bg-primary), 0.72) 100%
-  );
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  padding: 0.8rem 1rem;
+  /* Solid surface — messages scrolling under this bar must not bleed through */
+  background: rgb(var(--color-bg-primary));
+  border-bottom: 1px solid rgba(var(--color-border-light), 0.35);
 }
 
 .chat-tab {
@@ -24,8 +20,8 @@
   min-width: 8.5rem;
   padding: 0.7rem 1rem;
   border-radius: 999px;
-  border: 1px solid rgba(var(--color-border-light), 0.24);
-  background: rgba(var(--color-bg-secondary), 0.72);
+  border: 1px solid rgba(var(--color-border-light), 0.45);
+  background: rgb(var(--color-bg-secondary));
   color: rgb(var(--color-text-secondary));
   font-size: 0.82rem;
   font-weight: var(--font-semibold);
@@ -46,21 +42,26 @@
 .chat-tab:hover {
   transform: translateY(-1px);
   color: rgb(var(--color-text-primary));
-  border-color: rgba(var(--color-primary), 0.28);
-  background: rgba(var(--color-bg-secondary), 0.94);
+  border-color: rgba(var(--color-primary), 0.4);
+  background: rgb(var(--color-bg-tertiary));
   box-shadow: 0 14px 26px rgba(2, 6, 23, 0.08);
 }
 
+/* Active states blend their tint over an opaque base so nothing reads through */
 .chat-tab.keep-active {
   color: rgb(var(--color-text-primary));
-  background: rgba(var(--color-success), 0.12);
-  border-color: rgba(var(--color-success), 0.34);
+  background:
+    linear-gradient(rgba(var(--color-success), 0.16), rgba(var(--color-success), 0.16)),
+    rgb(var(--color-bg-secondary));
+  border-color: rgba(var(--color-success), 0.5);
 }
 
 .chat-tab.clear-flow-active {
   color: rgb(var(--color-text-primary));
-  background: rgba(var(--color-warning), 0.14);
-  border-color: rgba(var(--color-warning), 0.32);
+  background:
+    linear-gradient(rgba(var(--color-warning), 0.18), rgba(var(--color-warning), 0.18)),
+    rgb(var(--color-bg-secondary));
+  border-color: rgba(var(--color-warning), 0.45);
 }
 
 @media (max-width: 640px) {

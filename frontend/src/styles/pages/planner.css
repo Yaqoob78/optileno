@@ -828,7 +828,10 @@
 }
 
 @media (max-width: 768px) {
+  /* Bleed to the screen edges — cancels the app shell's content padding
+     so the page owns its own gutters, like a native app */
   .planner-page {
+    margin: -0.75rem;
     padding: var(--space-3);
     gap: var(--space-4);
   }
@@ -901,6 +904,10 @@
 }
 
 @media (max-width: 480px) {
+  .planner-page {
+    margin: -0.5rem;
+  }
+
   .planner-header {
     padding: var(--space-3);
   }

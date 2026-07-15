@@ -11,14 +11,15 @@ import {
   Moon,
   Sparkles,
   TrendingUp,
-  Brain,
-  Activity,
+  LineChart,
+  HeartPulse,
   Target,
-  Zap,
-  Clock,
+  Flame,
+  Crosshair,
   RefreshCw,
   AlertTriangle,
-  Calendar,
+  Gauge,
+  Smile,
   Fingerprint
 } from 'lucide-react';
 import '../../styles/pages/analytics.css';
@@ -240,7 +241,7 @@ export default function AnalyticsPage() {
             : currentFocusScore > 40
               ? 'neutral'
               : 'down',
-      icon: Clock,
+      icon: Crosshair,
       progress: currentFocusScore ?? 0,
       subtitle:
         currentFocusScore === null
@@ -267,7 +268,7 @@ export default function AnalyticsPage() {
         if (!isUltra || burnoutRiskValue === null) return 'neutral';
         return burnoutRiskValue < 40 ? 'down' : burnoutRiskValue < 60 ? 'neutral' : 'up';
       })(),
-      icon: Activity,
+      icon: HeartPulse,
       progress: (() => {
         if (!isUltra || burnoutRiskValue === null) return 0;
         return 100 - burnoutRiskValue; // Invert for progress bar (lower risk = higher progress)
@@ -311,7 +312,7 @@ export default function AnalyticsPage() {
 
   // Calculate last updated time
   const getLastUpdatedText = () => {
-    if (!latestMetricTimestamp) return 'Waiting for live inputs';
+    if (!latestMetricTimestamp) return 'No activity yet';
     const now = new Date();
     const diffMs = now.getTime() - latestMetricTimestamp.getTime();
     const diffMins = Math.floor(diffMs / 60000);
@@ -326,10 +327,10 @@ export default function AnalyticsPage() {
     currentFocusScore !== null ||
     (isUltra && burnoutRiskValue !== null);
   const dataIntegrityLabel = isAnyMetricLoading
-    ? 'Syncing'
+    ? 'Updating'
     : hasAnyMetricData
       ? 'Live'
-      : 'Calibrating';
+      : 'No data yet';
   const dataIntegrityClass = dataIntegrityLabel === 'Live' ? 'success' : 'warning';
 
   // Handle refresh
@@ -384,7 +385,7 @@ export default function AnalyticsPage() {
             <div className="nav-left">
               <div className="analytics-brand">
                 <div className="brand-icon-container">
-                  <Brain className="brand-icon" />
+                  <LineChart className="brand-icon" />
                   <div className="brand-pulse" />
                 </div>
                 <div className="brand-text">
@@ -486,22 +487,21 @@ export default function AnalyticsPage() {
           <div className="analytics-main-grid">
             {/* Left Column - 3 Components */}
             <div className="grid-column left-column">
-              {/* AI Intelligence Score */}
+              {/* Performance Score */}
               <div className="component-card glass-card">
                 {isUltra ? (
                   <>
                     <div className="component-header">
                       <div className="component-title">
-                        <Brain size={18} />
-                        <h3>AI Intelligence Score</h3>
-                        <span className="component-badge ai-badge">6 Dimensions</span>
+                        <Gauge size={18} />
+                        <h3>Performance Score</h3>
                       </div>
                     </div>
                     <div className="component-content">
                       <AIIntelligenceScore timeRange={timeRange} />
                     </div>
                   </>
-                ) : <LockedFeature title="AI Intelligence" className="h-full" />}
+                ) : <LockedFeature title="Performance Score" className="h-full" />}
               </div>
 
               {/* Mood Tracker */}
@@ -509,9 +509,8 @@ export default function AnalyticsPage() {
                 <>
                   <div className="component-header">
                     <div className="component-title">
-                      <Activity size={18} />
+                      <Smile size={18} />
                       <h3>Mood Tracker</h3>
-                      <span className="component-badge">Emotional</span>
                     </div>
                   </div>
                   <div className="component-content">
@@ -520,7 +519,7 @@ export default function AnalyticsPage() {
                 </>
               </div>
 
-              {/* Goal Progress — AI Probability Analysis */}
+              {/* Goal Progress */}
               <div className="component-card glass-card">
                 {isUltra ? (
                   <>
@@ -528,7 +527,6 @@ export default function AnalyticsPage() {
                       <div className="component-title">
                         <Target size={18} />
                         <h3>Goal Analytics</h3>
-                        <span className="component-badge ai-badge">AI Probability</span>
                       </div>
                     </div>
                     <div className="component-content">
@@ -547,9 +545,8 @@ export default function AnalyticsPage() {
                   <>
                     <div className="component-header">
                       <div className="component-title">
-                        <Zap size={18} />
+                        <Flame size={18} />
                         <h3>Focus Heatmap</h3>
-                        <span className="component-badge">Hotspots</span>
                       </div>
                     </div>
                     <div className="component-content">
@@ -566,15 +563,14 @@ export default function AnalyticsPage() {
                     <div className="component-header">
                       <div className="component-title">
                         <Sparkles size={18} />
-                        <h3>AI Strategic Insight</h3>
-                        <span className="component-badge ai-badge">Actionable</span>
+                        <h3>What to focus on</h3>
                       </div>
                     </div>
                     <div className="component-content">
                       <StrategicInsight />
                     </div>
                   </>
-                ) : <LockedFeature title="AI Strategic Insight" className="h-full" />}
+                ) : <LockedFeature title="What to focus on" className="h-full" />}
               </div>
 
               {/* Behavior Timeline */}
@@ -593,12 +589,10 @@ export default function AnalyticsPage() {
                 <div className="component-header">
                   <div className="component-title">
                     <Fingerprint size={18} className="text-primary" />
-                    <h3>Behavioral Fingerprint</h3>
-                    <span className="component-badge">Big Five Profile</span>
+                    <h3>Your Work Personality</h3>
                   </div>
                   <div className="component-meta">
-                    <Calendar size={14} />
-                    <span>{bigFiveIntervalDays}-Day Baseline Analysis</span>
+                    <span>Updates every {bigFiveIntervalDays} days</span>
                   </div>
                 </div>
                 <div className="component-content">

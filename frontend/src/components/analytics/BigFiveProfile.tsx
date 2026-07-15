@@ -10,7 +10,13 @@ import {
     Sparkles,
     ChevronRight,
     Award,
-    Clock
+    Clock,
+    Compass,
+    ClipboardCheck,
+    Users,
+    Handshake,
+    Anchor,
+    type LucideIcon
 } from 'lucide-react';
 import '../../styles/components/analytics/BigFiveProfile.css';
 import BigFiveTestModal from './BigFiveTestModal';
@@ -202,47 +208,69 @@ const RadarChart: React.FC<RadarProps> = ({ scores }) => {
 };
 
 // ── Trait Config ──────────────────────────────────────────────────
+// `readings` turn a raw score into a sentence about how this person actually
+// works, so the profile reads as personal rather than as a textbook definition.
 const TRAIT_INFO: Record<string, {
     name: string;
-    description: string;
     colorFrom: string;
     colorTo: string;
-    icon: string;
+    icon: LucideIcon;
+    readings: Record<'high' | 'moderate' | 'low', string>;
 }> = {
     openness: {
         name: 'Openness',
-        description: 'Curiosity, creativity, and openness to new experiences',
         colorFrom: '#0ea5e9',
         colorTo: '#0284c7',
-        icon: '🎨',
+        icon: Compass,
+        readings: {
+            high: 'You chase new ideas and get restless with routine. Novel problems pull the best work out of you.',
+            moderate: 'You are open to new approaches but like some proven ground under you.',
+            low: 'You back what you know works. Familiar methods keep you fast and consistent.',
+        },
     },
     conscientiousness: {
         name: 'Conscientiousness',
-        description: 'Organization, discipline, and goal-oriented behavior',
         colorFrom: '#10b981',
         colorTo: '#059669',
-        icon: '📋',
+        icon: ClipboardCheck,
+        readings: {
+            high: 'You plan ahead and finish what you start. Structure is your advantage — lean on it.',
+            moderate: 'You keep things on track, though a loose deadline can still drift.',
+            low: 'You work in bursts and improvise. Small, visible next steps will beat big plans for you.',
+        },
     },
     extraversion: {
         name: 'Extraversion',
-        description: 'Social energy, enthusiasm, and assertiveness',
         colorFrom: '#f59e0b',
         colorTo: '#d97706',
-        icon: '💫',
+        icon: Users,
+        readings: {
+            high: 'You gain energy from people and momentum. Talking a problem out beats sitting on it.',
+            moderate: 'You move between collaboration and solo work without much friction.',
+            low: 'You do your deepest work alone and quiet. Protect that focus time.',
+        },
     },
     agreeableness: {
         name: 'Agreeableness',
-        description: 'Cooperation, trust, and consideration for others',
         colorFrom: '#34d399',
         colorTo: '#10b981',
-        icon: '🤝',
+        icon: Handshake,
+        readings: {
+            high: 'You work well with others and give ground easily — watch that it does not cost your own priorities.',
+            moderate: 'You cooperate readily but still hold your line when it matters.',
+            low: 'You are direct and hard to sway. Useful for hard calls, costly in fragile conversations.',
+        },
     },
     neuroticism: {
         name: 'Emotional Stability',
-        description: 'Emotional resilience and stress management',
         colorFrom: '#8b5cf6',
         colorTo: '#7c3aed',
-        icon: '⚖️',
+        icon: Anchor,
+        readings: {
+            high: 'Pressure rolls off you. You stay level when plans break, which is when it counts most.',
+            moderate: 'You handle most pressure well, though heavy stretches can wear on you.',
+            low: 'Stress lands hard on you. Lighter workloads and real recovery days are not optional here.',
+        },
     },
 };
 
@@ -466,6 +494,7 @@ export default function BigFiveProfile() {
                                 const level = getScoreLevel(display);
                                 const isStrongest = traitRanking.strongest === key;
                                 const isWeakest = traitRanking.weakest === key;
+                                const TraitIcon = info.icon;
 
                                 return (
                                     <div
@@ -475,7 +504,9 @@ export default function BigFiveProfile() {
                                     >
                                         <div className="bf-trait-header">
                                             <span className="bf-trait-name">
-                                                <span className="bf-trait-emoji">{info.icon}</span>
+                                                <span className="bf-trait-emoji" style={{ color: info.colorFrom }}>
+                                                    <TraitIcon size={15} />
+                                                </span>
                                                 {info.name}
                                                 <span className="bf-trait-trend">{getTrendIcon(key, trend)}</span>
                                                 {isStrongest && <span className="bf-trait-badge strongest">Strongest</span>}
@@ -495,7 +526,7 @@ export default function BigFiveProfile() {
                                                 }}
                                             />
                                         </div>
-                                        <p className="bf-trait-desc">{info.description}</p>
+                                        <p className="bf-trait-desc">{info.readings[level]}</p>
                                     </div>
                                 );
                             })}

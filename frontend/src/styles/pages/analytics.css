@@ -13,14 +13,14 @@
   --border-color: #ddd9cd;
   --border-light: #ebe8df;
 
-  /* Analytics Color Scheme — emerald brand, cyan/amber kept for data distinction */
-  --primary: #059669;
-  --primary-light: rgba(5, 150, 105, 0.1);
-  --primary-dark: #047857;
-  --secondary: #0891b2;
-  --secondary-light: rgba(8, 145, 178, 0.1);
-  --accent: #d97706;
-  --accent-light: rgba(217, 119, 6, 0.1);
+  /* Analytics Color Scheme */
+  --primary: #7c3aed;
+  --primary-light: rgba(124, 58, 237, 0.1);
+  --primary-dark: #6d28d9;
+  --secondary: #06b6d4;
+  --secondary-light: rgba(6, 182, 212, 0.1);
+  --accent: #f59e0b;
+  --accent-light: rgba(245, 158, 11, 0.1);
   --success: #10b981;
   --success-light: rgba(16, 185, 129, 0.1);
   --warning: #ef4444;
@@ -29,8 +29,8 @@
   --info-light: rgba(59, 130, 246, 0.1);
 
   /* Gradients */
-  --gradient-primary: linear-gradient(135deg, #059669 0%, #0891b2 100%);
-  --gradient-secondary: linear-gradient(135deg, #d97706 0%, #ef4444 100%);
+  --gradient-primary: linear-gradient(135deg, #7c3aed 0%, #06b6d4 100%);
+  --gradient-secondary: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
   --gradient-success: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
   --gradient-glass: linear-gradient(135deg, rgba(251, 250, 246, 0.95) 0%, rgba(243, 241, 234, 0.88) 100%);
   --gradient-card: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
@@ -41,8 +41,8 @@
   --shadow-medium: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
   --shadow-large: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
   --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
-  --shadow-glow: 0 0 40px rgba(5, 150, 105, 0.15);
-  --shadow-cyan-glow: 0 0 40px rgba(8, 145, 178, 0.15);
+  --shadow-glow: 0 0 40px rgba(124, 58, 237, 0.15);
+  --shadow-cyan-glow: 0 0 40px rgba(6, 182, 212, 0.15);
 
   /* Transitions */
   --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -61,9 +61,9 @@
   --border-color: #2d2d3d;
   --border-light: #252534;
 
-  --primary: #34d399;
-  --primary-light: rgba(52, 211, 153, 0.15);
-  --primary-dark: #10b981;
+  --primary: #a78bfa;
+  --primary-light: rgba(167, 139, 250, 0.15);
+  --primary-dark: #8b5cf6;
   --secondary: #22d3ee;
   --secondary-light: rgba(34, 211, 238, 0.15);
   --accent: #fbbf24;
@@ -82,9 +82,8 @@
   --shadow-medium: 0 10px 15px -3px rgba(0, 0, 0, 0.25);
   --shadow-large: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
   --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
-  --shadow-glow: 0 0 40px rgba(52, 211, 153, 0.2);
+  --shadow-glow: 0 0 40px rgba(167, 139, 250, 0.2);
   --shadow-cyan-glow: 0 0 40px rgba(34, 211, 238, 0.2);
-  --gradient-primary: linear-gradient(135deg, #10b981 0%, #22d3ee 100%);
 }
 
 /* Light Theme Overrides */
@@ -423,12 +422,12 @@
 /* ===== STATS OVERVIEW ===== */
 .stats-overview-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
   width: 100%;
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 900px) {
   .stats-overview-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -873,168 +872,64 @@
   gap: 0.5rem;
 }
 
-/* Futuristic Intelligence CPU Animation */
-.intelligence-cpu-container {
+/* Calm waiting state — soft concentric rings, no circuitry theatre */
+.score-placeholder {
   position: relative;
-  width: 100px;
-  height: 100px;
-  margin-bottom: 0.75rem;
+  width: 72px;
+  height: 72px;
+  margin-bottom: 0.85rem;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.intelligence-cpu-svg {
-  width: 100%;
-  height: 100%;
-  overflow: visible;
+.score-placeholder-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--primary);
+  opacity: 0;
+  animation: score-ring-pulse 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
-.cpu-pin-futuristic {
-  fill: var(--secondary);
-  opacity: 0.4;
-  animation: pin-flash 1.5s ease-in-out infinite;
+.score-placeholder-ring:nth-child(2) {
+  animation-delay: 0.8s;
 }
 
-@keyframes pin-flash {
-
-  0%,
-  100% {
-    opacity: 0.4;
-    fill: var(--secondary);
-  }
-
-  50% {
-    opacity: 1;
-    fill: var(--success);
-  }
+.score-placeholder-ring:nth-child(3) {
+  animation-delay: 1.6s;
 }
 
-.cpu-plate-main {
-  fill: #151522;
-  stroke: #22d3ee;
-  stroke-width: 0.8;
-}
-
-.cpu-plate-inner {
-  fill: #1e1e2d;
-  stroke: #10b981;
-  stroke-width: 0.5;
-  opacity: 0.3;
-}
-
-.cpu-micro-chip {
-  fill: #0f172a;
-  stroke: #22d3ee;
-  stroke-width: 0.5;
-  opacity: 0.8;
-}
-
-.cpu-core-base {
-  fill: #0a0a0f;
-  stroke: #10b981;
-  stroke-width: 1;
-}
-
-.cpu-core-center {
-  fill: url(#cpuGrad);
-  opacity: 0.8;
-  animation: core-breathe 2.5s ease-in-out infinite;
-}
-
-@keyframes core-breathe {
-
-  0%,
-  100% {
-    r: 10;
-    opacity: 0.6;
-  }
-
-  50% {
-    r: 13;
-    opacity: 1;
-  }
-}
-
-.cpu-hex-core {
-  fill: white;
-  opacity: 0.2;
-  animation: hex-pulse 1s linear infinite;
-  transform-origin: center;
-}
-
-@keyframes hex-pulse {
+@keyframes score-ring-pulse {
   0% {
-    transform: scale(1);
-    opacity: 0.2;
+    transform: scale(0.45);
+    opacity: 0;
   }
 
-  50% {
-    transform: scale(1.1);
-    opacity: 0.4;
+  35% {
+    opacity: 0.55;
   }
 
   100% {
     transform: scale(1);
-    opacity: 0.2;
-  }
-}
-
-.cpu-path-main {
-  fill: none;
-  stroke: #22d3ee;
-  stroke-width: 1.5;
-  stroke-linecap: round;
-  opacity: 0.2;
-}
-
-.cpu-path-subtle {
-  fill: none;
-  stroke: #10b981;
-  stroke-width: 0.5;
-  opacity: 0.3;
-  stroke-dasharray: 2;
-}
-
-.data-bit {
-  filter: drop-shadow(0 0 4px #fff);
-  animation: bit-glow 1s ease-in-out infinite;
-}
-
-@keyframes bit-glow {
-
-  0%,
-  100% {
-    opacity: 0.6;
-    r: 1.2;
-  }
-
-  50% {
-    opacity: 1;
-    r: 1.8;
+    opacity: 0;
   }
 }
 
 .analyzing-text {
-  font-size: 0.7rem;
+  max-width: 22rem;
+  padding: 0 1rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
   color: var(--text-tertiary);
-  font-weight: 700;
-  letter-spacing: 0.15em;
-  margin-top: 5px;
-  text-transform: uppercase;
-  z-index: 2;
-  position: relative;
+  font-weight: 500;
+  text-align: center;
 }
 
-@keyframes text-blink {
-
-  0%,
-  100% {
-    opacity: 0.4;
-  }
-
-  50% {
-    opacity: 1;
+@media (prefers-reduced-motion: reduce) {
+  .score-placeholder-ring {
+    animation: none;
+    opacity: 0.3;
   }
 }
 
@@ -1552,6 +1447,13 @@
 }
 
 @media (max-width: 768px) {
+  /* Bleed to the screen edges — cancels the app shell's content padding
+     so the page owns its own gutters, like a native app */
+  .analytics-page {
+    margin: -0.75rem;
+    width: auto;
+  }
+
   .intelligence-metrics {
     grid-template-columns: 1fr;
   }
@@ -1636,7 +1538,3 @@
   scrollbar-color: var(--border-color) transparent;
 }
 
-/* Light theme: white glow reads as haze on cream — use a dark ink bit instead */
-.theme-light .data-bit {
-  filter: drop-shadow(0 0 3px rgba(41, 37, 36, 0.35));
-}

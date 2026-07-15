@@ -155,9 +155,9 @@ const StrategicInsight: React.FC = () => {
         return (
             <div className="strategic-insight-container">
                 <div className="insight-main">
-                    <h4 className="insight-title-text">Gathering Intelligence</h4>
+                    <h4 className="insight-title-text">Nothing to suggest yet</h4>
                     <p className="insight-description">
-                        {awaiting?.description || "Leno is observing your patterns. High-impact strategies will appear shortly."}
+                        {awaiting?.description || "Once you've logged a few tasks and sessions, Leno will suggest what to focus on next."}
                     </p>
                     {error && (
                         <p className="insight-description" style={{ marginTop: '0.5rem', opacity: 0.85 }}>
