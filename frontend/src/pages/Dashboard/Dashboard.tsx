@@ -265,6 +265,15 @@ export default function Dashboard() {
     return content.length > 30 ? `${content.substring(0, 30)}...` : content;
   };
 
+  // Time-aware greeting — a small personal touch that makes the header feel alive
+  const greetingWord = (() => {
+    const hour = currentTime.getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  })();
+  const firstName = (user?.name || 'Creator').split(' ')[0];
+
   return (
     <div className={`dashboard-container theme-${theme}`}>
       <SEO title="Dashboard | Optileno" description="Your AI productivity command center overview." robots="noindex,nofollow" />
@@ -347,8 +356,11 @@ export default function Dashboard() {
         <div className="user-welcome-section">
           <div className="welcome-greeting">
             <div className="greeting-text">
-              <div className="greeting-line">Welcome to your</div>
-              <div className="greeting-line emphasis">Personal Command Center</div>
+              <div className="greeting-line">{greetingWord},</div>
+              <div className="greeting-line emphasis">{firstName}</div>
+              <div className="greeting-subtitle">
+                Your command center — Leno sharpens with every session you run.
+              </div>
             </div>
             <div className="user-display">
               <div className="user-avatar">
@@ -397,7 +409,6 @@ export default function Dashboard() {
               </div>
               <div className="metric-value">{userStats.timeSpentToday || 0}m today</div>
               <div className="metric-trend">
-                <Clock size={14} />
                 <span>{avgMinutesPerDay}m/day average</span>
               </div>
             </div>
@@ -409,7 +420,6 @@ export default function Dashboard() {
               </div>
               <div className="metric-value">{totalTasks} Tasks</div>
               <div className="metric-trend">
-                <CheckCircle size={14} />
                 <span>{completedTasks} completed</span>
               </div>
             </div>
@@ -604,7 +614,6 @@ export default function Dashboard() {
                 <div className="action-title">Leno</div>
                 <div className="action-subtitle">Ready to help</div>
               </div>
-              <ChevronRight className="action-arrow" />
             </button>
 
             <button
@@ -618,7 +627,6 @@ export default function Dashboard() {
                 <div className="action-title">Deep Work Session</div>
                 <div className="action-subtitle">Start 2-hour focus</div>
               </div>
-              <ChevronRight className="action-arrow" />
             </button>
 
             <button
@@ -632,7 +640,6 @@ export default function Dashboard() {
                 <div className="action-title">Habit Tracker</div>
                 <div className="action-subtitle">Open your routines</div>
               </div>
-              <ChevronRight className="action-arrow" />
             </button>
 
             <button
@@ -646,45 +653,15 @@ export default function Dashboard() {
                 <div className="action-title">Goal Review</div>
                 <div className="action-subtitle">Weekly progress</div>
               </div>
-              <ChevronRight className="action-arrow" />
             </button>
           </div>
         </div>
 
-        {/* Evolution Message */}
-        <div className="evolution-message glass-card">
-          <div className="message-content">
-            <div className="message-icon">
-              <Sparkles size={24} />
-            </div>
-            <div className="message-text">
-              Leno is consistently evolving with you, becoming your personalized productivity partner.
-              Every interaction makes it smarter, more intuitive, and perfectly tailored to your workflow.
-            </div>
-          </div>
-        </div>
-
-        {/* Quotes Section */}
-        <div className="quotes-section">
-          <div className="quotes-container">
-            <div className="quote-card">
-              <div className="quote-mark"><Quote size={40} /></div>
-              <div className="quote-text">
-                {quotes[quoteIndex].text}
-              </div>
-              <div className="quote-author">
-                — {quotes[quoteIndex].author}
-              </div>
-            </div>
-            <div className="quote-progress">
-              {quotes.map((_, index) => (
-                <div
-                  key={index}
-                  className={`progress-dot ${index === quoteIndex ? 'active' : ''}`}
-                />
-              ))}
-            </div>
-          </div>
+        {/* Quiet rotating quote — a single calm line, not a carousel */}
+        <div className="quote-strip" key={quoteIndex}>
+          <Quote size={16} className="quote-strip-mark" aria-hidden="true" />
+          <span className="quote-strip-text">{quotes[quoteIndex].text}</span>
+          <span className="quote-strip-author">— {quotes[quoteIndex].author}</span>
         </div>
 
       </div>

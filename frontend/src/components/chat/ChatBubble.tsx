@@ -1,5 +1,4 @@
 import React from "react";
-import { Bot, Cpu, User2, Zap } from "lucide-react";
 import { marked } from "marked";
 import "../../styles/components/chats/Chatbubble.css";
 
@@ -14,33 +13,6 @@ interface ChatBubbleProps {
     isError?: boolean;
   };
 }
-
-const getProviderLabel = (provider?: string, model?: string) => {
-  if (!provider) return null;
-
-  const normalized = provider.toLowerCase();
-  if (normalized === "nvidia") {
-    return {
-      label: model ? `NVIDIA ${model}` : "NVIDIA",
-      className: "provider-badge provider-badge-nvidia",
-      icon: <Cpu size={11} />,
-    };
-  }
-
-  if (normalized === "groq") {
-    return {
-      label: model ? `Groq ${model}` : "Groq",
-      className: "provider-badge provider-badge-groq",
-      icon: <Zap size={11} />,
-    };
-  }
-
-  return {
-    label: model ? `${provider} ${model}` : provider,
-    className: "provider-badge",
-    icon: <Bot size={11} />,
-  };
-};
 
 const ALLOWED_MARKDOWN_TAGS = new Set([
   "a",
@@ -126,44 +98,35 @@ const renderSafeMarkdown = (content: string) => {
 
 export default function ChatBubble({ message }: ChatBubbleProps) {
   const isUser = message.role === "user";
-  const provider = getProviderLabel(message.provider, message.model);
 
-  return (
-    <div className={`chat-row ${isUser ? "chat-row-user" : "chat-row-assistant"}`}>
-      <div
-        className={`message-avatar ${
-          isUser ? "message-avatar-user" : "message-avatar-assistant"
-        }`}
-        aria-hidden="true"
-      >
-        {isUser ? <User2 size={16} /> : <Bot size={16} />}
+  if (isUser) {
+    // User turns: compact, right-aligned quiet pill — like modern AI chats,
+    // the user's words sit on a subtle surface, never a loud gradient.
+    return (
+      <div className="chat-turn chat-turn-user">
+        <article className="user-message" aria-label="Your message">
+          <p className="message-text">{message.content}</p>
+        </article>
       </div>
+    );
+  }
 
+  // Assistant turns: open, full-width prose with no bubble chrome,
+  // so replies read like a document instead of a text message.
+  return (
+    <div className="chat-turn chat-turn-assistant">
       <article
-        className={`message-bubble ${
-          isUser ? "user-message-bubble" : "ai-message-bubble"
-        }${message.isError ? " error-message-bubble" : ""}`}
+        className={`assistant-message${message.isError ? " assistant-message-error" : ""}`}
+        aria-label="Leno's reply"
       >
-        <div className="message-content-wrapper">
-          {isUser ? (
-            <p className="message-text">{message.content}</p>
-          ) : (
-            <div
-              className="message-text markdown-content"
-              dangerouslySetInnerHTML={{ __html: renderSafeMarkdown(message.content) }}
-            />
-          )}
-        </div>
-
+        <div
+          className="message-text markdown-content"
+          dangerouslySetInnerHTML={{ __html: renderSafeMarkdown(message.content) }}
+        />
         <div className="message-meta">
-          {!isUser && provider && (
-            <span className={provider.className}>
-              {provider.icon}
-              <span>{provider.label}</span>
-            </span>
-          )}
-
-          <span className="message-timestamp">{message.timestamp}</span>
+          <span className="message-meta-text">
+            {message.provider ? `Leno · ${message.timestamp}` : message.timestamp}
+          </span>
         </div>
       </article>
     </div>

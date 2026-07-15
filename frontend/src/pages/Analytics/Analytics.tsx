@@ -16,7 +16,6 @@ import {
   Target,
   Zap,
   Clock,
-  TrendingDown,
   RefreshCw,
   AlertTriangle,
   Calendar,
@@ -275,7 +274,7 @@ export default function AnalyticsPage() {
       })(),
       subtitle:
         burnoutRiskValue === null
-          ? 'Keep using tasks, habits, and deep work to calibrate burnout risk.'
+          ? 'Complete tasks, habits, or deep work and this will start tracking.'
           : burnoutData?.ai_insights?.[0] || monthlyBurnoutData?.note,
       customColors: (() => {
         if (!isUltra) {
@@ -294,20 +293,6 @@ export default function AnalyticsPage() {
         return { bg: '#2a0000', text: '#ff1a1a', glow: '0 0 15px rgba(255, 26, 26, 0.5)' }; // Critical
       })()
     },
-    {
-      label: 'AI-Powered Analytics',
-      value: 'AI',
-      change: 'Real-Time',
-      trend: 'neutral',
-      icon: Brain,
-      progress: 100,
-      isDisclaimer: true,
-      customColors: {
-        bg: 'linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, rgba(6, 182, 212, 0.08) 100%)',
-        text: 'transparent',
-        glow: 'none'
-      }
-    }
   ];
 
   const latestMetricTimestamp = useMemo(() => {
@@ -446,103 +431,55 @@ export default function AnalyticsPage() {
 
           {/* Stats Dashboard - 4 Cards at Top */}
           <div className="stats-overview-grid">
-            {stats.map((stat, index) => {
-              const isDisclaimer = (stat as any).isDisclaimer;
-
-              return (
+            {stats.map((stat, index) => (
+              <div
+                key={index}
+                className="stat-card glass-card"
+                style={(stat as any).customColors ? {
+                  background: (stat as any).customColors.bg,
+                  boxShadow: (stat as any).customColors.glow
+                } : {}}
+              >
+                <div className="stat-header">
+                  <div className="stat-icon-wrapper">
+                    <stat.icon className="stat-icon" size={20} />
+                  </div>
+                  <div className={`trend-indicator ${stat.trend}`}>
+                    <span>{stat.change}</span>
+                  </div>
+                </div>
                 <div
-                  key={index}
-                  className={`stat-card glass-card ${isDisclaimer ? 'disclaimer-card' : ''}`}
+                  className="stat-value"
                   style={(stat as any).customColors ? {
-                    background: (stat as any).customColors.bg,
-                    boxShadow: (stat as any).customColors.glow
+                    color: (stat as any).customColors.text,
+                    textShadow: (stat as any).customColors.glow
                   } : {}}
                 >
-                  {isDisclaimer ? (
-                    // Special disclaimer card layout
-                    <div className="disclaimer-content">
-                      <div className="disclaimer-icon">
-                        <stat.icon size={32} style={{
-                          color: 'var(--primary)',
-                          filter: 'drop-shadow(0 0 8px rgba(124, 58, 237, 0.3))'
-                        }} />
-                      </div>
-                      <div className="disclaimer-text">
-                        <h4 style={{
-                          fontSize: '0.875rem',
-                          fontWeight: 600,
-                          background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
-                          WebkitBackgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent',
-                          marginBottom: '0.5rem'
-                        }}>
-                          AI-Powered Insights
-                        </h4>
-                        <p style={{
-                          fontSize: '0.75rem',
-                          lineHeight: '1.5',
-                          color: 'var(--text-tertiary)',
-                          margin: 0
-                        }}>
-                          These metrics are calculated using real-time data and AI analysis to help you grow.
-                          <span style={{
-                            color: 'var(--primary)',
-                            fontWeight: 500,
-                            display: 'block',
-                            marginTop: '0.25rem'
-                          }}>
-                            Your journey to peak performance starts here.
-                          </span>
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    // Normal stat card layout
-                    <>
-                      <div className="stat-header">
-                        <div className="stat-icon-wrapper">
-                          <stat.icon className="stat-icon" size={20} />
-                        </div>
-                        <div className={`trend-indicator ${stat.trend}`}>
-                          {stat.trend === 'up' ? <TrendingUp size={14} /> : stat.trend === 'down' ? <TrendingDown size={14} /> : <Activity size={14} />}
-                          <span>{stat.change}</span>
-                        </div>
-                      </div>
-                      <div
-                        className="stat-value"
-                        style={(stat as any).customColors ? {
-                          color: (stat as any).customColors.text,
-                          textShadow: (stat as any).customColors.glow
-                        } : {}}
-                      >
-                        {stat.value}
-                      </div>
-                      <div className="stat-label" title={stat.label}>{stat.label}</div>
-                      {(stat as any).subtitle && (
-                        <div className="stat-subtitle" style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                          {(stat as any).subtitle}
-                        </div>
-                      )}
-                      <div className="stat-progress">
-                        <div className="progress-bar">
-                          <div
-                            className="progress-fill"
-                            style={{
-                              width: `${stat.progress}%`,
-                              background: (stat as any).customColors
-                                ? (stat as any).customColors.text
-                                : stat.trend === 'up' || stat.trend === 'neutral'
-                                  ? 'linear-gradient(90deg, var(--primary), var(--secondary))'
-                                  : 'linear-gradient(90deg, var(--warning), var(--accent))'
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </>
-                  )}
+                  {stat.value}
                 </div>
-              );
-            })}
+                <div className="stat-label" title={stat.label}>{stat.label}</div>
+                {(stat as any).subtitle && (
+                  <div className="stat-subtitle">
+                    {(stat as any).subtitle}
+                  </div>
+                )}
+                <div className="stat-progress">
+                  <div className="progress-bar">
+                    <div
+                      className="progress-fill"
+                      style={{
+                        width: `${stat.progress}%`,
+                        background: (stat as any).customColors
+                          ? (stat as any).customColors.text
+                          : stat.trend === 'up' || stat.trend === 'neutral'
+                            ? 'linear-gradient(90deg, var(--primary), var(--secondary))'
+                            : 'linear-gradient(90deg, var(--warning), var(--accent))'
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
 
           {/* Main Analytics Grid - 6 Components */}

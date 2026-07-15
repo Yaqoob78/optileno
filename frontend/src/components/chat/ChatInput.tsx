@@ -1,6 +1,6 @@
 // src/components/chat/ChatInput.tsx
 import React, { useRef, useEffect } from "react";
-import { Send, Focus } from "lucide-react";
+import { ArrowUp, Focus } from "lucide-react";
 
 import "../../styles/components/chats/ChatInput.css";
 
@@ -49,32 +49,38 @@ export default function ChatInput({
             value={inputValue}
             onChange={(e) => onInputChange(e.target.value)}
             onKeyDown={handleKeyPress}
-            placeholder="Ask Leno anything. Shift+Enter for a new line."
+            placeholder="Ask Leno anything…"
             className="chat-input-field"
             rows={1}
             disabled={disabled}
           />
-          <div className="chat-input-actions">
-            <button
-              onClick={onFocusMode}
-              className={`focus-button ${focusModeActive ? 'focus-button-active' : ''}`}
-              aria-label={focusModeActive ? 'Exit focus mode' : 'Enter focus mode'}
-              aria-pressed={focusModeActive}
-              title={focusModeActive ? 'Exit distraction-free focus mode' : 'Enter distraction-free focus mode'}
-              disabled={disabled}
-            >
-              <Focus size={18} />
-            </button>
-            
-            {/* Send Button */}
-            <button
-              onClick={() => onSend(inputValue)}
-              disabled={disabled || !inputValue.trim()}
-              className="send-button"
-              aria-label="Send message"
-            >
-              <Send size={20} />
-            </button>
+
+          <div className="chat-input-toolbar">
+            <span className="chat-input-hint" aria-hidden="true">
+              Shift+Enter for a new line
+            </span>
+
+            <div className="chat-input-actions">
+              <button
+                onClick={onFocusMode}
+                className={`focus-button ${focusModeActive ? 'focus-button-active' : ''}`}
+                aria-label={focusModeActive ? 'Exit focus mode' : 'Enter focus mode'}
+                aria-pressed={focusModeActive}
+                title={focusModeActive ? 'Exit distraction-free focus mode' : 'Enter distraction-free focus mode'}
+                disabled={disabled}
+              >
+                <Focus size={17} />
+              </button>
+
+              <button
+                onClick={() => onSend(inputValue)}
+                disabled={disabled || !inputValue.trim()}
+                className="send-button"
+                aria-label="Send message"
+              >
+                <ArrowUp size={18} />
+              </button>
+            </div>
           </div>
         </div>
       </div>

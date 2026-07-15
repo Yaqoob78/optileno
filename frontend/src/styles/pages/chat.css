@@ -43,7 +43,8 @@
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  /* Generous rhythm between turns — replies read as sections, not texts */
+  gap: 1.5rem;
   padding: 0 1rem;
 }
 
@@ -204,16 +205,22 @@
 }
 
 @media (max-width: 768px) {
-  .chat-container {
-    min-height: calc(100dvh - 5.25rem);
+  /* Bleed the chat to the screen edges — cancel the app shell's
+     content padding so the thread and composer use the full width,
+     like a native chat app */
+  .chat-container,
+  .chat-container.chat-focus-mode {
+    margin: -0.75rem;
+    min-height: calc(100dvh - 3.5rem);
   }
 
   .chat-messages-area {
-    padding: 1.1rem 0 1rem;
+    padding: 1rem 0 0.9rem;
   }
 
   .chat-thread-shell {
-    padding: 0 0.85rem;
+    gap: 1.25rem;
+    padding: 0 0.9rem;
   }
 
   .suggestions-grid {
@@ -228,11 +235,15 @@
     justify-content: center;
   }
 
-  .chat-thread-shell {
-    padding: 0 0.75rem;
-  }
-
   .suggestions-container {
     padding: 0.95rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .chat-container,
+  .chat-container.chat-focus-mode {
+    margin: -0.5rem;
+    min-height: calc(100dvh - 3.25rem);
   }
 }

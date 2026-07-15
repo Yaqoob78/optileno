@@ -74,80 +74,23 @@ const Sparkline: React.FC<{ data: number[]; width?: number; height?: number }> =
     );
 };
 
-const CPUAnimation = () => (
-    <div className="intelligence-cpu-container">
-        <svg viewBox="0 0 120 120" className="intelligence-cpu-svg">
-            <defs>
-                <linearGradient id="cpuGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#06b6d4" />
-                    <stop offset="50%" stopColor="#10b981" />
-                    <stop offset="100%" stopColor="#34d399" />
-                </linearGradient>
-                <filter id="glow">
-                    <feGaussianBlur stdDeviation="1.5" result="coloredBlur" />
-                    <feMerge>
-                        <feMergeNode in="coloredBlur" />
-                        <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                </filter>
-            </defs>
-
-            {/* Background PCB Grid */}
-            <path d="M 0 30 L 120 30 M 0 60 L 120 60 M 0 90 L 120 90 M 30 0 L 30 120 M 60 0 L 60 120 M 90 0 L 90 120"
-                stroke="var(--secondary)" strokeWidth="0.2" opacity="0.1" />
-
-            {/* Pins with sharper look */}
-            {[...Array(6)].map((_, i) => (
-                <React.Fragment key={i}>
-                    <rect x={25 + i * 14} y="5" width="2" height="10" rx="0.5" className="cpu-pin-futuristic" style={{ animationDelay: `${i * 0.1}s` }} />
-                    <rect x={25 + i * 14} y="105" width="2" height="10" rx="0.5" className="cpu-pin-futuristic" style={{ animationDelay: `${0.5 + i * 0.1}s` }} />
-                    <rect x="5" y={25 + i * 14} width="10" height="2" rx="0.5" className="cpu-pin-futuristic" style={{ animationDelay: `${0.2 + i * 0.1}s` }} />
-                    <rect x="105" y={25 + i * 14} width="10" height="2" rx="0.5" className="cpu-pin-futuristic" style={{ animationDelay: `${0.7 + i * 0.1}s` }} />
-                </React.Fragment>
-            ))}
-
-            <rect x="15" y="15" width="90" height="90" rx="4" className="cpu-plate-main" />
-            <rect x="22" y="22" width="76" height="76" rx="2" className="cpu-plate-inner" />
-
-            <rect x="25" y="25" width="8" height="8" rx="1" className="cpu-micro-chip" />
-            <rect x="87" y="25" width="8" height="8" rx="1" className="cpu-micro-chip" />
-            <rect x="25" y="87" width="8" height="8" rx="1" className="cpu-micro-chip" />
-            <rect x="87" y="87" width="8" height="8" rx="1" className="cpu-micro-chip" />
-
-            <rect x="42" y="42" width="36" height="36" rx="4" className="cpu-core-base" />
-            <circle cx="60" cy="60" r="12" className="cpu-core-center" filter="url(#glow)" />
-
-            <path d="M 60 52 L 68 56 L 68 64 L 60 68 L 52 64 L 52 56 Z" className="cpu-hex-core" />
-
-            <g className="data-paths">
-                <path d="M 60 15 L 60 42 M 60 78 L 60 105 M 15 60 L 42 60 M 78 60 L 105 60" className="cpu-path-main" />
-                <circle r="1.5" className="data-bit" fill="#fff">
-                    <animateMotion dur="1.5s" repeatCount="indefinite" path="M 60 15 L 60 42" />
-                </circle>
-                <circle r="1.5" className="data-bit" fill="#fff">
-                    <animateMotion dur="1.5s" repeatCount="indefinite" path="M 60 105 L 60 78" />
-                </circle>
-                <circle r="1.5" className="data-bit" fill="#fff">
-                    <animateMotion dur="1.5s" repeatCount="indefinite" path="M 15 60 L 42 60" />
-                </circle>
-                <circle r="1.5" className="data-bit" fill="#fff">
-                    <animateMotion dur="1.5s" repeatCount="indefinite" path="M 105 60 L 78 60" />
-                </circle>
-            </g>
-
-            <path d="M 40 25 L 40 35 M 80 25 L 80 35 M 40 95 L 40 85 M 80 95 L 80 85" className="cpu-path-subtle" />
-        </svg>
+/** Calm waiting state — three soft rings, no circuitry theatre */
+const ScorePlaceholder = () => (
+    <div className="score-placeholder" aria-hidden="true">
+        <span className="score-placeholder-ring" />
+        <span className="score-placeholder-ring" />
+        <span className="score-placeholder-ring" />
     </div>
 );
 
 /** Human-readable label for dimension keys */
 const dimensionLabels: Record<string, string> = {
-    strategic_planning: 'Strategy',
+    strategic_planning: 'Planning',
     execution_intelligence: 'Execution',
-    ai_collaboration: 'AI Synergy',
+    ai_collaboration: 'Working with Leno',
     adaptive_capacity: 'Adaptability',
     cognitive_consistency: 'Consistency',
-    self_regulation: 'Self-Regulation',
+    self_regulation: 'Follow-through',
 };
 
 const dimensionColors: Record<string, string> = {
@@ -165,8 +108,8 @@ const AIIntelligenceScore: React.FC<{ timeRange: string }> = ({ timeRange }) => 
     if (isLoading) {
         return (
             <div className="intelligence-analyzing">
-                <CPUAnimation />
-                <div className="analyzing-text">SYNCING INTELLIGENCE...</div>
+                <ScorePlaceholder />
+                <div className="analyzing-text">Reading your recent work…</div>
             </div>
         );
     }
@@ -174,7 +117,7 @@ const AIIntelligenceScore: React.FC<{ timeRange: string }> = ({ timeRange }) => 
     if (error) {
         return (
             <div className="intelligence-analyzing">
-                <div className="analyzing-text">UNABLE TO LOAD AI INTELLIGENCE</div>
+                <div className="analyzing-text">We couldn't load your score. Try refreshing.</div>
             </div>
         );
     }
@@ -182,12 +125,12 @@ const AIIntelligenceScore: React.FC<{ timeRange: string }> = ({ timeRange }) => 
     if (!data) return null;
 
     if (data.ready === false || data.status === 'pending' || data.score == null || data.error_fallback) {
-        const pendingMessage = data.message || 'AI will load your intelligence score soon. Keep working.';
+        const pendingMessage = data.message || 'Your score appears once you have a few tasks and sessions logged.';
         const pendingParts = pendingMessage.split('. ').filter(Boolean);
 
         return (
             <div className="intelligence-analyzing">
-                <CPUAnimation />
+                <ScorePlaceholder />
                 <div className="analyzing-text">{pendingParts[0]}</div>
                 {pendingParts[1] && (
                     <div className="analyzing-text">{pendingParts.slice(1).join('. ')}</div>
@@ -205,7 +148,7 @@ const AIIntelligenceScore: React.FC<{ timeRange: string }> = ({ timeRange }) => 
     const TrendIcon = trendPercent === null ? Minus : trendPercent >= 0 ? TrendingUp : TrendingDown;
     const trendClass = trendPercent === null ? 'neutral' : trendPercent >= 0 ? 'up' : 'down';
     const scoreValue = typeof data.score === 'number' ? Math.round(data.score) : 0;
-    const categoryLabel = data.category || 'Calibrating';
+    const categoryLabel = data.category || 'Building up';
     const sparkline = data.sparkline_7d;
 
     const strengths = data.strengths || [];
@@ -242,7 +185,7 @@ const AIIntelligenceScore: React.FC<{ timeRange: string }> = ({ timeRange }) => 
                         </defs>
                     </svg>
                     <div className="score-content">
-                        <div className="score-label">INTELLIGENCE</div>
+                        <div className="score-label">Score</div>
                         <div className="score-value">{scoreValue}</div>
                         <div className={`score-trend ${trendClass}`}>
                             <TrendIcon size={10} />

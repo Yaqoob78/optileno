@@ -625,7 +625,7 @@ export default function Chat() {
                       <div className="typing-dot" style={{ animationDelay: "150ms" }} />
                       <div className="typing-dot" style={{ animationDelay: "300ms" }} />
                     </div>
-                    <span className="text-sm text-tertiary">Assistant is typing...</span>
+                    <span className="text-sm text-tertiary">Leno is thinking…</span>
                   </div>
                 </div>
               </div>
