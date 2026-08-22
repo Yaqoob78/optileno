@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { Logo } from '../../components/common/Logo';
 import { Interactive3DCard } from '../../components/landing/Interactive3DCard';
+import { GuitarStringsBackground } from '../../components/landing/GuitarStringsBackground';
 import SEO from '../../components/common/SEO';
 import './landing.css';
 
@@ -442,29 +443,7 @@ export default function Landing() {
         <div className="scene-bg" aria-hidden="true" ref={sceneRef}>
           <div className="orb orb-a" />
           <div className="orb orb-b" />
-
-          <div className="waves-container">
-            <svg className="waves-base" viewBox="0 0 1440 1000" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="waveGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#60a5fa" />
-                  <stop offset="50%" stopColor="#3b82f6" />
-                  <stop offset="100%" stopColor="#d97706" />
-                </linearGradient>
-              </defs>
-              {WAVE_PATHS.map((path, index) => (
-                <path key={`base-${index}`} d={path} stroke="rgba(255, 255, 255, 0.04)" strokeWidth="1" fill="none" />
-              ))}
-            </svg>
-          </div>
-
-          <div className="waves-container waves-glow">
-            <svg className="waves-active" viewBox="0 0 1440 1000" preserveAspectRatio="none">
-              {WAVE_PATHS.map((path, index) => (
-                <path key={`glow-${index}`} d={path} stroke="url(#waveGradient)" strokeWidth="2.5" fill="none" />
-              ))}
-            </svg>
-          </div>
+          <GuitarStringsBackground />
         </div>
 
         {/* ─── Nav ─── */}
@@ -517,7 +496,8 @@ export default function Landing() {
             variants={revealVariants}
             custom={0.02}
           >
-            <motion.span className="kicker" variants={revealVariants} custom={0.08}>
+            <motion.span className="kicker kicker-luxury" variants={revealVariants} custom={0.08}>
+              <span className="kicker-pulse-dot" />
               100% Free Forever · No Credit Card Required
             </motion.span>
 
@@ -572,7 +552,11 @@ export default function Landing() {
               <button className="cta-button-tertiary btn-premium" onClick={() => navigate('/get-access')}>
                 Have an invite? Get Access
               </button>
-              <p className="cta-note">100% Free forever. No credit card required.</p>
+              
+              <div className="hero-live-proof">
+                <span className="live-radar-dot" />
+                <span>1,420+ daily focus sprints planned today • 100% Free Forever • Instant 1-Click Access</span>
+              </div>
             </motion.div>
 
             <motion.div className="hero-keyword-links" variants={revealVariants} custom={0.52}>
