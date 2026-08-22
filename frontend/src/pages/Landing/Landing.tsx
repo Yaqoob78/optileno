@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { Logo } from '../../components/common/Logo';
 import { Interactive3DCard } from '../../components/landing/Interactive3DCard';
+import { WaveGuitarCanvas } from '../../components/landing/WaveGuitarCanvas';
 import SEO from '../../components/common/SEO';
 import './landing.css';
 
@@ -264,14 +265,6 @@ const HERO_STATS = [
 const HERO_TITLE = 'Stop planning. Start finishing.';
 const HERO_TITLE_WORDS = HERO_TITLE.split(' ');
 
-const WAVE_PATHS = Array.from({ length: 42 }).map((_, i) => {
-  const y = 40 + i * 26;
-  const phaseRow = i * 0.3;
-  const cy1 = y - 130 + Math.sin(phaseRow) * 80;
-  const cy2 = y + 130 + Math.sin(phaseRow - 1.2) * 80;
-  const cy3 = y + Math.sin(phaseRow - 2.4) * 60;
-  return `M -100 ${y} C 480 ${cy1}, 1020 ${cy2}, 1600 ${cy3}`;
-});
 
 /* ─── FAQ Accordion Item ─── */
 function FAQAccordion({ item, index }: { item: FAQItem; index: number }) {
@@ -303,165 +296,17 @@ export default function Landing() {
   const [showStickyBar, setShowStickyBar] = useState(false);
 
   useEffect(() => {
-    let animationFrameId: number;
-    let time = 0;
-    let heroVisible = true;
-    let prevMouseY = 0;
-    let prevMouseTime = performance.now();
-    let audioCtx: AudioContext | null = null;
-
-    // Guitar string harmonic state for each of the 42 lines
-    const stringPhysics = Array.from({ length: 42 }, () => ({
-      displacement: 0,
-      velocity: 0,
-    }));
-
-    const PENTATONIC_FREQS = [164.81, 196.0, 220.0, 246.94, 293.66, 329.63, 392.0, 440.0, 493.88, 587.33, 659.25, 783.99];
-
-    const playStringSound = (index: number, velocity: number) => {
-      try {
-        if (!audioCtx) {
-          const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-          if (AudioCtx) audioCtx = new AudioCtx();
-        }
-        if (audioCtx && audioCtx.state === 'suspended') {
-          audioCtx.resume().catch(() => {});
-        }
-        if (!audioCtx || audioCtx.state !== 'running') return;
-
-        const now = audioCtx.currentTime;
-        const osc = audioCtx.createOscillator();
-        const overtone = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        const filter = audioCtx.createBiquadFilter();
-
-        const freq = PENTATONIC_FREQS[index % PENTATONIC_FREQS.length];
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(freq, now);
-
-        overtone.type = 'sine';
-        overtone.frequency.setValueAtTime(freq * 2, now);
-
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(1400, now);
-        filter.frequency.exponentialRampToValueAtTime(180, now + 0.9);
-
-        const vol = Math.min(Math.max(Math.abs(velocity) / 45, 0.015), 0.05);
-        gain.gain.setValueAtTime(vol, now);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.0);
-
-        osc.connect(filter);
-        overtone.connect(filter);
-        filter.connect(gain);
-        gain.connect(audioCtx.destination);
-
-        osc.start(now);
-        overtone.start(now);
-        osc.stop(now + 1.0);
-        overtone.stop(now + 1.0);
-      } catch {
-        // Silent catch for autoplay restriction
-      }
-    };
-
-    const renderWaves = () => {
-      if (!heroVisible) return;
-      time += 0.003;
-      if (!sceneRef.current) return;
-
-      const basePaths = sceneRef.current.querySelectorAll('.waves-base path');
-      const activePaths = sceneRef.current.querySelectorAll('.waves-active path');
-
-      for (let i = 0; i < 42; i++) {
-        const y = 40 + i * 26;
-        const phaseRow = i * 0.3;
-        const waveSpeed = time * 2;
-
-        // Update guitar harmonic spring physics: F = -k*x - c*v
-        const str = stringPhysics[i];
-        str.velocity += -0.075 * str.displacement;
-        str.velocity *= 0.942;
-        str.displacement += str.velocity;
-
-        const cy1 = y - 130 + Math.sin(phaseRow + waveSpeed) * 80 + str.displacement * 0.85;
-        const cy2 = y + 130 + Math.sin(phaseRow + waveSpeed - 1.2) * 80 - str.displacement * 0.65;
-        const cy3 = y + Math.sin(phaseRow + waveSpeed - 2.4) * 60 + str.displacement * 0.45;
-
-        const d = `M -100 ${y} C 480 ${cy1}, 1020 ${cy2}, 1600 ${cy3}`;
-
-        if (basePaths[i]) basePaths[i].setAttribute('d', d);
-        if (activePaths[i]) activePaths[i].setAttribute('d', d);
-      }
-
-      animationFrameId = requestAnimationFrame(renderWaves);
-    };
-
-    // Honor reduced-motion and stop burning frames when the hero is offscreen
-    let waveObserver: IntersectionObserver | undefined;
-    if (!shouldReduceMotion) {
-      renderWaves();
-
-      if (sceneRef.current && typeof IntersectionObserver !== 'undefined') {
-        waveObserver = new IntersectionObserver(([entry]) => {
-          const wasVisible = heroVisible;
-          heroVisible = entry.isIntersecting;
-          if (heroVisible && !wasVisible) renderWaves();
-          if (!heroVisible) cancelAnimationFrame(animationFrameId);
-        });
-        waveObserver.observe(sceneRef.current);
-      }
-    }
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!sceneRef.current) return;
-      const rect = sceneRef.current.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      sceneRef.current.style.setProperty('--mouse-x', `${x}px`);
-      sceneRef.current.style.setProperty('--mouse-y', `${y}px`);
-
-      // Calculate guitar string pluck detection across all 42 lines
-      const now = performance.now();
-      const dt = Math.max((now - prevMouseTime) / 1000, 0.001);
-      const vy = (y - prevMouseY) / dt;
-
-      const svgNormY = (y / Math.max(rect.height, 1)) * 1000;
-      const prevSvgNormY = (prevMouseY / Math.max(rect.height, 1)) * 1000;
-
-      for (let i = 0; i < 42; i++) {
-        const lineY = 40 + i * 26;
-        const crossed = (prevSvgNormY <= lineY && svgNormY >= lineY) || (prevSvgNormY >= lineY && svgNormY <= lineY);
-        const dist = Math.abs(svgNormY - lineY);
-
-        if (crossed || (dist < 14 && Math.abs(vy) > 80)) {
-          const pluckForce = Math.min(Math.max(vy * 0.05, -30), 30);
-          stringPhysics[i].velocity += pluckForce;
-          playStringSound(i, vy);
-        }
-      }
-
-      prevMouseY = y;
-      prevMouseTime = now;
-    };
-
     /* Sticky CTA bar: appears after 40% scroll */
     const handleScroll = () => {
       const scrollPct = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
       setShowStickyBar(scrollPct > 0.15 && scrollPct < 0.9);
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('scroll', handleScroll);
-      cancelAnimationFrame(animationFrameId);
-      waveObserver?.disconnect();
-      if (audioCtx && audioCtx.state !== 'closed') {
-        audioCtx.close().catch(() => {});
-      }
     };
-  }, [shouldReduceMotion]);
+  }, []);
 
   const revealVariants = React.useMemo<Variants>(
     () => ({
@@ -531,29 +376,7 @@ export default function Landing() {
         <div className="scene-bg" aria-hidden="true" ref={sceneRef}>
           <div className="orb orb-a" />
           <div className="orb orb-b" />
-
-          <div className="waves-container">
-            <svg className="waves-base" viewBox="0 0 1440 1000" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="waveGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#60a5fa" />
-                  <stop offset="50%" stopColor="#3b82f6" />
-                  <stop offset="100%" stopColor="#d97706" />
-                </linearGradient>
-              </defs>
-              {WAVE_PATHS.map((path, index) => (
-                <path key={`base-${index}`} d={path} stroke="rgba(255, 255, 255, 0.04)" strokeWidth="1" fill="none" />
-              ))}
-            </svg>
-          </div>
-
-          <div className="waves-container waves-glow">
-            <svg className="waves-active" viewBox="0 0 1440 1000" preserveAspectRatio="none">
-              {WAVE_PATHS.map((path, index) => (
-                <path key={`glow-${index}`} d={path} stroke="url(#waveGradient)" strokeWidth="2.5" fill="none" />
-              ))}
-            </svg>
-          </div>
+          <WaveGuitarCanvas />
         </div>
 
         {/* ─── Nav ─── */}
