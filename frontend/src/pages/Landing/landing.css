@@ -180,6 +180,16 @@
   transition: filter 100ms linear;
 }
 
+@media (max-width: 768px) {
+  .waves-container {
+    transform: translateY(-2%) !important;
+    height: 100vh !important;
+  }
+  .waves-active path {
+    filter: none !important;
+  }
+}
+
 /* ═══════════════════════════════════════════════════
    Navigation
    ═══════════════════════════════════════════════════ */

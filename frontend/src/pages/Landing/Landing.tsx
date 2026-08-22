@@ -364,13 +364,18 @@ export default function Landing() {
       }
     };
 
+    let basePaths: NodeListOf<SVGPathElement> | null = null;
+    let activePaths: NodeListOf<SVGPathElement> | null = null;
+
     const renderWaves = () => {
       if (!heroVisible) return;
       time += 0.003;
       if (!sceneRef.current) return;
 
-      const basePaths = sceneRef.current.querySelectorAll('.waves-base path');
-      const activePaths = sceneRef.current.querySelectorAll('.waves-active path');
+      if (!basePaths || !activePaths) {
+        basePaths = sceneRef.current.querySelectorAll<SVGPathElement>('.waves-base path');
+        activePaths = sceneRef.current.querySelectorAll<SVGPathElement>('.waves-active path');
+      }
 
       for (let i = 0; i < 42; i++) {
         const y = 40 + i * 26;
@@ -389,8 +394,8 @@ export default function Landing() {
 
         const d = `M -100 ${y} C 480 ${cy1}, 1020 ${cy2}, 1600 ${cy3}`;
 
-        if (basePaths[i]) basePaths[i].setAttribute('d', d);
-        if (activePaths[i]) activePaths[i].setAttribute('d', d);
+        if (basePaths && basePaths[i]) basePaths[i].setAttribute('d', d);
+        if (activePaths && activePaths[i]) activePaths[i].setAttribute('d', d);
       }
 
       animationFrameId = requestAnimationFrame(renderWaves);
@@ -412,11 +417,11 @@ export default function Landing() {
       }
     }
 
-    const handleMouseMove = (e: MouseEvent) => {
+    const handlePointerInteraction = (clientX: number, clientY: number) => {
       if (!sceneRef.current) return;
       const rect = sceneRef.current.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
       sceneRef.current.style.setProperty('--mouse-x', `${x}px`);
       sceneRef.current.style.setProperty('--mouse-y', `${y}px`);
 
@@ -444,16 +449,28 @@ export default function Landing() {
       prevMouseTime = now;
     };
 
+    const handleMouseMove = (e: MouseEvent) => {
+      handlePointerInteraction(e.clientX, e.clientY);
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        handlePointerInteraction(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
+
     /* Sticky CTA bar: appears after 40% scroll */
     const handleScroll = () => {
       const scrollPct = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
       setShowStickyBar(scrollPct > 0.15 && scrollPct < 0.9);
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('scroll', handleScroll);
       cancelAnimationFrame(animationFrameId);
       waveObserver?.disconnect();
