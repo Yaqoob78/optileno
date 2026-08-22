@@ -1038,10 +1038,32 @@
   white-space: nowrap;
 }
 
-.goal-milestone-threshold {
+.goal-milestone-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  font-size: 0.7rem;
-  color: var(--text-tertiary, #78716c);
+  padding: 0.15rem;
+  margin: -0.15rem;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+.goal-milestone-toggle:hover:not(:disabled) svg {
+  color: #10b981;
+}
+
+.goal-milestone-toggle:focus-visible {
+  outline: 2px solid var(--primary, #7c3aed);
+  outline-offset: 2px;
+}
+
+.goal-milestone-toggle:disabled {
+  cursor: wait;
+  opacity: 0.6;
 }
 
 .goal-details-tracked-note {

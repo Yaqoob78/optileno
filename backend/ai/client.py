@@ -463,12 +463,33 @@ class DualAIClient:
                 full_context = {}
                 context_prompt = "Context unavailable - please try again."
         
+        # 1b. Long-term memory: what the assistant remembers about this user
+        # across conversations. Cheap single-row lookup; failures never block chat.
+        memory_prompt = ""
+        try:
+            from backend.ai.memory.retrieve import get_memory
+            memory = await get_memory(str(self.user_id))
+            memory_parts = []
+            if memory.get("insights_summary"):
+                memory_parts.append(f"What you remember about this user: {memory['insights_summary']}")
+            intents = memory.get("frequent_intents") or {}
+            if isinstance(intents, dict) and intents:
+                top_intents = sorted(intents.items(), key=lambda kv: kv[1], reverse=True)[:5]
+                memory_parts.append(
+                    "Their most frequent request types: "
+                    + ", ".join(f"{name} ({count}x)" for name, count in top_intents)
+                )
+            if memory_parts:
+                memory_prompt = "\n\nLONG-TERM MEMORY (accumulated across past conversations):\n" + "\n".join(memory_parts)
+        except Exception as e:
+            logger.debug(f"Long-term memory retrieval skipped: {e}")
+
         # 2. Build enhanced system prompt with full context + anti-repetition
         session_key = session_id or f"{self.user_id}_default"
         recent_responses = _RECENT_RESPONSES.get(session_key, [])
         system_prompt = self._get_system_prompt_with_context(
             mode,
-            context_prompt,
+            context_prompt + memory_prompt,
             recent_responses,
             user_timezone=full_context.get("user_timezone", "UTC"),
             now_local_iso=full_context.get("now_local_iso"),
@@ -690,6 +711,13 @@ class DualAIClient:
         if executed_actions:
             _CONTEXT_CACHE.pop(cache_key, None)
 
+        # Update long-term memory with this interaction (fire-and-forget;
+        # a memory failure must never delay or break the chat response).
+        try:
+            asyncio.create_task(self._remember_interaction(intent))
+        except Exception as e:
+            logger.debug(f"Long-term memory update skipped: {e}")
+
         return {
             "message": final_response,
             "intent": intent,
@@ -705,6 +733,26 @@ class DualAIClient:
             "has_full_context": bool(full_context.get("goals")),
         }
     
+    async def _remember_interaction(self, intent: str) -> None:
+        """Fold this interaction's intent into the user's long-term memory snapshot."""
+        try:
+            from backend.ai.memory.retrieve import get_memory
+            from backend.ai.memory.store import save_memory
+
+            memory = await get_memory(str(self.user_id))
+            intents = memory.get("frequent_intents") or {}
+            if not isinstance(intents, dict):
+                intents = {}
+            key = (intent or "CHAT").strip().upper()
+            intents[key] = int(intents.get(key, 0)) + 1
+            await save_memory(str(self.user_id), {
+                "insights_summary": memory.get("insights_summary", ""),
+                "frequent_intents": intents,
+                "planner_habits": memory.get("planner_habits", {}),
+            })
+        except Exception as e:
+            logger.debug(f"Long-term memory update failed: {e}")
+
     def _get_system_prompt_with_context(
         self,
         mode: str,

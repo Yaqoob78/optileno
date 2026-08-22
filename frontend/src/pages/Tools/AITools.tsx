@@ -249,7 +249,7 @@ export default function AITools({ initialTool = "task-prioritizer" }: { initialT
           <div className="ai-tools-nav-actions">
             <button type="button" onClick={() => navigate("/")}>Home</button>
             <button type="button" className="ai-tools-nav-primary" onClick={() => navigate("/register")}>
-              Start Free Trial
+              Start Free Forever
             </button>
           </div>
         </header>

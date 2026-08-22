@@ -80,25 +80,21 @@ const RefundPolicy: React.FC = () => {
                 </ul>
             </section>
 
-            {/* 3. Free Trial */}
+            {/* 3. Free Plan & Subscriptions */}
             <section style={styles.section}>
-                <h2 style={styles.h2}>3. Free Trial</h2>
+                <h2 style={styles.h2}>3. Free Plan & Subscriptions</h2>
                 <div style={styles.important}>
                     <p>
-                        The <strong>Explorer plan</strong> includes a <strong>3-day free trial</strong> to allow you to evaluate the Service before committing to a paid subscription.
+                        Optileno provides a <strong>Free Forever plan</strong> that requires no payment or credit card to access core daily planning, habits, goals, and AI assistance.
                     </p>
                 </div>
-                <p style={{ marginTop: '1rem' }}>Important trial terms:</p>
+                <p style={{ marginTop: '1rem' }}>Subscription terms:</p>
                 <ul>
-                    <li>You will not be charged during the trial period</li>
-                    <li><strong>After the 3-day trial ends, billing begins automatically</strong> at the applicable subscription rate</li>
-                    <li>If you do not wish to continue, you must cancel <strong>before</strong> the trial period expires</li>
-                    <li>Once billing begins after the trial, the payment is non-refundable</li>
-                    <li>Only one free trial is available per user/email address</li>
+                    <li>The core Free plan is 100% free with no recurring charges</li>
+                    <li>Optional paid upgrades (such as <strong>Ultra Pro at $6.99/month or $49/year</strong>) are billed in advance on a recurring basis</li>
+                    <li>You can cancel your paid subscription at any time before the next billing date</li>
+                    <li>Payments for active billing periods are non-refundable once processed</li>
                 </ul>
-                <p style={{ marginTop: '0.75rem' }}>
-                    We strongly recommend using the full trial period to determine if Optileno meets your needs before your subscription begins.
-                </p>
             </section>
 
             {/* 4. Cancellation */}

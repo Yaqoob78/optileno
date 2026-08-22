@@ -200,11 +200,13 @@ export default function HabitTracker({ habits: propsHabits }: HabitTrackerProps)
 
   const consistency = calculateConsistency();
 
-  // Helper to get day letter
+  // Day letter for the history strip. Must use the app's configured timezone —
+  // the same one the dots are computed in — or the labels drift off by one
+  // when OS timezone differs from the app setting.
   const getDayLetter = (daysAgo: number) => {
     const d = new Date();
     d.setDate(d.getDate() - daysAgo);
-    return d.toLocaleDateString('en-US', { weekday: 'narrow' });
+    return d.toLocaleDateString('en-US', { weekday: 'narrow', timeZone: timezone });
   };
 
   return (

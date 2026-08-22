@@ -1,8 +1,8 @@
 // frontend/src/hooks/useProductivityScore.ts
 import { useState, useEffect, useCallback } from 'react';
-import { realtimeClient } from '../services/realtime/socket-client';
 import { api } from '../services/api/client';
 import { useUserStore } from '../stores/useUserStore';
+import { useAnalyticsAutoRefresh } from './useAnalyticsAutoRefresh';
 
 interface ProductivityBreakdown {
     task_points: number;
@@ -35,6 +35,14 @@ interface UseProductivityScoreReturn {
     refresh: () => Promise<void>;
 }
 
+const REALTIME_EVENTS = [
+    'analytics:update',
+    'planner:task:created',
+    'planner:task:updated',
+    'planner:habit:completed',
+    'planner:deepwork:completed',
+];
+
 export function useProductivityScore(timeRange: 'daily' | 'weekly' | 'monthly' = 'daily'): UseProductivityScoreReturn {
     const isAuthenticated = useUserStore((state) => state.isAuthenticated);
     const [score, setScore] = useState<ProductivityScore | null>(null);
@@ -43,11 +51,11 @@ export function useProductivityScore(timeRange: 'daily' | 'weekly' | 'monthly' =
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const refresh = useCallback(async () => {
+    // Today's score is time-range independent — fetched once per session,
+    // then only on polling/realtime updates (not on tab switches).
+    const fetchToday = useCallback(async () => {
         if (!isAuthenticated) {
             setScore(null);
-            setWeeklyAverage(null);
-            setMonthlyAverage(null);
             setError(null);
             setIsLoading(false);
             return;
@@ -57,13 +65,10 @@ export function useProductivityScore(timeRange: 'daily' | 'weekly' | 'monthly' =
             setIsLoading(true);
             setError(null);
 
-            // Fetch today's score
             const todayResponse = await api.get<ProductivityScore>('/analytics/productivity/score/today');
             if (!todayResponse.success || !todayResponse.data) {
                 if (todayResponse.error?.code === 'HTTP_401') {
                     setScore(null);
-                    setWeeklyAverage(null);
-                    setMonthlyAverage(null);
                     setError(null);
                     return;
                 }
@@ -100,8 +105,25 @@ export function useProductivityScore(timeRange: 'daily' | 'weekly' | 'monthly' =
                 reason: typeof todayPayload.reason === 'string' ? todayPayload.reason : null,
                 next_update: todayPayload.generated_at || todayPayload.next_update,
             });
+        } catch (err: any) {
+            console.error('Error fetching productivity score:', err);
+            // Keep the last good score on transient refresh failures —
+            // wiping it would blank the dashboard on every network blip
+            setError(err.message);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [isAuthenticated]);
 
-            // Fetch weekly average if needed
+    // Averages depend on the selected time range.
+    const fetchAverages = useCallback(async () => {
+        if (!isAuthenticated) {
+            setWeeklyAverage(null);
+            setMonthlyAverage(null);
+            return;
+        }
+
+        try {
             if (timeRange === 'weekly' || timeRange === 'monthly') {
                 const weeklyResponse = await api.get<{ average?: number; score?: number | null }>('/analytics/productivity/score/weekly');
                 if (weeklyResponse.success && weeklyResponse.data) {
@@ -117,7 +139,6 @@ export function useProductivityScore(timeRange: 'daily' | 'weekly' | 'monthly' =
                 }
             }
 
-            // Fetch monthly average if needed
             if (timeRange === 'monthly') {
                 const monthlyResponse = await api.get<{ average?: number; score?: number | null }>('/analytics/productivity/score/monthly');
                 if (monthlyResponse.success && monthlyResponse.data) {
@@ -133,54 +154,30 @@ export function useProductivityScore(timeRange: 'daily' | 'weekly' | 'monthly' =
                 }
             }
         } catch (err: any) {
-            console.error('Error fetching productivity score:', err);
-            // Keep the last good score on transient refresh failures —
-            // wiping it would blank the dashboard on every network blip
+            console.error('Error fetching productivity averages:', err);
             setError(err.message);
-        } finally {
-            setIsLoading(false);
         }
     }, [timeRange, isAuthenticated]);
 
-    // Initial load
+    const refresh = useCallback(async () => {
+        await Promise.all([fetchToday(), fetchAverages()]);
+    }, [fetchToday, fetchAverages]);
+
+    // Initial loads: today once per session, averages on time-range change.
     useEffect(() => {
-        if (!isAuthenticated) return;
-        refresh();
-    }, [refresh, isAuthenticated]);
+        fetchToday();
+    }, [fetchToday]);
 
-    // Refresh every 5 minutes to keep score current
     useEffect(() => {
-        if (!isAuthenticated) return;
-        const interval = setInterval(refresh, 5 * 60 * 1000);
-        return () => clearInterval(interval);
-    }, [refresh, isAuthenticated]);
+        fetchAverages();
+    }, [fetchAverages]);
 
-    // Real-time refresh on productivity-impacting events
-    useEffect(() => {
-        if (!isAuthenticated) return;
-        let timeout: ReturnType<typeof setTimeout> | null = null;
-        const queueRefresh = () => {
-            if (timeout) clearTimeout(timeout);
-            timeout = setTimeout(() => {
-                refresh();
-            }, 250);
-        };
-
-        realtimeClient.on('analytics:update', queueRefresh);
-        realtimeClient.on('planner:task:created', queueRefresh);
-        realtimeClient.on('planner:task:updated', queueRefresh);
-        realtimeClient.on('planner:habit:completed', queueRefresh);
-        realtimeClient.on('planner:deepwork:completed', queueRefresh);
-
-        return () => {
-            realtimeClient.off('analytics:update', queueRefresh);
-            realtimeClient.off('planner:task:created', queueRefresh);
-            realtimeClient.off('planner:task:updated', queueRefresh);
-            realtimeClient.off('planner:habit:completed', queueRefresh);
-            realtimeClient.off('planner:deepwork:completed', queueRefresh);
-            if (timeout) clearTimeout(timeout);
-        };
-    }, [refresh, isAuthenticated]);
+    // Polling + realtime events refresh everything.
+    useAnalyticsAutoRefresh(refresh, isAuthenticated, {
+        events: REALTIME_EVENTS,
+        intervalMs: 5 * 60 * 1000,
+        initialLoad: false,
+    });
 
     return {
         score,

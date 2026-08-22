@@ -539,6 +539,67 @@ class Settings:
     # =========================
     RAZORPAY_KEY_ID: str = os.getenv("RAZORPAY_KEY_ID", "")
     RAZORPAY_KEY_SECRET: str = os.getenv("RAZORPAY_KEY_SECRET", "")
+
+    # =========================
+    # Features
+    # =========================
+    ENABLE_DOCS: bool = _env_bool("ENABLE_DOCS", ENVIRONMENT == "development")
+    ANALYTICS_V2_ENABLED: bool = _env_bool("ANALYTICS_V2_ENABLED", True)
+    GOAL_PROGRESS_V3_ENABLED: bool = _env_bool("GOAL_PROGRESS_V3_ENABLED", True)
+
+    # =========================
+    # Redis Cache - Enterprise HA
+    # =========================
+    REDIS_URL: str = _build_redis_url_from_env()
+    REDIS_HOST: str = os.getenv("REDIS_HOST", "localhost")
+    REDIS_PORT: int = int(os.getenv("REDIS_PORT", "6379"))
+    REDIS_PASSWORD: str = os.getenv("REDIS_PASSWORD", "")
+    REDIS_DB: int = int(os.getenv("REDIS_DB", "0"))
+    
+    # Redis Pool Settings (for 5,000 users)
+    REDIS_MAX_CONNECTIONS: int = _env_int("REDIS_MAX_CONNECTIONS", 100)
+    REDIS_SOCKET_TIMEOUT: int = _env_int("REDIS_SOCKET_TIMEOUT", 5)
+    REDIS_SOCKET_CONNECT_TIMEOUT: int = _env_int("REDIS_SOCKET_CONNECT_TIMEOUT", 5)
+    REDIS_HEALTH_CHECK_INTERVAL: int = _env_int("REDIS_HEALTH_CHECK_INTERVAL", 30)
+    REDIS_RETRY_ON_TIMEOUT: bool = _env_bool("REDIS_RETRY_ON_TIMEOUT", True)
+    
+    # Redis Sentinel (for HA)
+    REDIS_SENTINEL_ENABLED: bool = _env_bool("REDIS_SENTINEL_ENABLED", False)
+    REDIS_SENTINEL_HOSTS: str = os.getenv("REDIS_SENTINEL_HOSTS", "")
+    REDIS_SENTINEL_MASTER: str = os.getenv("REDIS_SENTINEL_MASTER", "mymaster")
+    
+    # Cache TTL Settings (seconds)
+    CACHE_TTL_USER_ANALYTICS: int = _env_int("CACHE_TTL_USER_ANALYTICS", 300)
+    CACHE_TTL_GOAL_PROGRESS: int = _env_int("CACHE_TTL_GOAL_PROGRESS", 600)
+    CACHE_TTL_USER_TASKS: int = _env_int("CACHE_TTL_USER_TASKS", 180)
+    CACHE_TTL_AI_CONTEXT: int = _env_int("CACHE_TTL_AI_CONTEXT", 900)
+    CACHE_TTL_SESSION: int = _env_int("CACHE_TTL_SESSION", 1800)
+
+    # =========================
+    # WebSocket Configuration
+    # =========================
+    WEBSOCKET_PING_INTERVAL: int = _env_int("WEBSOCKET_PING_INTERVAL", 25)
+    WEBSOCKET_PING_TIMEOUT: int = _env_int("WEBSOCKET_PING_TIMEOUT", 60)
+    WEBSOCKET_MAX_CONNECTIONS: int = _env_int("WEBSOCKET_MAX_CONNECTIONS", 10000)
+    WEBSOCKET_MESSAGE_QUEUE_SIZE: int = _env_int("WEBSOCKET_MESSAGE_QUEUE_SIZE", 1000)
+    WEBSOCKET_QUEUE_BATCH_SIZE: int = _env_int("WEBSOCKET_QUEUE_BATCH_SIZE", 200)
+    WEBSOCKET_QUEUE_PROCESS_INTERVAL_MS: int = _env_int("WEBSOCKET_QUEUE_PROCESS_INTERVAL_MS", 25)
+    WEBSOCKET_QUEUE_THRESHOLD_CONNECTIONS: int = _env_int("WEBSOCKET_QUEUE_THRESHOLD_CONNECTIONS", 1000)
+    WEBSOCKET_RECONNECT_DELAY_MIN: int = _env_int("WEBSOCKET_RECONNECT_DELAY_MIN", 1000)
+    WEBSOCKET_RECONNECT_DELAY_MAX: int = _env_int("WEBSOCKET_RECONNECT_DELAY_MAX", 30000)
+
+    # =========================
+    # Payments (Stripe)
+    # =========================
+    STRIPE_API_KEY: str = os.getenv("STRIPE_API_KEY", "")
+    STRIPE_WEBHOOK_SECRET: str = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+    STRIPE_PRO_PRICE_ID: str = os.getenv("STRIPE_PRO_PRICE_ID", "")
+
+    # =========================
+    # Payments (Razorpay) - Subscription Plans
+    # =========================
+    RAZORPAY_KEY_ID: str = os.getenv("RAZORPAY_KEY_ID", "")
+    RAZORPAY_KEY_SECRET: str = os.getenv("RAZORPAY_KEY_SECRET", "")
     RAZORPAY_WEBHOOK_SECRET: str = os.getenv("RAZORPAY_WEBHOOK_SECRET", "")
     
     # Subscription Plan IDs
@@ -546,20 +607,20 @@ class Settings:
     RAZORPAY_ULTRA_PLAN_ID: str = os.getenv("RAZORPAY_ULTRA_PLAN_ID", "")
     
     # Plan Configuration
-    # Explorer: 3 days free trial, then paid
-    # Ultra: No free trial, premium features, YEARLY ONLY
-    EXPLORER_TRIAL_DAYS: int = _env_int("EXPLORER_TRIAL_DAYS", 3)
-    ULTRA_TRIAL_DAYS: int = _env_int("ULTRA_TRIAL_DAYS", 0)  # No free trial
+    # Explorer: Free Plan (0 trial days needed, permanently free)
+    # Ultra: Pro Plan ($6.99/mo or $49.00/yr)
+    EXPLORER_TRIAL_DAYS: int = _env_int("EXPLORER_TRIAL_DAYS", 0)
+    ULTRA_TRIAL_DAYS: int = _env_int("ULTRA_TRIAL_DAYS", 0)
     
     # Plan Pricing (in USD cents, 100 = $1)
-    # Explorer: $2.00/month
-    # Ultra: $10.00/month or $80.00/year (Discounted)
+    # Explorer: Free Forever ($0.00)
+    # Ultra: $6.99/month (699 cents) or $49.00/year (4900 cents)
     
-    EXPLORER_MONTHLY_PRICE: int = _env_int("EXPLORER_MONTHLY_PRICE", 200)   # $2.00
-    EXPLORER_ANNUAL_PRICE: int = _env_int("EXPLORER_ANNUAL_PRICE", 2000)    # $20.00
+    EXPLORER_MONTHLY_PRICE: int = _env_int("EXPLORER_MONTHLY_PRICE", 0)     # $0.00 (Free Forever)
+    EXPLORER_ANNUAL_PRICE: int = _env_int("EXPLORER_ANNUAL_PRICE", 0)       # $0.00 (Free Forever)
     
-    ULTRA_MONTHLY_PRICE: int = _env_int("ULTRA_MONTHLY_PRICE", 1000)        # $10.00
-    ULTRA_ANNUAL_PRICE: int = _env_int("ULTRA_ANNUAL_PRICE", 8000)          # $80.00
+    ULTRA_MONTHLY_PRICE: int = _env_int("ULTRA_MONTHLY_PRICE", 699)         # $6.99
+    ULTRA_ANNUAL_PRICE: int = _env_int("ULTRA_ANNUAL_PRICE", 4900)          # $49.00
     
     # Grace Period for Failed Payments
     PAYMENT_GRACE_PERIOD_DAYS: int = _env_int("PAYMENT_GRACE_PERIOD_DAYS", 7)

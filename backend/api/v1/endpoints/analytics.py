@@ -1135,12 +1135,14 @@ async def apply_strategic_insight(
         return await strategic_insight_service.apply_insight(current_user.id, insight_id)
     except HTTPException:
         raise
-    except ValueError as ve:
-        raise HTTPException(status_code=404, detail=str(ve))
-    except Exception as e:
+    except ValueError:
+        logger.info("Insight not found for user %s: %s", current_user.id, insight_data.get("insight_id"))
+        raise HTTPException(status_code=404, detail="Insight not found")
+    except Exception:
+        logger.exception("Failed to apply insight for user %s", current_user.id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to apply insight: {str(e)}"
+            detail="Failed to apply insight. Please try again shortly."
         )
 
 
@@ -1240,10 +1242,11 @@ async def get_daily_achievement_score(
             str(current_user.id)
         )
         return score
-    except Exception as e:
+    except Exception:
+        logger.exception("Daily achievement score failed for user %s", current_user.id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get daily score: {str(e)}"
+            detail="Failed to get daily score. Please try again shortly."
         )
 
 
@@ -1266,10 +1269,11 @@ async def get_goal_timeline(
             str(current_user.id)
         )
         return timeline
-    except Exception as e:
+    except Exception:
+        logger.exception("Goal timeline failed for user %s", current_user.id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get goal timeline: {str(e)}"
+            detail="Failed to get goal timeline. Please try again shortly."
         )
 
 
@@ -1289,11 +1293,18 @@ async def get_goal_health(
     """
     _require_ultra(current_user, "goal_progress_detailed")
     try:
-        from backend.services.enhanced_goal_analytics_service import enhanced_goal_analytics_service
-        report = await enhanced_goal_analytics_service.get_goal_progress_report(
-            str(current_user.id),
-            str(goal_id)
-        )
+        # Use the same scoring engine as /goals/progress so a goal's health
+        # view can never disagree with the dashboard's progress number.
+        if settings.ANALYTICS_V2_ENABLED:
+            report = await analytics_v2_service.goal_progress(
+                current_user, "weekly", goal_id=goal_id
+            )
+        else:
+            from backend.services.enhanced_goal_analytics_service import enhanced_goal_analytics_service
+            report = await enhanced_goal_analytics_service.get_goal_progress_report(
+                str(current_user.id),
+                str(goal_id)
+            )
 
         if not report.get("goals"):
             raise HTTPException(status_code=404, detail="Goal not found")
@@ -1301,10 +1312,11 @@ async def get_goal_health(
         return report["goals"][0]
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
+        logger.exception("Goal health failed for user %s goal %s", current_user.id, goal_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get goal health: {str(e)}"
+            detail="Failed to get goal health. Please try again shortly."
         )
 
 @router.get("/big-five", response_model=Dict[str, Any])

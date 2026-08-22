@@ -431,6 +431,15 @@ class PlannerService {
     );
   }
 
+  async updateGoalMilestone(
+    goalId: string,
+    milestoneIndex: number,
+    completed: boolean
+  ): Promise<ApiResponse<{ milestones: Array<{ title: string; completed: boolean }> }>> {
+    // Milestone toggling lives on the dedicated goals router (like toggle-tracking below)
+    return api.patch(`/goals/${goalId}/milestones/${milestoneIndex}`, { completed });
+  }
+
   async deleteGoal(goalId: string): Promise<ApiResponse<null>> {
     return api.delete(`${this.basePath}/goals/${goalId}`);
   }

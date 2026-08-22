@@ -736,6 +736,47 @@ class PlannerService:
         bounded_progress = min(100, max(0, int(progress)))
         return await self.track_goal_progress(user_id, goal_id, 0, bounded_progress)
 
+    @staticmethod
+    def _normalize_milestone(entry: Any) -> dict[str, Any]:
+        """Milestones exist as plain strings (manual) or objects (AI cascade).
+        Canonical shape: {"title": str, "completed": bool}."""
+        if isinstance(entry, dict):
+            title = str(entry.get("title") or entry.get("name") or "").strip()
+            completed = bool(entry.get("completed") or entry.get("done"))
+            return {"title": title, "completed": completed}
+        return {"title": str(entry or "").strip(), "completed": False}
+
+    async def set_milestone_completed(
+        self, user_id: str, goal_id: str, milestone_index: int, completed: bool
+    ) -> dict[str, Any]:
+        """Mark a single milestone as completed/uncompleted."""
+        from backend.db.models import Goal
+        from sqlalchemy import select
+
+        try:
+            async for db in get_db():
+                result = await db.execute(
+                    select(Goal).where(Goal.id == int(goal_id), Goal.user_id == int(user_id))
+                )
+                goal = result.scalar_one_or_none()
+                if not goal:
+                    return {"error": "Goal not found"}
+
+                raw_milestones = goal.milestones if isinstance(goal.milestones, list) else []
+                milestones = [self._normalize_milestone(m) for m in raw_milestones]
+                if not (0 <= milestone_index < len(milestones)):
+                    return {"error": "Milestone not found"}
+
+                milestones[milestone_index]["completed"] = bool(completed)
+                # Reassign so SQLAlchemy detects the JSON column change.
+                goal.milestones = milestones
+                await db.commit()
+
+                return {"milestones": milestones}
+        except Exception as e:
+            logger.error(f"Failed to update milestone for goal {goal_id}: {e}")
+            return {"error": "Failed to update milestone"}
+
     async def breakdown_goal(
         self,
         user_id: str,
@@ -1506,7 +1547,9 @@ class PlannerService:
                         Task.user_id == int(user_id),
                         Task.due_date >= target_dt_start,
                         Task.due_date <= target_dt_end,
-                        text(f"meta LIKE '%\"recurrence_pattern_id\": \"{pattern_id}\"%'")
+                        text("meta LIKE :recurrence_pattern_like").bindparams(
+                            recurrence_pattern_like=f'%"recurrence_pattern_id": "{pattern_id}"%'
+                        ),
                     )
                 )
                 existing = check_res.first()

@@ -1,8 +1,8 @@
 // frontend/src/hooks/useBurnoutRisk.ts
 import { useState, useEffect, useCallback } from 'react';
-import { realtimeClient } from '../services/realtime/socket-client';
 import { api } from '../services/api/client';
 import { useUserStore } from '../stores/useUserStore';
+import { useAnalyticsAutoRefresh } from './useAnalyticsAutoRefresh';
 
 interface BurnoutBreakdown {
     workload_strain: number;
@@ -43,6 +43,14 @@ interface UseBurnoutRiskReturn {
     refresh: () => Promise<void>;
 }
 
+const REALTIME_EVENTS = [
+    'analytics:update',
+    'planner:task:created',
+    'planner:task:updated',
+    'planner:habit:completed',
+    'planner:deepwork:completed',
+];
+
 export function useBurnoutRisk(
     timeRange: 'daily' | 'weekly' | 'monthly' = 'daily',
     enabled: boolean = true
@@ -55,7 +63,9 @@ export function useBurnoutRisk(
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const refresh = useCallback(async () => {
+    // Today's risk is time-range independent — fetched once per session,
+    // then only on polling/realtime updates (not on tab switches).
+    const fetchToday = useCallback(async () => {
         if (!isEnabled) {
             setRisk(null);
             setWeeklyAverage(null);
@@ -69,7 +79,6 @@ export function useBurnoutRisk(
             setIsLoading(true);
             setError(null);
 
-            // Fetch today's risk
             const todayResponse = await api.get<BurnoutRisk>('/analytics/burnout/risk/today');
             if (!todayResponse.success || !todayResponse.data) {
                 if (todayResponse.error?.code === 'HTTP_401' || todayResponse.error?.code === 'HTTP_403') {
@@ -121,8 +130,24 @@ export function useBurnoutRisk(
                     : [`Current burnout risk is ${String(todayPayload.level || 'moderate')}.`],
                 recommendation: String(todayPayload.recommendation || 'Keep workload and recovery balanced this week.'),
             });
+        } catch (err: any) {
+            console.error('Error fetching burnout risk:', err);
+            // Keep the last good reading on transient refresh failures
+            setError(err.message);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [isEnabled]);
 
-            // Fetch weekly average if needed
+    // Averages depend on the selected time range.
+    const fetchAverages = useCallback(async () => {
+        if (!isEnabled) {
+            setWeeklyAverage(null);
+            setMonthlyData(null);
+            return;
+        }
+
+        try {
             if (timeRange === 'weekly' || timeRange === 'monthly') {
                 const weeklyResponse = await api.get<BurnoutAverageData>('/analytics/burnout/risk/weekly');
                 if (weeklyResponse.success && weeklyResponse.data) {
@@ -147,7 +172,6 @@ export function useBurnoutRisk(
                 }
             }
 
-            // Fetch monthly data
             if (timeRange === 'monthly') {
                 const monthlyResponse = await api.get<BurnoutAverageData>('/analytics/burnout/risk/monthly');
                 if (monthlyResponse.success && monthlyResponse.data) {
@@ -172,53 +196,33 @@ export function useBurnoutRisk(
                 }
             }
         } catch (err: any) {
-            console.error('Error fetching burnout risk:', err);
-            // Keep the last good reading on transient refresh failures
+            console.error('Error fetching burnout averages:', err);
             setError(err.message);
-        } finally {
-            setIsLoading(false);
         }
     }, [timeRange, isEnabled]);
 
-    // Initial load
+    const refresh = useCallback(async () => {
+        await Promise.all([fetchToday(), fetchAverages()]);
+    }, [fetchToday, fetchAverages]);
+
+    // Initial loads: today once per session, averages on time-range change.
     useEffect(() => {
-        if (!isEnabled) return;
-        refresh();
-    }, [refresh, isEnabled]);
+        fetchToday();
+    }, [fetchToday]);
 
-    // Refresh every 3 minutes (more frequent for burnout monitoring)
     useEffect(() => {
-        if (!isEnabled) return;
-        const interval = setInterval(refresh, 3 * 60 * 1000);
-        return () => clearInterval(interval);
-    }, [refresh, isEnabled]);
+        fetchAverages();
+    }, [fetchAverages]);
 
-    // Refresh risk quickly when work patterns change
-    useEffect(() => {
-        if (!isEnabled) return;
-        let timeout: ReturnType<typeof setTimeout> | null = null;
-        const queueRefresh = () => {
-            if (timeout) clearTimeout(timeout);
-            timeout = setTimeout(() => {
-                refresh();
-            }, 350);
-        };
-
-        realtimeClient.on('analytics:update', queueRefresh);
-        realtimeClient.on('planner:task:created', queueRefresh);
-        realtimeClient.on('planner:task:updated', queueRefresh);
-        realtimeClient.on('planner:habit:completed', queueRefresh);
-        realtimeClient.on('planner:deepwork:completed', queueRefresh);
-
-        return () => {
-            realtimeClient.off('analytics:update', queueRefresh);
-            realtimeClient.off('planner:task:created', queueRefresh);
-            realtimeClient.off('planner:task:updated', queueRefresh);
-            realtimeClient.off('planner:habit:completed', queueRefresh);
-            realtimeClient.off('planner:deepwork:completed', queueRefresh);
-            if (timeout) clearTimeout(timeout);
-        };
-    }, [refresh, isEnabled]);
+    // Polling + realtime events refresh everything.
+    // Burnout keeps a shorter cadence and slightly longer debounce than the
+    // other score hooks so heavy work sessions surface quickly without churn.
+    useAnalyticsAutoRefresh(refresh, isEnabled, {
+        events: REALTIME_EVENTS,
+        intervalMs: 3 * 60 * 1000,
+        debounceMs: 350,
+        initialLoad: false,
+    });
 
     return {
         risk,

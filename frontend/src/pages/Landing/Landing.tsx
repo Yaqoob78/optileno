@@ -221,8 +221,8 @@ const FAQ_ITEMS: FAQItem[] = [
     answer: 'Yes. All data is encrypted in transit and at rest. We use industry-standard security practices and never sell your data. Your productivity intelligence stays yours.',
   },
   {
-    question: 'What happens after the 3-day free trial?',
-    answer: 'You\'ll get a clear reminder before your trial ends. After the trial, billing for your chosen plan starts automatically unless you cancel first — cancelling takes two clicks in Settings, any time.',
+    question: 'Is Optileno really 100% Free?',
+    answer: 'Yes! The core planner, daily time-blocking, focus score tracking, and Leno AI assistant are 100% free forever without requiring a credit card. If you want power-user features like 150 AI requests/day, focus heatmaps, and advanced AI automation, you can upgrade to Ultra Pro anytime for $6.99/month.',
   },
   {
     question: 'Can I use Optileno on mobile?',
@@ -487,7 +487,7 @@ export default function Landing() {
               </button>
               <button className="nav-link btn-premium" onClick={() => navigate('/login')}>Login</button>
               <button className="nav-btn-primary nav-cta-gold btn-premium" onClick={() => navigate('/register')}>
-                Start Free Trial
+                Start Free Forever
                 <ArrowRight size={16} />
               </button>
             </div>
@@ -502,7 +502,7 @@ export default function Landing() {
               Get Access
             </button>
             <button className="sticky-cta-btn btn-premium" onClick={() => navigate('/register')}>
-              Start Free Trial
+              Start Free Forever
               <ArrowRight size={15} />
             </button>
           </div>
@@ -518,7 +518,7 @@ export default function Landing() {
             custom={0.02}
           >
             <motion.span className="kicker" variants={revealVariants} custom={0.08}>
-              Free 3-day trial · Cancel anytime
+              100% Free Forever · No Credit Card Required
             </motion.span>
 
             <motion.h1
@@ -563,7 +563,7 @@ export default function Landing() {
 
             <motion.div className="cta-wrapper hero-cta-stack" variants={revealVariants} custom={0.44}>
               <button className="cta-button cta-gold btn-premium" onClick={() => navigate('/register')}>
-                Start Free Trial
+                Start Planning Free
                 <ArrowRight size={18} />
               </button>
               <button className="cta-button-secondary btn-premium" onClick={() => navigate('/dashboard-preview')}>
@@ -572,7 +572,7 @@ export default function Landing() {
               <button className="cta-button-tertiary btn-premium" onClick={() => navigate('/get-access')}>
                 Have an invite? Get Access
               </button>
-              <p className="cta-note">Free for 3 days. Cancel anytime before billing starts.</p>
+              <p className="cta-note">100% Free forever. No credit card required.</p>
             </motion.div>
 
             <motion.div className="hero-keyword-links" variants={revealVariants} custom={0.52}>
@@ -831,15 +831,15 @@ export default function Landing() {
                 <span className="journey-kicker">Ready?</span>
                 <h2>Your first productive day starts in 90 seconds.</h2>
                 <p>
-                  Set up your goals, get AI-planned tasks, and start executing — all in one free trial.
+                  Set up your goals, get AI-planned tasks, and start executing — 100% Free to use.
                 </p>
               </div>
               <div className="journey-actions">
                 <button className="cta-button cta-gold btn-premium" onClick={() => navigate('/register')}>
-                  Start Free Trial
+                  Start Planning Free
                   <ArrowRight size={18} />
                 </button>
-                <p className="cta-note-alt">3-day trial. Cancel anytime before billing starts.</p>
+                <p className="cta-note-alt">No credit card required. Upgrade to Ultra Pro anytime.</p>
               </div>
             </div>
           </motion.section>

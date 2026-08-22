@@ -191,13 +191,16 @@ export default function Register() {
                     return;
                 }
 
-                // Owner account - no payment needed, go directly to dashboard
+                // Free Plan or Owner account - no payment needed, go directly to dashboard
                 if (data.requires_payment === false) {
+                    if (data.user) {
+                        login(data.user as any, (data.user as any).preferences as any);
+                    }
                     navigate('/dashboard', { replace: true });
                     return;
                 }
 
-                // Payment required - open recurring subscription checkout
+                // Payment required (if user explicitly selected Ultra) - open subscription checkout
                 if (data.payment && data.payment.subscription_session_id) {
                     const mode = resolveCashfreeMode(data.payment.environment);
                     await launchCheckout(data.payment.subscription_session_id, mode, 'subscription');
@@ -206,8 +209,11 @@ export default function Register() {
                     const mode = resolveCashfreeMode(data.payment.environment);
                     await launchCheckout(data.payment.payment_session_id, mode, 'order');
                 } else {
-                    setError('Could not start secure payment. Please try registering again.');
-                    setPaymentStep(false);
+                    // Fallback to free access rather than blocking user
+                    if (data.user) {
+                        login(data.user as any, (data.user as any).preferences as any);
+                    }
+                    navigate('/dashboard', { replace: true });
                 }
             } else {
                 setError(response.error?.message || 'Registration failed. Please try again.');
@@ -232,7 +238,7 @@ export default function Register() {
 
     return (
         <div className="auth-page dark">
-            <SEO title="Create Account | Optileno" description="Join Optileno to start converting unstructured ambitions into actionable execution plans." robots="noindex,nofollow" />
+            <SEO title="Create Account | Optileno" description="Join Optileno for free to convert unstructured ambitions into actionable execution plans." robots="noindex,nofollow" />
             <div className="auth-background">
                 <div className="auth-sphere sphere-1" />
                 <div className="auth-sphere sphere-2" />
@@ -245,7 +251,7 @@ export default function Register() {
                             <img src="/logo-light.svg" alt="Optileno" className="auth-logo-img" />
                         </Link>
                         <h1 className="auth-title">Create Account</h1>
-                        <p className="auth-subtitle">Join the future of personal productivity</p>
+                        <p className="auth-subtitle">Join the future of personal productivity — 100% Free</p>
                     </div>
 
                     {error && (
@@ -296,27 +302,24 @@ export default function Register() {
                     ) : (
                         <form className="auth-form" onSubmit={handleFormSubmit(handleSubmit)}>
                             {/* Plan Selection */}
-                            <div className="pricing-launch-offer">
-                                Join today and lock launch pricing. Limited deal for the first 100 users.
-                            </div>
                             <div className="pricing-options">
                                 <div
                                     className={`pricing-card ${formData.plan_type === 'EXPLORER' ? 'selected' : ''}`}
                                     onClick={() => setFormData({ ...formData, plan_type: 'EXPLORER' })}
                                 >
+                                    <div className="plan-badge" style={{ background: 'rgba(34, 197, 94, 0.2)', color: '#4ade80' }}>FREE FOREVER</div>
                                     <div className="pricing-header">
-                                        <span className="plan-name">Explorer</span>
+                                        <span className="plan-name">Free Plan</span>
                                         <div className="plan-price-group">
-                                            <span className="plan-price-original">$5</span>
-                                            <span className="plan-price">$2<span style={{ fontSize: '0.7em', opacity: 0.7 }}>/mo</span></span>
+                                            <span className="plan-price">$0</span>
                                         </div>
                                     </div>
-                                    <div className="plan-offer-note">Limited deal: first 100 users</div>
+                                    <div className="plan-offer-note">No credit card required</div>
                                     <div className="plan-features">
                                         <div className="plan-feature">AI Chat (15 req/day)</div>
                                         <div className="plan-feature">Manual Planner: tasks, habits, deep work, goals</div>
                                         <div className="plan-feature">Mood tracker + productivity score</div>
-                                        <div className="plan-feature">Big Five every 14 days</div>
+                                        <div className="plan-feature">Big Five test every 14 days</div>
                                     </div>
                                 </div>
 
@@ -324,15 +327,15 @@ export default function Register() {
                                     className={`pricing-card ${formData.plan_type === 'ULTRA' ? 'selected' : ''}`}
                                     onClick={() => setFormData({ ...formData, plan_type: 'ULTRA' })}
                                 >
-                                    <div className="plan-badge">LIMITED DEAL</div>
+                                    <div className="plan-badge">POPULAR</div>
                                     <div className="pricing-header">
-                                        <span className="plan-name">Ultra</span>
+                                        <span className="plan-name">Ultra Pro</span>
                                         <div className="plan-price-group">
                                             <span className="plan-price-original">$20</span>
-                                            <span className="plan-price">$10<span style={{ fontSize: '0.7em', opacity: 0.7 }}>/mo</span></span>
+                                            <span className="plan-price">$6.99<span style={{ fontSize: '0.7em', opacity: 0.7 }}>/mo</span></span>
                                         </div>
                                     </div>
-                                    <div className="plan-offer-note">Limited deal: first 100 users</div>
+                                    <div className="plan-offer-note">Everything in Free + Autopilot</div>
                                     <div className="plan-features" style={{ gap: '6px' }}>
                                         <div className="plan-feature">AI Chat (150 req/day)</div>
                                         <div className="plan-feature">Agentic planner automation</div>
@@ -451,7 +454,7 @@ export default function Register() {
                                     textAlign: 'center',
                                     lineHeight: '1.4'
                                 }}>
-                                    Includes a 3-day free trial. Billing starts automatically after trial ends unless cancelled.
+                                    100% Free Forever. No credit card required. Upgrade to Ultra Pro anytime.
                                 </div>
                             )}
 

@@ -38,11 +38,19 @@ const daysUntil = (targetDate: string): number => {
   return Math.round((startOfTarget.getTime() - startOfToday.getTime()) / 86400000);
 };
 
-/** Milestones arrive as strings (our modal) or objects (AI cascade) — normalize to labels. */
-const milestoneLabels = (goal: Goal): string[] =>
+interface MilestoneItem {
+  title: string;
+  completed: boolean;
+}
+
+/** Milestones arrive as strings (our modal) or objects (AI cascade) — normalize to {title, completed}. */
+const normalizeMilestones = (goal: Goal): MilestoneItem[] =>
   (Array.isArray(goal.milestones) ? goal.milestones : [])
-    .map((m: any) => String(m?.title ?? m?.name ?? m ?? '').trim())
-    .filter(Boolean);
+    .map((m: any) => ({
+      title: String(m?.title ?? m?.name ?? m ?? '').trim(),
+      completed: Boolean(m?.completed ?? m?.done),
+    }))
+    .filter((m) => m.title);
 
 const isCompleted = (goal: Goal) => Number(goal.current_progress || 0) >= 100;
 
@@ -215,6 +223,25 @@ export default function GoalTimeline() {
     }
   };
 
+  // One milestone in flight at a time; index of the one being saved
+  const [togglingMilestone, setTogglingMilestone] = useState<number | null>(null);
+
+  const toggleMilestone = async (goal: Goal, index: number, completed: boolean) => {
+    setTogglingMilestone(index);
+    try {
+      const response = await plannerApi.updateGoalMilestone(goal.id, index, completed);
+      if (response.success) {
+        await fetchGoals();
+      } else {
+        setNotice({ type: 'error', text: response.error?.message || 'Could not update milestone.' });
+      }
+    } catch {
+      setNotice({ type: 'error', text: 'Could not update milestone. Check your connection.' });
+    } finally {
+      setTogglingMilestone(null);
+    }
+  };
+
   const renderDeadline = (goal: Goal) => {
     if (isCompleted(goal)) {
       return (
@@ -261,7 +288,7 @@ export default function GoalTimeline() {
     );
   };
 
-  const selectedMilestones = selectedGoal ? milestoneLabels(selectedGoal) : [];
+  const selectedMilestones = selectedGoal ? normalizeMilestones(selectedGoal) : [];
   const selectedProgress = draftProgress ?? selectedGoal?.current_progress ?? 0;
 
   return (
@@ -308,9 +335,9 @@ export default function GoalTimeline() {
                   <div className="goal-meta">
                     <span className="category-tag">{goal.category || 'General'}</span>
                     {renderDeadline(goal)}
-                    {milestoneLabels(goal).length > 0 && (
+                    {normalizeMilestones(goal).length > 0 && (
                       <span className="goal-milestone-count">
-                        {milestoneLabels(goal).length} milestones
+                        {normalizeMilestones(goal).filter((m) => m.completed).length}/{normalizeMilestones(goal).length} milestones
                       </span>
                     )}
                   </div>
@@ -491,21 +518,29 @@ export default function GoalTimeline() {
 
             {selectedMilestones.length > 0 && (
               <div className="goal-details-milestones">
-                <span className="goal-details-section-label">Milestones</span>
+                <span className="goal-details-section-label">
+                  Milestones · {selectedMilestones.filter((m) => m.completed).length}/{selectedMilestones.length} done
+                </span>
                 <ul>
-                  {selectedMilestones.map((milestone, index) => {
-                    // A milestone counts as reached once progress passes its
-                    // even share of the goal (milestone 2 of 4 → reached at 50%)
-                    const threshold = Math.round(((index + 1) / selectedMilestones.length) * 100);
-                    const reached = Number(selectedGoal.current_progress || 0) >= threshold;
-                    return (
-                      <li key={`${milestone}-${index}`} className={reached ? 'is-reached' : ''}>
-                        {reached ? <CheckCircle2 size={15} /> : <Circle size={15} />}
-                        <span className="goal-milestone-text">{milestone}</span>
-                        <span className="goal-milestone-threshold">{threshold}%</span>
-                      </li>
-                    );
-                  })}
+                  {selectedMilestones.map((milestone, index) => (
+                    <li key={`${milestone.title}-${index}`} className={milestone.completed ? 'is-reached' : ''}>
+                      <button
+                        type="button"
+                        className="goal-milestone-toggle"
+                        onClick={() => toggleMilestone(selectedGoal, index, !milestone.completed)}
+                        disabled={togglingMilestone !== null}
+                        aria-label={
+                          milestone.completed
+                            ? `Mark milestone "${milestone.title}" as not done`
+                            : `Mark milestone "${milestone.title}" as done`
+                        }
+                        aria-pressed={milestone.completed}
+                      >
+                        {milestone.completed ? <CheckCircle2 size={15} /> : <Circle size={15} />}
+                      </button>
+                      <span className="goal-milestone-text">{milestone.title}</span>
+                    </li>
+                  ))}
                 </ul>
               </div>
             )}

@@ -302,8 +302,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
                         lineHeight: '1.5',
                     }}>
                         {isUltraPlan
-                            ? 'Ultra Plan - $10/month'
-                            : 'Explorer Plan - $2/month (includes 3-day free trial)'}
+                            ? 'Ultra Pro Plan - $6.99/month'
+                            : 'Free Plan - $0/month'}
                     </p>
 
                     {paymentError && (

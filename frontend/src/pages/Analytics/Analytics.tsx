@@ -37,11 +37,7 @@ export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [loading, setLoading] = useState<boolean>(false);
   const [refreshMessage, setRefreshMessage] = useState<{ type: 'info' | 'error'; text: string } | null>(null);
-  const { theme, setTheme } = useTheme();
-  const resolvedTheme: 'dark' | 'light' =
-    theme === 'auto'
-      ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-      : theme;
+  const { setTheme, resolvedTheme } = useTheme();
   const isDarkMode = resolvedTheme === 'dark';
 
   const analyticsParticles = useMemo(() => {
@@ -164,8 +160,9 @@ export default function AnalyticsPage() {
   const focusMinutes = getFocusMinutes();
   const displayProductivityScore = getDisplayScore();
 
-  // Dynamic color for focus score
-  const getFocusColor = (score: number) => {
+  // Dynamic color for focus score. No data must render neutral, not "critical red".
+  const getFocusColor = (score: number | null) => {
+    if (score === null) return { bg: 'transparent', text: 'var(--text-muted)', glow: 'none' };
     if (score === 0) return { bg: '#1a0000', text: '#ff0000', glow: '0 0 20px rgba(255, 0, 0, 0.6)' };
     if (score <= 10) return { bg: '#ef4444', text: '#ffffff', glow: 'none' };
     if (score <= 20) return { bg: '#f97316', text: '#ffffff', glow: 'none' };
@@ -175,7 +172,7 @@ export default function AnalyticsPage() {
     return { bg: '#8b5cf6', text: '#ffffff', glow: '0 0 10px rgba(139, 92, 246, 0.4)' };
   };
 
-  const focusColors = getFocusColor(currentFocusScore ?? 0);
+  const focusColors = getFocusColor(currentFocusScore);
 
   const getBurnoutRiskValue = (): number | null => {
     if (!isUltra) return null;
@@ -603,8 +600,8 @@ export default function AnalyticsPage() {
           </div>
 
           {/* AI Disclaimer Banner */}
-          <div className="flex items-center justify-center gap-2 p-3 mt-4 mb-2 mx-4 sm:mx-8 text-xs text-amber-500 bg-amber-500/10 rounded-lg border border-amber-500/20 text-center shadow-inner">
-            <AlertTriangle size={14} className="flex-shrink-0" />
+          <div className="analytics-disclaimer">
+            <AlertTriangle size={14} />
             <span>Note: These analytics are based on complex mathematical logic and artificial intelligence. They can sometimes be inaccurate.</span>
           </div>
 

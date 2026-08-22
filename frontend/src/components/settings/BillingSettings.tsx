@@ -35,11 +35,10 @@ interface PlanCard {
 const PLAN_CARDS: PlanCard[] = [
     {
         id: 'explorer',
-        name: 'Explorer',
-        monthlyLabel: '$2',
-        annualLabel: '$20',
-        description: 'Everything you need to get started with AI-powered planning.',
-        trialText: '3-day free trial',
+        name: 'Free Plan',
+        monthlyLabel: '$0',
+        annualLabel: '$0',
+        description: 'Core planning, habits, goals, and daily AI assistance — 100% Free Forever.',
         features: [
             'AI chat - 15 requests/day',
             'Full planner: tasks, habits, goals',
@@ -53,10 +52,10 @@ const PLAN_CARDS: PlanCard[] = [
     },
     {
         id: 'ultra',
-        name: 'Ultra',
-        monthlyLabel: '$10',
-        annualLabel: '$80',
-        description: 'Maximum intelligence. Advanced analytics and automation.',
+        name: 'Ultra Pro',
+        monthlyLabel: '$6.99',
+        annualLabel: '$49',
+        description: 'Maximum intelligence. Leno agentic automation and deep behavioral analytics.',
         features: [
             'AI chat - 150 requests/day',
             'Agentic planner automation',
@@ -432,17 +431,27 @@ export default function BillingSettings() {
                                         className="billing-primary-btn"
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            void handleSubscribe(plan.id);
+                                            if (plan.id === 'ultra') {
+                                                void handleSubscribe(plan.id);
+                                            }
                                         }}
-                                        disabled={loading}
-                                        style={{ marginTop: '1rem' }}
+                                        disabled={loading || (plan.id === 'explorer' && !isUltra)}
+                                        style={{
+                                            marginTop: '1rem',
+                                            opacity: plan.id === 'explorer' && !isUltra ? 0.75 : 1,
+                                            cursor: plan.id === 'explorer' && !isUltra ? 'default' : 'pointer',
+                                        }}
                                     >
                                         {loading ? (
                                             <Loader2 className="animate-spin" size={16} />
                                         ) : (
                                             <>
-                                                <span>{plan.id === 'explorer' ? 'Start Free Trial' : 'Subscribe Now'}</span>
-                                                <ArrowRight size={14} />
+                                                <span>
+                                                    {plan.id === 'explorer'
+                                                        ? (isUltra ? 'Downgrade to Free' : 'Active Free Plan')
+                                                        : `Upgrade to Ultra Pro (${priceLabel}${periodLabel})`}
+                                                </span>
+                                                {plan.id === 'ultra' && <ArrowRight size={14} />}
                                             </>
                                         )}
                                     </button>
@@ -468,7 +477,7 @@ export default function BillingSettings() {
                         ) : (
                             <>
                                 <Crown size={14} />
-                                <span>{billingCycle === 'annual' ? 'Upgrade to Ultra ($80/year)' : 'Upgrade to Ultra ($10/month)'}</span>
+                                <span>{billingCycle === 'annual' ? 'Upgrade to Ultra Pro ($49/year)' : 'Upgrade to Ultra Pro ($6.99/month)'}</span>
                                 <ArrowRight size={14} />
                             </>
                         )}

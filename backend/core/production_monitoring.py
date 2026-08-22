@@ -45,7 +45,7 @@ class Alert:
     """Alert definition"""
     id: str
     name: str
-    severity: "low" | "medium" | "high" | "critical"
+    severity: str  # low, medium, high, critical
     condition: str
     threshold: float
     current_value: float

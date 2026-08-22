@@ -1,16 +1,31 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status, Response
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status, Request, Response
+from fastapi.responses import FileResponse
 from typing import List, Optional, Any, Dict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
+import hashlib
+import hmac
+import json
 import logging
+import secrets
 from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func
 
 from backend.core.security import get_current_user, get_current_active_superuser
 from backend.db.database import get_db
-from backend.db.models import User, Notification, ChatSession, ChatMessage
+from backend.db.models import (
+    User,
+    Notification,
+    ChatSession,
+    ChatMessage,
+    RefreshToken,
+    ApiKey,
+    Task,
+    Goal,
+    Plan,
+)
 from backend.auth.auth_utils import verify_password, get_password_hash
 from backend.app.config import settings
 from backend.core.password_policy import validate_password_policy
@@ -288,12 +303,97 @@ async def delete_account(
     return {"status": "deleted", "wipe": "complete"}
 
 
+def _describe_device(user_agent: Optional[str]) -> str:
+    """Human-readable device label from a user-agent string."""
+    ua = (user_agent or "").lower()
+    if not ua:
+        return "Unknown device"
+
+    if "edg/" in ua or "edge" in ua:
+        browser = "Edge"
+    elif "opr/" in ua or "opera" in ua:
+        browser = "Opera"
+    elif "chrome" in ua and "chromium" not in ua:
+        browser = "Chrome"
+    elif "firefox" in ua:
+        browser = "Firefox"
+    elif "safari" in ua:
+        browser = "Safari"
+    else:
+        browser = "Browser"
+
+    if "android" in ua:
+        os_name = "Android"
+    elif "iphone" in ua or "ipad" in ua or "ios" in ua:
+        os_name = "iOS"
+    elif "windows" in ua:
+        os_name = "Windows"
+    elif "mac os" in ua or "macintosh" in ua:
+        os_name = "macOS"
+    elif "linux" in ua:
+        os_name = "Linux"
+    else:
+        os_name = ""
+
+    return f"{browser} on {os_name}" if os_name else browser
+
+
+def _current_session_id(request: Request) -> Optional[int]:
+    """Session row id ("sid") from the access token. The refresh cookie is
+    path-scoped to /auth, so sid is the only session identifier available on
+    /users routes. None for API-key auth or legacy tokens issued before sid."""
+    token = request.cookies.get("access_token")
+    if not token:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header.split(" ", 1)[1]
+    if not token:
+        return None
+    try:
+        from backend.auth.auth_utils import decode_token
+        sid = decode_token(token).get("sid")
+        return int(sid) if sid is not None else None
+    except Exception:
+        return None
+
+
+async def _get_active_sessions(db: AsyncSession, user_id: int) -> List[RefreshToken]:
+    result = await db.execute(
+        select(RefreshToken)
+        .where(
+            RefreshToken.user_id == user_id,
+            RefreshToken.is_revoked == False,  # noqa: E712
+            RefreshToken.expires_at > datetime.now(timezone.utc),
+        )
+        .order_by(RefreshToken.created_at.desc())
+    )
+    return list(result.scalars().all())
+
+
 @router.get("/me/security")
 async def get_security(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     prefs = merge_preferences(current_user.preferences or {})
-    return get_security_settings(prefs)
+    security = get_security_settings(prefs)
+
+    current_sid = _current_session_id(request)
+
+    sessions = await _get_active_sessions(db, current_user.id)
+    security["trustedDevices"] = [
+        {
+            "id": str(token.id),
+            "name": _describe_device(token.user_agent),
+            "lastUsed": (token.last_used_at or token.created_at).isoformat()
+            if (token.last_used_at or token.created_at) else None,
+            "ipAddress": token.ip_address or "",
+            "current": token.id == current_sid,
+        }
+        for token in sessions
+    ]
+    return security
 
 
 @router.patch("/me/security")
@@ -313,18 +413,50 @@ async def update_security(
 @router.delete("/me/security/devices/{device_id}")
 async def revoke_trusted_device(
     device_id: str,
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Trusted devices are not persisted yet
+    """Revoke a single session/device by its id (signs that device out)."""
+    try:
+        token_id = int(device_id)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    result = await db.execute(
+        select(RefreshToken).where(
+            RefreshToken.id == token_id,
+            RefreshToken.user_id == current_user.id,
+            RefreshToken.is_revoked == False,  # noqa: E712
+        )
+    )
+    token = result.scalar_one_or_none()
+    if not token:
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    token.is_revoked = True
+    await db.commit()
     return {"status": "revoked", "deviceId": device_id}
 
 
 @router.post("/me/security/terminate-sessions")
 async def terminate_sessions(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Session management not implemented
-    return {"status": "terminated"}
+    """Sign out everywhere else: revoke every session except the current one."""
+    stmt = update(RefreshToken).where(
+        RefreshToken.user_id == current_user.id,
+        RefreshToken.is_revoked == False,  # noqa: E712
+    )
+
+    current_sid = _current_session_id(request)
+    if current_sid is not None:
+        stmt = stmt.where(RefreshToken.id != current_sid)
+
+    result = await db.execute(stmt.values(is_revoked=True))
+    await db.commit()
+    return {"status": "terminated", "revokedCount": result.rowcount or 0}
 
 
 @router.post("/me/two-factor/enable")
@@ -342,19 +474,101 @@ async def verify_two_factor(current_user: User = Depends(get_current_user)):
     raise HTTPException(status_code=501, detail="Two-factor authentication not implemented")
 
 
+API_KEY_PREFIX = "opk_"
+MAX_ACTIVE_API_KEYS = 10
+
+
+class ApiKeyCreateRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    permissions: List[str] = Field(default_factory=list, max_length=20)
+
+
+def _hash_api_key(raw_key: str) -> str:
+    return hashlib.sha256(raw_key.encode()).hexdigest()
+
+
+def _serialize_api_key(key: ApiKey) -> Dict[str, Any]:
+    return {
+        "id": str(key.id),
+        "name": key.name,
+        "keyPrefix": key.key_prefix,
+        "createdAt": key.created_at.isoformat() if key.created_at else None,
+        "lastUsed": key.last_used_at.isoformat() if key.last_used_at else None,
+        "permissions": key.permissions or [],
+    }
+
+
 @router.get("/me/api-keys")
-async def list_api_keys(current_user: User = Depends(get_current_user)):
-    return []
+async def list_api_keys(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    result = await db.execute(
+        select(ApiKey)
+        .where(ApiKey.user_id == current_user.id, ApiKey.revoked_at.is_(None))
+        .order_by(ApiKey.created_at.desc())
+    )
+    return [_serialize_api_key(key) for key in result.scalars().all()]
 
 
 @router.post("/me/api-keys")
-async def create_api_key(current_user: User = Depends(get_current_user)):
-    raise HTTPException(status_code=501, detail="API keys not implemented")
+async def create_api_key(
+    payload: ApiKeyCreateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Create an API key. The raw secret is returned exactly once."""
+    active_count = await db.execute(
+        select(func.count())
+        .select_from(ApiKey)
+        .where(ApiKey.user_id == current_user.id, ApiKey.revoked_at.is_(None))
+    )
+    if (active_count.scalar() or 0) >= MAX_ACTIVE_API_KEYS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"You can have at most {MAX_ACTIVE_API_KEYS} active API keys. Revoke one first.",
+        )
+
+    raw_key = API_KEY_PREFIX + secrets.token_hex(20)
+    api_key = ApiKey(
+        user_id=current_user.id,
+        name=payload.name.strip(),
+        key_prefix=raw_key[:12],
+        hashed_key=_hash_api_key(raw_key),
+        permissions=payload.permissions,
+    )
+    db.add(api_key)
+    await db.commit()
+    await db.refresh(api_key)
+
+    return {"id": str(api_key.id), "key": raw_key, **_serialize_api_key(api_key)}
 
 
 @router.delete("/me/api-keys/{api_key_id}")
-async def revoke_api_key(api_key_id: str, current_user: User = Depends(get_current_user)):
-    raise HTTPException(status_code=501, detail="API keys not implemented")
+async def revoke_api_key(
+    api_key_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        key_id = int(api_key_id)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=404, detail="API key not found")
+
+    result = await db.execute(
+        select(ApiKey).where(
+            ApiKey.id == key_id,
+            ApiKey.user_id == current_user.id,
+            ApiKey.revoked_at.is_(None),
+        )
+    )
+    api_key = result.scalar_one_or_none()
+    if not api_key:
+        raise HTTPException(status_code=404, detail="API key not found")
+
+    api_key.revoked_at = datetime.now(timezone.utc)
+    await db.commit()
+    return {"status": "revoked", "id": api_key_id}
 
 
 @router.get("/me/notifications", response_model=List[NotificationResponse])
@@ -454,13 +668,131 @@ async def get_activity_logs(
     return []
 
 
+EXPORT_DIR = Path("data/exports")
+EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+EXPORT_TTL = timedelta(hours=1)
+
+
+def _export_signature(user_id: int, timestamp: int) -> str:
+    return hmac.new(
+        settings.SECRET_KEY.encode(),
+        f"export:{user_id}:{timestamp}".encode(),
+        hashlib.sha256,
+    ).hexdigest()[:20]
+
+
+def _row_to_dict(row: Any) -> Dict[str, Any]:
+    """Serialize a SQLAlchemy model row to JSON-safe primitives."""
+    data: Dict[str, Any] = {}
+    for column in row.__table__.columns:
+        value = getattr(row, column.name)
+        if isinstance(value, datetime):
+            value = value.isoformat()
+        data[column.name] = value
+    return data
+
+
+def _cleanup_expired_exports() -> None:
+    """Best-effort removal of export files older than the TTL."""
+    cutoff = datetime.now(timezone.utc) - EXPORT_TTL
+    try:
+        for file in EXPORT_DIR.glob("export_*.json"):
+            try:
+                parts = file.stem.split("_")
+                ts = int(parts[2])
+                if datetime.fromtimestamp(ts, tz=timezone.utc) < cutoff:
+                    file.unlink()
+            except (IndexError, ValueError, OSError):
+                continue
+    except OSError:
+        pass
+
+
 @router.post("/me/export")
-async def export_data(current_user: User = Depends(get_current_user)):
-    # Placeholder for data export workflow
-    return {
-        "url": "",
-        "expiresAt": (datetime.now(timezone.utc)).isoformat(),
+async def export_data(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Assemble the user's data into a downloadable JSON file (link expires in 1 hour)."""
+    _cleanup_expired_exports()
+
+    tasks = (await db.execute(
+        select(Task).where(Task.user_id == current_user.id)
+    )).scalars().all()
+    goals = (await db.execute(
+        select(Goal).where(Goal.user_id == current_user.id)
+    )).scalars().all()
+    plans = (await db.execute(
+        select(Plan).where(Plan.user_id == current_user.id)
+    )).scalars().all()
+    sessions = (await db.execute(
+        select(ChatSession).where(ChatSession.user_id == current_user.id)
+    )).scalars().all()
+    session_ids = [s.id for s in sessions]
+    messages = []
+    if session_ids:
+        messages = (await db.execute(
+            select(ChatMessage).where(ChatMessage.session_id.in_(session_ids))
+        )).scalars().all()
+
+    export_payload = {
+        "exportedAt": datetime.now(timezone.utc).isoformat(),
+        "profile": build_user_profile(current_user),
+        "tasks": [_row_to_dict(t) for t in tasks],
+        "goals": [_row_to_dict(g) for g in goals],
+        "plans": [_row_to_dict(p) for p in plans],
+        "chatSessions": [_row_to_dict(s) for s in sessions],
+        "chatMessages": [_row_to_dict(m) for m in messages],
     }
+
+    timestamp = int(datetime.now(timezone.utc).timestamp())
+    signature = _export_signature(current_user.id, timestamp)
+    filename = f"export_{current_user.id}_{timestamp}_{signature}.json"
+    (EXPORT_DIR / filename).write_text(
+        json.dumps(export_payload, ensure_ascii=False, default=str), encoding="utf-8"
+    )
+
+    expires_at = datetime.now(timezone.utc) + EXPORT_TTL
+    return {
+        "url": f"/api/v1/users/me/export/{filename}",
+        "expiresAt": expires_at.isoformat(),
+    }
+
+
+@router.get("/me/export/{filename}")
+async def download_export(
+    filename: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Download a previously generated export. Validates ownership, signature and expiry."""
+    invalid = HTTPException(status_code=404, detail="Export not found or expired")
+
+    parts = Path(filename).stem.split("_")
+    if len(parts) != 4 or parts[0] != "export" or Path(filename).suffix != ".json":
+        raise invalid
+    try:
+        owner_id = int(parts[1])
+        timestamp = int(parts[2])
+    except ValueError:
+        raise invalid
+    signature = parts[3]
+
+    if owner_id != current_user.id:
+        raise invalid
+    if not hmac.compare_digest(signature, _export_signature(owner_id, timestamp)):
+        raise invalid
+    if datetime.now(timezone.utc) - datetime.fromtimestamp(timestamp, tz=timezone.utc) > EXPORT_TTL:
+        raise invalid
+
+    file_path = EXPORT_DIR / f"export_{owner_id}_{timestamp}_{signature}.json"
+    if not file_path.is_file():
+        raise invalid
+
+    return FileResponse(
+        path=file_path,
+        media_type="application/json",
+        filename="optileno-data-export.json",
+    )
 
 
 @router.get("/me/stats")

@@ -16,6 +16,7 @@ import {
 import { realtimeClient } from '../../services/realtime/socket-client';
 import { api } from '../../services/api/client';
 import { useUserStore } from '../../stores/useUserStore';
+import { getFocusScoreLabel } from '../../utils/focusScoreBands';
 import '../../styles/components/analytics/FocusheatMap.css';
 
 // Types
@@ -76,16 +77,12 @@ export default function FocusHeatmap({ timeRange = 'monthly' }: FocusHeatmapProp
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hasDataRef = React.useRef(false);
-  // Mirrors focus_score_service._get_color_for_score so labels match the data
-  const getLabelForScore = useCallback((score: number | null | undefined) => {
-    if (score == null) return 'Inactive';
-    if (score <= 10) return 'Very Low';
-    if (score <= 20) return 'Low';
-    if (score <= 39) return 'Below Average';
-    if (score <= 70) return 'Good';
-    if (score <= 90) return 'Great';
-    return 'Excellent';
-  }, []);
+  // Fallback labels for payloads without server labels; single source of
+  // truth documented in utils/focusScoreBands.ts
+  const getLabelForScore = useCallback(
+    (score: number | null | undefined) => getFocusScoreLabel(score),
+    []
+  );
 
   const normalizeColor = useCallback((input: any, score: number | null | undefined) => {
     if (input && typeof input === 'object' && typeof input.color === 'string') {

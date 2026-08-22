@@ -3,7 +3,7 @@
 Goals API endpoint for managing user goals.
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Body
-from typing import List, Optional
+from typing import Any, List, Optional, Union
 from datetime import datetime
 from pydantic import BaseModel, Field
 
@@ -41,7 +41,8 @@ class GoalOut(BaseModel):
     category: Optional[str] = None
     target_date: Optional[str] = None
     current_progress: int = 0
-    milestones: List[str] = Field(default_factory=list)
+    # Plain strings (manual goals) or {"title", "completed"} objects (AI cascade / checklist)
+    milestones: List[Union[str, dict]] = Field(default_factory=list)
     
     # AI Fields
     ai_suggestions: dict = Field(default_factory=dict)
@@ -114,6 +115,23 @@ async def update_goal_progress(
         raise HTTPException(status_code=404, detail="Goal not found")
     
     return {"message": "Progress updated", "progress": progress}
+
+
+@router.patch("/{goal_id}/milestones/{milestone_index}")
+async def update_goal_milestone(
+    goal_id: str,
+    milestone_index: int,
+    completed: bool = Body(..., embed=True),
+    current_user: User = Depends(get_current_user)
+):
+    """Mark one milestone of a goal as completed or not."""
+    result = await planner_service.set_milestone_completed(
+        str(current_user.id), goal_id, milestone_index, completed
+    )
+    if "error" in result:
+        status_code = 404 if "not found" in result["error"].lower() else 400
+        raise HTTPException(status_code=status_code, detail=result["error"])
+    return result
 
 
 @router.post("/{goal_id}/toggle-tracking", response_model=dict)

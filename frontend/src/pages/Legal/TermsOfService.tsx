@@ -123,25 +123,21 @@ const TermsOfService: React.FC = () => {
                 </ul>
             </section>
 
-            {/* 5. Free Trial */}
+            {/* 5. Free Plan & Subscriptions */}
             <section style={styles.section}>
-                <h2 style={styles.h2}>5. Free Trial</h2>
+                <h2 style={styles.h2}>5. Free Plan & Subscriptions</h2>
                 <div style={styles.important}>
-                    <h3 style={{ ...styles.h3, marginTop: 0, color: '#b45309' }}>📋 Trial Terms</h3>
+                    <h3 style={{ ...styles.h3, marginTop: 0, color: '#b45309' }}>📋 Plan Terms</h3>
                     <p>
-                        The <strong>Explorer plan</strong> includes a <strong>3-day free trial</strong>. During the trial period, you have full access to all Explorer plan features at no charge.
+                        Optileno offers a <strong>Free Forever plan</strong> with core task planning, habits, goals, and daily AI assistance at no charge.
                     </p>
                     <ul style={{ marginTop: '0.5rem' }}>
-                        <li>The trial begins immediately upon account creation with the Explorer plan</li>
-                        <li><strong>After the 3-day trial ends, billing begins automatically</strong> unless you cancel before the trial period expires</li>
-                        <li>You will be charged the applicable subscription fee for the Explorer plan upon trial expiration</li>
-                        <li>Only one free trial is available per user/email address</li>
-                        <li>The Ultra plan does not include a free trial</li>
+                        <li>The Free plan does not require a credit card or payment method</li>
+                        <li>Optional paid subscriptions (such as <strong>Ultra Pro at $6.99/month or $49/year</strong>) provide higher daily AI limits and advanced features</li>
+                        <li>Paid subscriptions renew automatically on a monthly or annual basis until cancelled</li>
+                        <li>You may upgrade, downgrade, or cancel your subscription at any time from your account settings</li>
                     </ul>
                 </div>
-                <p style={{ marginTop: '1rem' }}>
-                    It is your responsibility to cancel before the trial ends if you do not wish to continue with a paid subscription. We will send a reminder notification before the trial expires.
-                </p>
             </section>
 
             {/* 6. Payments */}

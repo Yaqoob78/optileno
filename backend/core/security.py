@@ -3,16 +3,18 @@ Security utilities: authentication, Redis-based rate limiting, AI quota protecti
 """
 
 import asyncio
+import hashlib
 import logging
+from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, HTTPException, status, Request
 from jose import JWTError, jwt
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import TimeoutError as SQLAlchemyTimeoutError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.db.database import get_db
-from backend.db.models import User
+from backend.db.models import User, ApiKey
 
 from backend.app.config import settings
 from backend.core.redis_rate_limiter import check_api_rate_limit, check_ai_quota_limit
@@ -44,6 +46,37 @@ PAYMENT_GATE_ALLOWED_ROUTES = {
 }
 
 ACCESS_GRANT_EXPIRED_DETAIL = "Access grant expired. Contact support to renew access."
+
+API_KEY_PREFIX = "opk_"
+# Throttle last_used_at writes so key auth doesn't add a DB write per request.
+API_KEY_LAST_USED_REFRESH = timedelta(minutes=5)
+
+
+async def _resolve_api_key_user_id(db: AsyncSession, raw_key: str) -> int | None:
+    """Resolve an API key to its owning user id; touches last_used_at (throttled)."""
+    hashed = hashlib.sha256(raw_key.encode()).hexdigest()
+    result = await db.execute(
+        select(ApiKey).where(ApiKey.hashed_key == hashed, ApiKey.revoked_at.is_(None))
+    )
+    api_key = result.scalar_one_or_none()
+    if not api_key:
+        return None
+
+    now = datetime.now(timezone.utc)
+    last_used = api_key.last_used_at
+    if last_used is not None and last_used.tzinfo is None:
+        last_used = last_used.replace(tzinfo=timezone.utc)
+    if last_used is None or (now - last_used) > API_KEY_LAST_USED_REFRESH:
+        try:
+            await db.execute(
+                update(ApiKey).where(ApiKey.id == api_key.id).values(last_used_at=now)
+            )
+            await db.commit()
+        except Exception as exc:
+            logger.debug("API key last_used_at update skipped: %s", exc)
+            await db.rollback()
+
+    return api_key.user_id
 
 
 def _is_payment_gate_exempt(request: Request) -> bool:
@@ -82,18 +115,24 @@ async def get_current_user(
     if not token:
         raise credentials_exception
 
-    try:
-        payload = jwt.decode(
-            token,
-            settings.SECRET_KEY,
-            algorithms=[settings.ALGORITHM],
-        )
-        user_id = payload.get("user_id")
-        token_type = payload.get("type")
-        if not user_id or token_type != "access":
+    if token.startswith(API_KEY_PREFIX):
+        # Programmatic access via user-generated API key.
+        user_id = await _resolve_api_key_user_id(db, token)
+        if not user_id:
             raise credentials_exception
-    except JWTError:
-        raise credentials_exception
+    else:
+        try:
+            payload = jwt.decode(
+                token,
+                settings.SECRET_KEY,
+                algorithms=[settings.ALGORITHM],
+            )
+            user_id = payload.get("user_id")
+            token_type = payload.get("type")
+            if not user_id or token_type != "access":
+                raise credentials_exception
+        except JWTError:
+            raise credentials_exception
 
     # A tiny retry helps absorb short-lived pool spikes under bursty traffic.
     for attempt in range(2):

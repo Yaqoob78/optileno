@@ -33,6 +33,18 @@ DEFAULT_REFRESH_TOKEN_MAX_AGE = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 6
 REFRESH_TOKEN_COOKIE_PATH = "/api/v1/auth"
 
 
+def client_meta(request: Request) -> dict:
+    """Extract user-agent and client IP for session/device tracking."""
+    forwarded_for = request.headers.get("x-forwarded-for", "")
+    ip_address = (forwarded_for.split(",")[0].strip() if forwarded_for else None) or (
+        request.client.host if request.client else None
+    )
+    return {
+        "user_agent": request.headers.get("user-agent"),
+        "ip_address": ip_address,
+    }
+
+
 def _cookie_kwargs(httponly: bool = True) -> dict:
     kwargs = {
         "httponly": httponly,
@@ -178,7 +190,7 @@ async def register_with_access(
         await db.refresh(user)
 
     access_token, refresh_token, refresh_days = await auth_service.create_session(
-        db, user.id, remember_me=False
+        db, user.id, remember_me=False, **client_meta(request)
     )
     refresh_max_age = refresh_days * 24 * 60 * 60
     set_auth_cookies(response, access_token, refresh_token, refresh_max_age=refresh_max_age)
@@ -255,7 +267,7 @@ async def register(
         else:
             if _password_matches(existing_user, user_in.password):
                 access_token, refresh_token, refresh_days = await auth_service.create_session(
-                    db, existing_user.id, remember_me=False
+                    db, existing_user.id, remember_me=False, **client_meta(request)
                 )
                 refresh_max_age = refresh_days * 24 * 60 * 60
                 set_auth_cookies(response, access_token, refresh_token, refresh_max_age=refresh_max_age)
@@ -289,10 +301,14 @@ async def register(
                 }
             raise
 
-    # Owner account doesn't need payment
-    if is_owner_email(user.email):
+    # Free Explorer tier (default) & Owner accounts require no payment upfront.
+    plan_name = (user.plan_type or user_in.plan_type or "EXPLORER").lower()
+    if plan_name not in ("explorer", "ultra"):
+        plan_name = "explorer"
+
+    if plan_name == "explorer" or is_owner_email(user.email):
         access_token, refresh_token, refresh_days = await auth_service.create_session(
-            db, user.id, remember_me=False
+            db, user.id, remember_me=False, **client_meta(request)
         )
         refresh_max_age = refresh_days * 24 * 60 * 60
         set_auth_cookies(response, access_token, refresh_token, refresh_max_age=refresh_max_age)
@@ -303,23 +319,25 @@ async def register(
             "authenticated": True,
         }
 
-    # Create Cashfree recurring subscription checkout for the selected plan.
+    # If user explicitly registered for Ultra, initialize checkout; if payment fails/unavailable,
+    # keep user on Free tier rather than deleting their account.
     from backend.payments.cashfree_service import cashfree_service
 
     if not cashfree_service.is_configured():
-        if created_new_user:
-            await db.delete(user)
-            await db.commit()
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Payment service unavailable. Please try again shortly.",
+        access_token, refresh_token, refresh_days = await auth_service.create_session(
+            db, user.id, remember_me=False, **client_meta(request)
         )
+        refresh_max_age = refresh_days * 24 * 60 * 60
+        set_auth_cookies(response, access_token, refresh_token, refresh_max_age=refresh_max_age)
+        return {
+            "status": "success",
+            "user": build_user_profile(user),
+            "requires_payment": False,
+            "authenticated": True,
+            "message": "Welcome! You are on the Free plan. Upgrade to Ultra Pro anytime in Settings.",
+        }
 
     try:
-        plan_name = (user.plan_type or user_in.plan_type or "EXPLORER").lower()
-        if plan_name not in ("explorer", "ultra"):
-            plan_name = "explorer"
-
         payment_data = None
         primary_checkout_error: Exception | None = None
 
@@ -328,8 +346,8 @@ async def register(
             payment_data = await cashfree_service.create_subscription_checkout(
                 db=db,
                 user=user,
-                plan_name=plan_name,
-                billing_cycle="monthly",  # Registration always starts on monthly flow.
+                plan_name="ultra",
+                billing_cycle="monthly",
             )
         except Exception as sub_exc:
             primary_checkout_error = sub_exc
@@ -339,12 +357,12 @@ async def register(
                 sub_exc,
             )
 
-        # Fallback flow: one-time order checkout so registration doesn't hard-fail.
+        # Fallback flow: one-time order checkout.
         if not payment_data:
             payment_data = await cashfree_service.create_order(
                 db=db,
                 user=user,
-                plan_name=plan_name,
+                plan_name="ultra",
                 billing_cycle="monthly",
             )
             if primary_checkout_error is not None:
@@ -356,35 +374,38 @@ async def register(
         )
         if not payment_data or not checkout_session_id:
             raise ValueError("Missing checkout session ID from payment initialization")
-    except Exception as exc:
-        logger.error("Registration payment initialization failed for %s: %s", user.email, exc)
-        await db.rollback()
-        if created_new_user:
-            try:
-                await db.execute(delete(User).where(User.id == user.id))
-                await db.commit()
-            except Exception as rollback_exc:
-                logger.error("Failed to rollback user registration for %s: %s", user.email, rollback_exc)
-                await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Unable to initialize secure checkout. Please retry registration.",
+
+        access_token, refresh_token, refresh_days = await auth_service.create_session(
+            db, user.id, remember_me=False, **client_meta(request)
         )
+        refresh_max_age = refresh_days * 24 * 60 * 60
+        set_auth_cookies(response, access_token, refresh_token, refresh_max_age=refresh_max_age)
 
-    # Auto-login only after payment setup is ready so users are forced through checkout.
-    access_token, refresh_token, refresh_days = await auth_service.create_session(
-        db, user.id, remember_me=False
-    )
-    refresh_max_age = refresh_days * 24 * 60 * 60
-    set_auth_cookies(response, access_token, refresh_token, refresh_max_age=refresh_max_age)
+        return {
+            "status": "success",
+            "user": build_user_profile(user),
+            "requires_payment": True,
+            "payment": payment_data,
+            "authenticated": True,
+        }
+    except Exception as exc:
+        logger.warning(
+            "Registration payment initialization failed for %s: %s. Defaulting user to Free plan.",
+            user.email,
+            exc,
+        )
+        access_token, refresh_token, refresh_days = await auth_service.create_session(
+            db, user.id, remember_me=False, **client_meta(request)
+        )
+        refresh_max_age = refresh_days * 24 * 60 * 60
+        set_auth_cookies(response, access_token, refresh_token, refresh_max_age=refresh_max_age)
 
-    return {
-        "status": "success",
-        "user": build_user_profile(user),
-        "requires_payment": True,
-        "payment": payment_data,
-        "authenticated": True,
-    }
+        return {
+            "status": "success",
+            "user": build_user_profile(user),
+            "requires_payment": False,
+            "authenticated": True,
+        }
 
 
 @router.post("/login")
@@ -404,7 +425,8 @@ async def login(
     access_token, refresh_token, refresh_days = await auth_service.create_session(
         db,
         user.id,
-        remember_me=login_data.remember_me
+        remember_me=login_data.remember_me,
+        **client_meta(request),
     )
     refresh_max_age = refresh_days * 24 * 60 * 60
 
@@ -436,7 +458,9 @@ async def refresh(
             detail="Missing refresh token"
         )
 
-    access_token, new_refresh_token, refresh_days = await auth_service.refresh_session(db, refresh_token)
+    access_token, new_refresh_token, refresh_days = await auth_service.refresh_session(
+        db, refresh_token, **client_meta(request)
+    )
     refresh_max_age = refresh_days * 24 * 60 * 60
     set_auth_cookies(response, access_token, new_refresh_token, refresh_max_age=refresh_max_age)
 
@@ -456,6 +480,12 @@ async def forgot_password(
     """
     Always return ok to prevent email enumeration.
     """
+    await auth_rate_limiter.enforce(
+        request=request,
+        action="forgot_password",
+        identifier=str(request_data.email).strip().lower(),
+    )
+
     forwarded_for = request.headers.get("x-forwarded-for", "")
     request_ip = (forwarded_for.split(",")[0].strip() if forwarded_for else None) or (
         request.client.host if request.client else None
@@ -574,7 +604,9 @@ async def validate_session(
         return {"valid": False}
 
     try:
-        access_token, new_refresh_token, refresh_days = await auth_service.refresh_session(db, refresh_token)
+        access_token, new_refresh_token, refresh_days = await auth_service.refresh_session(
+            db, refresh_token, **client_meta(request)
+        )
         refresh_max_age = refresh_days * 24 * 60 * 60
         set_auth_cookies(response, access_token, new_refresh_token, refresh_max_age=refresh_max_age)
 

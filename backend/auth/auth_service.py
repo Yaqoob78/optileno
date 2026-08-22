@@ -233,32 +233,55 @@ class AuthService:
 
         return user
 
-    async def create_session(self, db: AsyncSession, user_id: int, remember_me: bool = False):
+    async def create_session(
+        self,
+        db: AsyncSession,
+        user_id: int,
+        remember_me: bool = False,
+        user_agent: str | None = None,
+        ip_address: str | None = None,
+    ):
         # Create tokens
         refresh_days = REMEMBER_ME_REFRESH_TOKEN_DAYS if remember_me else DEFAULT_REFRESH_TOKEN_DAYS
         refresh_delta = timedelta(days=refresh_days)
 
-        access_token = create_access_token(data={"user_id": user_id, "remember_me": remember_me})
         refresh_token_str = create_refresh_token(
             data={"user_id": user_id, "remember_me": remember_me},
             expires_delta=refresh_delta
         )
 
-        # Store refresh token hash in DB
+        # Store refresh token hash in DB first so the session row id can be
+        # embedded in the access token ("sid") — the refresh cookie is
+        # path-scoped to /auth, so sid is how other routes identify the
+        # current session (device list, terminate-others).
         expires_at = datetime.now(timezone.utc) + refresh_delta
         refresh_token_hash = self._hash_refresh_token(refresh_token_str)
 
         db_token = RefreshToken(
             token=refresh_token_hash,
             user_id=user_id,
-            expires_at=expires_at
+            expires_at=expires_at,
+            user_agent=(user_agent or "")[:512] or None,
+            ip_address=(ip_address or "")[:64] or None,
+            last_used_at=datetime.now(timezone.utc),
         )
         db.add(db_token)
         await db.commit()
+        await db.refresh(db_token)
+
+        access_token = create_access_token(
+            data={"user_id": user_id, "remember_me": remember_me, "sid": db_token.id}
+        )
 
         return access_token, refresh_token_str, refresh_days
 
-    async def refresh_session(self, db: AsyncSession, refresh_token: str):
+    async def refresh_session(
+        self,
+        db: AsyncSession,
+        refresh_token: str,
+        user_agent: str | None = None,
+        ip_address: str | None = None,
+    ):
         try:
             payload = decode_token(refresh_token)
             user_id = payload.get("user_id")
@@ -308,11 +331,19 @@ class AuthService:
             await db.commit()
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=ACCESS_GRANT_EXPIRED_DETAIL)
 
-        # Revoke old token and issue new ones (rotation for extra security)
+        # Revoke old token and issue new ones (rotation for extra security).
+        # Carry device metadata forward so the session list stays meaningful
+        # across rotations; prefer the current request's values when present.
         db_token.is_revoked = True
         await db.commit()
 
-        return await self.create_session(db, user_id_int, remember_me=remember_me)
+        return await self.create_session(
+            db,
+            user_id_int,
+            remember_me=remember_me,
+            user_agent=user_agent or db_token.user_agent,
+            ip_address=ip_address or db_token.ip_address,
+        )
 
     async def logout(self, db: AsyncSession, refresh_token: str):
         if not refresh_token:

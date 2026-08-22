@@ -572,7 +572,7 @@ class AccessGrant(Base):
 # REFRESH TOKEN
 # ==================================================
 class RefreshToken(Base):
-    """Secure refresh tokens for authentication."""
+    """Secure refresh tokens for authentication. Doubles as the user's session/device list."""
 
     __tablename__ = "refresh_tokens"
 
@@ -582,6 +582,9 @@ class RefreshToken(Base):
     expires_at = Column(DateTime(timezone=True), nullable=False)
     is_revoked = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    user_agent = Column(String, nullable=True)
+    ip_address = Column(String, nullable=True)
+    last_used_at = Column(DateTime(timezone=True), nullable=True)
 
 
 # ==================================================
@@ -875,6 +878,43 @@ class AgentConversation(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
 
+# ==================================================
+# API KEY
+# ==================================================
+class ApiKey(Base):
+    """User-generated API keys for programmatic access. Only a hash of the
+    secret is ever stored; the raw value is shown once at creation time."""
+
+    __tablename__ = "api_keys"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String, nullable=False)
+    key_prefix = Column(String, nullable=False)  # short, safe-to-display prefix, e.g. "opk_ab12"
+    hashed_key = Column(String, unique=True, nullable=False, index=True)
+    permissions = Column(JSON, default=list)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    last_used_at = Column(DateTime(timezone=True), nullable=True)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+
+
+# ==================================================
+# AGENT MEMORY SNAPSHOT
+# ==================================================
+class AgentMemorySnapshot(Base):
+    """One evolving long-term memory snapshot per user, used by the AI
+    assistant to recall context across conversations."""
+
+    __tablename__ = "agent_memory_snapshots"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False, index=True)
+    insights_summary = Column(Text, default="")
+    frequent_intents = Column(JSON, default=list)
+    planner_habits = Column(JSON, default=dict)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
 # Update your __all__ list to include new models:
 __all__ = [
     "User",
@@ -909,4 +949,6 @@ __all__ = [
     "TaskComment",
     "CollaborationSession",
     "AgentConversation",
+    "ApiKey",
+    "AgentMemorySnapshot",
 ]

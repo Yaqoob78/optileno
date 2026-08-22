@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.db.database import get_db
@@ -6,6 +8,7 @@ from backend.db.models import User
 from .stripe_service import stripe_service
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 @router.post("/create-checkout-session")
 async def create_checkout(
@@ -16,8 +19,9 @@ async def create_checkout(
     try:
         url = await stripe_service.create_checkout_session(db, user)
         return {"url": url}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception("Stripe checkout session creation failed for user %s", user.id)
+        raise HTTPException(status_code=502, detail="Could not start checkout. Please try again shortly.")
 
 @router.post("/create-portal-session")
 async def create_portal(
@@ -28,5 +32,6 @@ async def create_portal(
     try:
         url = await stripe_service.create_portal_session(db, user)
         return {"url": url}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception("Stripe portal session creation failed for user %s", user.id)
+        raise HTTPException(status_code=502, detail="Could not open billing portal. Please try again shortly.")
