@@ -310,29 +310,32 @@ export default function Landing() {
     let prevMouseTime = performance.now();
     let audioCtx: AudioContext | null = null;
 
-    // Calming, meditative pentatonic harp/chime frequencies for productivity
-    const HARMONIC_FREQS = [
-      261.63, // C4
-      293.66, // D4
-      329.63, // E4
-      392.00, // G4
-      440.00, // A4
-      523.25, // C5
-      587.33, // D5
-      659.25, // E5
-      783.99, // G5
-      880.00, // A5
+    // Calm, zen, productive focus chime notes (peaceful, meditative, non-intrusive)
+    const CALM_CHIMES = [
+      261.63, // C4 (Soft warm root)
+      329.63, // E4 (Calm major 3rd)
+      392.00, // G4 (Harmonic 5th)
+      440.00, // A4 (Zen 6th)
+      523.25, // C5 (Crystal pure)
+      659.25, // E5 (Light chime)
     ];
 
-    // Cooldown per line to maintain serene, calm, musical strumming
+    let lastGlobalChimeTime = 0;
     const lastPlayedTimes = new Float64Array(42);
 
     const playStringSound = (index: number) => {
-      // ONLY play for the upper wave lines (not lower lines or other elements)
-      if (index >= 22) return;
+      // 1. NEVER play if user has scrolled down the page at all
+      if (typeof window !== 'undefined' && window.scrollY > 30) return;
+
+      // 2. ONLY play for the top wave lines (0 to 14)
+      if (index >= 15) return;
 
       const nowMs = performance.now();
-      if (nowMs - lastPlayedTimes[index] < 180) return;
+      // Global throttle: max 1 soothing chime per 120ms so it never creates rapid-fire noise
+      if (nowMs - lastGlobalChimeTime < 120) return;
+      if (nowMs - lastPlayedTimes[index] < 350) return;
+
+      lastGlobalChimeTime = nowMs;
       lastPlayedTimes[index] = nowMs;
 
       try {
@@ -346,46 +349,32 @@ export default function Landing() {
         if (!audioCtx || audioCtx.state !== 'running') return;
 
         const now = audioCtx.currentTime;
-        const freq = HARMONIC_FREQS[index % HARMONIC_FREQS.length];
+        const freq = CALM_CHIMES[index % CALM_CHIMES.length];
 
-        // Pure, warm, calm sine fundamental
+        // Pure, warm, peaceful sine wave (like a soft zen water bell)
         const osc = audioCtx.createOscillator();
         osc.type = 'sine';
         osc.frequency.setValueAtTime(freq, now);
 
-        // Soft subtle warm overtone (gives a wooden acoustic feel)
-        const overtone = audioCtx.createOscillator();
-        overtone.type = 'triangle';
-        overtone.frequency.setValueAtTime(freq * 2, now);
-
-        // Warm, mellow lowpass filter (removes any harsh/irritating highs)
+        // Mellow warm lowpass filter (removes all harsh/irritating frequencies)
         const filter = audioCtx.createBiquadFilter();
         filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(850, now);
-        filter.frequency.exponentialRampToValueAtTime(220, now + 0.45);
+        filter.frequency.setValueAtTime(650, now);
+        filter.frequency.exponentialRampToValueAtTime(180, now + 0.38);
 
-        // Calm, subtle master volume envelope (gentle ambient presence)
+        // Soft, gentle ambient volume envelope (whisper-quiet, productive)
         const gain = audioCtx.createGain();
-        const overtoneGain = audioCtx.createGain();
-
-        gain.gain.setValueAtTime(0.016, now);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.48);
-
-        overtoneGain.gain.setValueAtTime(0.005, now);
-        overtoneGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+        gain.gain.setValueAtTime(0.012, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
 
         osc.connect(filter);
-        overtone.connect(overtoneGain);
-        overtoneGain.connect(filter);
         filter.connect(gain);
         gain.connect(audioCtx.destination);
 
         osc.start(now);
-        overtone.start(now);
-        osc.stop(now + 0.5);
-        overtone.stop(now + 0.5);
+        osc.stop(now + 0.42);
       } catch {
-        // Silent catch for browser autoplay policies
+        // Silent catch for browser permissions
       }
     };
 
@@ -436,49 +425,40 @@ export default function Landing() {
       }
     }
 
-    // Strictly interact ONLY with the upper wave curves
+    // Strictly interact ONLY with the top lines header (top 240px from screen top, scrollY = 0)
     const handlePointerInteraction = (clientX: number, clientY: number) => {
-      if (!sceneRef.current || !heroVisible) return;
-      const rect = sceneRef.current.getBoundingClientRect();
+      // If user scrolled down or hero is not visible -> NO sound, NO processing
+      if (!heroVisible || window.scrollY > 30) return;
 
-      // Restrict to the upper wave area only
-      if (
-        clientX < rect.left ||
-        clientX > rect.right ||
-        clientY < rect.top ||
-        clientY > rect.top + Math.min(rect.height * 0.55, 480)
-      ) {
-        return;
+      // Restrict strictly to the very top 260px banner area
+      if (clientY < 0 || clientY > 260) return;
+
+      if (sceneRef.current) {
+        const rect = sceneRef.current.getBoundingClientRect();
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+        sceneRef.current.style.setProperty('--mouse-x', `${x}px`);
+        sceneRef.current.style.setProperty('--mouse-y', `${y}px`);
       }
-
-      const x = clientX - rect.left;
-      const y = clientY - rect.top;
-      sceneRef.current.style.setProperty('--mouse-x', `${x}px`);
-      sceneRef.current.style.setProperty('--mouse-y', `${y}px`);
 
       const now = performance.now();
       const dt = Math.max((now - prevMouseTime) / 1000, 0.001);
-      const vy = (y - prevMouseY) / dt;
+      const vy = (clientY - prevMouseY) / dt;
 
-      const svgNormY = (y / Math.max(rect.height, 1)) * 1000;
-      const prevSvgNormY = (prevMouseY / Math.max(rect.height, 1)) * 1000;
+      // Only check the top visible lines (0 to 14)
+      for (let i = 0; i < 15; i++) {
+        const lineY = 40 + i * 26;
+        const crossed =
+          (prevMouseY <= lineY && clientY >= lineY) ||
+          (prevMouseY >= lineY && clientY <= lineY);
+        const dist = Math.abs(clientY - lineY);
 
-      // Only check the top visible lines (0 to 21)
-      if (svgNormY <= 520) {
-        for (let i = 0; i < 22; i++) {
-          const lineY = 40 + i * 26;
-          const crossed =
-            (prevSvgNormY <= lineY && svgNormY >= lineY) ||
-            (prevSvgNormY >= lineY && svgNormY <= lineY);
-          const dist = Math.abs(svgNormY - lineY);
-
-          if (crossed || (dist < 10 && Math.abs(vy) > 50)) {
-            playStringSound(i);
-          }
+        if (crossed || (dist < 8 && Math.abs(vy) > 60)) {
+          playStringSound(i);
         }
       }
 
-      prevMouseY = y;
+      prevMouseY = clientY;
       prevMouseTime = now;
     };
 
