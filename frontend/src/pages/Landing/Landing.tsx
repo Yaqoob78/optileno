@@ -310,19 +310,29 @@ export default function Landing() {
     let prevMouseTime = performance.now();
     let audioCtx: AudioContext | null = null;
 
-    // Harmonic pentatonic frequencies (A minor / C major meditative acoustic harp scale)
+    // Calming, meditative pentatonic harp/chime frequencies for productivity
     const HARMONIC_FREQS = [
-      220.0, 261.63, 293.66, 329.63, 392.0,
-      440.0, 523.25, 587.33, 659.25, 783.99,
-      880.0, 1046.5,
+      261.63, // C4
+      293.66, // D4
+      329.63, // E4
+      392.00, // G4
+      440.00, // A4
+      523.25, // C5
+      587.33, // D5
+      659.25, // E5
+      783.99, // G5
+      880.00, // A5
     ];
 
-    // Cooldown per line to avoid loud spamming or overlapping noise
+    // Cooldown per line to maintain serene, calm, musical strumming
     const lastPlayedTimes = new Float64Array(42);
 
     const playStringSound = (index: number) => {
+      // ONLY play for the upper wave lines (not lower lines or other elements)
+      if (index >= 22) return;
+
       const nowMs = performance.now();
-      if (nowMs - lastPlayedTimes[index] < 140) return;
+      if (nowMs - lastPlayedTimes[index] < 180) return;
       lastPlayedTimes[index] = nowMs;
 
       try {
@@ -338,31 +348,31 @@ export default function Landing() {
         const now = audioCtx.currentTime;
         const freq = HARMONIC_FREQS[index % HARMONIC_FREQS.length];
 
-        // Fundamental warm body tone
+        // Pure, warm, calm sine fundamental
         const osc = audioCtx.createOscillator();
-        osc.type = 'triangle';
+        osc.type = 'sine';
         osc.frequency.setValueAtTime(freq, now);
 
-        // Soft shimmer overtone
+        // Soft subtle warm overtone (gives a wooden acoustic feel)
         const overtone = audioCtx.createOscillator();
-        overtone.type = 'sine';
+        overtone.type = 'triangle';
         overtone.frequency.setValueAtTime(freq * 2, now);
 
-        // Warm acoustic filter (soothing, gentle, non-irritating)
+        // Warm, mellow lowpass filter (removes any harsh/irritating highs)
         const filter = audioCtx.createBiquadFilter();
         filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(900, now);
-        filter.frequency.exponentialRampToValueAtTime(200, now + 0.5);
+        filter.frequency.setValueAtTime(850, now);
+        filter.frequency.exponentialRampToValueAtTime(220, now + 0.45);
 
-        // Gentle volume envelope with smooth natural decay
+        // Calm, subtle master volume envelope (gentle ambient presence)
         const gain = audioCtx.createGain();
         const overtoneGain = audioCtx.createGain();
 
-        gain.gain.setValueAtTime(0.022, now);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
+        gain.gain.setValueAtTime(0.016, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.48);
 
-        overtoneGain.gain.setValueAtTime(0.008, now);
-        overtoneGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
+        overtoneGain.gain.setValueAtTime(0.005, now);
+        overtoneGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
 
         osc.connect(filter);
         overtone.connect(overtoneGain);
@@ -372,10 +382,10 @@ export default function Landing() {
 
         osc.start(now);
         overtone.start(now);
-        osc.stop(now + 0.58);
-        overtone.stop(now + 0.58);
+        osc.stop(now + 0.5);
+        overtone.stop(now + 0.5);
       } catch {
-        // Silent catch for browser autoplay permissions
+        // Silent catch for browser autoplay policies
       }
     };
 
@@ -410,7 +420,7 @@ export default function Landing() {
       animationFrameId = requestAnimationFrame(renderWaves);
     };
 
-    // Stop burning animation frames when hero is scrolled out of view
+    // Stop animation loop when hero is out of view
     let waveObserver: IntersectionObserver | undefined;
     if (!shouldReduceMotion) {
       renderWaves();
@@ -426,17 +436,17 @@ export default function Landing() {
       }
     }
 
-    // ONLY interact when cursor/touch is in the upper hero scene
+    // Strictly interact ONLY with the upper wave curves
     const handlePointerInteraction = (clientX: number, clientY: number) => {
       if (!sceneRef.current || !heroVisible) return;
       const rect = sceneRef.current.getBoundingClientRect();
 
-      // Ensure the touch/mouse is strictly within the upper wave banner
+      // Restrict to the upper wave area only
       if (
         clientX < rect.left ||
         clientX > rect.right ||
         clientY < rect.top ||
-        clientY > rect.bottom
+        clientY > rect.top + Math.min(rect.height * 0.55, 480)
       ) {
         return;
       }
@@ -453,15 +463,18 @@ export default function Landing() {
       const svgNormY = (y / Math.max(rect.height, 1)) * 1000;
       const prevSvgNormY = (prevMouseY / Math.max(rect.height, 1)) * 1000;
 
-      for (let i = 0; i < 42; i++) {
-        const lineY = 40 + i * 26;
-        const crossed =
-          (prevSvgNormY <= lineY && svgNormY >= lineY) ||
-          (prevSvgNormY >= lineY && svgNormY <= lineY);
-        const dist = Math.abs(svgNormY - lineY);
+      // Only check the top visible lines (0 to 21)
+      if (svgNormY <= 520) {
+        for (let i = 0; i < 22; i++) {
+          const lineY = 40 + i * 26;
+          const crossed =
+            (prevSvgNormY <= lineY && svgNormY >= lineY) ||
+            (prevSvgNormY >= lineY && svgNormY <= lineY);
+          const dist = Math.abs(svgNormY - lineY);
 
-        if (crossed || (dist < 12 && Math.abs(vy) > 60)) {
-          playStringSound(i);
+          if (crossed || (dist < 10 && Math.abs(vy) > 50)) {
+            playStringSound(i);
+          }
         }
       }
 
