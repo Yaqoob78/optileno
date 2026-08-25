@@ -90,12 +90,12 @@ const PrivacyPolicy: React.FC = () => {
 
                 <h3 style={styles.h3}>1.4 Payment Information</h3>
                 <p>
-                    Payments are processed securely by third-party payment processors, including <strong>Razorpay</strong> and <strong>Cashfree</strong>.
+                    Payments are processed securely by our third-party merchant of record, <strong>Lemon Squeezy</strong>.
                 </p>
                 <ul>
                     <li>We do <strong>not</strong> store, process, or have access to your credit/debit card numbers, CVV, or banking details</li>
                     <li>We may receive limited transaction information such as payment status, transaction ID, and billing period for record-keeping purposes</li>
-                    <li>Payment processors are PCI-DSS compliant</li>
+                    <li>Lemon Squeezy is PCI-DSS compliant</li>
                 </ul>
 
                 <h3 style={styles.h3}>1.5 Cookies & Tracking Technologies</h3>
@@ -188,7 +188,7 @@ const PrivacyPolicy: React.FC = () => {
                 <h2 style={styles.h2}>5. Data Sharing & Third-Party Services</h2>
                 <p>We may share limited data with trusted third parties, strictly as necessary to operate the Service:</p>
                 <ul>
-                    <li><strong>Payment processors</strong> (e.g., Razorpay, Cashfree) — for processing subscription payments securely</li>
+                    <li><strong>Payment processors</strong> (e.g., Lemon Squeezy) — for processing subscription payments securely</li>
                     <li><strong>AI infrastructure providers</strong> — for powering AI features and generating insights</li>
                     <li><strong>Cloud hosting and infrastructure</strong> — for storing and serving the application</li>
                     <li><strong>Analytics tools</strong> — for understanding usage patterns and improving the Service (aggregated, anonymized data where possible)</li>

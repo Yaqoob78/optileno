@@ -13,7 +13,7 @@ from backend.api.v1.endpoints import (
     growth,
     tools,
 )
-from backend.payments.cashfree_routes import router as cashfree_router
+from backend.payments.lemonsqueezy_routes import router as lemonsqueezy_router
 from backend.payments.stripe_routes import router as stripe_router
 from backend.payments.webhooks import router as webhook_router
 from backend.api.v1.endpoints import legal
@@ -22,7 +22,7 @@ api_router = APIRouter()
 
 # Include all endpoint routers
 api_router.include_router(auth_router, prefix="/auth", tags=["Authentication"])
-api_router.include_router(cashfree_router)  # Prefix is already /payments in the router
+api_router.include_router(lemonsqueezy_router)  # Prefix is already /payments in the router
 api_router.include_router(stripe_router, prefix="/payments", tags=["Payments"])
 api_router.include_router(webhook_router, prefix="/webhooks", tags=["Webhooks"])
 api_router.include_router(legal.router, tags=["Legal"])  # Prefix is already /legal in the router

@@ -1,15 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { Mail, Lock, User, Eye, EyeOff, Loader2, AlertCircle, ArrowRight, CreditCard } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Mail, Lock, User, Eye, EyeOff, Loader2, AlertCircle, ArrowRight, Sparkles } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { userService } from '../../services/api/user.service';
 import { useUserStore } from '../../stores/useUserStore';
-import {
-    CashfreeMode,
-    loadCashfreeSdk,
-    openCashfreeCheckout,
-    openCashfreeSubscriptionCheckout,
-} from '../../utils/cashfree';
+import { openLemonSqueezyCheckout } from '../../utils/lemonsqueezy';
 import SEO from '../../components/common/SEO';
 import '../../styles/pages/auth.css';
 
@@ -22,7 +17,6 @@ type RegisterValidationFields = {
 
 export default function Register() {
     const navigate = useNavigate();
-    const location = useLocation();
     const isAuthenticated = useUserStore((state) => state.isAuthenticated);
     const login = useUserStore((state) => state.login);
 
@@ -31,20 +25,13 @@ export default function Register() {
         email: '',
         password: '',
         confirmPassword: '',
-        plan_type: 'EXPLORER', // Default to Explorer
+        plan_type: 'EXPLORER', // Default to Free Forever
     });
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [paymentStep, setPaymentStep] = useState(false); // true = waiting for checkout
-    const [pendingCheckout, setPendingCheckout] = useState<{
-        sessionId: string;
-        mode: CashfreeMode;
-        flow: 'order' | 'subscription';
-    } | null>(null);
-    const [retryingCheckout, setRetryingCheckout] = useState(false);
-    const [processingPaymentReturn, setProcessingPaymentReturn] = useState(false);
+
     const {
         register: registerField,
         handleSubmit: handleFormSubmit,
@@ -54,110 +41,11 @@ export default function Register() {
         mode: 'onChange',
     });
 
-    // Warm up Cashfree SDK early for faster checkout open.
-    useEffect(() => {
-        loadCashfreeSdk().catch(() => {
-            // Non-blocking warmup; retry occurs on submit/checkout click.
-        });
-    }, []);
-
     useEffect(() => {
         if (isAuthenticated) {
             navigate('/dashboard', { replace: true });
         }
     }, [isAuthenticated, navigate]);
-
-    useEffect(() => {
-        const params = new URLSearchParams(location.search);
-        const paymentStatus = params.get('payment');
-        const orderId = params.get('order_id');
-        const subscriptionId = params.get('subscription_id');
-
-        if (paymentStatus !== 'success' || (!orderId && !subscriptionId)) {
-            return;
-        }
-
-        let cancelled = false;
-        const restoreSession = async () => {
-            setProcessingPaymentReturn(true);
-            setError(null);
-            try {
-                const { paymentService } = await import('../../services/api/payment.service');
-                const response = await paymentService.completePaymentReturn({
-                    order_id: orderId || undefined,
-                    subscription_id: subscriptionId || undefined,
-                });
-
-                if (cancelled) {
-                    return;
-                }
-
-                if (response.success && response.data?.authenticated && response.data?.user) {
-                    login(response.data.user as any, (response.data.user as any).preferences as any);
-                    navigate('/dashboard', { replace: true });
-                    return;
-                }
-
-                setError(
-                    response.error?.message ||
-                    response.data?.message ||
-                    'Payment completed, but we could not restore your session. Please sign in.'
-                );
-            } catch {
-                if (!cancelled) {
-                    setError('Payment completed, but we could not restore your session. Please sign in.');
-                }
-            } finally {
-                if (!cancelled) {
-                    setProcessingPaymentReturn(false);
-                }
-            }
-        };
-
-        restoreSession();
-        return () => {
-            cancelled = true;
-        };
-    }, [location.search, login, navigate]);
-
-    const resolveCashfreeMode = (environment?: string): CashfreeMode =>
-        environment === 'production' ? 'production' : 'sandbox';
-
-    const launchCheckout = async (sessionId: string, mode: CashfreeMode, flow: 'order' | 'subscription') => {
-        setPaymentStep(true);
-        setPendingCheckout({ sessionId, mode, flow });
-        setError(null);
-
-        try {
-            if (flow === 'subscription') {
-                await openCashfreeSubscriptionCheckout(sessionId, mode);
-            } else {
-                await openCashfreeCheckout(sessionId, mode);
-            }
-        } catch {
-            setError('Unable to open secure checkout. Please click "Continue to Payment" to retry.');
-        }
-    };
-
-    const handleRetryCheckout = async () => {
-        if (!pendingCheckout) {
-            return;
-        }
-
-        setRetryingCheckout(true);
-        setError(null);
-        try {
-            if (pendingCheckout.flow === 'subscription') {
-                await openCashfreeSubscriptionCheckout(pendingCheckout.sessionId, pendingCheckout.mode);
-            } else {
-                await openCashfreeCheckout(pendingCheckout.sessionId, pendingCheckout.mode);
-            }
-        } catch {
-            setError('Checkout still could not be opened. Refresh and try again.');
-        } finally {
-            setRetryingCheckout(false);
-        }
-    };
 
     const handleSubmit = async () => {
         const valid = await trigger(['password', 'confirmPassword']);
@@ -180,7 +68,7 @@ export default function Register() {
             if (response.success && response.data) {
                 const data = response.data;
 
-                // Existing account path: move user to login instead of failing registration repeatedly.
+                // Existing account path: move user to login
                 if (data.account_exists === true && data.authenticated === false) {
                     navigate('/login', {
                         replace: true,
@@ -191,30 +79,18 @@ export default function Register() {
                     return;
                 }
 
-                // Free Plan or Owner account - no payment needed, go directly to dashboard
-                if (data.requires_payment === false) {
-                    if (data.user) {
-                        login(data.user as any, (data.user as any).preferences as any);
-                    }
-                    navigate('/dashboard', { replace: true });
+                if (data.user) {
+                    login(data.user as any, (data.user as any).preferences as any);
+                }
+
+                // If user selected Ultra Pro, open Lemon Squeezy checkout directly
+                if (formData.plan_type === 'ULTRA') {
+                    openLemonSqueezyCheckout(data.user || { email: formData.email, name: formData.full_name });
                     return;
                 }
 
-                // Payment required (if user explicitly selected Ultra) - open subscription checkout
-                if (data.payment && data.payment.subscription_session_id) {
-                    const mode = resolveCashfreeMode(data.payment.environment);
-                    await launchCheckout(data.payment.subscription_session_id, mode, 'subscription');
-                } else if (data.payment && data.payment.payment_session_id) {
-                    // Backward-compatible fallback (legacy order flow)
-                    const mode = resolveCashfreeMode(data.payment.environment);
-                    await launchCheckout(data.payment.payment_session_id, mode, 'order');
-                } else {
-                    // Fallback to free access rather than blocking user
-                    if (data.user) {
-                        login(data.user as any, (data.user as any).preferences as any);
-                    }
-                    navigate('/dashboard', { replace: true });
-                }
+                // Default Free Forever plan -> navigate straight to dashboard
+                navigate('/dashboard', { replace: true });
             } else {
                 setError(response.error?.message || 'Registration failed. Please try again.');
             }
@@ -261,46 +137,7 @@ export default function Register() {
                         </div>
                     )}
 
-                    {processingPaymentReturn ? (
-                        <div className="payment-loading-state">
-                            <Loader2 className="animate-spin" size={24} style={{ color: 'var(--primary)', marginBottom: '0.75rem' }} />
-                            <h3 style={{ color: 'var(--text-main)', marginBottom: '0.5rem' }}>
-                                Finalizing Your Account...
-                            </h3>
-                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', textAlign: 'center', lineHeight: '1.6' }}>
-                                We are verifying your payment and restoring your session.
-                            </p>
-                        </div>
-                    ) : paymentStep ? (
-                        <div className="payment-loading-state">
-                            <CreditCard size={48} style={{ color: 'var(--primary)', marginBottom: '1rem' }} />
-                            <h3 style={{ color: 'var(--text-main)', marginBottom: '0.5rem' }}>
-                                Redirecting to Payment...
-                            </h3>
-                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', textAlign: 'center', lineHeight: '1.6' }}>
-                                Your account has been created. You'll be redirected to complete payment securely via Cashfree.
-                            </p>
-                            <Loader2 className="animate-spin" size={24} style={{ color: 'var(--primary)', marginTop: '1rem' }} />
-                            <button
-                                type="button"
-                                className="auth-button"
-                                style={{ marginTop: '1rem' }}
-                                onClick={handleRetryCheckout}
-                                disabled={retryingCheckout || !pendingCheckout}
-                            >
-                                {retryingCheckout ? (
-                                    <Loader2 className="animate-spin" size={20} />
-                                ) : (
-                                    <>
-                                        <CreditCard size={18} />
-                                        <span>Continue to Payment</span>
-                                        <ArrowRight size={20} />
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                    ) : (
-                        <form className="auth-form" onSubmit={handleFormSubmit(handleSubmit)}>
+                    <form className="auth-form" onSubmit={handleFormSubmit(handleSubmit)}>
                             {/* Plan Selection */}
                             <div className="pricing-options">
                                 <div
@@ -479,24 +316,25 @@ export default function Register() {
                                     <Loader2 className="animate-spin" size={20} />
                                 ) : (
                                     <>
-                                        <CreditCard size={18} />
-                                        <span>Create Account & Pay</span>
-                                        <ArrowRight size={20} />
+                                        {formData.plan_type === 'ULTRA' ? <Sparkles size={18} /> : <ArrowRight size={18} />}
+                                        <span>{formData.plan_type === 'ULTRA' ? 'Create Account & Continue to Pro' : 'Create Free Forever Account'}</span>
+                                        <ArrowRight size={18} />
                                     </>
                                 )}
                             </button>
 
-                            <p style={{
-                                textAlign: 'center',
-                                fontSize: '0.7rem',
-                                color: 'var(--text-muted)',
-                                margin: '-0.5rem 0 0',
-                                lineHeight: '1.4',
-                            }}>
-                                Secure payment via Cashfree. You will be redirected to complete payment after account creation.
-                            </p>
+                            {formData.plan_type === 'ULTRA' && (
+                                <p style={{
+                                    textAlign: 'center',
+                                    fontSize: '0.7rem',
+                                    color: 'var(--text-muted)',
+                                    margin: '-0.5rem 0 0',
+                                    lineHeight: '1.4',
+                                }}>
+                                    Secure checkout via Lemon Squeezy. You will be redirected after account creation.
+                                </p>
+                            )}
                         </form>
-                    )}
 
                     <p className="auth-footer">
                         Already have an account?

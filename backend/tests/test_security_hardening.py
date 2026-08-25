@@ -16,11 +16,9 @@ from fastapi import HTTPException
 # Subscription upgrade guard
 # ─────────────────────────────────────────────────────────────────────
 
-def _upgrade_mocks(monkeypatch, *, configured: bool, environment: str):
+def _upgrade_mocks(monkeypatch, *, environment: str = "production"):
     from backend.api.v1.endpoints import subscriptions as subs
 
-    monkeypatch.setattr(subs.cashfree_service, "is_configured", lambda: configured)
-    monkeypatch.setattr(subs.cashfree_service, "_is_owner", lambda user: False)
     monkeypatch.setattr(subs.settings, "ENVIRONMENT", environment)
 
     db = MagicMock()
@@ -29,31 +27,16 @@ def _upgrade_mocks(monkeypatch, *, configured: bool, environment: str):
 
     user = MagicMock()
     user.id = 123
+    user.email = "test@example.com"
+    user.full_name = "Test User"
 
     return subs, db, user
 
 
 @pytest.mark.asyncio
-async def test_upgrade_blocked_in_production_without_gateway(monkeypatch):
-    """Misconfigured Cashfree in production must fail loudly, not upgrade for free."""
-    subs, db, user = _upgrade_mocks(monkeypatch, configured=False, environment="production")
-
-    with pytest.raises(HTTPException) as exc:
-        await subs.upgrade_subscription(
-            subs.UpgradeRequest(planId="ultra", billingCycle="monthly"),
-            db=db,
-            current_user=user,
-        )
-
-    assert exc.value.status_code == 503
-    db.execute.assert_not_awaited()
-    db.commit.assert_not_awaited()
-
-
-@pytest.mark.asyncio
-async def test_upgrade_dev_fallback_still_works(monkeypatch):
-    """Outside production, the direct upgrade fallback remains available."""
-    subs, db, user = _upgrade_mocks(monkeypatch, configured=False, environment="development")
+async def test_upgrade_redirects_to_lemon_squeezy(monkeypatch):
+    """Upgrade returns personalized Lemon Squeezy checkout redirect."""
+    subs, db, user = _upgrade_mocks(monkeypatch, environment="production")
 
     result = await subs.upgrade_subscription(
         subs.UpgradeRequest(planId="ultra", billingCycle="monthly"),
@@ -61,8 +44,10 @@ async def test_upgrade_dev_fallback_still_works(monkeypatch):
         current_user=user,
     )
 
-    assert result == {"status": "upgraded"}
-    db.commit.assert_awaited()
+    assert result["status"] == "redirect"
+    assert "checkout_url" in result
+    assert "optileno.lemonsqueezy.com" in result["checkout_url"]
+    assert "test%40example.com" in result["checkout_url"] or "test@example.com" in result["checkout_url"]
 
 
 @pytest.mark.asyncio

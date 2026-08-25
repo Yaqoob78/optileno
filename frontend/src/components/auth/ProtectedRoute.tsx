@@ -3,7 +3,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Loader2, CreditCard, Zap } from 'lucide-react';
 import { useUserStore } from '../../stores/useUserStore';
 import { userService } from '../../services/api/user.service';
-import { openCashfreeCheckout, openCashfreeSubscriptionCheckout } from '../../utils/cashfree';
+import { openLemonSqueezyCheckout } from '../../utils/lemonsqueezy';
 
 interface ProtectedRouteProps {
     children: React.ReactNode;
@@ -21,13 +21,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     const [checking, setChecking] = useState(true);
     const [initiatingPayment, setInitiatingPayment] = useState(false);
     const [paymentError, setPaymentError] = useState<string | null>(null);
-    const [verifyingReturnPayment, setVerifyingReturnPayment] = useState(false);
     const hasChecked = useRef(false);
-
-    const params = new URLSearchParams(location.search);
-    const paymentReturnOrderId = params.get('order_id');
-    const paymentReturnSubscriptionId = params.get('subscription_id');
-    const isPaymentReturn = params.get('payment') === 'success' && (!!paymentReturnOrderId || !!paymentReturnSubscriptionId);
 
     useEffect(() => {
         const checkAuth = async () => {
@@ -58,27 +52,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
             }
 
             try {
-                if (isPaymentReturn) {
-                    try {
-                        const { paymentService } = await import('../../services/api/payment.service');
-                        const restoreRes = await paymentService.completePaymentReturn({
-                            order_id: paymentReturnOrderId || undefined,
-                            subscription_id: paymentReturnSubscriptionId || undefined,
-                        });
-                        if (
-                            restoreRes.success &&
-                            restoreRes.data?.authenticated &&
-                            restoreRes.data?.user
-                        ) {
-                            login(restoreRes.data.user as any, (restoreRes.data.user as any).preferences as any);
-                            setChecking(false);
-                            return;
-                        }
-                    } catch {
-                        // Fall back to normal session/profile check below.
-                    }
-                }
-
                 const response = await userService.getProfile();
                 if (response.success && response.data) {
                     login(response.data as any, response.data.preferences as any);
@@ -93,95 +66,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
         };
 
         checkAuth();
-    }, [
-        isAuthenticated,
-        isPaymentReturn,
-        login,
-        logout,
-        paymentReturnOrderId,
-        paymentReturnSubscriptionId,
-        profile,
-    ]);
+    }, [isAuthenticated, profile, login, logout]);
 
-    useEffect(() => {
-        if (!isAuthenticated || !isPaymentReturn) {
-            return;
-        }
-
-        const subscriptionStatus = ((profile as any)?.subscription?.status || '').toLowerCase();
-        if (subscriptionStatus !== 'pending_payment' && subscriptionStatus !== 'payment_failed') {
-            navigate(location.pathname, { replace: true });
-            return;
-        }
-
-        let cancelled = false;
-
-        const verifyPaymentReturn = async () => {
-            setVerifyingReturnPayment(true);
-            setPaymentError(null);
-
-            try {
-                const { paymentService } = await import('../../services/api/payment.service');
-                const verifyRes = paymentReturnSubscriptionId
-                    ? await paymentService.verifySubscription(paymentReturnSubscriptionId)
-                    : await paymentService.verifyPayment(paymentReturnOrderId as string);
-
-                if (!verifyRes.success || !verifyRes.data?.success) {
-                    throw new Error(verifyRes.data?.message || 'Payment verification is still pending.');
-                }
-
-                const profileRes = await userService.getProfile();
-                if (!cancelled && profileRes.success && profileRes.data) {
-                    login(profileRes.data as any, profileRes.data.preferences as any);
-                }
-            } catch (err: any) {
-                if (!cancelled) {
-                    setPaymentError(err?.message || 'Payment could not be confirmed yet. Please try again.');
-                }
-            } finally {
-                if (!cancelled) {
-                    setVerifyingReturnPayment(false);
-                }
-                navigate(location.pathname, { replace: true });
-            }
-        };
-
-        verifyPaymentReturn();
-
-        return () => {
-            cancelled = true;
-        };
-    }, [isAuthenticated, isPaymentReturn, paymentReturnOrderId, paymentReturnSubscriptionId, profile, login, navigate, location.pathname]);
-
-    const handleInitiatePayment = async () => {
+    const handleInitiatePayment = () => {
         setInitiatingPayment(true);
         setPaymentError(null);
-
-        try {
-            const { paymentService } = await import('../../services/api/payment.service');
-            const planType = (profile as any)?.planType || (profile as any)?.plan_type || 'EXPLORER';
-            const planName = String(planType).toLowerCase() === 'ultra' ? 'ultra' : 'explorer';
-
-            const subscriptionRes = await paymentService.createSubscription(planName, 'monthly');
-            if (subscriptionRes.success && subscriptionRes.data?.subscription_session_id) {
-                const mode = subscriptionRes.data.environment === 'production' ? 'production' : 'sandbox';
-                await openCashfreeSubscriptionCheckout(subscriptionRes.data.subscription_session_id, mode);
-                return;
-            }
-
-            // Backward-compatible fallback (legacy order flow).
-            const orderRes = await paymentService.createOrder(planName, 'monthly');
-            if (!orderRes.success || !orderRes.data?.payment_session_id) {
-                throw new Error(orderRes.error?.message || subscriptionRes.error?.message || 'Failed to create payment order. Please try again.');
-            }
-
-            const mode = orderRes.data.environment === 'production' ? 'production' : 'sandbox';
-            await openCashfreeCheckout(orderRes.data.payment_session_id, mode);
-        } catch (err: any) {
-            setPaymentError(err?.message || 'Payment initiation failed. Please try again.');
-        } finally {
-            setInitiatingPayment(false);
-        }
+        openLemonSqueezyCheckout(profile);
     };
 
     if (checking) {
@@ -205,39 +95,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 
     const subscriptionStatus = String((profile as any)?.subscription?.status || '').toLowerCase();
     const isPendingPayment = subscriptionStatus === 'pending_payment' || subscriptionStatus === 'payment_failed';
-
-    if (isPendingPayment && verifyingReturnPayment) {
-        return (
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minHeight: '100vh',
-                width: '100vw',
-                padding: '2rem',
-                background: 'rgb(var(--color-bg-primary, 2 6 23))',
-            }}>
-                <div style={{
-                    background: 'rgba(10, 15, 30, 0.85)',
-                    backdropFilter: 'blur(40px)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: '24px',
-                    padding: '2rem',
-                    maxWidth: '460px',
-                    width: '100%',
-                    textAlign: 'center',
-                }}>
-                    <Loader2 className="animate-spin" size={28} style={{ color: '#60a5fa', marginBottom: '1rem' }} />
-                    <h2 style={{ color: 'rgb(var(--color-text-primary, 248 250 252))', fontSize: '1.2rem', marginBottom: '0.5rem' }}>
-                        Verifying Payment
-                    </h2>
-                    <p style={{ color: '#94a3b8', fontSize: '0.9rem', lineHeight: '1.6' }}>
-                        Please wait while we confirm your payment securely with Cashfree.
-                    </p>
-                </div>
-            </div>
-        );
-    }
 
     if (isPendingPayment) {
         const isUltraPlan = ((profile as any)?.planType || '').toUpperCase() === 'ULTRA';
@@ -358,7 +215,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
                         marginTop: '1.25rem',
                         lineHeight: '1.4',
                     }}>
-                        Secure payment powered by Cashfree. Your payment details are encrypted and safe.
+                        Secure checkout powered by Lemon Squeezy. Your payment details are encrypted and safe.
                     </p>
 
                     <button

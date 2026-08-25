@@ -162,7 +162,7 @@ const RefundPolicy: React.FC = () => {
             <section style={styles.section}>
                 <h2 style={styles.h2}>7. Payment Processing</h2>
                 <p>
-                    All payments are processed through secure, trusted third-party payment processors including <strong>Razorpay</strong> and <strong>Cashfree</strong>. These processors are PCI-DSS compliant and handle all payment data securely.
+                    All payments are processed through our secure, trusted third-party merchant of record, <strong>Lemon Squeezy</strong>. Lemon Squeezy is PCI-DSS compliant and handles all payment data securely.
                 </p>
                 <p style={{ marginTop: '0.75rem' }}>
                     Optileno does not store, process, or have access to your credit/debit card details. Any payment-related concerns should be directed to both our support team and your payment provider.

@@ -23,66 +23,12 @@ export default function Login() {
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [processingPaymentReturn, setProcessingPaymentReturn] = useState(false);
 
     React.useEffect(() => {
         if (isAuthenticated) {
             navigate('/dashboard', { replace: true });
         }
     }, [isAuthenticated, navigate]);
-
-    React.useEffect(() => {
-        const params = new URLSearchParams(location.search);
-        const paymentStatus = params.get('payment');
-        const orderId = params.get('order_id');
-        const subscriptionId = params.get('subscription_id');
-
-        if (paymentStatus !== 'success' || (!orderId && !subscriptionId)) {
-            return;
-        }
-
-        let cancelled = false;
-        const restoreSession = async () => {
-            setProcessingPaymentReturn(true);
-            setError(null);
-            try {
-                const { paymentService } = await import('../../services/api/payment.service');
-                const response = await paymentService.completePaymentReturn({
-                    order_id: orderId || undefined,
-                    subscription_id: subscriptionId || undefined,
-                });
-
-                if (cancelled) {
-                    return;
-                }
-
-                if (response.success && response.data?.authenticated && response.data?.user) {
-                    loginStore(response.data.user as any, (response.data.user as any).preferences as any);
-                    navigate('/dashboard', { replace: true });
-                    return;
-                }
-
-                setError(
-                    response.error?.message ||
-                    response.data?.message ||
-                    'Payment completed, but we could not restore your session. Please sign in.'
-                );
-            } catch {
-                if (!cancelled) {
-                    setError('Payment completed, but we could not restore your session. Please sign in.');
-                }
-            } finally {
-                if (!cancelled) {
-                    setProcessingPaymentReturn(false);
-                }
-            }
-        };
-
-        restoreSession();
-        return () => {
-            cancelled = true;
-        };
-    }, [location.search, loginStore, navigate]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -138,10 +84,6 @@ export default function Login() {
 
                     {routeMessage && (
                         <div className="success-message">{routeMessage}</div>
-                    )}
-
-                    {processingPaymentReturn && (
-                        <div className="success-message">Finalizing your payment and signing you in...</div>
                     )}
 
                     <form className="auth-form" onSubmit={handleSubmit} autoComplete="on">

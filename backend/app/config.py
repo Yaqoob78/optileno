@@ -627,15 +627,18 @@ class Settings:
     PAYMENT_RETRY_ATTEMPTS: int = _env_int("PAYMENT_RETRY_ATTEMPTS", 3)
 
     # =========================
-    # Payments (Cashfree) - Primary PG
+    # Payments (Lemon Squeezy) - Primary Merchant of Record
     # =========================
-    CASHFREE_APP_ID: str = os.getenv("CASHFREE_APP_ID", "")
-    CASHFREE_SECRET_KEY: str = os.getenv("CASHFREE_SECRET_KEY", "")
-    CASHFREE_WEBHOOK_SECRET: str = os.getenv("CASHFREE_WEBHOOK_SECRET", "")
-    CASHFREE_CURRENCY: str = _strip_wrapping_quotes(os.getenv("CASHFREE_CURRENCY", "USD")).upper()
-    CASHFREE_FALLBACK_CURRENCY: str = _strip_wrapping_quotes(os.getenv("CASHFREE_FALLBACK_CURRENCY", "")).upper()
-    CASHFREE_FX_CACHE_MINUTES: int = _env_int("CASHFREE_FX_CACHE_MINUTES", 60)
-    CASHFREE_USD_INR_FALLBACK_RATE: float = _env_float("CASHFREE_USD_INR_FALLBACK_RATE", 90.0)
+    LEMONSQUEEZY_CHECKOUT_URL: str = _strip_wrapping_quotes(
+        os.getenv(
+            "LEMONSQUEEZY_CHECKOUT_URL",
+            "https://optileno.lemonsqueezy.com/checkout/buy/602908e3-0459-4b70-b8af-2018f06424ce"
+        )
+    )
+    LEMONSQUEEZY_API_KEY: str = os.getenv("LEMONSQUEEZY_API_KEY", "")
+    LEMONSQUEEZY_WEBHOOK_SECRET: str = os.getenv("LEMONSQUEEZY_WEBHOOK_SECRET", "")
+    LEMONSQUEEZY_STORE_ID: str = os.getenv("LEMONSQUEEZY_STORE_ID", "")
+    LEMONSQUEEZY_VARIANT_ID: str = os.getenv("LEMONSQUEEZY_VARIANT_ID", "")
 
     # =========================
     # Agentic (Private OpenClaw)

@@ -1,12 +1,13 @@
 import { api, ApiResponse } from './client';
+import { LEMONSQUEEZY_CHECKOUT_URL, getLemonSqueezyCheckoutUrl } from '../../utils/lemonsqueezy';
 
 export interface SubscriptionPlan {
     name: string;
     tier: string;
     plan_type: string;
     trial_days: number;
-    monthly_price: number;  // in cents
-    annual_price: number;   // in cents
+    monthly_price: number;  // in cents ($6.99 = 699)
+    annual_price: number;   // in cents ($49.00 = 4900)
     currency: string;
     features: string[];
     limits: {
@@ -14,51 +15,6 @@ export interface SubscriptionPlan {
         goals: number;
         tasks: number;
     };
-}
-
-export interface CreateOrderResponse {
-    payment_session_id: string;
-    order_id: string;
-    cf_order_id?: string;
-    order_status?: string;
-    order_amount?: number;
-    plan?: string;
-    plan_details?: SubscriptionPlan;
-    billing_cycle?: string;
-    trial_days?: number;
-    environment?: string;
-}
-
-export interface CreateSubscriptionResponse {
-    subscription_session_id: string;
-    subscription_id: string;
-    cf_subscription_id?: string;
-    subscription_status?: string;
-    plan?: string;
-    plan_details?: SubscriptionPlan;
-    billing_cycle?: string;
-    trial_days?: number;
-    first_charge_at?: string;
-    environment?: string;
-}
-
-export interface VerifyPaymentResponse {
-    success: boolean;
-    message: string;
-    plan?: string;
-    tier?: string;
-    order_status?: string;
-}
-
-export interface VerifySubscriptionResponse {
-    success: boolean;
-    message: string;
-    plan?: string;
-    tier?: string;
-    subscription_status?: string;
-    authenticated?: boolean;
-    user?: any;
-    order_status?: string;
 }
 
 export interface SubscriptionStatus {
@@ -72,18 +28,14 @@ export interface SubscriptionStatus {
     trial_ends_at?: string;
     subscription_ends_at?: string;
     is_trial?: boolean;
-}
-
-export interface CompletePaymentReturnRequest {
-    order_id?: string;
-    subscription_id?: string;
+    checkout_url?: string;
 }
 
 class PaymentService {
     /**
      * Get available subscription plans
      */
-    async getPlans(): Promise<ApiResponse<{ plans: Record<string, SubscriptionPlan>; currency: string; message: string }>> {
+    async getPlans(): Promise<ApiResponse<{ plans: Record<string, SubscriptionPlan>; currency: string; checkout_url: string }>> {
         return api.get('/payments/plans');
     }
 
@@ -95,39 +47,10 @@ class PaymentService {
     }
 
     /**
-     * Create a Cashfree order and get payment_session_id
+     * Get the personalized Lemon Squeezy checkout link for the user
      */
-    async createOrder(plan: 'explorer' | 'ultra', billingCycle: 'monthly' | 'annual' = 'monthly'): Promise<ApiResponse<CreateOrderResponse>> {
-        return api.post<CreateOrderResponse>('/payments/create-order', { plan, billing_cycle: billingCycle });
-    }
-
-    /**
-     * Create recurring subscription checkout session
-     */
-    async createSubscription(plan: 'explorer' | 'ultra', billingCycle: 'monthly' | 'annual' = 'monthly'): Promise<ApiResponse<CreateSubscriptionResponse>> {
-        return api.post<CreateSubscriptionResponse>('/payments/create-subscription', { plan, billing_cycle: billingCycle });
-    }
-
-    /**
-     * Verify payment status after checkout
-     */
-    async verifyPayment(orderId: string): Promise<ApiResponse<VerifyPaymentResponse>> {
-        return api.post<VerifyPaymentResponse>('/payments/verify', { order_id: orderId });
-    }
-
-    /**
-     * Verify subscription mandate setup after checkout
-     */
-    async verifySubscription(subscriptionId: string): Promise<ApiResponse<VerifySubscriptionResponse>> {
-        return api.post<VerifySubscriptionResponse>('/payments/verify-subscription', { subscription_id: subscriptionId });
-    }
-
-    /**
-     * Complete checkout return when user loses auth cookies after provider redirect.
-     * Backend verifies payment/subscription and issues fresh auth cookies.
-     */
-    async completePaymentReturn(payload: CompletePaymentReturnRequest): Promise<ApiResponse<VerifySubscriptionResponse>> {
-        return api.post<VerifySubscriptionResponse>('/payments/complete-return', payload);
+    getCheckoutUrl(user?: { id?: string | number; email?: string } | null): string {
+        return getLemonSqueezyCheckoutUrl(user);
     }
 
     /**
@@ -139,3 +62,4 @@ class PaymentService {
 }
 
 export const paymentService = new PaymentService();
+export { LEMONSQUEEZY_CHECKOUT_URL, getLemonSqueezyCheckoutUrl };

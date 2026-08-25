@@ -170,7 +170,7 @@ const CookiesPolicy: React.FC = () => {
                     Some cookies may be set by trusted third-party services that we use to operate the Service:
                 </p>
                 <ul>
-                    <li><strong>Payment Processors (Razorpay / Cashfree):</strong> May set cookies during the payment process for security, fraud detection, and transaction verification</li>
+                    <li><strong>Payment Processors (Lemon Squeezy):</strong> May set cookies during the checkout process for security, fraud detection, and transaction verification</li>
                     <li><strong>Cloud Infrastructure Providers:</strong> May set cookies for load balancing, security, and service delivery</li>
                 </ul>
                 <p style={{ marginTop: '0.75rem' }}>

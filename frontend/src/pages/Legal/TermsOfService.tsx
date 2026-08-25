@@ -144,7 +144,7 @@ const TermsOfService: React.FC = () => {
             <section style={styles.section}>
                 <h2 style={styles.h2}>6. Payments</h2>
                 <p>
-                    All payments are processed securely through trusted third-party payment processors, including but not limited to <strong>Razorpay</strong> and <strong>Cashfree</strong>.
+                    All payments are processed securely through our trusted third-party merchant of record, <strong>Lemon Squeezy</strong>.
                 </p>
                 <ul>
                     <li>We do not store, process, or have access to your credit/debit card details or banking information</li>

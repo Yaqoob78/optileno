@@ -227,35 +227,21 @@ export default function Dashboard() {
   }, [fetchAnalytics, fetchTasks, fetchGoals, fetchHabits]);
 
   useEffect(() => {
-    // Check for payment success
+    // Check for payment success redirect
     const params = new URLSearchParams(location.search);
     const paymentStatus = params.get('payment');
-    const orderId = params.get('order_id');
-    const subscriptionId = params.get('subscription_id');
 
     if (paymentStatus === 'success') {
       const verifyAndRefresh = async () => {
         try {
-          // Verify payment on backend to ensure DB is updated.
-          // Never show a confirmation banner without server-side verification.
-          if (orderId || subscriptionId) {
-            const { paymentService } = await import('../../services/api/payment.service');
-            if (subscriptionId) {
-              await paymentService.verifySubscription(subscriptionId);
-            } else if (orderId) {
-              await paymentService.verifyPayment(orderId);
-            }
-            setShowSuccessModal(true);
-          }
-
-          // Refresh user profile so ProtectedRoute updates subscription_status
+          // Refresh user profile so state and entitlements sync
           const profileRes = await userService.getProfile();
           if (profileRes.success && profileRes.data) {
             useUserStore.getState().setProfile(profileRes.data as any);
+            setShowSuccessModal(true);
           }
         } catch (error) {
-          console.error("Payment verification failed", error);
-          setPaymentErrorMessage("We could not confirm your payment yet. Please refresh in a moment or contact support if it continues.");
+          console.error("Profile refresh after payment return failed", error);
         } finally {
           // Clean up URL
           navigate('/dashboard', { replace: true });
