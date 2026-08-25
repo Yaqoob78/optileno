@@ -306,77 +306,6 @@ export default function Landing() {
     let animationFrameId: number;
     let time = 0;
     let heroVisible = true;
-    let prevMouseY = 0;
-    let prevMouseTime = performance.now();
-    let audioCtx: AudioContext | null = null;
-
-    // Calm, zen, productive focus chime notes (peaceful, meditative, non-intrusive)
-    const CALM_CHIMES = [
-      261.63, // C4 (Soft warm root)
-      329.63, // E4 (Calm major 3rd)
-      392.00, // G4 (Harmonic 5th)
-      440.00, // A4 (Zen 6th)
-      523.25, // C5 (Crystal pure)
-      659.25, // E5 (Light chime)
-    ];
-
-    let lastGlobalChimeTime = 0;
-    const lastPlayedTimes = new Float64Array(42);
-
-    const playStringSound = (index: number) => {
-      // 1. NEVER play if user has scrolled down the page at all
-      if (typeof window !== 'undefined' && window.scrollY > 30) return;
-
-      // 2. ONLY play for the top wave lines (0 to 14)
-      if (index >= 15) return;
-
-      const nowMs = performance.now();
-      // Global throttle: max 1 soothing chime per 120ms so it never creates rapid-fire noise
-      if (nowMs - lastGlobalChimeTime < 120) return;
-      if (nowMs - lastPlayedTimes[index] < 350) return;
-
-      lastGlobalChimeTime = nowMs;
-      lastPlayedTimes[index] = nowMs;
-
-      try {
-        if (!audioCtx) {
-          const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-          if (AudioCtx) audioCtx = new AudioCtx();
-        }
-        if (audioCtx && audioCtx.state === 'suspended') {
-          audioCtx.resume().catch(() => {});
-        }
-        if (!audioCtx || audioCtx.state !== 'running') return;
-
-        const now = audioCtx.currentTime;
-        const freq = CALM_CHIMES[index % CALM_CHIMES.length];
-
-        // Pure, warm, peaceful sine wave (like a soft zen water bell)
-        const osc = audioCtx.createOscillator();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, now);
-
-        // Mellow warm lowpass filter (removes all harsh/irritating frequencies)
-        const filter = audioCtx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(650, now);
-        filter.frequency.exponentialRampToValueAtTime(180, now + 0.38);
-
-        // Soft, gentle ambient volume envelope (whisper-quiet, productive)
-        const gain = audioCtx.createGain();
-        gain.gain.setValueAtTime(0.012, now);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
-
-        osc.connect(filter);
-        filter.connect(gain);
-        gain.connect(audioCtx.destination);
-
-        osc.start(now);
-        osc.stop(now + 0.42);
-      } catch {
-        // Silent catch for browser permissions
-      }
-    };
 
     let basePaths: NodeListOf<SVGPathElement> | null = null;
     let activePaths: NodeListOf<SVGPathElement> | null = null;
@@ -425,41 +354,13 @@ export default function Landing() {
       }
     }
 
-    // Strictly interact ONLY with the top lines header (top 240px from screen top, scrollY = 0)
     const handlePointerInteraction = (clientX: number, clientY: number) => {
-      // If user scrolled down or hero is not visible -> NO sound, NO processing
-      if (!heroVisible || window.scrollY > 30) return;
-
-      // Restrict strictly to the very top 260px banner area
-      if (clientY < 0 || clientY > 260) return;
-
-      if (sceneRef.current) {
-        const rect = sceneRef.current.getBoundingClientRect();
-        const x = clientX - rect.left;
-        const y = clientY - rect.top;
-        sceneRef.current.style.setProperty('--mouse-x', `${x}px`);
-        sceneRef.current.style.setProperty('--mouse-y', `${y}px`);
-      }
-
-      const now = performance.now();
-      const dt = Math.max((now - prevMouseTime) / 1000, 0.001);
-      const vy = (clientY - prevMouseY) / dt;
-
-      // Only check the top visible lines (0 to 14)
-      for (let i = 0; i < 15; i++) {
-        const lineY = 40 + i * 26;
-        const crossed =
-          (prevMouseY <= lineY && clientY >= lineY) ||
-          (prevMouseY >= lineY && clientY <= lineY);
-        const dist = Math.abs(clientY - lineY);
-
-        if (crossed || (dist < 8 && Math.abs(vy) > 60)) {
-          playStringSound(i);
-        }
-      }
-
-      prevMouseY = clientY;
-      prevMouseTime = now;
+      if (!heroVisible || !sceneRef.current) return;
+      const rect = sceneRef.current.getBoundingClientRect();
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+      sceneRef.current.style.setProperty('--mouse-x', `${x}px`);
+      sceneRef.current.style.setProperty('--mouse-y', `${y}px`);
     };
 
     const handleMouseMove = (e: MouseEvent) => {
@@ -493,9 +394,6 @@ export default function Landing() {
       window.removeEventListener('scroll', handleScroll);
       cancelAnimationFrame(animationFrameId);
       waveObserver?.disconnect();
-      if (audioCtx && audioCtx.state !== 'closed') {
-        audioCtx.close().catch(() => {});
-      }
     };
   }, [shouldReduceMotion]);
 
