@@ -153,6 +153,8 @@
   transform-origin: top center;
   mask-image: linear-gradient(180deg, black 0%, black 88%, transparent 100%);
   -webkit-mask-image: linear-gradient(180deg, black 0%, black 88%, transparent 100%);
+  contain: layout paint;
+  will-change: transform;
 }
 
 .waves-glow {

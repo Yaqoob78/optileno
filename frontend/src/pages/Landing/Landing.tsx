@@ -310,15 +310,21 @@ export default function Landing() {
     let prevMouseTime = performance.now();
     let audioCtx: AudioContext | null = null;
 
-    // Guitar string harmonic state for each of the 42 lines
-    const stringPhysics = Array.from({ length: 42 }, () => ({
-      displacement: 0,
-      velocity: 0,
-    }));
+    // Harmonic pentatonic frequencies (A minor / C major meditative acoustic harp scale)
+    const HARMONIC_FREQS = [
+      220.0, 261.63, 293.66, 329.63, 392.0,
+      440.0, 523.25, 587.33, 659.25, 783.99,
+      880.0, 1046.5,
+    ];
 
-    const PENTATONIC_FREQS = [164.81, 196.0, 220.0, 246.94, 293.66, 329.63, 392.0, 440.0, 493.88, 587.33, 659.25, 783.99];
+    // Cooldown per line to avoid loud spamming or overlapping noise
+    const lastPlayedTimes = new Float64Array(42);
 
-    const playStringSound = (index: number, velocity: number) => {
+    const playStringSound = (index: number) => {
+      const nowMs = performance.now();
+      if (nowMs - lastPlayedTimes[index] < 140) return;
+      lastPlayedTimes[index] = nowMs;
+
       try {
         if (!audioCtx) {
           const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -330,37 +336,46 @@ export default function Landing() {
         if (!audioCtx || audioCtx.state !== 'running') return;
 
         const now = audioCtx.currentTime;
-        const osc = audioCtx.createOscillator();
-        const overtone = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        const filter = audioCtx.createBiquadFilter();
+        const freq = HARMONIC_FREQS[index % HARMONIC_FREQS.length];
 
-        const freq = PENTATONIC_FREQS[index % PENTATONIC_FREQS.length];
+        // Fundamental warm body tone
+        const osc = audioCtx.createOscillator();
         osc.type = 'triangle';
         osc.frequency.setValueAtTime(freq, now);
 
+        // Soft shimmer overtone
+        const overtone = audioCtx.createOscillator();
         overtone.type = 'sine';
         overtone.frequency.setValueAtTime(freq * 2, now);
 
+        // Warm acoustic filter (soothing, gentle, non-irritating)
+        const filter = audioCtx.createBiquadFilter();
         filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(1400, now);
-        filter.frequency.exponentialRampToValueAtTime(180, now + 0.9);
+        filter.frequency.setValueAtTime(900, now);
+        filter.frequency.exponentialRampToValueAtTime(200, now + 0.5);
 
-        const vol = Math.min(Math.max(Math.abs(velocity) / 45, 0.015), 0.05);
-        gain.gain.setValueAtTime(vol, now);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.0);
+        // Gentle volume envelope with smooth natural decay
+        const gain = audioCtx.createGain();
+        const overtoneGain = audioCtx.createGain();
+
+        gain.gain.setValueAtTime(0.022, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
+
+        overtoneGain.gain.setValueAtTime(0.008, now);
+        overtoneGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
 
         osc.connect(filter);
-        overtone.connect(filter);
+        overtone.connect(overtoneGain);
+        overtoneGain.connect(filter);
         filter.connect(gain);
         gain.connect(audioCtx.destination);
 
         osc.start(now);
         overtone.start(now);
-        osc.stop(now + 1.0);
-        overtone.stop(now + 1.0);
+        osc.stop(now + 0.58);
+        overtone.stop(now + 0.58);
       } catch {
-        // Silent catch for autoplay restriction
+        // Silent catch for browser autoplay permissions
       }
     };
 
@@ -382,15 +397,9 @@ export default function Landing() {
         const phaseRow = i * 0.3;
         const waveSpeed = time * 2;
 
-        // Update guitar harmonic spring physics: F = -k*x - c*v
-        const str = stringPhysics[i];
-        str.velocity += -0.075 * str.displacement;
-        str.velocity *= 0.942;
-        str.displacement += str.velocity;
-
-        const cy1 = y - 130 + Math.sin(phaseRow + waveSpeed) * 80 + str.displacement * 0.85;
-        const cy2 = y + 130 + Math.sin(phaseRow + waveSpeed - 1.2) * 80 - str.displacement * 0.65;
-        const cy3 = y + Math.sin(phaseRow + waveSpeed - 2.4) * 60 + str.displacement * 0.45;
+        const cy1 = y - 130 + Math.sin(phaseRow + waveSpeed) * 80;
+        const cy2 = y + 130 + Math.sin(phaseRow + waveSpeed - 1.2) * 80;
+        const cy3 = y + Math.sin(phaseRow + waveSpeed - 2.4) * 60;
 
         const d = `M -100 ${y} C 480 ${cy1}, 1020 ${cy2}, 1600 ${cy3}`;
 
@@ -401,7 +410,7 @@ export default function Landing() {
       animationFrameId = requestAnimationFrame(renderWaves);
     };
 
-    // Honor reduced-motion and stop burning frames when the hero is offscreen
+    // Stop burning animation frames when hero is scrolled out of view
     let waveObserver: IntersectionObserver | undefined;
     if (!shouldReduceMotion) {
       renderWaves();
@@ -417,15 +426,26 @@ export default function Landing() {
       }
     }
 
+    // ONLY interact when cursor/touch is in the upper hero scene
     const handlePointerInteraction = (clientX: number, clientY: number) => {
-      if (!sceneRef.current) return;
+      if (!sceneRef.current || !heroVisible) return;
       const rect = sceneRef.current.getBoundingClientRect();
+
+      // Ensure the touch/mouse is strictly within the upper wave banner
+      if (
+        clientX < rect.left ||
+        clientX > rect.right ||
+        clientY < rect.top ||
+        clientY > rect.bottom
+      ) {
+        return;
+      }
+
       const x = clientX - rect.left;
       const y = clientY - rect.top;
       sceneRef.current.style.setProperty('--mouse-x', `${x}px`);
       sceneRef.current.style.setProperty('--mouse-y', `${y}px`);
 
-      // Calculate guitar string pluck detection across all 42 lines
       const now = performance.now();
       const dt = Math.max((now - prevMouseTime) / 1000, 0.001);
       const vy = (y - prevMouseY) / dt;
@@ -435,13 +455,13 @@ export default function Landing() {
 
       for (let i = 0; i < 42; i++) {
         const lineY = 40 + i * 26;
-        const crossed = (prevSvgNormY <= lineY && svgNormY >= lineY) || (prevSvgNormY >= lineY && svgNormY <= lineY);
+        const crossed =
+          (prevSvgNormY <= lineY && svgNormY >= lineY) ||
+          (prevSvgNormY >= lineY && svgNormY <= lineY);
         const dist = Math.abs(svgNormY - lineY);
 
-        if (crossed || (dist < 14 && Math.abs(vy) > 80)) {
-          const pluckForce = Math.min(Math.max(vy * 0.05, -30), 30);
-          stringPhysics[i].velocity += pluckForce;
-          playStringSound(i, vy);
+        if (crossed || (dist < 12 && Math.abs(vy) > 60)) {
+          playStringSound(i);
         }
       }
 
@@ -459,18 +479,24 @@ export default function Landing() {
       }
     };
 
-    /* Sticky CTA bar: appears after 40% scroll */
+    /* Sticky CTA bar: appears after 15% scroll */
     const handleScroll = () => {
       const scrollPct = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
       setShowStickyBar(scrollPct > 0.15 && scrollPct < 0.9);
     };
 
-    window.addEventListener('mousemove', handleMouseMove, { passive: true });
-    window.addEventListener('touchmove', handleTouchMove, { passive: true });
+    const sceneEl = sceneRef.current;
+    if (sceneEl) {
+      sceneEl.addEventListener('mousemove', handleMouseMove, { passive: true });
+      sceneEl.addEventListener('touchmove', handleTouchMove, { passive: true });
+    }
     window.addEventListener('scroll', handleScroll, { passive: true });
+
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('touchmove', handleTouchMove);
+      if (sceneEl) {
+        sceneEl.removeEventListener('mousemove', handleMouseMove);
+        sceneEl.removeEventListener('touchmove', handleTouchMove);
+      }
       window.removeEventListener('scroll', handleScroll);
       cancelAnimationFrame(animationFrameId);
       waveObserver?.disconnect();
