@@ -17,6 +17,21 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Optileno" />
+  <link rel="canonical" href="https://www.optileno.com/" />
+
+  <script>
+    (function() {
+      try {
+        var host = window.location.hostname;
+        var proto = window.location.protocol;
+        var isLocal = host === 'localhost' || host === '127.0.0.1' || host.indexOf('.local') !== -1;
+        if (!isLocal && (host === 'optileno.com' || proto === 'http:')) {
+          var target = 'https://www.optileno.com' + window.location.pathname + window.location.search + window.location.hash;
+          window.location.replace(target);
+        }
+      } catch (e) {}
+    })();
+  </script>
 
   <link rel="manifest" href="/site.webmanifest" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />

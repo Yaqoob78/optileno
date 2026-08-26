@@ -24,10 +24,12 @@ export default function SEO({
     keywords = "AI calendar planner, workflow automation for agency owners, AI planner, task manager, productivity analytics, deep work scheduling",
     schema,
 }: SEOProps) {
-    const currentUrl = typeof window !== 'undefined'
-        ? `${window.location.origin}${window.location.pathname}`
-        : 'https://www.optileno.com/';
-    const resolvedCanonicalUrl = canonicalUrl || currentUrl;
+    const rawPath = typeof window !== 'undefined' ? window.location.pathname : '/';
+    const cleanPath = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+    const fallbackUrl = `https://www.optileno.com${cleanPath === '/' ? '' : cleanPath}`;
+    const resolvedCanonicalUrl = canonicalUrl
+        ? (canonicalUrl.startsWith('http') ? canonicalUrl.replace(/^https?:\/\/(?:www\.)?optileno\.com/i, 'https://www.optileno.com') : `https://www.optileno.com${canonicalUrl.startsWith('/') ? canonicalUrl : `/${canonicalUrl}`}`)
+        : fallbackUrl;
 
     // Default SoftwareApplication Schema if none provided
     const defaultSchema = {

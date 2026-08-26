@@ -449,6 +449,34 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 
 # ==================================================
+# Canonical 301 Redirect Middleware
+# ==================================================
+class CanonicalRedirectMiddleware(BaseHTTPMiddleware):
+    """
+    Enforces global 301 Permanent Redirects:
+    1. http:// -> https:// (when behind TLS terminating proxies)
+    2. optileno.com -> https://www.optileno.com
+    """
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        host = request.headers.get("host", "").split(":")[0].lower()
+        proto = request.headers.get("x-forwarded-proto", "").lower() or request.url.scheme
+
+        # Ignore local development and test runners
+        if host in {"localhost", "127.0.0.1", "testserver"} or host.endswith(".local") or host.startswith("192.168."):
+            return await call_next(request)
+
+        # Enforce canonical www and https on production domains
+        if host == "optileno.com" or (proto == "http" and "optileno.com" in host):
+            path = request.url.path
+            query = f"?{request.url.query}" if request.url.query else ""
+            target_url = f"https://www.optileno.com{path}{query}"
+            from fastapi.responses import RedirectResponse
+            return RedirectResponse(url=target_url, status_code=301)
+
+        return await call_next(request)
+
+
+# ==================================================
 # Logging Middleware with Metrics
 # ==================================================
 class LoggingMiddleware(BaseHTTPMiddleware):

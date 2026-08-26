@@ -20,6 +20,7 @@ import logging
 import re
 from pathlib import Path
 
+
 from backend.app.config import settings, log_startup_settings
 from backend.api.v1.api import api_router
 from backend.auth import auth_router
@@ -29,6 +30,7 @@ from backend.core.cache import cache_service
 from backend.core.redis_rate_limiter import redis_rate_limiter
 from backend.core.monitoring import monitoring_service
 from backend.core.middleware import (
+    CanonicalRedirectMiddleware,
     RateLimitMiddleware,
     RequestValidationMiddleware,
     SecurityHeadersMiddleware,
@@ -41,10 +43,6 @@ from backend.core.health import (
     get_readiness,
     export_prometheus_metrics,
 )
-
-# ==================================================
-# Logging Configuration
-# ==================================================
 log_level = logging.DEBUG if settings.DEBUG else logging.INFO
 logging.basicConfig(
     level=log_level,
@@ -218,6 +216,9 @@ def _is_origin_allowed(origin: str) -> bool:
 
 # Compression (innermost)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+# Canonical 301 Redirect (http -> https, non-www -> www)
+app.add_middleware(CanonicalRedirectMiddleware)
 
 # Security headers
 app.add_middleware(SecurityHeadersMiddleware)
