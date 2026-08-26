@@ -41,6 +41,9 @@ export default function AppRoutes() {
         <Route path="/chat-leno" element={<FeaturePage featureKey="chat-leno" />} />
         <Route path="/plan-task" element={<FeaturePage featureKey="plan-task" />} />
         <Route path="/ai-planner" element={<FeaturePage featureKey="ai-planner" />} />
+        <Route path="/ai-calendar-planner" element={<FeaturePage featureKey="ai-calendar-planner" />} />
+        <Route path="/workflow-automation-agency-owners" element={<FeaturePage featureKey="workflow-automation-agency-owners" />} />
+        <Route path="/agency-workflow-automation" element={<FeaturePage featureKey="workflow-automation-agency-owners" />} />
         <Route path="/ai-task-manager" element={<FeaturePage featureKey="ai-task-manager" />} />
         <Route path="/ai-task" element={<FeaturePage featureKey="ai-task" />} />
         <Route path="/ai-productivity" element={<FeaturePage featureKey="ai-productivity" />} />

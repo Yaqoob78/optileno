@@ -1,4 +1,4 @@
-﻿import React, { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import AppRoutes from "./routes/AppRoutes";
 import { useSettingsStore } from "./stores/settings.store";
@@ -23,6 +23,9 @@ const PUBLIC_PATHS = new Set([
   '/chat-leno',
   '/plan-task',
   '/ai-planner',
+  '/ai-calendar-planner',
+  '/workflow-automation-agency-owners',
+  '/agency-workflow-automation',
   '/ai-task-manager',
   '/ai-task',
   '/ai-productivity',

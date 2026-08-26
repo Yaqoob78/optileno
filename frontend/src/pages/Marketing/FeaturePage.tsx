@@ -14,7 +14,9 @@ type FeatureKey =
   | "ai-task-manager"
   | "ai-task"
   | "ai-productivity"
-  | "ai-daily-productivity";
+  | "ai-daily-productivity"
+  | "ai-calendar-planner"
+  | "workflow-automation-agency-owners";
 
 interface FeaturePageProps {
   featureKey: FeatureKey;
@@ -73,6 +75,34 @@ const FEATURE_CONFIG: Record<FeatureKey, FeatureConfig> = {
     metaTitle: "AI Planner for Daily Tasks, Goals, and Focus - Optileno",
     metaDescription: "Use Optileno as an AI planner for daily task planning, focus blocks, goal tracking, and productivity analytics.",
     canonicalPath: "/ai-planner",
+  },
+  "ai-calendar-planner": {
+    title: "AI Calendar Planner",
+    subtitle: "Intelligent time blocking, automated schedule optimization, and seamless task-to-calendar execution.",
+    icon: <CalendarCheck2 size={26} />,
+    eyebrow: "AI Calendar & Schedule",
+    bullets: [
+      "Autonomous time blocking that defends your highest-leverage deep work windows.",
+      "Energy-aware schedule distribution based on your personal productivity peaks.",
+      "Instant schedule realignment when priorities change without calendar friction.",
+    ],
+    metaTitle: "AI Calendar Planner & Smart Time Blocking - Optileno",
+    metaDescription: "Automate your daily schedule with Optileno's AI calendar planner. Smart time blocking, energy-aware task scheduling, and deep work focus protection.",
+    canonicalPath: "/ai-calendar-planner",
+  },
+  "workflow-automation-agency-owners": {
+    title: "Workflow Automation for Agency Owners",
+    subtitle: "Eliminate operational bottlenecks, automate client deliverables, and protect founder bandwidth with AI.",
+    icon: <Target size={26} />,
+    eyebrow: "Agency Workflow Automation",
+    bullets: [
+      "Intelligent task triage that routes client deliverables without breaking flow state.",
+      "Burnout risk analytics that highlight operational strain before deadlines slip.",
+      "High-level agency milestones transformed into structured daily sprint blocks.",
+    ],
+    metaTitle: "Workflow Automation for Agency Owners & Founders - Optileno",
+    metaDescription: "Streamline client deliverables, automate task prioritization, prevent team burnout, and scale your agency with Optileno's AI workflow automation.",
+    canonicalPath: "/workflow-automation-agency-owners",
   },
   "ai-task-manager": {
     title: "AI Task Manager",

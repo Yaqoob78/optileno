@@ -606,9 +606,10 @@ export default function Landing() {
             <motion.div className="hero-keyword-links" variants={revealVariants} custom={0.52}>
               <span>Explore:</span>
               <div className="hero-keyword-buttons">
-                <button type="button" className="keyword-chip" onClick={() => navigate('/ai-planner')}>For agency owners</button>
-                <button type="button" className="keyword-chip" onClick={() => navigate('/ai-productivity')}>For developers</button>
-                <button type="button" className="keyword-chip" onClick={() => navigate('/tools')}>Free AI tools</button>
+                <button type="button" className="keyword-chip" onClick={() => navigate('/ai-calendar-planner')}>AI Calendar Planner</button>
+                <button type="button" className="keyword-chip" onClick={() => navigate('/workflow-automation-agency-owners')}>For Agency Owners</button>
+                <button type="button" className="keyword-chip" onClick={() => navigate('/ai-task-manager')}>AI Task Manager</button>
+                <button type="button" className="keyword-chip" onClick={() => navigate('/tools')}>Free AI Tools</button>
               </div>
             </motion.div>
 
@@ -881,6 +882,8 @@ export default function Landing() {
               <span className="footer-brand-name">Optileno</span>
             </div>
             <div className="footer-links">
+              <button onClick={() => navigate('/ai-calendar-planner')}>AI Calendar Planner</button>
+              <button onClick={() => navigate('/workflow-automation-agency-owners')}>Agency Automation</button>
               <button onClick={() => navigate('/tools')}>Free AI Tools</button>
               <button onClick={() => navigate('/privacy')}>Privacy Policy</button>
               <button onClick={() => navigate('/terms')}>Terms of Service</button>
