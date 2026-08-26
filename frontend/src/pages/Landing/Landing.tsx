@@ -306,6 +306,14 @@ export default function Landing() {
     let animationFrameId: number;
     let time = 0;
     let heroVisible = true;
+    let prevMouseY = 0;
+    let prevMouseTime = performance.now();
+
+    // Harmonic elastic spring state for all 42 lines (strictly silent, visual-only physics)
+    const stringPhysics = Array.from({ length: 42 }, () => ({
+      displacement: 0,
+      velocity: 0,
+    }));
 
     let basePaths: NodeListOf<SVGPathElement> | null = null;
     let activePaths: NodeListOf<SVGPathElement> | null = null;
@@ -325,9 +333,15 @@ export default function Landing() {
         const phaseRow = i * 0.3;
         const waveSpeed = time * 2;
 
-        const cy1 = y - 130 + Math.sin(phaseRow + waveSpeed) * 80;
-        const cy2 = y + 130 + Math.sin(phaseRow + waveSpeed - 1.2) * 80;
-        const cy3 = y + Math.sin(phaseRow + waveSpeed - 2.4) * 60;
+        // Update harmonic spring physics: F = -k*x - c*v
+        const str = stringPhysics[i];
+        str.velocity += -0.075 * str.displacement;
+        str.velocity *= 0.942;
+        str.displacement += str.velocity;
+
+        const cy1 = y - 130 + Math.sin(phaseRow + waveSpeed) * 80 + str.displacement * 0.85;
+        const cy2 = y + 130 + Math.sin(phaseRow + waveSpeed - 1.2) * 80 - str.displacement * 0.65;
+        const cy3 = y + Math.sin(phaseRow + waveSpeed - 2.4) * 60 + str.displacement * 0.45;
 
         const d = `M -100 ${y} C 480 ${cy1}, 1020 ${cy2}, 1600 ${cy3}`;
 
@@ -361,6 +375,28 @@ export default function Landing() {
       const y = clientY - rect.top;
       sceneRef.current.style.setProperty('--mouse-x', `${x}px`);
       sceneRef.current.style.setProperty('--mouse-y', `${y}px`);
+
+      // Calculate string pluck displacement across all 42 lines (strictly silent)
+      const now = performance.now();
+      const dt = Math.max((now - prevMouseTime) / 1000, 0.001);
+      const vy = (y - prevMouseY) / dt;
+
+      const svgNormY = (y / Math.max(rect.height, 1)) * 1000;
+      const prevSvgNormY = (prevMouseY / Math.max(rect.height, 1)) * 1000;
+
+      for (let i = 0; i < 42; i++) {
+        const lineY = 40 + i * 26;
+        const crossed = (prevSvgNormY <= lineY && svgNormY >= lineY) || (prevSvgNormY >= lineY && svgNormY <= lineY);
+        const dist = Math.abs(svgNormY - lineY);
+
+        if (crossed || (dist < 14 && Math.abs(vy) > 80)) {
+          const pluckForce = Math.min(Math.max(vy * 0.05, -30), 30);
+          stringPhysics[i].velocity += pluckForce;
+        }
+      }
+
+      prevMouseY = y;
+      prevMouseTime = now;
     };
 
     const handleMouseMove = (e: MouseEvent) => {
@@ -379,18 +415,13 @@ export default function Landing() {
       setShowStickyBar(scrollPct > 0.15 && scrollPct < 0.9);
     };
 
-    const sceneEl = sceneRef.current;
-    if (sceneEl) {
-      sceneEl.addEventListener('mousemove', handleMouseMove, { passive: true });
-      sceneEl.addEventListener('touchmove', handleTouchMove, { passive: true });
-    }
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
     window.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => {
-      if (sceneEl) {
-        sceneEl.removeEventListener('mousemove', handleMouseMove);
-        sceneEl.removeEventListener('touchmove', handleTouchMove);
-      }
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('scroll', handleScroll);
       cancelAnimationFrame(animationFrameId);
       waveObserver?.disconnect();
