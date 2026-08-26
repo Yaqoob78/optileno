@@ -53,15 +53,15 @@ const PLAN_CARDS: PlanCard[] = [
     {
         id: 'ultra',
         name: 'Ultra Pro',
-        monthlyLabel: '$6.99',
-        annualLabel: '$49',
-        description: 'Maximum intelligence. Leno agentic automation and deep behavioral analytics.',
+        monthlyLabel: '₹1,499 / mo ($19)',
+        annualLabel: '₹12,999 / yr (~$155)',
+        description: 'Maximum intelligence. Autonomous Agentic planner, deep burnout telemetry & focus analytics.',
         features: [
             'AI chat - 150 requests/day',
-            'Agentic planner automation',
+            'Autonomous Agentic planner automation',
             'Advanced analytics and AI insights',
-            'Focus heatmap and burnout risk',
-            'Detailed goal intelligence',
+            'Focus heatmap and burnout risk scoring',
+            'Detailed goal progress and AI trajectory',
             'Big Five test every 7 days',
             'Priority support',
         ],
@@ -118,7 +118,7 @@ export default function BillingSettings() {
 
         if (plan === 'ultra') {
             setLoading(true);
-            openLemonSqueezyCheckout(profile);
+            openLemonSqueezyCheckout(profile, billingCycle);
             return;
         }
     };

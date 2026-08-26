@@ -168,21 +168,20 @@ export default function Register() {
                                     className={`pricing-card ${formData.plan_type === 'ULTRA' ? 'selected' : ''}`}
                                     onClick={() => setFormData({ ...formData, plan_type: 'ULTRA' })}
                                 >
-                                    <div className="plan-badge">POPULAR</div>
+                                    <div className="plan-badge">MOST POWERFUL</div>
                                     <div className="pricing-header">
                                         <span className="plan-name">Ultra Pro</span>
                                         <div className="plan-price-group">
-                                            <span className="plan-price-original">$20</span>
-                                            <span className="plan-price">$6.99<span style={{ fontSize: '0.7em', opacity: 0.7 }}>/mo</span></span>
+                                            <span className="plan-price">₹1,499<span style={{ fontSize: '0.7em', opacity: 0.7 }}>/mo</span></span>
                                         </div>
                                     </div>
-                                    <div className="plan-offer-note">Everything in Free + Autopilot</div>
+                                    <div className="plan-offer-note" style={{ color: '#c084fc', fontWeight: 600 }}>Annual: ₹12,999/yr (~$155) • Save 28%</div>
                                     <div className="plan-features" style={{ gap: '6px' }}>
                                         <div className="plan-feature">AI Chat (150 req/day)</div>
-                                        <div className="plan-feature">Agentic planner automation</div>
+                                        <div className="plan-feature">Autonomous Agentic planner automation</div>
                                         <div className="plan-feature">Focus heatmap + burnout risk + AI insights</div>
                                         <div className="plan-feature">Detailed goal progress + AI intelligence</div>
-                                        <div className="plan-feature">Big Five every 7 days</div>
+                                        <div className="plan-feature">Big Five calibration every 7 days</div>
                                     </div>
                                 </div>
                             </div>
