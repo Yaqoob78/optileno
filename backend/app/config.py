@@ -185,6 +185,8 @@ def _normalize_database_url(url: str) -> str:
     return normalized
 
 
+
+
 def _build_database_url_from_pg_env() -> str:
     """
     Build async DATABASE_URL from Railway-style PG* variables if present.
@@ -216,24 +218,39 @@ def _pick_database_url_candidate() -> str:
     )
 
 
+def _normalize_redis_url(url: str) -> str:
+    cleaned = _strip_wrapping_quotes(url or "").strip()
+    if not cleaned:
+        return ""
+    if not (cleaned.startswith("redis://") or cleaned.startswith("rediss://") or cleaned.startswith("unix://")):
+        # If it's a bare host:port, ElastiCache serverless (.cache.amazonaws.com) requires TLS rediss://
+        if "cache.amazonaws.com" in cleaned:
+            cleaned = f"rediss://{cleaned}"
+        else:
+            cleaned = f"redis://{cleaned}"
+    return cleaned
+
+
 def _build_redis_url_from_env() -> str:
     """
     Build REDIS_URL from REDIS_* variables when REDIS_URL is not explicitly set.
     """
     explicit_url = _strip_wrapping_quotes(os.getenv("REDIS_URL", ""))
     if explicit_url:
-        return explicit_url
+        return _normalize_redis_url(explicit_url)
 
     host = _strip_wrapping_quotes(os.getenv("REDIS_HOST", "localhost")) or "localhost"
     port = (os.getenv("REDIS_PORT", "6379") or "6379").strip()
     db = (os.getenv("REDIS_DB", "0") or "0").strip()
     password = os.getenv("REDIS_PASSWORD", "")
 
+    scheme = "rediss" if "cache.amazonaws.com" in host else "redis"
     if password:
         encoded_password = urllib.parse.quote(password, safe="")
-        return f"redis://:{encoded_password}@{host}:{port}/{db}"
+        return f"{scheme}://:{encoded_password}@{host}:{port}/{db}"
 
-    return f"redis://{host}:{port}/{db}"
+    return f"{scheme}://{host}:{port}/{db}"
+
 
 
 
