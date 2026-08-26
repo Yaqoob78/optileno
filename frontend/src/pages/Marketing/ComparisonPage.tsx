@@ -32,12 +32,12 @@ const COMPARISON_DATA: Record<string, CompetitorData> = {
     name: "Motion",
     slug: "motion",
     tagline: "Optileno vs. Motion App",
-    heroHeading: "The Smart, Lightweight Motion Alternative for Solo Agencies",
-    heroSubheading: "Stop paying $34/month for complex algorithmic overload. Optileno delivers calm AI planning, burnout prevention, and goal-to-task automation at a fraction of the cost.",
-    metaTitle: "Optileno vs Motion: Best AI Calendar Planner for Agency Owners (2026)",
-    metaDescription: "Comparing Optileno vs Motion App: Discover why solo agency owners and operators choose Optileno for AI calendar planning, burnout risk detection, and transparent pricing.",
+    heroHeading: "Best Motion App Alternative for Solo Operators",
+    heroSubheading: "Stop paying $34/month for rigid algorithmic overload. Optileno combines autonomous AI calendar planning, built-in Burnout Telemetry, and Big Five Personality Calibration to protect your deep work and mental bandwidth.",
+    metaTitle: "Best Motion App Alternative for Solo Operators | Optileno",
+    metaDescription: "Looking for the best Motion app alternative? Optileno offers AI calendar planning, burnout risk detection, and Big Five work-style calibration without the $34/mo price tag.",
     competitorPrice: "$34 / month",
-    optilenoPrice: "$0 Free / $6.99 Ultra Pro",
+    optilenoPrice: "$0 Free / $19 Ultra Pro",
     summaryQuote: "Motion attempts to micromanage every 15-minute slot algorithmically, leading to schedule fatigue. Optileno acts as an intelligent partner that defends your deep work blocks without overwhelming you.",
     features: [
       {
@@ -49,14 +49,8 @@ const COMPARISON_DATA: Record<string, CompetitorData> = {
       {
         name: "Monthly Price (Pro Tier)",
         description: "Standard monthly cost for autonomous AI planning and full features.",
-        optileno: "$6.99 / mo",
+        optileno: "$19 / mo (or $6.99 Early-Bird)",
         competitor: "$34.00 / mo"
-      },
-      {
-        name: "Conversational AI Coach (Chat Leno)",
-        description: "Natural dialogue with an executive AI assistant that knows your active goals and habits.",
-        optileno: true,
-        competitor: false
       },
       {
         name: "Burnout Risk & Telemetry Scoring",
@@ -65,16 +59,22 @@ const COMPARISON_DATA: Record<string, CompetitorData> = {
         competitor: false
       },
       {
-        name: "Autonomous Time Blocking",
-        description: "Automated schedule alignment that places deep work blocks into open calendar slots.",
-        optileno: true,
-        competitor: true
-      },
-      {
         name: "Big Five Personality Work-Style Calibration",
         description: "Adapts scheduling recommendations to your conscientiousness and stress tolerance.",
         optileno: true,
         competitor: false
+      },
+      {
+        name: "Conversational AI Coach (Chat Leno)",
+        description: "Natural dialogue with an executive AI assistant that knows your active goals and habits.",
+        optileno: true,
+        competitor: false
+      },
+      {
+        name: "Autonomous Time Blocking",
+        description: "Automated schedule alignment that places deep work blocks into open calendar slots.",
+        optileno: true,
+        competitor: true
       },
       {
         name: "Focus Heatmaps & Analytics",
@@ -91,16 +91,16 @@ const COMPARISON_DATA: Record<string, CompetitorData> = {
     ],
     faqs: [
       {
-        question: "Why switch from Motion to Optileno?",
-        answer: "Optileno is engineered for operators and agency owners who need clear execution without Motion's steep $34/mo price tag and rigid schedule rearrangement. Optileno includes AI coaching, burnout warnings, and a genuine 100% Free tier."
+        question: "Why is Optileno the best Motion app alternative for solo operators?",
+        answer: "Optileno is engineered specifically for solo agency founders and operators who need clear execution without Motion's steep $34/mo price tag and rigid schedule rearrangement. Optileno includes real-time Burnout Telemetry, Big Five work-style calibration, and a genuine 100% Free tier."
+      },
+      {
+        question: "How does Optileno's Burnout Telemetry differ from Motion?",
+        answer: "Motion relentlessly fills empty calendar slots, increasing cognitive fatigue. Optileno continuously measures your task-switching intensity and consecutive sprint hours to alert you before burnout occurs."
       },
       {
         question: "Can I use Optileno alongside Google Calendar?",
         answer: "Yes! Optileno integrates seamlessly with your calendar workflow, allowing you to time-block tasks, protect deep work focus windows, and track goal progress in real time."
-      },
-      {
-        question: "Is Optileno really 100% free?",
-        answer: "Yes. The Explorer plan is free forever with 15 AI requests/day, full task management, habit tracking, and productivity analytics. Ultra Pro is only $6.99/mo if you want autonomous agentic planning."
       }
     ]
   },
@@ -108,12 +108,12 @@ const COMPARISON_DATA: Record<string, CompetitorData> = {
     name: "Sunsama",
     slug: "sunsama",
     tagline: "Optileno vs. Sunsama",
-    heroHeading: "AI-Powered Daily Planning Designed for High-Output Operators",
-    heroSubheading: "Sunsama is great for manual time-boxing, but Optileno adds the missing piece: autonomous AI agent intelligence, conversational task breakdown, and burnout detection.",
-    metaTitle: "Optileno vs Sunsama: AI Task & Calendar Planner for Developers & Agencies",
-    metaDescription: "Optileno vs Sunsama comparison: See how Optileno's AI intelligence, automated sprint planning, and $6.99 pricing compare to Sunsama's $20/mo manual workflow.",
+    heroHeading: "Sunsama vs Optileno for Developers",
+    heroSubheading: "Sunsama requires extensive manual dragging and time-boxing. Optileno gives developers autonomous AI agent intelligence, conversational sprint breakdown, and proactive burnout prevention.",
+    metaTitle: "Sunsama vs Optileno for Developers & Operators | Optileno",
+    metaDescription: "Comparing Sunsama vs Optileno for developers: Discover how Optileno's AI intelligence, automated sprint planning, and built-in burnout analytics outpace Sunsama's manual workflow.",
     competitorPrice: "$20 / month",
-    optilenoPrice: "$0 Free / $6.99 Ultra Pro",
+    optilenoPrice: "$0 Free / $19 Ultra Pro",
     summaryQuote: "While Sunsama requires extensive manual dragging and configuration every morning, Optileno uses Chat Leno AI to instantly triage tasks and suggest optimized focus windows in under 90 seconds.",
     features: [
       {
@@ -125,20 +125,26 @@ const COMPARISON_DATA: Record<string, CompetitorData> = {
       {
         name: "Monthly Price",
         description: "Monthly subscription for full automated features.",
-        optileno: "$6.99 / mo",
+        optileno: "$19 / mo (or $6.99 Early-Bird)",
         competitor: "$20.00 / mo"
+      },
+      {
+        name: "Burnout Risk Telemetry",
+        description: "Real-time indicators that signal cognitive overload and excessive work strain.",
+        optileno: true,
+        competitor: "Daily Shutdown Prompts"
+      },
+      {
+        name: "Big Five Personality Work-Style Calibration",
+        description: "Personalized productivity suggestions adapted to your psychological profile.",
+        optileno: true,
+        competitor: false
       },
       {
         name: "Autonomous AI Task Breakdown",
         description: "LLM-driven goal-to-task decomposition and timeline estimation.",
         optileno: true,
         competitor: "Manual Drag-and-Drop"
-      },
-      {
-        name: "Burnout Risk Analytics",
-        description: "Real-time indicators that signal cognitive overload and excessive work strain.",
-        optileno: true,
-        competitor: "Daily Shutdown Prompts"
       },
       {
         name: "Chat Leno AI Partner",
@@ -155,12 +161,12 @@ const COMPARISON_DATA: Record<string, CompetitorData> = {
     ],
     faqs: [
       {
-        question: "How does Optileno differ from Sunsama?",
-        answer: "Sunsama focuses on manual mindful planning, whereas Optileno combines mindfulness with autonomous AI execution, generative sprint breakdown, and proactive burnout prevention for 65% lower cost."
+        question: "Why do developers prefer Optileno over Sunsama?",
+        answer: "Developers love Optileno because it eliminates the tedious manual drag-and-drop ritual of Sunsama. With Optileno, AI automatically decomposes complex engineering goals into daily focus blocks while guarding against coding burnout."
       },
       {
-        question: "Who is Optileno best suited for?",
-        answer: "Solo agency owners, software engineers, technical founders, and freelance operators who want maximum output without manual admin friction."
+        question: "How does Big Five Personality Calibration work for software engineers?",
+        answer: "Optileno calibrates your schedule based on your conscientiousness, neuroticism, and focus endurance, preventing premature context switching during deep coding sessions."
       }
     ]
   }

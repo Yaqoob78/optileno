@@ -24,6 +24,7 @@ import GoalTimeline from '../../components/planner/GoalTimeline';
 import HabitTracker from '../../components/planner/HabitTracker';
 import TaskCard from '../../components/planner/TaskCard';
 import PlannerDashboard from '../../components/planner/Plannerdashboard';
+import CalendarGridView from '../../components/planner/CalendarGridView';
 import { Modal } from '../../components/common/Modal';
 import { normalizeTaskStatus } from '../../services/api/planner.service';
 
@@ -64,6 +65,7 @@ export default function PlannerPage() {
 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [maximizedView, setMaximizedView] = useState(false);
+  const [viewType, setViewType] = useState<'list' | 'calendar'>('list');
 
   // ── NEW STATES FOR FIXING ISSUES ─────────────────────────────
   const [isSaving, setIsSaving] = useState(false);
@@ -186,6 +188,32 @@ export default function PlannerPage() {
       notes: '',
       dueDate: getDateKeyInTimezone(now, timezone),
       scheduledDay: getWeekdayIndexInTimezone(now, timezone),
+      subtasks: [],
+      recurring: false,
+    });
+    setIsNewTask(true);
+    setIsEditing(true);
+    setSaveError(null);
+  };
+
+  const handleAddTaskAtTime = (dateKey: string, timeHHMM: string) => {
+    setIsEnergyTouched(false);
+    const parsedDate = new Date(dateKey);
+    const scheduledDay = !Number.isNaN(parsedDate.getTime()) ? getWeekdayIndexInTimezone(parsedDate, timezone) : getWeekdayIndexInTimezone(new Date(), timezone);
+
+    setEditForm({
+      title: '',
+      startTime: timeHHMM,
+      duration: 60,
+      energy: 'medium',
+      status: 'planned',
+      category: undefined,
+      priority: undefined,
+      tags: [],
+      description: '',
+      notes: '',
+      dueDate: dateKey,
+      scheduledDay,
       subtasks: [],
       recurring: false,
     });
@@ -530,6 +558,26 @@ export default function PlannerPage() {
           </div>
 
           <div className="header-actions">
+            <div className="planner-view-switch" style={{ display: 'flex', background: 'rgba(0,0,0,0.25)', padding: '3px', borderRadius: '8px', border: '1px solid var(--border-primary)' }}>
+              <button
+                type="button"
+                className={`view-toggle-btn ${viewType === 'list' ? 'active' : ''}`}
+                style={{ padding: '6px 12px', fontSize: '13px', fontWeight: 600, border: 'none', borderRadius: '6px', cursor: 'pointer', background: viewType === 'list' ? 'var(--primary)' : 'transparent', color: viewType === 'list' ? '#fff' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}
+                onClick={() => setViewType('list')}
+              >
+                <List size={14} />
+                List
+              </button>
+              <button
+                type="button"
+                className={`view-toggle-btn ${viewType === 'calendar' ? 'active' : ''}`}
+                style={{ padding: '6px 12px', fontSize: '13px', fontWeight: 600, border: 'none', borderRadius: '6px', cursor: 'pointer', background: viewType === 'calendar' ? 'var(--primary)' : 'transparent', color: viewType === 'calendar' ? '#fff' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}
+                onClick={() => setViewType('calendar')}
+              >
+                <CalendarIcon size={14} />
+                Calendar
+              </button>
+            </div>
             <button
               className="maximize-btn"
               onClick={() => setMaximizedView(!maximizedView)}
@@ -913,110 +961,120 @@ export default function PlannerPage() {
         </Modal>
 
         {/* Main content */}
-        <div className={`planner-main-grid ${maximizedView ? 'maximized' : ''}`}>
-          {/* Tasks Section */}
-          <div className="tasks-section">
-            <div className="section-header">
-              <div className="section-title">
-                <List size={20} />
-                <div>
-                  <h2>Today's Tasks</h2>
-                  <p className="section-subtitle">Manage your daily schedule</p>
+        {viewType === 'calendar' ? (
+          <CalendarGridView
+            tasks={tasks}
+            currentTime={currentTime}
+            onAddTaskAtTime={handleAddTaskAtTime}
+            onEditTask={(t) => handleEditTask(t)}
+            onCompleteTask={(id) => handleCompleteTask(id.toString())}
+          />
+        ) : (
+          <div className={`planner-main-grid ${maximizedView ? 'maximized' : ''}`}>
+            {/* Tasks Section */}
+            <div className="tasks-section">
+              <div className="section-header">
+                <div className="section-title">
+                  <List size={20} />
+                  <div>
+                    <h2>Today's Tasks</h2>
+                    <p className="section-subtitle">Manage your daily schedule</p>
+                  </div>
+                </div>
+                <div className="section-stats">
+                  <span className="task-count">{totalTasks} total</span>
+                  <span className="completed-count">{completedTasks} completed</span>
                 </div>
               </div>
-              <div className="section-stats">
-                <span className="task-count">{totalTasks} total</span>
-                <span className="completed-count">{completedTasks} completed</span>
-              </div>
-            </div>
 
-            {isLoading ? (
-              <div className="loading-state">
-                <Loader2 className="animate-spin" size={32} />
-                <p>Loading your planner...</p>
-              </div>
-            ) : error ? (
-              <div className="error-state">
-                <p>{error}</p>
-                <button onClick={() => void handleRefreshPlanner()}>Try again</button>
-              </div>
-            ) : tasks.length === 0 ? (
-              <div className="empty-tasks">
-                <List size={48} />
-                <h3>No tasks scheduled yet</h3>
-                <p>Get started by adding your first task</p>
-                <button className="add-first-task-btn" onClick={handleAddTask}>
-                  <Plus size={16} /> Add Task
-                </button>
-              </div>
-            ) : (
-              <div className="tasks-container">
-                {(() => {
-                  const uniqueTasks: any[] = [];
-                  const seenIds = new Set();
-                  tasks.forEach((task: any) => {
-                    const id = task.id || task._id;
-                    if (id) {
-                      if (seenIds.has(id)) return;
-                      seenIds.add(id);
-                    }
-                    uniqueTasks.push(task);
-                  });
-
-                  // Chronological order: what's due next sits at the top, later work
-                  // below it, undated tasks after that, and finished work last.
-                  const rank = (task: any) =>
-                    normalizeTaskStatus(task.status) === 'done' ? 2 : 0;
-
-                  const sortedTasks = [...uniqueTasks].sort((a, b) => {
-                    const rankDiff = rank(a) - rank(b);
-                    if (rankDiff !== 0) return rankDiff;
-
-                    const aDate = parseTaskDate(a.dueDate || a.due_date);
-                    const bDate = parseTaskDate(b.dueDate || b.due_date);
-                    if (aDate && bDate) return aDate.getTime() - bDate.getTime();
-                    if (aDate) return -1;
-                    if (bDate) return 1;
-                    return String(a.title || '').localeCompare(String(b.title || ''));
-                  });
-
-                  return sortedTasks.map((task) => (
-                    <TaskCard
-                      key={task.id || task._id || `task-${crypto.randomUUID()}`}
-                      task={transformTaskForCard(task)}
-                      onEdit={(t) => handleEditTask(t)}
-                      onDelete={(id) => deleteTask(id.toString())}
-                      onStartTask={(id) => handleStartTask(id.toString())}
-                      onMarkComplete={(id) => handleCompleteTask(id.toString())}
-                      onRepeat={(t) => handleOpenRepeatModal(t)}
-                      onDuplicate={(t) => void handleDuplicateTask(t)}
-                      onAutoUpdateStatus={(id, status) => updateTask(String(id), { status: status as any })}
-                      onUpdateTask={(id, updates) => updateTask(String(id), updates)}
-                    />
-                  ));
-                })()}
-              </div>
-            )}
-          </div>
-
-          {/* Right Panel (when not maximized) */}
-          {!maximizedView && (
-            <div className="right-panel">
-              {isUltra ? (
-                <>
-                  <DeepWorkBlock currentTime={currentTime} />
-                  <div className="panel-divider" />
-                  <GoalTimeline />
-                </>
+              {isLoading ? (
+                <div className="loading-state">
+                  <Loader2 className="animate-spin" size={32} />
+                  <p>Loading your planner...</p>
+                </div>
+              ) : error ? (
+                <div className="error-state">
+                  <p>{error}</p>
+                  <button onClick={() => void handleRefreshPlanner()}>Try again</button>
+                </div>
+              ) : tasks.length === 0 ? (
+                <div className="empty-tasks">
+                  <List size={48} />
+                  <h3>No tasks scheduled yet</h3>
+                  <p>Get started by adding your first task</p>
+                  <button className="add-first-task-btn" onClick={handleAddTask}>
+                    <Plus size={16} /> Add Task
+                  </button>
+                </div>
               ) : (
-                <div className="right-panel-locked" style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <div style={{ flex: 1 }}><LockedFeature title="Deep Work" className="h-full" /></div>
-                  <div style={{ flex: 1 }}><LockedFeature title="Goal Timeline" className="h-full" /></div>
+                <div className="tasks-container">
+                  {(() => {
+                    const uniqueTasks: any[] = [];
+                    const seenIds = new Set();
+                    tasks.forEach((task: any) => {
+                      const id = task.id || task._id;
+                      if (id) {
+                        if (seenIds.has(id)) return;
+                        seenIds.add(id);
+                      }
+                      uniqueTasks.push(task);
+                    });
+
+                    // Chronological order: what's due next sits at the top, later work
+                    // below it, undated tasks after that, and finished work last.
+                    const rank = (task: any) =>
+                      normalizeTaskStatus(task.status) === 'done' ? 2 : 0;
+
+                    const sortedTasks = [...uniqueTasks].sort((a, b) => {
+                      const rankDiff = rank(a) - rank(b);
+                      if (rankDiff !== 0) return rankDiff;
+
+                      const aDate = parseTaskDate(a.dueDate || a.due_date);
+                      const bDate = parseTaskDate(b.dueDate || b.due_date);
+                      if (aDate && bDate) return aDate.getTime() - bDate.getTime();
+                      if (aDate) return -1;
+                      if (bDate) return 1;
+                      return String(a.title || '').localeCompare(String(b.title || ''));
+                    });
+
+                    return sortedTasks.map((task) => (
+                      <TaskCard
+                        key={task.id || task._id || `task-${crypto.randomUUID()}`}
+                        task={transformTaskForCard(task)}
+                        onEdit={(t) => handleEditTask(t)}
+                        onDelete={(id) => deleteTask(id.toString())}
+                        onStartTask={(id) => handleStartTask(id.toString())}
+                        onMarkComplete={(id) => handleCompleteTask(id.toString())}
+                        onRepeat={(t) => handleOpenRepeatModal(t)}
+                        onDuplicate={(t) => void handleDuplicateTask(t)}
+                        onAutoUpdateStatus={(id, status) => updateTask(String(id), { status: status as any })}
+                        onUpdateTask={(id, updates) => updateTask(String(id), updates)}
+                      />
+                    ));
+                  })()}
                 </div>
               )}
             </div>
-          )}
-        </div>
+
+            {/* Right Panel (when not maximized) */}
+            {!maximizedView && (
+              <div className="right-panel">
+                {isUltra ? (
+                  <>
+                    <DeepWorkBlock currentTime={currentTime} />
+                    <div className="panel-divider" />
+                    <GoalTimeline />
+                  </>
+                ) : (
+                  <div className="right-panel-locked" style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ flex: 1 }}><LockedFeature title="Deep Work" className="h-full" /></div>
+                    <div style={{ flex: 1 }}><LockedFeature title="Goal Timeline" className="h-full" /></div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Bottom section */}
         <div className="planner-bottom-grid">
