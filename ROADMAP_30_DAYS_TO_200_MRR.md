@@ -41,17 +41,23 @@ Optileno does not compete as another generic to-do list; it is positioned as an 
 ```
 
 ### Key Functional Engines:
-1. **Interactive Chronological Time-Grid**:
+1. **Interactive Chronological Time-Grid & 1-Click Sync**:
    * 18-hour continuous planner (06:00 to 23:00) with half-hour grid lines.
-   * Multi-view: Instant toggle between **7-Day Week View** and **Day View**.
-   * One-click slot creation: Click any empty time block to auto-fill that date & hour.
+   * Multi-view: Instant toggle between **7-Day Week View** and **Day View** (auto-adapts on mobile).
+   * **1-Click Google Calendar & RFC-5545 .ics Sync Engine**: Direct 1-click Google Calendar event generation on tasks plus downloadable `.ics` feed for Outlook and Apple Calendar.
    * Real-time "Now" red laser indicator tracking current minute.
 2. **Deep Work Focus Block Automation**:
    * Autonomous focus scheduling that detects empty calendar slots and schedules 90-minute deep work blocks aligned with user quarterly goals.
    * Ambient focus timer with built-in burnout recovery intervals.
-3. **Big Five Personality & Burnout Scoring**:
+3. **Intentional Human-in-the-Loop Confirmation**:
+   * Unlike Motion's disruptive algorithm that reshuffles calendars without context, Optileno drafts high-precision schedules and asks for 1-click confirmation before altering user time.
+4. **Big Five Personality & Burnout Scoring**:
    * Analyzes cognitive strain, task overdue patterns, and focus stamina to predict burnout before it happens.
-4. **Free Lead-Generation Tools**:
+5. **Fact-Checked Competitor Positioning**:
+   * **vs Motion**: Motion is $34/mo monthly and only drops to $19/mo on a 1-year upfront lock-in ($228). Optileno is $19/mo month-to-month with no annual lock-in, and drops to ~$12.90/mo ($155/yr) on annual billing.
+   * **vs Sunsama**: Sunsama costs $25/mo ($20 annual) for a slow 25-minute manual morning ritual (no AI by design). Optileno provides 90-second AI triage.
+   * **vs Reclaim.ai**: Reclaim is a background calendar-blocking utility. Optileno is an all-in-one cognitive workstation with Chat Leno conversational coaching and goal breakdown.
+6. **Free Lead-Generation Tools**:
    * `/tools/ai-task-prioritizer`: Converts messy braindump lists into prioritized Eisenhower blocks with a 1-click bridge to create an account.
    * `/tools/ai-weekly-planner`: Generates structured weekly themes with daily 180-min focus blocks.
 

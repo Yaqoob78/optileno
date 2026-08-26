@@ -153,11 +153,12 @@ def build_pdf():
     ))
 
     features = [
-        "<b>Interactive Chronological Time-Grid:</b> 18-hour continuous planner (06:00 to 23:00) with 7-Day & 1-Day views, live 'Now' indicator, and click-to-schedule empty slots.",
+        "<b>Interactive Calendar & 1-Click Sync:</b> 18-hour continuous planner with Day/Week toggles, 1-click Google Calendar event generation, and downloadable RFC-5545 .ics feeds for Outlook/Apple Calendar.",
+        "<b>Intentional Human-in-the-Loop AI:</b> Unlike Motion's disruptive auto-rescheduling that shuffles meetings without context, Optileno drafts high-precision schedules and asks for 1-click user confirmation.",
         "<b>Dual AI Brain with Instant Failover:</b> Meta Llama 3.3 70B via NVIDIA NIM with sub-300ms failover to Groq for zero downtime.",
-        "<b>Autonomous Deep Work Scheduling:</b> AI detects open calendar gaps and schedules 90-minute focused execution blocks.",
-        "<b>Big Five & Burnout Telemetry:</b> Calibrates schedule intensity based on psychological stamina and cognitive workload.",
-        "<b>Free Lead-Gen Tools:</b> Public AI Task Prioritizer and Weekly Planner for organic search and viral Reddit acquisition."
+        "<b>Big Five & Burnout Telemetry:</b> Calibrates schedule intensity to psychological stamina and alerts you before cognitive fatigue leads to burnout.",
+        "<b>Free Lead-Gen Tools:</b> Public AI Task Prioritizer and Weekly Planner for organic search and viral Reddit acquisition.",
+        "<b>Fact-Checked Competitive Pricing:</b> $19/mo with zero annual lock-in (vs Motion's $34/mo monthly) and ~$12.90/mo on annual (vs Sunsama's $20/mo)."
     ]
     for feat in features:
         story.append(Paragraph(f"• {feat}", bullet_style))
@@ -170,12 +171,12 @@ def build_pdf():
     # Week 1
     story.append(Paragraph("Phase 1: Days 1 to 7 — Technical Launch & Free Lead Magnets", h2_style))
     w1_items = [
-        "<b>Day 1 (Indexing):</b> Submit sitemap.xml to Google Search Console and Bing Webmaster Tools. Verify all 23 routes return 200 OK.",
+        "<b>Day 1 (Indexing & Redirects):</b> Verify global 301 canonical redirects (https://www.optileno.com), submit sitemap.xml with /vs/motion, /vs/sunsama, /vs/reclaim to Google Search Console.",
         "<b>Day 2 (AI Directories Part 1):</b> Submit to Futurepedia, There's An AI For That (TAAFT), Toolify.ai, TopAI.tools, and Insidr.ai.",
-        "<b>Day 3 (AI Directories Part 2):</b> Submit to AlternativeTo (as Motion/Sunsama alternative), Microlaunch, Uneed, and BetaList.",
-        "<b>Day 4 (Reddit Seed):</b> Post free tool on r/productivity and r/solopreneur: 'I built a free tool that ranks tasks by revenue leverage'.",
-        "<b>Day 5 (Competitor Outreach):</b> Share /vs/motion on Notion/Motion Discord communities showing how Optileno prevents burnout at $19/mo vs $34/mo.",
-        "<b>Day 6 (Annual Discount Push):</b> Activate in-app Founding Member Pass: ₹12,999/yr (~$155) with 28% discount.",
+        "<b>Day 3 (AI Directories Part 2):</b> Submit to AlternativeTo (as Motion, Sunsama, and Reclaim alternative), Microlaunch, Uneed, and BetaList.",
+        "<b>Day 4 (Reddit Seed):</b> Post free tool on r/productivity and r/solopreneur: 'I built a free tool that ranks tasks by revenue leverage with 1-click Google Calendar sync'.",
+        "<b>Day 5 (Competitor Outreach):</b> Share /vs/motion and /vs/reclaim comparisons highlighting cognitive load protection and flexible $19/mo pricing.",
+        "<b>Day 6 (Annual Discount Push):</b> Activate in-app Founding Member Pass: ₹12,999/yr (~$155) saving 32% vs monthly.",
         "<b>Day 7 (Week 1 Review):</b> Verify Lemon Squeezy webhook logs, free user activation, and database metrics."
     ]
     for item in w1_items:

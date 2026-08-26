@@ -39,6 +39,7 @@ const PUBLIC_PATHS = new Set([
   '/goal-progress',
   '/vs/motion',
   '/vs/sunsama',
+  '/vs/reclaim',
   '/terms',
   '/privacy',
   '/refund',

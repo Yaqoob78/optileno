@@ -47,6 +47,7 @@ export default function AppRoutes() {
         <Route path="/agency-workflow-automation" element={<FeaturePage featureKey="workflow-automation-agency-owners" />} />
         <Route path="/vs/motion" element={<ComparisonPage competitorKey="motion" />} />
         <Route path="/vs/sunsama" element={<ComparisonPage competitorKey="sunsama" />} />
+        <Route path="/vs/reclaim" element={<ComparisonPage competitorKey="reclaim" />} />
         <Route path="/vs/:competitor" element={<ComparisonPage />} />
         <Route path="/ai-task-manager" element={<FeaturePage featureKey="ai-task-manager" />} />
         <Route path="/ai-task" element={<FeaturePage featureKey="ai-task" />} />

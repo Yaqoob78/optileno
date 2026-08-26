@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Plus, Zap, CheckCircle2, Circle, Brain, Target, Sparkles } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Plus, Zap, CheckCircle2, Circle, Brain, Target, Sparkles, Download, ExternalLink } from 'lucide-react';
 import { useSettingsStore } from '../../stores/useSettingsStore';
 import { getDateKeyInTimezone, formatLocalDateLabel, addDaysToLocalDateKey } from '../../utils/timezone';
+import { downloadICSFile, getGoogleCalendarUrl, CalendarEventData } from '../../utils/calendarSync';
 import './CalendarGridView.css';
 
 interface TaskItem {
@@ -51,7 +52,8 @@ export default function CalendarGridView({
   onStartDeepWork,
 }: CalendarGridViewProps) {
   const timezone = useSettingsStore((state) => state.timezone);
-  const [viewMode, setViewMode] = useState<'week' | 'day'>('week');
+  const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
+  const [viewMode, setViewMode] = useState<'week' | 'day'>(isMobile ? 'day' : 'week');
   const [weekOffset, setWeekOffset] = useState(0);
 
   // Calculate current week days starting from Monday (or Sunday)
@@ -115,6 +117,51 @@ export default function CalendarGridView({
     return (clampedH - 6) * 60 + m;
   };
 
+  const handleExportICS = () => {
+    const eventsToExport: CalendarEventData[] = [];
+
+    tasks.forEach((t) => {
+      const dueKey = t.dueDate || t.due_date;
+      const timeStr = t.startTime || t.start_time || '09:00';
+      const [h, m] = timeStr.split(':').map((v: string) => parseInt(v, 10) || 0);
+
+      const d = dueKey ? new Date(dueKey) : new Date();
+      if (Number.isNaN(d.getTime())) return;
+      d.setHours(h, m, 0, 0);
+
+      eventsToExport.push({
+        title: t.title || 'Task',
+        description: t.description || `Priority: ${t.priority || 'medium'} • Category: ${t.category || 'general'}`,
+        startDate: d,
+        durationMinutes: t.duration || t.duration_minutes || 45,
+      });
+    });
+
+    deepWorkBlocks.forEach((dw) => {
+      const rawDate = dw.scheduledDate || dw.scheduled_date || dw.start_time;
+      const timeStr = dw.startTime || (dw.start_time ? dw.start_time.substring(11, 16) : '09:00');
+      const [h, m] = timeStr.split(':').map((v: string) => parseInt(v, 10) || 0);
+
+      const d = rawDate ? new Date(rawDate) : new Date();
+      if (Number.isNaN(d.getTime())) return;
+      d.setHours(h, m, 0, 0);
+
+      eventsToExport.push({
+        title: `🧠 Deep Work: ${dw.goalTitle || 'Focus Session'}`,
+        description: 'Scheduled focus block via Optileno',
+        startDate: d,
+        durationMinutes: dw.durationMinutes || dw.duration_minutes || 90,
+      });
+    });
+
+    if (eventsToExport.length === 0) {
+      alert('No scheduled tasks or deep work blocks to export.');
+      return;
+    }
+
+    downloadICSFile(`optileno-calendar-${getDateKeyInTimezone(new Date(), timezone)}.ics`, eventsToExport);
+  };
+
   return (
     <div className="cal-grid-wrapper">
       {/* Calendar Header Controls */}
@@ -143,19 +190,30 @@ export default function CalendarGridView({
           <span className="cal-range-label">{currentRangeLabel}</span>
         </div>
 
-        <div className="cal-view-toggles">
+        <div className="cal-header-actions-right">
           <button
-            className={`cal-toggle-btn ${viewMode === 'week' ? 'active' : ''}`}
-            onClick={() => setViewMode('week')}
+            className="cal-sync-btn"
+            onClick={handleExportICS}
+            title="Export full schedule to Google Calendar / Outlook / Apple Calendar (.ics)"
           >
-            Week View
+            <Download size={14} />
+            <span>Sync / Export .ics</span>
           </button>
-          <button
-            className={`cal-toggle-btn ${viewMode === 'day' ? 'active' : ''}`}
-            onClick={() => setViewMode('day')}
-          >
-            Day View
-          </button>
+
+          <div className="cal-view-toggles">
+            <button
+              className={`cal-toggle-btn ${viewMode === 'week' ? 'active' : ''}`}
+              onClick={() => setViewMode('week')}
+            >
+              Week
+            </button>
+            <button
+              className={`cal-toggle-btn ${viewMode === 'day' ? 'active' : ''}`}
+              onClick={() => setViewMode('day')}
+            >
+              Day
+            </button>
+          </div>
         </div>
       </div>
 
@@ -311,6 +369,26 @@ export default function CalendarGridView({
                           </button>
                           <span className="cal-task-time">{timeStr}</span>
                           {task.energy === 'high' && <Zap size={11} className="energy-icon" />}
+                          <button
+                            className="cal-gcal-link-btn"
+                            title="Add to Google Calendar"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const dueKey = task.dueDate || task.due_date;
+                              const [h, m] = timeStr.split(':').map((v: string) => parseInt(v, 10) || 0);
+                              const d = dueKey ? new Date(dueKey) : new Date();
+                              d.setHours(h, m, 0, 0);
+                              const gcalUrl = getGoogleCalendarUrl({
+                                title: task.title,
+                                description: task.description,
+                                startDate: d,
+                                durationMinutes: duration,
+                              });
+                              window.open(gcalUrl, '_blank', 'noopener,noreferrer');
+                            }}
+                          >
+                            <ExternalLink size={10} />
+                          </button>
                         </div>
                         <div className="cal-task-title">{task.title}</div>
                       </div>

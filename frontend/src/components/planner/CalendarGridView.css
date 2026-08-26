@@ -69,6 +69,52 @@
   margin-left: 0.5rem;
 }
 
+.cal-header-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.cal-sync-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary, #f1f5f9);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cal-sync-btn:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.4);
+  color: #a5b4fc;
+}
+
+.cal-gcal-link-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary, #94a3b8);
+  padding: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s, color 0.15s;
+  margin-left: auto;
+}
+
+.cal-gcal-link-btn:hover {
+  opacity: 1;
+  color: #38bdf8;
+}
+
 .cal-view-toggles {
   display: flex;
   background: rgba(0, 0, 0, 0.3);

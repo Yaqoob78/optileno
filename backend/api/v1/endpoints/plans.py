@@ -491,3 +491,81 @@ async def delete_task_recurrence(pattern_id: str, current_user: User = Depends(g
     if not success:
         raise HTTPException(status_code=404, detail="Recurrence pattern not found or already deactivated")
     return None
+
+
+@router.get("/calendar/export.ics")
+async def export_calendar_ics(current_user: User = Depends(get_current_user)):
+    """Export scheduled tasks and deep work sessions as an RFC-5545 .ics calendar feed."""
+    from datetime import datetime, timedelta, timezone as dt_timezone
+    from fastapi.responses import Response
+
+    tasks = await planner_service.get_tasks(user_id=str(current_user.id))
+    deep_works = await planner_service.get_scheduled_deep_work(user_id=str(current_user.id))
+
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Optileno//AI Calendar Planner//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+        "X-WR-CALNAME:Optileno Planner",
+    ]
+
+    now_utc_str = datetime.now(dt_timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+    for t in tasks:
+        due = getattr(t, "due_date", None)
+        if not due:
+            continue
+        try:
+            d = datetime.fromisoformat(str(due).replace("Z", "+00:00"))
+            dt_start = d.strftime("%Y%m%dT%H%M%SZ")
+            dur = getattr(t, "duration_minutes", 45) or 45
+            dt_end = (d + timedelta(minutes=dur)).strftime("%Y%m%dT%H%M%SZ")
+            t_id = str(getattr(t, "id", "task"))
+            title = str(getattr(t, "title", "Task")).replace("\n", " ")
+            lines.extend([
+                "BEGIN:VEVENT",
+                f"UID:optileno-task-{t_id}@optileno.com",
+                f"DTSTAMP:{now_utc_str}",
+                f"DTSTART:{dt_start}",
+                f"DTEND:{dt_end}",
+                f"SUMMARY:{title}",
+                f"DESCRIPTION:Optileno Priority: {getattr(t, 'priority', 'medium')}",
+                "STATUS:CONFIRMED",
+                "END:VEVENT",
+            ])
+        except Exception:
+            continue
+
+    for dw in deep_works:
+        scheduled = getattr(dw, "scheduled_date", None) or getattr(dw, "start_time", None)
+        if not scheduled:
+            continue
+        try:
+            d = datetime.fromisoformat(str(scheduled).replace("Z", "+00:00"))
+            dt_start = d.strftime("%Y%m%dT%H%M%SZ")
+            dur = getattr(dw, "duration_minutes", 90) or 90
+            dt_end = (d + timedelta(minutes=dur)).strftime("%Y%m%dT%H%M%SZ")
+            dw_id = str(getattr(dw, "id", "dw"))
+            lines.extend([
+                "BEGIN:VEVENT",
+                f"UID:optileno-dw-{dw_id}@optileno.com",
+                f"DTSTAMP:{now_utc_str}",
+                f"DTSTART:{dt_start}",
+                f"DTEND:{dt_end}",
+                "SUMMARY:🧠 Deep Work Block (Optileno)",
+                "DESCRIPTION:Protected focus block scheduled by Optileno AI",
+                "STATUS:CONFIRMED",
+                "END:VEVENT",
+            ])
+        except Exception:
+            continue
+
+    lines.append("END:VCALENDAR")
+    ics_body = "\r\n".join(lines)
+    return Response(
+        content=ics_body,
+        media_type="text/calendar",
+        headers={"Content-Disposition": 'attachment; filename="optileno-schedule.ics"'},
+    )

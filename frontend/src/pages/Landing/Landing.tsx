@@ -308,9 +308,11 @@ export default function Landing() {
     let heroVisible = true;
     let prevMouseY = 0;
     let prevMouseTime = performance.now();
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    const lineCount = isMobile ? 22 : 36;
 
-    // Harmonic elastic spring state for all 42 lines (strictly silent, visual-only physics)
-    const stringPhysics = Array.from({ length: 42 }, () => ({
+    // Harmonic elastic spring state (strictly silent, visual-only physics)
+    const stringPhysics = Array.from({ length: lineCount }, () => ({
       displacement: 0,
       velocity: 0,
     }));
@@ -328,8 +330,8 @@ export default function Landing() {
         activePaths = sceneRef.current.querySelectorAll<SVGPathElement>('.waves-active path');
       }
 
-      for (let i = 0; i < 42; i++) {
-        const y = 40 + i * 26;
+      for (let i = 0; i < lineCount; i++) {
+        const y = 40 + i * (isMobile ? 38 : 26);
         const phaseRow = i * 0.3;
         const waveSpeed = time * 2;
 
@@ -368,15 +370,19 @@ export default function Landing() {
       }
     }
 
-    const handlePointerInteraction = (clientX: number, clientY: number) => {
+    let pendingPointerX = 0;
+    let pendingPointerY = 0;
+    let pointerFramePending = false;
+
+    const processPointerInteraction = () => {
+      pointerFramePending = false;
       if (!heroVisible || !sceneRef.current) return;
       const rect = sceneRef.current.getBoundingClientRect();
-      const x = clientX - rect.left;
-      const y = clientY - rect.top;
+      const x = pendingPointerX - rect.left;
+      const y = pendingPointerY - rect.top;
       sceneRef.current.style.setProperty('--mouse-x', `${x}px`);
       sceneRef.current.style.setProperty('--mouse-y', `${y}px`);
 
-      // Calculate string pluck displacement across all 42 lines (strictly silent)
       const now = performance.now();
       const dt = Math.max((now - prevMouseTime) / 1000, 0.001);
       const vy = (y - prevMouseY) / dt;
@@ -384,8 +390,8 @@ export default function Landing() {
       const svgNormY = (y / Math.max(rect.height, 1)) * 1000;
       const prevSvgNormY = (prevMouseY / Math.max(rect.height, 1)) * 1000;
 
-      for (let i = 0; i < 42; i++) {
-        const lineY = 40 + i * 26;
+      for (let i = 0; i < lineCount; i++) {
+        const lineY = 40 + i * (isMobile ? 38 : 26);
         const crossed = (prevSvgNormY <= lineY && svgNormY >= lineY) || (prevSvgNormY >= lineY && svgNormY <= lineY);
         const dist = Math.abs(svgNormY - lineY);
 
@@ -400,12 +406,22 @@ export default function Landing() {
     };
 
     const handleMouseMove = (e: MouseEvent) => {
-      handlePointerInteraction(e.clientX, e.clientY);
+      pendingPointerX = e.clientX;
+      pendingPointerY = e.clientY;
+      if (!pointerFramePending) {
+        pointerFramePending = true;
+        requestAnimationFrame(processPointerInteraction);
+      }
     };
 
     const handleTouchMove = (e: TouchEvent) => {
       if (e.touches.length > 0) {
-        handlePointerInteraction(e.touches[0].clientX, e.touches[0].clientY);
+        pendingPointerX = e.touches[0].clientX;
+        pendingPointerY = e.touches[0].clientY;
+        if (!pointerFramePending) {
+          pointerFramePending = true;
+          requestAnimationFrame(processPointerInteraction);
+        }
       }
     };
 
@@ -917,6 +933,7 @@ export default function Landing() {
               <button onClick={() => navigate('/workflow-automation-agency-owners')}>Agency Automation</button>
               <button onClick={() => navigate('/vs/motion')}>Optileno vs Motion</button>
               <button onClick={() => navigate('/vs/sunsama')}>Optileno vs Sunsama</button>
+              <button onClick={() => navigate('/vs/reclaim')}>Optileno vs Reclaim</button>
               <button onClick={() => navigate('/tools')}>Free AI Tools</button>
               <button onClick={() => navigate('/privacy')}>Privacy Policy</button>
               <button onClick={() => navigate('/terms')}>Terms of Service</button>
