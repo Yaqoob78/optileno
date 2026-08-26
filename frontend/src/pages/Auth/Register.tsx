@@ -83,8 +83,12 @@ export default function Register() {
                     login(data.user as any, (data.user as any).preferences as any);
                 }
 
-                // If user selected Ultra Pro, open Lemon Squeezy checkout directly
+                // If user selected Ultra Pro, open Lemon Squeezy checkout directly (unless owner/admin)
                 if (formData.plan_type === 'ULTRA') {
+                    if (data.requires_payment === false || data.user?.role === 'admin') {
+                        navigate('/dashboard', { replace: true });
+                        return;
+                    }
                     openLemonSqueezyCheckout(data.user || { email: formData.email, name: formData.full_name });
                     return;
                 }

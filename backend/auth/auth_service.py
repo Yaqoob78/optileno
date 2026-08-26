@@ -44,14 +44,14 @@ class AuthService:
     def _hash_refresh_token(token: str) -> str:
         return hashlib.sha256(token.encode()).hexdigest()
 
-    def _normalize_plan(self, plan_type: str | None) -> tuple[str, str]:
+    def _normalize_plan(self, plan_type: str | None, email: str | None = None) -> tuple[str, str]:
         """
         Normalize plan type and determine initial tier.
-        Default new users to canonical Explorer tier and let billing flows
-        upgrade to Ultra when payment activates.
+        Owner gets Ultra; all regular users default to Explorer.
         """
-        normalized = normalize_plan_tier(plan_type=plan_type)
-        return canonical_plan_type(normalized), normalized
+        if is_owner_email(email):
+            return "ULTRA", "ultra"
+        return "EXPLORER", "explorer"
 
     @staticmethod
     def _username_seed(email: str) -> str:
@@ -95,14 +95,14 @@ class AuthService:
             is_superuser = True
             subscription_status = "active"
         else:
-            # Store the user's SELECTED plan but mark as pending_payment.
-            # They must complete Cashfree payment to activate their plan.
-            # Trial starts AFTER payment, not before.
-            plan_type, tier = self._normalize_plan(user_in.plan_type)
+            # All regular registrations start at EXPLORER tier.
+            # If user selected ULTRA, mark status as pending_payment until Lemon Squeezy webhook verifies payment.
+            plan_type, tier = "EXPLORER", "explorer"
             role = "user"
             is_verified = False
             is_superuser = False
-            subscription_status = "pending_payment"
+            req_plan = (user_in.plan_type or "").strip().upper()
+            subscription_status = "pending_payment" if req_plan == "ULTRA" else "explorer"
 
         # Create new user with collision-safe username and graceful integrity retries.
         for attempt in range(2):

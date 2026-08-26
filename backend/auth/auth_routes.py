@@ -302,16 +302,16 @@ async def register(
             raise
 
     # Free Explorer tier (default) & Owner accounts require no payment upfront.
-    plan_name = (user.plan_type or user_in.plan_type or "EXPLORER").lower()
-    if plan_name not in ("explorer", "ultra"):
-        plan_name = "explorer"
+    is_owner = is_owner_email(user.email)
+    requested_plan = (user_in.plan_type or "EXPLORER").strip().upper()
 
-    if plan_name == "explorer" or is_owner_email(user.email):
-        access_token, refresh_token, refresh_days = await auth_service.create_session(
-            db, user.id, remember_me=False, **client_meta(request)
-        )
-        refresh_max_age = refresh_days * 24 * 60 * 60
-        set_auth_cookies(response, access_token, refresh_token, refresh_max_age=refresh_max_age)
+    access_token, refresh_token, refresh_days = await auth_service.create_session(
+        db, user.id, remember_me=False, **client_meta(request)
+    )
+    refresh_max_age = refresh_days * 24 * 60 * 60
+    set_auth_cookies(response, access_token, refresh_token, refresh_max_age=refresh_max_age)
+
+    if is_owner:
         return {
             "status": "success",
             "user": build_user_profile(user),
@@ -319,93 +319,23 @@ async def register(
             "authenticated": True,
         }
 
-    # If user explicitly registered for Ultra, initialize checkout; if payment fails/unavailable,
-    # keep user on Free tier rather than deleting their account.
-    from backend.payments.cashfree_service import cashfree_service
-
-    if not cashfree_service.is_configured():
-        access_token, refresh_token, refresh_days = await auth_service.create_session(
-            db, user.id, remember_me=False, **client_meta(request)
-        )
-        refresh_max_age = refresh_days * 24 * 60 * 60
-        set_auth_cookies(response, access_token, refresh_token, refresh_max_age=refresh_max_age)
-        return {
-            "status": "success",
-            "user": build_user_profile(user),
-            "requires_payment": False,
-            "authenticated": True,
-            "message": "Welcome! You are on the Free plan. Upgrade to Ultra Pro anytime in Settings.",
-        }
-
-    try:
-        payment_data = None
-        primary_checkout_error: Exception | None = None
-
-        # Primary flow: recurring subscription checkout.
-        try:
-            payment_data = await cashfree_service.create_subscription_checkout(
-                db=db,
-                user=user,
-                plan_name="ultra",
-                billing_cycle="monthly",
-            )
-        except Exception as sub_exc:
-            primary_checkout_error = sub_exc
-            logger.error(
-                "Subscription checkout initialization failed for %s: %s. Trying order fallback.",
-                user.email,
-                sub_exc,
-            )
-
-        # Fallback flow: one-time order checkout.
-        if not payment_data:
-            payment_data = await cashfree_service.create_order(
-                db=db,
-                user=user,
-                plan_name="ultra",
-                billing_cycle="monthly",
-            )
-            if primary_checkout_error is not None:
-                payment_data["checkout_fallback"] = "order"
-
-        checkout_session_id = (
-            (payment_data or {}).get("subscription_session_id")
-            or (payment_data or {}).get("payment_session_id")
-        )
-        if not payment_data or not checkout_session_id:
-            raise ValueError("Missing checkout session ID from payment initialization")
-
-        access_token, refresh_token, refresh_days = await auth_service.create_session(
-            db, user.id, remember_me=False, **client_meta(request)
-        )
-        refresh_max_age = refresh_days * 24 * 60 * 60
-        set_auth_cookies(response, access_token, refresh_token, refresh_max_age=refresh_max_age)
-
+    if requested_plan == "ULTRA":
+        from backend.payments.lemonsqueezy_service import lemonsqueezy_service
+        checkout_url = lemonsqueezy_service.build_checkout_url(user)
         return {
             "status": "success",
             "user": build_user_profile(user),
             "requires_payment": True,
-            "payment": payment_data,
+            "checkout_url": checkout_url,
             "authenticated": True,
         }
-    except Exception as exc:
-        logger.warning(
-            "Registration payment initialization failed for %s: %s. Defaulting user to Free plan.",
-            user.email,
-            exc,
-        )
-        access_token, refresh_token, refresh_days = await auth_service.create_session(
-            db, user.id, remember_me=False, **client_meta(request)
-        )
-        refresh_max_age = refresh_days * 24 * 60 * 60
-        set_auth_cookies(response, access_token, refresh_token, refresh_max_age=refresh_max_age)
 
-        return {
-            "status": "success",
-            "user": build_user_profile(user),
-            "requires_payment": False,
-            "authenticated": True,
-        }
+    return {
+        "status": "success",
+        "user": build_user_profile(user),
+        "requires_payment": False,
+        "authenticated": True,
+    }
 
 
 @router.post("/login")

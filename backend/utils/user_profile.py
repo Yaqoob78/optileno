@@ -177,6 +177,7 @@ def build_user_profile(user: User) -> Dict[str, Any]:
         tier=user.tier,
         role=user.role,
         email=user.email,
+        subscription_status=getattr(user, "subscription_status", None),
     )
     plan_type = canonical_plan_type(plan_tier)
     entitlements = get_entitlements(plan_tier)

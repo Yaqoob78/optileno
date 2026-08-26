@@ -155,7 +155,13 @@ class LemonSqueezyService:
                 "checkout_url": self.build_checkout_url(user),
             }
 
-        plan_tier = normalize_plan_tier(getattr(user, "plan_tier", "explorer"))
+        plan_tier = normalize_plan_tier(
+            tier=getattr(user, "tier", None),
+            plan_type=getattr(user, "plan_type", None),
+            role=getattr(user, "role", None),
+            email=getattr(user, "email", None),
+            subscription_status=getattr(user, "subscription_status", None),
+        )
         is_ultra = plan_tier == PLAN_ULTRA
 
         return {
@@ -219,9 +225,9 @@ class LemonSqueezyService:
                     update(User)
                     .where(User.id == target_user.id)
                     .values(
-                        plan_tier="ultra",
+                        tier="ultra",
                         plan_type="ULTRA",
-                        is_premium=True,
+                        subscription_status="active",
                         updated_at=now_utc
                     )
                 )
@@ -237,9 +243,9 @@ class LemonSqueezyService:
                     update(User)
                     .where(User.id == target_user.id)
                     .values(
-                        plan_tier="explorer",
+                        tier="explorer",
                         plan_type="EXPLORER",
-                        is_premium=False,
+                        subscription_status="canceled",
                         updated_at=now_utc
                     )
                 )

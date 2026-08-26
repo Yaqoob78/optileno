@@ -119,7 +119,7 @@ async def cancel_subscription(
     current_user: User = Depends(get_current_user),
 ):
     """Cancel subscription info."""
-    if is_owner_account(current_user.email):
+    if is_owner_email(current_user.email):
         return {"status": "owner", "message": "Owner accounts cannot be downgraded"}
 
     return {
