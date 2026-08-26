@@ -884,6 +884,8 @@ export default function Landing() {
             <div className="footer-links">
               <button onClick={() => navigate('/ai-calendar-planner')}>AI Calendar Planner</button>
               <button onClick={() => navigate('/workflow-automation-agency-owners')}>Agency Automation</button>
+              <button onClick={() => navigate('/vs/motion')}>Optileno vs Motion</button>
+              <button onClick={() => navigate('/vs/sunsama')}>Optileno vs Sunsama</button>
               <button onClick={() => navigate('/tools')}>Free AI Tools</button>
               <button onClick={() => navigate('/privacy')}>Privacy Policy</button>
               <button onClick={() => navigate('/terms')}>Terms of Service</button>

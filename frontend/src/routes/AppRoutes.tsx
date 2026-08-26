@@ -16,6 +16,7 @@ const GetAccess = lazy(() => import("../pages/Auth/GetAccess"));
 const ForgotPassword = lazy(() => import("../pages/Auth/ForgotPassword"));
 const ResetPassword = lazy(() => import("../pages/Auth/ResetPassword"));
 const FeaturePage = lazy(() => import("../pages/Marketing/FeaturePage"));
+const ComparisonPage = lazy(() => import("../pages/Marketing/ComparisonPage"));
 const AITools = lazy(() => import("../pages/Tools/AITools"));
 const TermsOfService = lazy(() => import("../pages/Legal/TermsOfService"));
 const PrivacyPolicy = lazy(() => import("../pages/Legal/PrivacyPolicy"));
@@ -44,6 +45,9 @@ export default function AppRoutes() {
         <Route path="/ai-calendar-planner" element={<FeaturePage featureKey="ai-calendar-planner" />} />
         <Route path="/workflow-automation-agency-owners" element={<FeaturePage featureKey="workflow-automation-agency-owners" />} />
         <Route path="/agency-workflow-automation" element={<FeaturePage featureKey="workflow-automation-agency-owners" />} />
+        <Route path="/vs/motion" element={<ComparisonPage competitorKey="motion" />} />
+        <Route path="/vs/sunsama" element={<ComparisonPage competitorKey="sunsama" />} />
+        <Route path="/vs/:competitor" element={<ComparisonPage />} />
         <Route path="/ai-task-manager" element={<FeaturePage featureKey="ai-task-manager" />} />
         <Route path="/ai-task" element={<FeaturePage featureKey="ai-task" />} />
         <Route path="/ai-productivity" element={<FeaturePage featureKey="ai-productivity" />} />

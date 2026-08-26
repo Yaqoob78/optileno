@@ -37,13 +37,19 @@ const PUBLIC_PATHS = new Set([
   '/show-analytics',
   '/dashboard-preview',
   '/goal-progress',
+  '/vs/motion',
+  '/vs/sunsama',
   '/terms',
   '/privacy',
   '/refund',
   '/cookies',
 ]);
 
-const isPublicPath = (pathname: string) => PUBLIC_PATHS.has(pathname);
+const isPublicPath = (pathname: string) => {
+  if (PUBLIC_PATHS.has(pathname)) return true;
+  if (pathname.startsWith('/vs/')) return true;
+  return false;
+};
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
