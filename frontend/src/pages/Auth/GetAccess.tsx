@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, User, KeyRound, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
 import { userService } from '../../services/api/user.service';
 import { useUserStore } from '../../stores/useUserStore';
+import { clearSessionScopedData } from '../../utils/sessionReset';
 import SEO from '../../components/common/SEO';
 import '../../styles/pages/auth.css';
 
@@ -47,6 +48,7 @@ export default function GetAccess() {
 
     setLoading(true);
     try {
+      clearSessionScopedData();
       const response = await userService.getAccess({
         email: formData.email.trim(),
         password: formData.password,
@@ -73,7 +75,12 @@ export default function GetAccess() {
 
   return (
     <div className="auth-page dark">
-      <SEO title="Get Access | Optileno" description="Invite-only access: sign in with your granted email and password." robots="noindex,nofollow" />
+      <SEO
+        title="Get Access | Optileno AI Daily Planner"
+        description="Invite-only early access: sign in to your Optileno account or claim your granted workspace."
+        robots="index,follow"
+        canonicalUrl="https://www.optileno.com/get-access"
+      />
       <div className="auth-background">
         <div className="auth-sphere sphere-1" />
         <div className="auth-sphere sphere-2" />

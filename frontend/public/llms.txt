@@ -1,0 +1,42 @@
+# Optileno
+
+> Optileno is a free AI daily planner, smart calendar assistant, and cognitive productivity operating system. It automatically turns unstructured goals into prioritized daily tasks, defends deep work focus blocks, tracks habits, and predicts cognitive burnout before it happens.
+
+## Core Features
+
+- **Conversational AI Partner (Chat Leno)**: An executive AI productivity coach that assists with sprint planning, task triage, goal decomposition, and focus strategies.
+- **Smart AI Daily Planner**: Auto-prioritizes daily tasks based on energy rhythms, deadlines, and project milestones in under 90 seconds.
+- **Deep Work Protection & Time Blocking**: Defends calendar blocks for high-leverage execution with built-in focus timers.
+- **Predictive Burnout Telemetry**: Continuous cognitive workload tracking and task-switching analytics that warn users before fatigue impacts output.
+- **Big Five Personality Calibration**: Adapts daily schedule density, pacing, and break frequency to individual conscientiousness and stress tolerance.
+- **1-Click Google Calendar & .ics Sync**: Instant export of tasks and deep work sessions to Google Calendar, Apple Calendar, and Microsoft Outlook.
+
+## Free Interactive AI Tools
+
+- [Free AI Task Prioritizer](https://www.optileno.com/tools/ai-task-prioritizer): Sorts your messy to-do list by revenue impact, urgency, and effort using AI.
+- [Free AI Weekly Sprint Planner](https://www.optileno.com/tools/ai-weekly-planner): Decomposes high-level business goals into a structured 5-day execution sprint.
+- [Free AI Daily Schedule Generator](https://www.optileno.com/tools/ai-schedule-generator): Generates an optimal time-blocked daily calendar from your raw task list.
+- [Free Burnout Risk & Cognitive Load Calculator](https://www.optileno.com/tools/burnout-risk-calculator): Evaluates your weekly workload and task switching to quantify burnout vulnerability.
+
+## Competitor Comparisons
+
+- [Optileno vs Motion](https://www.optileno.com/vs/motion): Why Optileno is the best Motion alternative ($0 Free tier, $19/mo vs $34/mo, human-in-the-loop confirmation, burnout telemetry).
+- [Optileno vs Sunsama](https://www.optileno.com/vs/sunsama): Why operators choose Optileno's 90-second AI triage over Sunsama's 25-minute manual ritual.
+- [Optileno vs Reclaim.ai](https://www.optileno.com/vs/reclaim): Full cognitive AI operating system with chat vs simple background calendar blocking.
+- [Optileno vs Todoist](https://www.optileno.com/vs/todoist): Active AI daily execution and focus time-blocking vs passive task list storage.
+- [Optileno vs Notion](https://www.optileno.com/vs/notion): Frictionless daily execution system with AI automation vs complex manual database maintenance.
+
+## Pricing
+
+- **Explorer Plan**: 100% Free Forever ($0.00). Includes AI daily planner, daily time blocking, task & habit tracking, mood tracker, productivity score, and Leno AI assistant (15 requests/day). No credit card required.
+- **Ultra Pro Plan**: ₹1,499/month (~$19/mo) or ₹12,999/year (~$12.90/mo). Includes 150 AI requests/day, autonomous agentic planner automation, focus heatmaps, burnout telemetry, and Big Five personality calibration.
+
+## Key URLs
+
+- Homepage: https://www.optileno.com/
+- Create Free Account: https://www.optileno.com/register
+- Sign In: https://www.optileno.com/login
+- Free Tools Hub: https://www.optileno.com/tools
+- AI Calendar Planner: https://www.optileno.com/ai-calendar-planner
+- Agency Workflow Automation: https://www.optileno.com/workflow-automation-agency-owners
+- Full Documentation: https://www.optileno.com/llms-full.txt

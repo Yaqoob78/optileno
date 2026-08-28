@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Database, AlertOctagon, ShieldCheck, AlertCircle } from 'lucide-react';
 import { userService } from '../../services/api/user.service';
-import { useUserStore } from '../../stores/useUserStore';
-import { usePlannerStore } from '../../stores/planner.store';
+import { clearSessionScopedData } from '../../utils/sessionReset';
 import '../../styles/pages/settings.css';
 
 const DataSettings: React.FC = () => {
@@ -11,14 +10,10 @@ const DataSettings: React.FC = () => {
   const [isWiping, setIsWiping] = useState(false);
   const navigate = useNavigate();
   const logoutUser = useUserStore((state) => state.logout);
-  const resetPlanner = usePlannerStore((state) => state.resetPlanner);
 
   const clearClientData = () => {
-    // Reset in-memory stores.
-    resetPlanner();
+    clearSessionScopedData();
     logoutUser();
-
-    // Wipe local persisted state/cache keys.
     localStorage.clear();
     sessionStorage.clear();
   };

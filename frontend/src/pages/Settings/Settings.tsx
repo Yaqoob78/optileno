@@ -19,7 +19,7 @@ import BillingSettings from '../../components/settings/BillingSettings';
 import AdminAccessSettings from '../../components/settings/AdminAccessSettings';
 import { useUserStore } from '../../stores/useUserStore';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { userService } from '../../services/api/user.service';
+import { clearSessionScopedData } from '../../utils/sessionReset';
 import '../../styles/pages/settings.css';
 
 interface Tab {
@@ -75,9 +75,15 @@ export default function SettingsPage() {
     }
   }, [activeTab, isAdmin]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await userService.logout();
+    } catch {
+      // Continue with local cleanup
+    }
+    clearSessionScopedData();
     logout();
-    navigate('/');
+    navigate('/login');
   };
 
   const tabs: Tab[] = [

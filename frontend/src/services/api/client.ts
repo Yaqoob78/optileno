@@ -8,6 +8,7 @@ import axios, {
 } from 'axios';
 import { useUserStore } from "../../stores/useUserStore";
 import { env } from '../../config/env';
+import { clearSessionScopedData } from '../../utils/sessionReset';
 
 const getCookie = (name: string): string | null => {
   const match = document.cookie.match(new RegExp(`(^|; )${name}=([^;]*)`));
@@ -151,6 +152,7 @@ class APIClient {
   }
 
   private handleAuthFailure(): void {
+    clearSessionScopedData();
     const store = useUserStore.getState();
     store.logout();
     window.dispatchEvent(new CustomEvent('auth:logout'));

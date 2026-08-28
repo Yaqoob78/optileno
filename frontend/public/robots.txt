@@ -1,10 +1,73 @@
 User-agent: *
 Allow: /
+Allow: /tools
+Allow: /tools/*
+Allow: /vs/*
+Allow: /ai-calendar-planner
+Allow: /workflow-automation-agency-owners
+Allow: /chat-leno
+Allow: /plan-task
+Allow: /ai-planner
+Allow: /ai-task-manager
+Allow: /ai-productivity
+Allow: /show-analytics
+Allow: /goal-progress
+Allow: /login
+Allow: /register
+Allow: /terms
+Allow: /privacy
+Allow: /refund
+Allow: /cookies
+Allow: /llms.txt
+Allow: /llms-full.txt
+Allow: /sitemap.xml
+
+# Disallow private user-authenticated dashboard routes
 Disallow: /dashboard
 Disallow: /chat
 Disallow: /planner
 Disallow: /analytics
 Disallow: /settings
+Disallow: /settings/*
 Disallow: /reset-password
+
+# AI Search Engine Crawlers
+User-agent: GPTBot
+Allow: /
+Disallow: /dashboard
+Disallow: /chat
+Disallow: /planner
+Disallow: /analytics
+Disallow: /settings
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /dashboard
+Disallow: /chat
+Disallow: /planner
+Disallow: /analytics
+Disallow: /settings
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /dashboard
+Disallow: /chat
+Disallow: /planner
+Disallow: /analytics
+Disallow: /settings
+
+User-agent: anthropic-ai
+Allow: /
+Disallow: /dashboard
+Disallow: /chat
+Disallow: /planner
+Disallow: /analytics
+Disallow: /settings
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
 
 Sitemap: https://www.optileno.com/sitemap.xml

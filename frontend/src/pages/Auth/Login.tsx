@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Mail, Lock, LogIn, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
 import { userService } from '../../services/api/user.service';
 import { useUserStore } from '../../stores/useUserStore';
+import { clearSessionScopedData } from '../../utils/sessionReset';
 import SEO from '../../components/common/SEO';
 import '../../styles/pages/auth.css';
 
@@ -24,7 +25,7 @@ export default function Login() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    React.useEffect(() => {
+    useEffect(() => {
         if (isAuthenticated) {
             navigate('/dashboard', { replace: true });
         }
@@ -35,23 +36,45 @@ export default function Login() {
         setLoading(true);
         setError(null);
 
+        const emailClean = formData.email.trim();
+        if (!emailClean) {
+            setError('Please enter your email address.');
+            setLoading(false);
+            return;
+        }
+
         try {
-            const response = await userService.login(formData);
+            // Clean previous session-scoped data to ensure fresh user isolation
+            clearSessionScopedData();
+
+            const response = await userService.login({
+                email: emailClean,
+                password: formData.password,
+                remember_me: formData.remember_me,
+            });
 
             if (response.success && response.data) {
-                // Fetch full profile after login
-                const profileRes = await userService.getProfile();
-                if (profileRes.success && profileRes.data) {
-                    loginStore(profileRes.data as any, profileRes.data.preferences as any);
-                    navigate('/dashboard', { replace: true });
-                } else {
-                    setError('Failed to load user profile');
-                }
+                const userObj = response.data.user || response.data;
+                const userPrefs = userObj.preferences || response.data.preferences;
+
+                // Log into store
+                loginStore(userObj as any, userPrefs as any);
+
+                // Optionally sync profile in background without blocking navigation
+                userService.getProfile().then((profileRes) => {
+                    if (profileRes.success && profileRes.data) {
+                        useUserStore.getState().setProfile(profileRes.data as any);
+                    }
+                }).catch(() => {
+                    // Fallback to initial payload
+                });
+
+                navigate('/dashboard', { replace: true });
             } else {
-                setError(response.error?.message || 'Login failed. Please check your credentials.');
+                setError(response.error?.message || 'Invalid email or password. Please check your credentials.');
             }
-        } catch (err) {
-            setError('An unexpected error occurred. Please try again.');
+        } catch (err: any) {
+            setError(err?.message || 'An unexpected error occurred. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -59,7 +82,12 @@ export default function Login() {
 
     return (
         <div className="auth-page dark">
-            <SEO title="Login | Optileno" description="Sign in to your Optileno account to access your AI productivity system." robots="noindex,nofollow" />
+            <SEO
+                title="Sign In | Optileno AI Daily Planner"
+                description="Sign in to your Optileno account to access your AI daily planner, calendar time blocking, and productivity dashboard."
+                robots="index,follow"
+                canonicalUrl="https://www.optileno.com/login"
+            />
             <div className="auth-background">
                 <div className="auth-sphere sphere-1" />
                 <div className="auth-sphere sphere-2" />
@@ -150,19 +178,6 @@ export default function Login() {
                             <Link to="/forgot-password" className="forgot-password">
                                 Forgot Password?
                             </Link>
-                        </div>
-
-                        <div className="form-options" style={{ marginTop: '1rem' }}>
-                            <label className="remember-me" style={{ alignItems: 'flex-start' }}>
-                                <input
-                                    type="checkbox"
-                                    required
-                                    style={{ marginTop: '4px' }}
-                                />
-                                <span style={{ fontSize: '0.85rem', lineHeight: '1.4', color: 'var(--text-secondary)' }}>
-                                    I agree to the <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)' }}>Terms of Service</a> and <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)' }}>Privacy Policy</a>
-                                </span>
-                            </label>
                         </div>
 
                         <button type="submit" className="auth-button" disabled={loading} style={{ marginTop: '1.5rem' }}>

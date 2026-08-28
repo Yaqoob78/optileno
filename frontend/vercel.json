@@ -34,6 +34,14 @@
             "destination": "/robots.txt"
         },
         {
+            "source": "/llms.txt",
+            "destination": "/llms.txt"
+        },
+        {
+            "source": "/llms-full.txt",
+            "destination": "/llms-full.txt"
+        },
+        {
             "source": "/(.*)",
             "destination": "/index.html"
         }
@@ -79,6 +87,19 @@
         },
         {
             "source": "/robots.txt",
+            "headers": [
+                {
+                    "key": "Content-Type",
+                    "value": "text/plain; charset=utf-8"
+                },
+                {
+                    "key": "Cache-Control",
+                    "value": "public, max-age=3600, s-maxage=3600"
+                }
+            ]
+        },
+        {
+            "source": "/(llms\\.txt|llms-full\\.txt)",
             "headers": [
                 {
                     "key": "Content-Type",

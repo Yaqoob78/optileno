@@ -1,0 +1,77 @@
+# Optileno Platform Documentation & Architecture Guide
+
+## Overview
+
+Optileno is an AI-powered daily planner, calendar assistant, and cognitive productivity operating system engineered for founders, operators, developers, and agency owners. It bridges the gap between high-level ambition and focused daily execution by combining conversational AI reasoning with time-blocking calendars, habit tracking, and predictive burnout analytics.
+
+---
+
+## 1. Core Architecture & Modules
+
+### 1.1 Chat Leno (Conversational AI Productivity Coach)
+- **Role**: Executive partner for daily decision-making, goal breakdown, prioritization, and reflection.
+- **Context Awareness**: Accesses user goals, active sprint tasks, habit streaks, focus scores, and burnout metrics to provide tailored, context-rich advice.
+- **Capabilities**:
+  - Daily Morning Briefing & 90-Second Sprint Triage.
+  - Multi-step Goal Decomposition into chronological subtasks.
+  - Cognitive Reframing and resistance breakdown for procrastinated tasks.
+  - Evening debrief and daily accomplishment summaries.
+
+### 1.2 AI Calendar Planner & Smart Time Blocking
+- **Intent-Driven Scheduling**: Translates task lists into realistic, energy-aware calendar blocks.
+- **Human-in-the-Loop Control**: Generates optimal schedule recommendations that require user confirmation, preventing the jarring surprise reschedules common in rigid algorithmic tools like Motion.
+- **Deep Work Focus Shield**: Identifies peak cognitive hours (e.g. 9:00 AM – 1:00 PM) and defends them against meeting fragmentation.
+- **Calendar Interoperability**: 1-click export to Google Calendar and standard `.ics` calendar format (Apple Calendar, Microsoft Outlook).
+
+### 1.3 Predictive Burnout Telemetry & Focus Analytics
+- **Telemetry Indicators**:
+  - Task-Switching Frequency: Measures cognitive thrashing across different contexts.
+  - Sprint Duration vs Break Ratio: Tracks uninterrupted hours worked against recovery windows.
+  - Focus Score (0–100): Composite metric of completed high-leverage tasks vs scheduled time.
+  - Cognitive Overload Warnings: Proactive alerts recommending de-scoping or strategic rest when workload exceeds sustainable limits.
+
+### 1.4 Big Five Personality Calibration
+- Tailors scheduling density and pacing according to psychological dimensions:
+  - High Conscientiousness: Granular subtask tracking and rigid milestone cadences.
+  - High Neuroticism / Stress Sensitivity: Buffer intervals between sprints and gentle priority filtering.
+  - High Openness: Exploratory focus blocks and dynamic weekly themes.
+
+---
+
+## 2. Competitor Comparison Matrix
+
+| Feature | Optileno | Motion | Sunsama | Reclaim.ai | Todoist |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Free Forever Tier** | **Yes ($0 / no CC)** | No (7-day trial) | No (14-day trial) | Limited | Limited |
+| **Monthly Pricing** | **$19 / month** | $34.00 / month | $25.00 / month | $10.00 / month | $5.00 / month |
+| **Annual Pricing** | **$12.90 / month** | $19.00 / month | $20.00 / month | $8.00 / month | $4.00 / month |
+| **Conversational AI Partner** | **Yes (Chat Leno)** | No | No | No | No |
+| **Planning Speed** | **90 seconds** | Automatic | 25 min manual | Automatic | Manual |
+| **Human-in-the-Loop Scheduling**| **Yes (Confirmed)** | No (Forced reshuffle)| Yes (Manual) | No (Auto) | N/A |
+| **Burnout Telemetry** | **Yes (Real-time)** | No | Reflection only | No | No |
+| **Big Five Work Calibration** | **Yes** | No | No | No | No |
+| **Deep Work Focus Timer** | **Yes (Built-in)** | No | Basic | No | No |
+| **1-Click Google Calendar Sync**| **Yes** | Yes | Yes | Yes | Integration only|
+
+---
+
+## 3. Free Interactive AI Tools API / Endpoints
+
+Optileno offers public, registration-free AI tools to provide immediate value to users:
+
+1. **AI Task Prioritizer** (`https://www.optileno.com/tools/ai-task-prioritizer`):
+   - Accepts raw task lists and returns an Eisenhower matrix breakdown with revenue impact scoring, estimated time, and recommended order of execution.
+2. **AI Weekly Sprint Planner** (`https://www.optileno.com/tools/ai-weekly-planner`):
+   - Converts weekly targets into a structured Monday–Friday daily roadmap with focus themes and risk mitigation strategies.
+3. **AI Daily Schedule Generator** (`https://www.optileno.com/tools/ai-schedule-generator`):
+   - Analyzes available hours and priorities to build a customized time-blocked daily calendar.
+4. **Burnout Risk & Cognitive Load Calculator** (`https://www.optileno.com/tools/burnout-risk-calculator`):
+   - Evaluates weekly working hours, meeting frequency, and context switching to compute an objective burnout vulnerability score (0–100%) and restorative recommendations.
+
+---
+
+## 4. Plans and Access
+
+- **Explorer Plan**: Free forever. Access to manual task management, daily planner, habits, focus timers, mood tracker, productivity score, and 15 Leno AI messages per day.
+- **Ultra Pro Plan**: ₹1,499/month (~$19/mo) or ₹12,999/year (~$12.90/mo). Full access to autonomous agentic planner automation, 150 AI requests/day, focus heatmaps, burnout telemetry, and Big Five personality calibration.
+- **URL**: https://www.optileno.com/register

@@ -1,7 +1,8 @@
 /**
  * State Preservation Utility
- * Ensures ALL state is preserved across page navigation and page reloads
- * This is a comprehensive safety net for data persistence
+ * Ensures active user state is preserved across page navigation and reloads.
+ * Strictly scopes all backups to the currently authenticated user ID to prevent
+ * cross-user data leakage.
  */
 
 import { useChatStore } from '../stores/chat.store';
@@ -19,21 +20,43 @@ const STORAGE_KEYS = {
 };
 
 /**
- * Backup all store states to localStorage
- * Called periodically to ensure no data is lost
+ * Clear all local state backups from localStorage and sessionStorage
+ */
+export const clearAllStateBackups = (): void => {
+  try {
+    localStorage.removeItem(STORAGE_KEYS.STATE_BACKUP);
+    sessionStorage.removeItem('emergency-backup');
+    sessionStorage.removeItem('chat_preserved');
+    sessionStorage.removeItem('planner_preserved');
+    sessionStorage.removeItem('user_preserved');
+  } catch (err) {
+    console.warn('Unable to clear state backups:', err);
+  }
+};
+
+/**
+ * Backup all store states to localStorage for the active authenticated user
  */
 export const backupAllStates = () => {
   try {
+    const userStore = useUserStore.getState();
+    const userId = userStore.profile?.id;
+
+    // Only create backups if there is a logged-in user
+    if (!userStore.isAuthenticated || !userId) {
+      return null;
+    }
+
     const backup = {
       timestamp: new Date().toISOString(),
+      userId: String(userId),
       chat: useChatStore.getState(),
       planner: usePlannerStore.getState(),
-      user: useUserStore.getState(),
+      user: userStore,
       analytics: useAnalyticsStore.getState(),
     };
 
     localStorage.setItem(STORAGE_KEYS.STATE_BACKUP, JSON.stringify(backup));
-    console.log('✅ State backup saved');
     return backup;
   } catch (err) {
     console.error('❌ Failed to backup state:', err);
@@ -42,54 +65,67 @@ export const backupAllStates = () => {
 };
 
 /**
- * Restore all store states from localStorage backup
- * Used when states appear to be lost
+ * Restore all store states from localStorage backup ONLY if the backup
+ * matches the currently logged-in user.
  */
 export const restoreAllStates = () => {
   try {
     const backupStr = localStorage.getItem(STORAGE_KEYS.STATE_BACKUP);
     if (!backupStr) {
-      console.log('ℹ️ No backup found');
+      return false;
+    }
+
+    const userStore = useUserStore.getState();
+    const currentUserId = userStore.profile?.id ? String(userStore.profile.id) : null;
+
+    if (!userStore.isAuthenticated || !currentUserId) {
+      // Unauthenticated session: purge any lingering backup from previous session
+      clearAllStateBackups();
       return false;
     }
 
     const backup = JSON.parse(backupStr);
+
+    // If backup belongs to another user or is missing a userId, purge it and do NOT restore!
+    if (!backup.userId || String(backup.userId) !== currentUserId) {
+      console.warn('⚠️ Stale backup from different user detected; discarding.');
+      clearAllStateBackups();
+      return false;
+    }
+
     const timeSinceBackup = Date.now() - new Date(backup.timestamp).getTime();
 
     // Only restore if backup is less than 1 hour old
     if (timeSinceBackup > 3600000) {
-      console.log('⚠️ Backup is too old, skipping restore');
+      clearAllStateBackups();
       return false;
     }
 
-    // Restore each store
+    // Restore stores safely for this specific user
     if (backup.chat) {
       useChatStore.setState(backup.chat);
-      console.log('✅ Chat state restored');
     }
     if (backup.planner) {
       usePlannerStore.setState(backup.planner);
-      console.log('✅ Planner state restored');
     }
     if (backup.user) {
       useUserStore.setState(backup.user);
-      console.log('✅ User state restored');
     }
     if (backup.analytics) {
       useAnalyticsStore.setState(backup.analytics);
-      console.log('✅ Analytics state restored');
     }
 
+    console.log(`✅ State safely restored for user ${currentUserId}`);
     return true;
   } catch (err) {
     console.error('❌ Failed to restore state:', err);
+    clearAllStateBackups();
     return false;
   }
 };
 
 /**
  * Check if state is present in all stores
- * Returns true if data exists, false if stores are empty
  */
 export const checkStateHealth = (): {
   isHealthy: boolean;
@@ -103,27 +139,14 @@ export const checkStateHealth = (): {
   const userStore = useUserStore.getState();
   const analyticsStore = useAnalyticsStore.getState();
 
-  const chatHasData = chatStore.conversations?.length > 0;
-  // Relaxed planner check: accessing array safely
-  const plannerHasData = (plannerStore.tasks && plannerStore.tasks.length > 0) || (plannerStore.goals && plannerStore.goals.length > 0);
+  const chatHasData = (chatStore.conversations?.length ?? 0) > 0;
+  const plannerHasData = ((plannerStore.tasks?.length ?? 0) > 0) || ((plannerStore.goals?.length ?? 0) > 0);
+  const profileHasId = Boolean(userStore.profile?.id);
+  const userIsAuthenticated = profileHasId && userStore.isAuthenticated;
+  const analyticsHasData = (analyticsStore.events?.length ?? 0) > 0;
 
-  const profileHasId = !!(userStore.profile && userStore.profile.id);
-  const userIsAuthenticated = profileHasId;
-
-  const analyticsHasData = analyticsStore.events?.length > 0;
-
-  // Healthy when auth flags are consistent (both true or both false).
-  // This prevents restore loops for logged-out users.
+  // Healthy when auth state matches profile presence
   const isHealthy = userStore.isAuthenticated === profileHasId;
-
-  if (!isHealthy) {
-    console.debug('State Health Check Details:', {
-      userProfile: userStore.profile,
-      userID: userStore.profile?.id,
-      isAuthenticated: userStore.isAuthenticated,
-      profileHasId
-    });
-  }
 
   return {
     isHealthy,
@@ -135,28 +158,27 @@ export const checkStateHealth = (): {
 };
 
 /**
- * Monitor state changes and automatically backup
- * Should be called once on app startup
+ * Monitor state changes and automatically backup periodically
  */
 export const initializeStateMonitoring = () => {
-  // Initial backup
   backupAllStates();
 
-  // Periodic backup (every 30 seconds)
   const backupInterval = setInterval(() => {
     backupAllStates();
   }, 30000);
 
   let lastRestoreTime = 0;
 
-  // Health check (every 10 seconds)
   const healthCheckInterval = setInterval(() => {
-    // Don't check/restore if we just restored recently (prevent loops)
     if (Date.now() - lastRestoreTime < 15000) return;
+
+    const userStore = useUserStore.getState();
+    if (!userStore.isAuthenticated || !userStore.profile?.id) {
+      return; // Do not run restore loops for logged-out / guest states
+    }
 
     const health = checkStateHealth();
     if (!health.isHealthy) {
-      console.warn('⚠️ State health check failed (Auth state mismatch), attempting restore...');
       const success = restoreAllStates();
       if (success) {
         lastRestoreTime = Date.now();
@@ -164,7 +186,6 @@ export const initializeStateMonitoring = () => {
     }
   }, 10000);
 
-  // Cleanup function
   return () => {
     clearInterval(backupInterval);
     clearInterval(healthCheckInterval);
@@ -172,42 +193,21 @@ export const initializeStateMonitoring = () => {
 };
 
 /**
- * Prevent state from being garbage collected
- * Keep references to stores alive throughout app lifetime
- */
-export const preventStateGarbageCollection = () => {
-  // Access all stores to keep them in memory
-  const chatStore = useChatStore.subscribe((state) => state);
-  const plannerStore = usePlannerStore.subscribe((state) => state);
-  const userStore = useUserStore.subscribe((state) => state);
-  const analyticsStore = useAnalyticsStore.subscribe((state) => state);
-
-  console.log('🔐 State garbage collection prevention activated');
-
-  // Return unsubscribe functions
-  return () => {
-    chatStore();
-    plannerStore();
-    userStore();
-    analyticsStore();
-  };
-};
-
-/**
  * Force save all states before page unload
- * Ensures data is persisted even if browser crashes
  */
 export const setupUnloadHandler = () => {
   const handleBeforeUnload = () => {
-    backupAllStates();
-
-    // Also save to sessionStorage as emergency backup
-    const emergency = {
-      chat: useChatStore.getState(),
-      planner: usePlannerStore.getState(),
-      user: useUserStore.getState(),
-    };
-    sessionStorage.setItem('emergency-backup', JSON.stringify(emergency));
+    const userStore = useUserStore.getState();
+    if (userStore.isAuthenticated && userStore.profile?.id) {
+      backupAllStates();
+      const emergency = {
+        userId: userStore.profile.id,
+        chat: useChatStore.getState(),
+        planner: usePlannerStore.getState(),
+        user: userStore,
+      };
+      sessionStorage.setItem('emergency-backup', JSON.stringify(emergency));
+    }
   };
 
   window.addEventListener('beforeunload', handleBeforeUnload);
@@ -221,35 +221,24 @@ export const setupUnloadHandler = () => {
 
 /**
  * Complete state preservation initialization
- * Call this in your root component (App.tsx)
  */
 export const initializeStatePreservation = () => {
-  console.log('🔄 Initializing state preservation system...');
-
-  // Check if we need to restore from backup
-  const health = checkStateHealth();
-  if (!health.isHealthy) {
-    // Try to restore from backup
-    const restored = restoreAllStates();
-    if (restored) {
-      console.log('✅ State restored from backup');
+  const userStore = useUserStore.getState();
+  if (userStore.isAuthenticated && userStore.profile?.id) {
+    const health = checkStateHealth();
+    if (!health.isHealthy) {
+      restoreAllStates();
     }
+  } else {
+    // If not authenticated, ensure no stale leftovers exist
+    clearAllStateBackups();
   }
 
-  // Start monitoring
   const stopMonitoring = initializeStateMonitoring();
-
-  // Setup unload handler
   const stopUnloadHandler = setupUnloadHandler();
 
-  // Prevent garbage collection
-  const stopGC = preventStateGarbageCollection();
-
-  // Return cleanup function
   return () => {
     stopMonitoring();
     stopUnloadHandler();
-    stopGC();
-    console.log('🛑 State preservation system stopped');
   };
 };

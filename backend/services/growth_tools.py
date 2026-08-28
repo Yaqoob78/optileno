@@ -242,3 +242,156 @@ def generate_weekly_planner(goal: str, audience: str = "creator", hours_per_day:
         "optileno_bridge": "Save this plan in Optileno to track tasks, focus blocks, and goal progress.",
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
+
+
+def generate_schedule_generator(
+    tasks_text: str,
+    start_hour: int = 9,
+    work_hours: int = 8,
+    audience: str = "operator"
+) -> Dict[str, Any]:
+    tasks = _split_tasks(tasks_text)
+    if not tasks:
+        tasks = [
+            "Deep focus on primary deliverable",
+            "Client / team communications & inbox zero",
+            "System refinement & bug fixes",
+            "Planning tomorrow's sprint"
+        ]
+
+    start_h = max(6, min(14, int(start_hour or 9)))
+    duration_h = max(2, min(12, int(work_hours or 8)))
+
+    schedule_slots = []
+    current_h = start_h
+    current_m = 0
+
+    def format_time(h: int, m: int) -> str:
+        suffix = "AM" if h < 12 else "PM"
+        disp_h = h if h <= 12 else h - 12
+        if disp_h == 0:
+            disp_h = 12
+        return f"{disp_h:02d}:{m:02d} {suffix}"
+
+    # Morning Focus Block (90-120 min)
+    primary_task = tasks[0]
+    schedule_slots.append({
+        "type": "deep_work",
+        "time": f"{format_time(current_h, current_m)} - {format_time(current_h + 1, current_m + 30)}",
+        "title": f"Deep Work: {primary_task}",
+        "duration_minutes": 90,
+        "energy": "High Peak",
+        "recommendation": "Turn off notifications. Zero task switching."
+    })
+    current_h += 1
+    current_m += 30
+
+    # Short Recharge Break
+    schedule_slots.append({
+        "type": "break",
+        "time": f"{format_time(current_h, current_m)} - {format_time(current_h, current_m + 15)}",
+        "title": "Hydration & Cognitive Reset",
+        "duration_minutes": 15,
+        "energy": "Recovery",
+        "recommendation": "Step away from screens. Hydrate and stretch."
+    })
+    current_m += 15
+
+    # Secondary Tasks
+    for i, t in enumerate(tasks[1:4], start=2):
+        task_min = 45 if i < 4 else 30
+        end_m = current_m + task_min
+        end_h = current_h + (end_m // 60)
+        end_m = end_m % 60
+        schedule_slots.append({
+            "type": "task_sprint",
+            "time": f"{format_time(current_h, current_m)} - {format_time(end_h, end_m)}",
+            "title": f"Sprint {i}: {t}",
+            "duration_minutes": task_min,
+            "energy": "Medium",
+            "recommendation": "Execute without perfectionism."
+        })
+        current_h = end_h
+        current_m = end_m
+
+    # Daily Shutdown & Wrap-up
+    schedule_slots.append({
+        "type": "shutdown",
+        "time": f"{format_time(current_h, current_m)} - {format_time(current_h, current_m + 20)}",
+        "title": "Daily Debrief & Tomorrow Planning",
+        "duration_minutes": 20,
+        "energy": "Low Reflection",
+        "recommendation": "Review completed tasks in Optileno and set tomorrow's top 3."
+    })
+
+    return {
+        "schedule_theme": f"Energy-Optimized {duration_h}-Hour Time Blocked Schedule",
+        "total_focus_minutes": sum(s["duration_minutes"] for s in schedule_slots if s["type"] != "break"),
+        "slots": schedule_slots,
+        "top_rule": "Protect your 90-minute morning deep work block at all costs.",
+        "share_hook": "I generated a time-blocked daily calendar in under 5 seconds with Optileno.",
+        "optileno_bridge": "Export this schedule to Google Calendar with 1 click in Optileno.",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def generate_burnout_calculator(
+    weekly_hours: int = 55,
+    daily_context_switches: int = 20,
+    weekly_meeting_hours: int = 15,
+    sleep_hours: float = 6.5,
+    weekend_work: bool = True
+) -> Dict[str, Any]:
+    hours = max(20, min(100, int(weekly_hours or 50)))
+    switches = max(1, min(60, int(daily_context_switches or 15)))
+    meetings = max(0, min(40, int(weekly_meeting_hours or 10)))
+    sleep = max(3.0, min(12.0, float(sleep_hours or 7.0)))
+
+    # Compute risk score (0-100)
+    hour_factor = max(0, (hours - 40) * 1.5)
+    switch_factor = min(30, switches * 1.2)
+    meeting_factor = min(25, meetings * 1.0)
+    sleep_penalty = max(0, (7.5 - sleep) * 8.0)
+    weekend_penalty = 15 if weekend_work else 0
+
+    raw_score = hour_factor + switch_factor + meeting_factor + sleep_penalty + weekend_penalty
+    risk_score = int(max(10, min(99, raw_score)))
+
+    if risk_score >= 75:
+        tier = "Critical Risk"
+        color = "#ef4444"
+        summary = "Severe cognitive fatigue warning. You are operating in an unsustainable depletion zone."
+    elif risk_score >= 50:
+        tier = "Moderate Strain"
+        color = "#f59e0b"
+        summary = "Elevated workload friction. High context switching is fragmenting deep work windows."
+    else:
+        tier = "Sustainable Velocity"
+        color = "#10b981"
+        summary = "Healthy pace. Workload and recovery rhythms are balanced."
+
+    recovery_actions = [
+        f"Cap daily deep work at 4 hours and defend a sacred 90-minute morning block.",
+        f"Batch meeting load into designated afternoons to reduce {switches} daily context switches.",
+        f"Institute a hard daily shutdown ritual 60 minutes before bedtime.",
+        f"Turn off non-essential notifications during active focus blocks."
+    ]
+
+    return {
+        "burnout_score": risk_score,
+        "tier": tier,
+        "color": color,
+        "summary": summary,
+        "recovery_actions": recovery_actions,
+        "metrics_breakdown": {
+            "weekly_hours": hours,
+            "daily_switches": switches,
+            "meeting_hours": meetings,
+            "sleep_hours": sleep,
+            "weekend_work": weekend_work
+        },
+        "share_hook": f"My burnout risk score was {risk_score}/100 on Optileno's cognitive telemetry calculator.",
+        "optileno_bridge": "Optileno's live burnout telemetry continuously alerts you before cognitive fatigue impacts your output.",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+

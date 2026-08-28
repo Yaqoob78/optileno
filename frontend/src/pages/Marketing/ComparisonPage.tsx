@@ -271,6 +271,146 @@ const COMPARISON_DATA: Record<string, CompetitorData> = {
         answer: "Standard calendar tools treat every human identically. Optileno calibrates task density and break frequency to your psychological profile, preventing ADHD task paralysis and overcommitment."
       }
     ]
+  },
+  todoist: {
+    name: "Todoist",
+    slug: "todoist",
+    tagline: "Optileno vs. Todoist",
+    heroHeading: "Optileno vs Todoist: AI Execution Engine vs Passive Task List",
+    heroSubheading: "Todoist is a passive repository of endless to-do lists where tasks go to die. Optileno is an active AI execution partner that triages your morning in 90 seconds, time-blocks deep work into your calendar, and predicts cognitive burnout before deadlines slip.",
+    metaTitle: "Best Todoist Alternative for AI Planning & Time Blocking | Optileno",
+    metaDescription: "Looking for a Todoist alternative with AI time-blocking and focus tracking? Discover why high-output operators switch to Optileno's AI execution engine.",
+    competitorPrice: "$5.00 / mo (Pro) | $8.00 / mo (Business)",
+    optilenoPrice: "$0 Free Forever | $19 / mo Ultra Pro",
+    summaryQuote: "Todoist helps you collect endless lists of tasks you'll never do. Optileno helps you execute the highest-leverage work today with AI time blocking, focus timers, and burnout detection.",
+    features: [
+      {
+        name: "Conversational AI Coach (Chat Leno)",
+        description: "An AI partner that helps you prioritize tasks, decompose large goals, and overcome procrastination.",
+        optileno: true,
+        competitor: false
+      },
+      {
+        name: "Intelligent Time Blocking Calendar",
+        description: "Visual daily schedule with drag-and-drop time blocking and 1-click Google Calendar export.",
+        optileno: true,
+        competitor: "Basic Due Dates only"
+      },
+      {
+        name: "Predictive Burnout Telemetry",
+        description: "Measures cognitive strain, task-switching frequency, and sprint fatigue.",
+        optileno: true,
+        competitor: "Karma Points (Gamification only)"
+      },
+      {
+        name: "Big Five Personality Work-Style Calibration",
+        description: "Calibrates scheduling intensity and pacing to your individual psychological traits.",
+        optileno: true,
+        competitor: false
+      },
+      {
+        name: "Goal-to-Task Autonomous Breakdown",
+        description: "Turns high-level quarterly ambitions into step-by-step daily sprint tasks.",
+        optileno: true,
+        competitor: "Manual Subtasks"
+      },
+      {
+        name: "Built-in Deep Work Focus Engine",
+        description: "Dedicated focus mode with telemetry and productivity tracking.",
+        optileno: true,
+        competitor: false
+      },
+      {
+        name: "100% Free Forever Tier",
+        description: "Full daily task management, habits, focus scores, and AI chat with no credit card required.",
+        optileno: "Yes (Free Forever)",
+        competitor: "Limited Free Version"
+      }
+    ],
+    faqs: [
+      {
+        question: "Why switch from Todoist to Optileno?",
+        answer: "Todoist is a great list-making tool, but list-making doesn't mean getting things done. Optileno pairs your tasks with an intelligent calendar time-blocker, an executive AI coach, and burnout telemetry to guarantee daily execution."
+      },
+      {
+        question: "Can I import my tasks into Optileno?",
+        answer: "Yes! You can paste raw task lists into Chat Leno or our Free AI Task Prioritizer, and Optileno will instantly structure, score, and schedule them into your day."
+      },
+      {
+        question: "Is Optileno free like Todoist?",
+        answer: "Yes! Optileno offers a 100% Free Explorer Plan forever with task management, daily time blocking, habits, focus score tracking, and 15 daily AI requests without requiring a credit card."
+      }
+    ]
+  },
+  notion: {
+    name: "Notion",
+    slug: "notion",
+    tagline: "Optileno vs. Notion",
+    heroHeading: "Optileno vs Notion: Frictionless Daily Execution vs Infinite Template Setup",
+    heroSubheading: "Stop spending hours building, tweaking, and maintaining custom Notion databases. Optileno delivers instant 90-second AI sprint planning, smart calendar time blocking, and cognitive analytics right out of the box with zero setup.",
+    metaTitle: "Optileno vs Notion for Daily Task Execution & Focus | Optileno",
+    metaDescription: "Tired of maintaining complex Notion templates? Switch to Optileno for instant AI daily planning, smart calendar time-blocking, and burnout prevention.",
+    competitorPrice: "$10.00–$12.00 / mo per user (Plus Notion AI +$10/mo)",
+    optilenoPrice: "$0 Free Forever | $19 / mo Ultra Pro",
+    summaryQuote: "Notion is an excellent company wiki and document canvas, but it creates immense friction when used as a daily planner. Optileno gives you zero-setup AI execution and focus protection in under 90 seconds.",
+    features: [
+      {
+        name: "Setup Time & Maintenance",
+        description: "Time required to have a functioning daily productivity command center.",
+        optileno: "0 Seconds (Ready Out-of-the-Box)",
+        competitor: "Hours / Days of template tweaking"
+      },
+      {
+        name: "Conversational AI Executive Coach",
+        description: "Chat Leno guides your morning planning and breaks down roadblocks in real-time.",
+        optileno: true,
+        competitor: "Basic inline text generation"
+      },
+      {
+        name: "Integrated Daily Time Blocking",
+        description: "Visual time-block canvas synced with Google Calendar and Apple Calendar.",
+        optileno: true,
+        competitor: "Separate Notion Calendar app"
+      },
+      {
+        name: "Predictive Burnout Telemetry",
+        description: "Monitors cognitive fatigue and recommends rest windows.",
+        optileno: true,
+        competitor: false
+      },
+      {
+        name: "Big Five Personality Calibration",
+        description: "Customizes daily task density to your psychological profile.",
+        optileno: true,
+        competitor: false
+      },
+      {
+        name: "Daily Execution Speed",
+        description: "How fast you can organize and launch your daily sprint.",
+        optileno: "Under 90 Seconds",
+        competitor: "15–20 minutes of database clicking"
+      },
+      {
+        name: "100% Free Forever Tier",
+        description: "Complete core system available without a credit card.",
+        optileno: "Yes (Free Forever)",
+        competitor: "Limited block storage"
+      }
+    ],
+    faqs: [
+      {
+        question: "Why use Optileno instead of a Notion productivity template?",
+        answer: "Notion templates look pretty but require constant manual upkeep, leading to template fatigue. Optileno is purpose-built for action: Chat Leno auto-schedules your day, protects deep work windows, and tracks real execution telemetry."
+      },
+      {
+        question: "Can I use Optileno alongside Notion?",
+        answer: "Absolutely! Many founders keep long-form company wikis and documentation in Notion while using Optileno as their daily execution cockpit and AI time-blocker."
+      },
+      {
+        question: "Does Optileno include AI without an extra subscription?",
+        answer: "Yes! Optileno includes Chat Leno AI natively on both our 100% Free plan (15 requests/day) and Ultra Pro plan, unlike Notion which charges a separate $10/month add-on fee for AI."
+      }
+    ]
   }
 };
 

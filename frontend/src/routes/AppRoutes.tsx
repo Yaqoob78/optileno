@@ -48,6 +48,8 @@ export default function AppRoutes() {
         <Route path="/vs/motion" element={<ComparisonPage competitorKey="motion" />} />
         <Route path="/vs/sunsama" element={<ComparisonPage competitorKey="sunsama" />} />
         <Route path="/vs/reclaim" element={<ComparisonPage competitorKey="reclaim" />} />
+        <Route path="/vs/todoist" element={<ComparisonPage competitorKey="todoist" />} />
+        <Route path="/vs/notion" element={<ComparisonPage competitorKey="notion" />} />
         <Route path="/vs/:competitor" element={<ComparisonPage />} />
         <Route path="/ai-task-manager" element={<FeaturePage featureKey="ai-task-manager" />} />
         <Route path="/ai-task" element={<FeaturePage featureKey="ai-task" />} />
@@ -57,6 +59,8 @@ export default function AppRoutes() {
         <Route path="/free-ai-tools" element={<AITools initialTool="task-prioritizer" />} />
         <Route path="/tools/ai-task-prioritizer" element={<AITools initialTool="task-prioritizer" />} />
         <Route path="/tools/ai-weekly-planner" element={<AITools initialTool="weekly-planner" />} />
+        <Route path="/tools/ai-schedule-generator" element={<AITools initialTool="schedule-generator" />} />
+        <Route path="/tools/burnout-risk-calculator" element={<AITools initialTool="burnout-calculator" />} />
         <Route path="/show-analytics" element={<FeaturePage featureKey="show-analytics" />} />
         <Route path="/dashboard-preview" element={<FeaturePage featureKey="dashboard-preview" />} />
         <Route path="/goal-progress" element={<FeaturePage featureKey="goal-progress" />} />

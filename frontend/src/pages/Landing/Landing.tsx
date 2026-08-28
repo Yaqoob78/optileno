@@ -503,10 +503,55 @@ export default function Landing() {
   return (
     <>
       <SEO
-        title="AI Calendar Planner for Solo Agency Owners & Operators | Optileno"
-        description="Learn how to turn high level goals into daily tasks with AI. A daily focus app to prevent developer burnout and protect your deep work time."
-        keywords="ai calendar planner for solo agency owners, daily focus app to prevent developer burnout, how to turn high level goals into daily tasks with ai, optileno, focus app, daily task planner"
+        title="Optileno | Free AI Daily Planner, Smart Calendar & Task Manager"
+        description="The smart AI daily planner and calendar assistant. Auto-schedule deep work, organize tasks, track habits, and prevent burnout with Leno AI. Free forever."
+        keywords="AI daily planner, smart calendar, AI calendar planner, Motion alternative, Sunsama alternative, Reclaim alternative, Todoist alternative, free task manager, deep work planner, burnout analytics, focus score, workflow automation"
         canonicalUrl="https://www.optileno.com/"
+        schema={{
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "SoftwareApplication",
+              "name": "Optileno",
+              "applicationCategory": "ProductivityApplication",
+              "operatingSystem": "Web, Windows, macOS, iOS, Android",
+              "url": "https://www.optileno.com/",
+              "description": "The smart AI daily planner and calendar assistant. Auto-schedule deep work, organize tasks, track habits, and prevent burnout with Leno AI. Free forever.",
+              "offers": {
+                "@type": "Offer",
+                "price": "0.00",
+                "priceCurrency": "USD",
+                "description": "100% Free Explorer Plan Forever"
+              },
+              "aggregateRating": {
+                "@type": "AggregateRating",
+                "ratingValue": "4.9",
+                "ratingCount": "195",
+                "bestRating": "5",
+                "worstRating": "1"
+              },
+              "featureList": [
+                "AI Daily Planner & 90-Second Sprint Triage",
+                "Smart Calendar Time Blocking & Google Calendar Sync",
+                "Deep Work Focus Shield with Built-in Timers",
+                "Predictive Cognitive Burnout Risk Telemetry",
+                "Big Five Personality Work-Style Calibration",
+                "Chat Leno Executive AI Productivity Partner"
+              ]
+            },
+            {
+              "@type": "FAQPage",
+              "mainEntity": FAQ_ITEMS.map((item) => ({
+                "@type": "Question",
+                "name": item.question,
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": item.answer
+                }
+              }))
+            }
+          ]
+        }}
       />
       <div className="landing-page">
         <div className="scene-bg" aria-hidden="true" ref={sceneRef}>
@@ -934,6 +979,8 @@ export default function Landing() {
               <button onClick={() => navigate('/vs/motion')}>Optileno vs Motion</button>
               <button onClick={() => navigate('/vs/sunsama')}>Optileno vs Sunsama</button>
               <button onClick={() => navigate('/vs/reclaim')}>Optileno vs Reclaim</button>
+              <button onClick={() => navigate('/vs/todoist')}>Optileno vs Todoist</button>
+              <button onClick={() => navigate('/vs/notion')}>Optileno vs Notion</button>
               <button onClick={() => navigate('/tools')}>Free AI Tools</button>
               <button onClick={() => navigate('/privacy')}>Privacy Policy</button>
               <button onClick={() => navigate('/terms')}>Terms of Service</button>

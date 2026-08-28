@@ -8,6 +8,7 @@ import { useAnalyticsStore } from "../stores/analytics.store";
 import { realtimeClient } from "../services/realtime/socket-client";
 import type { UserProfile } from "../types/user.types";
 import { canonicalPlanTypeForTier, resolvePlanTierFromProfile } from "../utils/plan";
+import { clearSessionScopedData } from "../utils/sessionReset";
 
 interface LoginCredentials {
   email: string;
@@ -56,13 +57,7 @@ export const useUser = () => {
   } = useUserStore();
 
   const resetSessionScopedStores = useCallback(() => {
-    realtimeClient.disconnect();
-    usePlannerStore.getState().resetPlanner();
-    useChatStore.getState().clearAll();
-    useAnalyticsStore.getState().clearEvents();
-    sessionStorage.removeItem('chat_preserved');
-    sessionStorage.removeItem('planner_preserved');
-    sessionStorage.removeItem('user_preserved');
+    clearSessionScopedData();
   }, []);
 
   const handleLogin = useCallback(

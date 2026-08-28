@@ -601,6 +601,8 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         "/api/v1/growth/leads",
         "/api/v1/tools/task-prioritizer",
         "/api/v1/tools/weekly-planner",
+        "/api/v1/tools/schedule-generator",
+        "/api/v1/tools/burnout-calculator",
         "/api/v1/webhooks/webhook",
         "/api/v1/webhooks/stripe",
         "/api/v1/payments/webhook",
