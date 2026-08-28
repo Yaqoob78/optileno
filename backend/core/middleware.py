@@ -409,11 +409,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Content Security Policy
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com/gsi/client; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com/gsi/style; "
             "font-src 'self' https://fonts.gstatic.com; "
-            "img-src 'self' data: https: blob:; "
-            "connect-src 'self' ws: wss: https:; "
+            "img-src 'self' data: https: blob: https://*.googleusercontent.com; "
+            "frame-src 'self' https://accounts.google.com; "
+            "connect-src 'self' ws: wss: https: https://accounts.google.com; "
             "frame-ancestors 'none'; "
             "base-uri 'self'; "
             "form-action 'self'"
@@ -592,6 +593,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         "/api/v1/health/detailed",
         "/api/v1/auth/login",
         "/api/v1/auth/register",
+        "/api/v1/auth/google",
         "/api/v1/auth/access/register",
         "/api/v1/auth/refresh",
         "/api/v1/auth/validate",
@@ -609,6 +611,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         "/api/v1/payments/complete-return",
         "/auth/login",
         "/auth/register",
+        "/auth/google",
         "/auth/access/register",
         "/auth/refresh",
         "/auth/validate",

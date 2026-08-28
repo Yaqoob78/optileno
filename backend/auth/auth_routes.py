@@ -374,6 +374,61 @@ async def login(
     return payload
 
 
+class GoogleAuthRequest(BaseModel):
+    credential: str
+    plan_type: str = "EXPLORER"
+
+
+@router.post("/google")
+async def google_auth(
+    request: Request,
+    response: Response,
+    payload: GoogleAuthRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Google 1-Click Authentication & Auto-Registration.
+    Verifies Google ID token, logs in existing user or creates a new user,
+    and sets HttpOnly auth cookies.
+    """
+    google_info = await auth_service.verify_google_credential(payload.credential)
+    normalized_email = google_info["email"]
+
+    await auth_rate_limiter.enforce(
+        request=request,
+        action="login",
+        identifier=normalized_email,
+    )
+
+    user = await auth_service.authenticate_or_register_google(
+        db,
+        google_info,
+        plan_type=payload.plan_type or "EXPLORER",
+    )
+
+    access_token, refresh_token, refresh_days = await auth_service.create_session(
+        db,
+        user.id,
+        remember_me=True,
+        **client_meta(request),
+    )
+    refresh_max_age = refresh_days * 24 * 60 * 60
+
+    set_auth_cookies(response, access_token, refresh_token, refresh_max_age=refresh_max_age)
+
+    res_payload = {
+        "status": "success",
+        "user": build_user_profile(user),
+        "authenticated": True,
+    }
+
+    if settings.EXPOSE_DEBUG_AUTH_TOKENS and settings.ENVIRONMENT != "production":
+        res_payload["access_token"] = access_token
+        res_payload["refresh_token"] = refresh_token
+
+    return res_payload
+
+
 @router.post("/refresh")
 async def refresh(
     request: Request,

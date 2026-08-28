@@ -261,6 +261,13 @@ class UserService {
   }
 
   /**
+   * Google 1-Click Authentication & Auto-Registration
+   */
+  async googleAuth(payload: { credential: string; plan_type?: string }): Promise<ApiResponse<any>> {
+    return api.post('/auth/google', payload);
+  }
+
+  /**
    * Invite-only access register/login (no payment path).
    */
   async getAccess(data: { email: string; password: string; full_name?: string }): Promise<ApiResponse<any>> {

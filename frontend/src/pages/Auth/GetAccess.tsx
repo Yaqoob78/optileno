@@ -4,6 +4,7 @@ import { Mail, Lock, User, KeyRound, Eye, EyeOff, Loader2, AlertCircle } from 'l
 import { userService } from '../../services/api/user.service';
 import { useUserStore } from '../../stores/useUserStore';
 import { clearSessionScopedData } from '../../utils/sessionReset';
+import { GoogleSignInButton } from '../../components/auth/GoogleSignInButton';
 import SEO from '../../components/common/SEO';
 import '../../styles/pages/auth.css';
 
@@ -102,6 +103,11 @@ export default function GetAccess() {
               <span>{error}</span>
             </div>
           )}
+
+          <GoogleSignInButton
+            mode="signin"
+            onError={(msg) => setError(msg)}
+          />
 
           <form className="auth-form" onSubmit={handleSubmit} autoComplete="on">
             <div className="form-group">

@@ -6,8 +6,10 @@ interface Env {
     readonly IS_DEV: boolean;
     readonly IS_PROD: boolean;
     readonly SOCKET_URL: string;
+    readonly GOOGLE_CLIENT_ID: string;
 }
 
+const rawGoogleClientId = (((import.meta as any).env.VITE_GOOGLE_CLIENT_ID as string) || "").trim();
 const rawApiBaseUrl = (((import.meta as any).env.VITE_API_BASE_URL as string) || "").trim();
 const rawApiUrl = (((import.meta as any).env.VITE_API_URL as string) || "").trim();
 const rawSocketUrl = (((import.meta as any).env.VITE_SOCKET_URL as string) || "").trim();
@@ -87,6 +89,7 @@ export const env: Env = {
     APP_VERSION: ((import.meta as any).env.VITE_APP_VERSION as string) || '1.0.0',
     IS_DEV: (import.meta as any).env.DEV as boolean,
     IS_PROD: (import.meta as any).env.PROD as boolean,
+    GOOGLE_CLIENT_ID: rawGoogleClientId || "",
 };
 
 export default env;

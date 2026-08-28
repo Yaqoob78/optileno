@@ -3,6 +3,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 import re
 import secrets
+import httpx
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func
@@ -489,4 +490,124 @@ class AuthService:
             logger.warning("Password reset email send exception for %s: %s", to_email, exc)
 
 
+    async def verify_google_credential(self, credential: str) -> dict:
+        """Verify Google ID token via Google's tokeninfo API."""
+        if not credential or not isinstance(credential, str):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing Google credential token")
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(
+                    "https://oauth2.googleapis.com/tokeninfo",
+                    params={"id_token": credential}
+                )
+                if resp.status_code != 200:
+                    logger.warning("Google tokeninfo error: %s", resp.text)
+                    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Google token")
+
+                payload = resp.json()
+                email = str(payload.get("email", "")).strip().lower()
+                if not email:
+                    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Google account has no email")
+
+                return {
+                    "email": email,
+                    "name": payload.get("name") or email.split("@")[0],
+                    "picture": payload.get("picture", ""),
+                    "sub": payload.get("sub", ""),
+                }
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error("Failed to verify Google token: %s", e)
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Google authentication service unavailable")
+
+    async def authenticate_or_register_google(
+        self,
+        db: AsyncSession,
+        google_info: dict,
+        plan_type: str = "EXPLORER"
+    ) -> User:
+        """Find existing user or automatically create a new user from verified Google info."""
+        normalized_email = google_info["email"].strip().lower()
+        full_name = google_info.get("name") or normalized_email.split("@")[0]
+        avatar = google_info.get("picture") or ""
+
+        result = await db.execute(select(User).where(func.lower(User.email) == normalized_email))
+        user = result.scalar_one_or_none()
+
+        if user:
+            # Update avatar if empty
+            if avatar and not getattr(user, "avatar", None):
+                user.avatar = avatar
+            # Ensure owner privileges if applicable
+            if is_owner_email(normalized_email):
+                user.tier = "ultra"
+                user.role = "admin"
+                user.plan_type = "ULTRA"
+                user.is_superuser = True
+            await db.commit()
+            await db.refresh(user)
+            return user
+
+        # Auto-register new Google user
+        is_owner = is_owner_email(normalized_email)
+        if is_owner:
+            plan_type_val, tier_val = "ULTRA", "ultra"
+            role_val = "admin"
+            is_verified_val = True
+            is_superuser_val = True
+            subscription_status_val = "active"
+        else:
+            plan_type_val, tier_val = "EXPLORER", "explorer"
+            role_val = "user"
+            is_verified_val = True  # Verified by Google
+            is_superuser_val = False
+            subscription_status_val = "explorer"
+
+        random_password = secrets.token_urlsafe(32)
+
+        for attempt in range(2):
+            nonce = None if attempt == 0 else secrets.token_hex(4)
+            new_user = User(
+                email=normalized_email,
+                username=self._build_username(normalized_email, nonce=nonce),
+                full_name=full_name,
+                avatar=avatar,
+                hashed_password=get_password_hash(random_password),
+                plan_type=plan_type_val,
+                tier=tier_val,
+                role=role_val,
+                is_active=True,
+                is_verified=is_verified_val,
+                is_superuser=is_superuser_val,
+                subscription_status=subscription_status_val,
+            )
+            db.add(new_user)
+            try:
+                await db.commit()
+                await db.refresh(new_user)
+                return new_user
+            except IntegrityError as exc:
+                await db.rollback()
+                logger.warning("Google registration integrity conflict for %s: %s", normalized_email, exc)
+                existing_res = await db.execute(select(User).where(func.lower(User.email) == normalized_email))
+                existing_user = existing_res.scalar_one_or_none()
+                if existing_user:
+                    return existing_user
+            except SQLAlchemyError as exc:
+                await db.rollback()
+                logger.error("Google registration DB failure for %s: %s", normalized_email, exc)
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Database temporarily unavailable. Please retry.",
+                )
+
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Account creation conflict. Please retry.",
+        )
+
+
 auth_service = AuthService()
+

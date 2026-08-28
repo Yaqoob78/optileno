@@ -5,6 +5,7 @@ import { userService } from '../../services/api/user.service';
 import { useUserStore } from '../../stores/useUserStore';
 import { clearSessionScopedData } from '../../utils/sessionReset';
 import { openLemonSqueezyCheckout } from '../../utils/lemonsqueezy';
+import { GoogleSignInButton } from '../../components/auth/GoogleSignInButton';
 import SEO from '../../components/common/SEO';
 import '../../styles/pages/auth.css';
 
@@ -154,6 +155,12 @@ export default function Register() {
                             <span>{error}</span>
                         </div>
                     )}
+
+                    <GoogleSignInButton
+                        mode="signup"
+                        planType={formData.plan_type}
+                        onError={(msg) => setError(msg)}
+                    />
 
                     <form className="auth-form" onSubmit={handleSubmit} autoComplete="on">
                         {/* Plan Selection */}

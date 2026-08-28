@@ -4,6 +4,7 @@ import { Mail, Lock, LogIn, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-rea
 import { userService } from '../../services/api/user.service';
 import { useUserStore } from '../../stores/useUserStore';
 import { clearSessionScopedData } from '../../utils/sessionReset';
+import { GoogleSignInButton } from '../../components/auth/GoogleSignInButton';
 import SEO from '../../components/common/SEO';
 import '../../styles/pages/auth.css';
 
@@ -113,6 +114,11 @@ export default function Login() {
                     {routeMessage && (
                         <div className="success-message">{routeMessage}</div>
                     )}
+
+                    <GoogleSignInButton
+                        mode="signin"
+                        onError={(msg) => setError(msg)}
+                    />
 
                     <form className="auth-form" onSubmit={handleSubmit} autoComplete="on">
                         <div className="form-group">
