@@ -15,6 +15,7 @@ from backend.schemas.auth import (
     UserResponse,
     ForgotPasswordRequest,
     ResetPasswordRequest,
+    GoogleAuthRequest,
 )
 from backend.db.models import User
 from backend.utils.user_profile import build_user_profile
@@ -372,11 +373,6 @@ async def login(
         payload["refresh_token"] = refresh_token
 
     return payload
-
-
-class GoogleAuthRequest(BaseModel):
-    credential: str
-    plan_type: str = "EXPLORER"
 
 
 @router.post("/google")

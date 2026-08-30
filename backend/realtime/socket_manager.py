@@ -1017,9 +1017,12 @@ def create_socketio_app(app):
     """Create Socket.IO ASGI wrapper for FastAPI app"""
     global _queue_processor_started
     if not _queue_processor_started:
-        sio.start_background_task(process_message_queue)
-        _queue_processor_started = True
-        logger.info("[WS] Message queue processor started")
+        try:
+            sio.start_background_task(process_message_queue)
+            _queue_processor_started = True
+            logger.info("[WS] Message queue processor started")
+        except (RuntimeError, Exception) as exc:
+            logger.debug("[WS] Background queue task deferred to runtime: %s", exc)
 
     return ASGIApp(
         sio, 

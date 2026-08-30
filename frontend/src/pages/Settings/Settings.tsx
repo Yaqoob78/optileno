@@ -18,6 +18,7 @@ import AboutSettings from '../../components/settings/AboutSettings';
 import BillingSettings from '../../components/settings/BillingSettings';
 import AdminAccessSettings from '../../components/settings/AdminAccessSettings';
 import { useUserStore } from '../../stores/useUserStore';
+import { userService } from '../../services/api/user.service';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { clearSessionScopedData } from '../../utils/sessionReset';
 import '../../styles/pages/settings.css';

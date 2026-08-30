@@ -64,3 +64,8 @@ class TokenPayload(BaseModel):
     user_id: int
     type: str # access or refresh
     exp: int
+
+
+class GoogleAuthRequest(BaseModel):
+    credential: str
+    plan_type: str = "EXPLORER"

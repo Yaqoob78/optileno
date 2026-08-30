@@ -6,6 +6,8 @@ import {
   resolvePlanTierFromProfile,
 } from "../utils/plan";
 
+import { clearSessionScopedData } from "../utils/sessionReset";
+
 const normalizeProfileForStore = (baseProfile: any, incoming: any) => {
   const merged = {
     ...baseProfile,
@@ -125,18 +127,28 @@ export const useUserStore = create<UserState>()(
       // Authentication actions
       login: (profile, preferences) => {
         const finalProfile = normalizeProfileForStore(defaultProfile, profile);
-        return set({
-          ...withDerived(finalProfile),
-          preferences: preferences || defaultPreferences,
-          isAuthenticated: true,
+        return set((state) => {
+          const prevId = state.profile?.id ? String(state.profile.id) : null;
+          const nextId = finalProfile?.id ? String(finalProfile.id) : null;
+          if (prevId && nextId && prevId !== nextId) {
+            clearSessionScopedData();
+          }
+          return {
+            ...withDerived(finalProfile),
+            preferences: preferences || defaultPreferences,
+            isAuthenticated: true,
+          };
         });
       },
 
-      logout: () => set({
-        ...withDerived(defaultProfile),
-        preferences: defaultPreferences,
-        isAuthenticated: false,
-      }),
+      logout: () => {
+        clearSessionScopedData();
+        return set({
+          ...withDerived(defaultProfile),
+          preferences: defaultPreferences,
+          isAuthenticated: false,
+        });
+      },
 
 
       // Generic update for AI context

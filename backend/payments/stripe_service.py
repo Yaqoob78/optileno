@@ -1,14 +1,20 @@
-import stripe
 from backend.app.config import settings
 from backend.db.models import User
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 
-stripe.api_key = settings.STRIPE_API_KEY
+try:
+    import stripe
+    stripe.api_key = settings.STRIPE_API_KEY
+except ImportError:
+    stripe = None
+
 
 class StripeService:
     async def get_or_create_customer(self, db: AsyncSession, user: User):
         """Ensure user has a stripe customer ID."""
+        if not stripe:
+            return "stripe_unavailable"
         if user.stripe_customer_id:
             return user.stripe_customer_id
             
@@ -24,6 +30,8 @@ class StripeService:
 
     async def create_checkout_session(self, db: AsyncSession, user: User):
         """Create a Stripe Checkout Session for subscription."""
+        if not stripe:
+            return f"{settings.FRONTEND_URL}/dashboard"
         customer_id = await self.get_or_create_customer(db, user)
         
         session = stripe.checkout.Session.create(
@@ -45,6 +53,8 @@ class StripeService:
 
     async def create_portal_session(self, db: AsyncSession, user: User):
         """Create a Stripe Customer Portal session for billing management."""
+        if not stripe:
+            return f"{settings.FRONTEND_URL}/settings"
         customer_id = await self.get_or_create_customer(db, user)
         
         session = stripe.billing_portal.Session.create(

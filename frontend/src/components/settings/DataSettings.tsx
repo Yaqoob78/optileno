@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Database, AlertOctagon, ShieldCheck, AlertCircle } from 'lucide-react';
 import { userService } from '../../services/api/user.service';
+import { useUserStore } from '../../stores/useUserStore';
 import { clearSessionScopedData } from '../../utils/sessionReset';
 import '../../styles/pages/settings.css';
 
