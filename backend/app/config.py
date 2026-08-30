@@ -468,13 +468,46 @@ class Settings:
     LIMIT_BASIC_NVIDIA: int = _env_int("LIMIT_BASIC_NVIDIA", 2000)
     LIMIT_BASIC_GROQ: int = _env_int("LIMIT_BASIC_GROQ", 500)
 
-    # Pro Plan
+    # Pro / Ultra Plan
     LIMIT_PRO_NVIDIA: int = _env_int("LIMIT_PRO_NVIDIA", 5000)
     LIMIT_PRO_GROQ: int = _env_int("LIMIT_PRO_GROQ", 1000)
     
     # Enterprise Plan
     LIMIT_ENTERPRISE_NVIDIA: int = _env_int("LIMIT_ENTERPRISE_NVIDIA", 50000)
     LIMIT_ENTERPRISE_GROQ: int = _env_int("LIMIT_ENTERPRISE_GROQ", 10000)
+
+    # =========================
+    # AI Providers Configuration
+    # =========================
+    AI_PROVIDER: str = _strip_wrapping_quotes(os.getenv("AI_PROVIDER", "groq")).lower()
+    AI_MODEL: str = _strip_wrapping_quotes(os.getenv("AI_MODEL", "llama-3.3-70b-versatile"))
+    AI_PROVIDER_TIMEOUT_SECONDS: float = float(os.getenv("AI_PROVIDER_TIMEOUT_SECONDS", "30.0"))
+    AI_CONTEXT_TIMEOUT_SECONDS: float = float(os.getenv("AI_CONTEXT_TIMEOUT_SECONDS", "5.0"))
+
+    # Groq (High Speed AI Inference)
+    GROQ_API_KEY: str = _strip_wrapping_quotes(os.getenv("GROQ_API_KEY", ""))
+
+    # NVIDIA NIM API (Primary Reasoning / Brain)
+    NVIDIA_API_KEY: str = _strip_wrapping_quotes(os.getenv("NVIDIA_API_KEY", ""))
+    NVIDIA_BASE_URL: str = os.getenv("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1")
+    NVIDIA_BRAIN_MODEL: str = os.getenv("NVIDIA_BRAIN_MODEL", "meta/llama-3.1-70b-instruct")
+    NVIDIA_AGENT_MODEL: str = os.getenv("NVIDIA_AGENT_MODEL", "meta/llama-3.1-8b-instruct")
+
+    # Gemini & OpenAI
+    GEMINI_API_KEY: str = _strip_wrapping_quotes(os.getenv("GEMINI_API_KEY", ""))
+    OPENAI_API_KEY: str = _strip_wrapping_quotes(os.getenv("OPENAI_API_KEY", ""))
+
+    def get_plan_limits(self, plan_tier: str) -> Dict[str, int]:
+        normalized = (plan_tier or "explorer").lower()
+        if normalized in ("ultra", "pro", "enterprise"):
+            return {
+                "nvidia": self.LIMIT_PRO_NVIDIA,
+                "groq": self.LIMIT_PRO_GROQ,
+            }
+        return {
+            "nvidia": self.LIMIT_FREE_NVIDIA,
+            "groq": self.LIMIT_FREE_GROQ,
+        }
 
     # =========================
     # Rate Limiting (Configurable)
