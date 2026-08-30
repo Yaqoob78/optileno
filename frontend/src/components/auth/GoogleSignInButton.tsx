@@ -129,8 +129,12 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
         width: 340,
       });
 
-      // Also trigger Google One Tap on top-right of screen
-      window.google.accounts.id.prompt();
+      // Also trigger Google One Tap with silent dismissal handler
+      window.google.accounts.id.prompt((notification: any) => {
+        if (notification?.isNotDisplayed?.() || notification?.isSkippedMoment?.()) {
+          // Normal One-Tap prompt dismissal, handled gracefully without console errors
+        }
+      });
     } catch (err) {
       console.warn('Google button init error:', err);
     }

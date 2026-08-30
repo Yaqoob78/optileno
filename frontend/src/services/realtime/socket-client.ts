@@ -68,7 +68,7 @@ class RealtimeClient {
 
         this.socket = io(SOCKET_URL, {
           path: '/socket.io',
-          transports: ['websocket', 'polling'],
+          transports: ['polling', 'websocket'],
           withCredentials: true,
           reconnection: true,
           reconnectionDelay: 1000,

@@ -423,6 +423,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Referrer Policy
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
+        # Cross-Origin Opener Policy (allows OAuth popups like Google Sign-In)
+        response.headers["Cross-Origin-Opener-Policy"] = "same-origin-allow-popups"
+
         # Permissions Policy
         response.headers["Permissions-Policy"] = (
             "geolocation=(), "
