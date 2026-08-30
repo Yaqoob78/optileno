@@ -27,13 +27,22 @@ class RealTimeAnalyticsTracker:
         metadata: Optional[Dict[str, Any]] = None
     ):
         """
-        Track a user event and update analytics.
-
-        Args:
-            user_id: ID of the user
-            event_type: Type of event ('task_completed', 'goal_milestone', etc.)
-            metadata: Additional event metadata
+        Track a user event and update analytics asynchronously in the background.
+        Guarantees that caller HTTP requests are never blocked.
         """
+        import asyncio
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self._process_event(user_id, event_type, metadata))
+        except RuntimeError:
+            pass
+
+    async def _process_event(
+        self,
+        user_id: int,
+        event_type: str,
+        metadata: Optional[Dict[str, Any]] = None
+    ):
         try:
             async for db in get_db():
                 # 1. Create analytics event record
@@ -68,14 +77,13 @@ class RealTimeAnalyticsTracker:
                         }
                     )
                 except Exception as e:
-                    logger.error(f"Failed to broadcast analytics update: {e}")
+                    logger.debug(f"Non-critical analytics broadcast failure: {e}")
 
-                logger.info(f"Tracked event {event_type} for user {user_id}")
+                logger.debug(f"Tracked event {event_type} for user {user_id}")
                 return event
 
         except Exception as e:
-            logger.error(f"Error tracking event: {str(e)}")
-            raise
+            logger.warning(f"Background analytics tracking skipped: {e}")
 
     def _get_category(self, event_type: str) -> str:
         """Categorize event type."""
