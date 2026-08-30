@@ -106,7 +106,7 @@ export function useProductivityScore(timeRange: 'daily' | 'weekly' | 'monthly' =
                 next_update: todayPayload.generated_at || todayPayload.next_update,
             });
         } catch (err: any) {
-            console.error('Error fetching productivity score:', err);
+            console.warn('Productivity score sync:', err?.message || err);
             // Keep the last good score on transient refresh failures —
             // wiping it would blank the dashboard on every network blip
             setError(err.message);
@@ -154,7 +154,7 @@ export function useProductivityScore(timeRange: 'daily' | 'weekly' | 'monthly' =
                 }
             }
         } catch (err: any) {
-            console.error('Error fetching productivity averages:', err);
+            console.warn('Productivity averages sync:', err?.message || err);
             setError(err.message);
         }
     }, [timeRange, isAuthenticated]);

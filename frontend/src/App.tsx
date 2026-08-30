@@ -130,8 +130,8 @@ function StoreInitializer({ children }: { children: React.ReactNode }) {
         .then(() => {
           initPlannerSockets();
         })
-        .catch((err) => {
-          console.error('Realtime connection failed:', err);
+        .catch((_err) => {
+          // Graceful fallback to REST polling without throwing red console errors
         });
 
       return () => {

@@ -99,7 +99,7 @@ export function useFocusScore(timeRange: 'daily' | 'weekly' | 'monthly' = 'daily
                 status: todayPayload.status || todayPayload.level || null,
             });
         } catch (err: any) {
-            console.error('Error fetching focus score:', err);
+            console.warn('Focus score sync:', err?.message || err);
             // Keep the last good score on transient refresh failures
             setError(err.message);
         } finally {
@@ -156,7 +156,7 @@ export function useFocusScore(timeRange: 'daily' | 'weekly' | 'monthly' = 'daily
                 }
             }
         } catch (err: any) {
-            console.error('Error fetching focus averages:', err);
+            console.warn('Focus averages sync:', err?.message || err);
             setError(err.message);
         }
     }, [timeRange, isAuthenticated]);

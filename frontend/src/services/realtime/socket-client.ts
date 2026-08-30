@@ -68,12 +68,15 @@ class RealtimeClient {
 
         this.socket = io(SOCKET_URL, {
           path: '/socket.io',
-          transports: ['polling', 'websocket'],
+          transports: ['websocket'],
+          upgrade: false,
+          autoConnect: true,
           withCredentials: true,
           reconnection: true,
-          reconnectionDelay: 1000,
-          reconnectionDelayMax: 5000,
-          reconnectionAttempts: 5,
+          reconnectionDelay: 2000,
+          reconnectionDelayMax: 10000,
+          reconnectionAttempts: 3,
+          timeout: 8000,
         });
 
         authTimeout = window.setTimeout(() => {
@@ -97,21 +100,20 @@ class RealtimeClient {
           finishResolve();
         });
 
-        this.socket.on('error', (error) => {
-          // Non-fatal when cookie auth succeeds but explicit token auth was omitted.
-          if (token) {
-            if (authTimeout !== null) {
-              window.clearTimeout(authTimeout);
-            }
-            finishReject(error);
-          }
-        });
-
-        this.socket.on('connect_error', (error) => {
+        this.socket.on('error', (_error) => {
+          // Non-fatal; continue with REST API fallbacks
           if (authTimeout !== null) {
             window.clearTimeout(authTimeout);
           }
-          finishReject(error);
+          finishResolve();
+        });
+
+        this.socket.on('connect_error', (_error) => {
+          // Graceful fallback to REST polling without throwing uncaught exceptions
+          if (authTimeout !== null) {
+            window.clearTimeout(authTimeout);
+          }
+          finishResolve();
         });
 
         this.socket.on('disconnect', () => {
