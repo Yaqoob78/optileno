@@ -3,19 +3,11 @@ import {
   User,
   ChevronRight,
   ChevronLeft,
-  Calendar,
-  BarChart3,
-  Settings,
-  LayoutDashboard,
   Zap,
-  MessageSquare,
-  Home,
-  FileText,
-  Bell,
-  HelpCircle
 } from "lucide-react";
-import "../../styles/layout/sidebar.css";
+import { useNavigate } from "react-router-dom";
 import { useUser } from "../../hooks/useUser";
+import "../../styles/layout/sidebar.css";
 
 interface MenuItem {
   id: number;
@@ -41,7 +33,12 @@ export default function Sidebar({
 }: SidebarProps) {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const { user, isUltra } = useUser();
+  const navigate = useNavigate();
   const profile = { planType: isUltra ? 'ULTRA' : 'EXPLORER' };
+
+  const handleProfileClick = () => {
+    navigate('/settings/billing', { state: { tab: 'billing' } });
+  };
 
   return (
     <aside className="premium-sidebar">
@@ -119,8 +116,15 @@ export default function Sidebar({
         })}
       </nav>
 
-      {/* User Profile Section */}
-      <div className="user-profile-section">
+      {/* User Profile Section (Clickable -> Directly opens Settings & Plan Upgrade) */}
+      <div 
+        className="user-profile-section"
+        onClick={handleProfileClick}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleProfileClick(); }}
+        title="View Settings & Plan Upgrade"
+      >
         {isOpen ? (
           <div className="user-profile-open">
             <div className="user-avatar-container">
@@ -130,10 +134,10 @@ export default function Sidebar({
               <div className="user-online-status" />
             </div>
             <div className={`user-info ${profile.planType === 'ULTRA' ? 'ultra-glow' : ''}`}>
-              <p className="user-name">{user.name || 'User'}</p>
+              <p className="user-name">{user?.name || user?.email?.split('@')[0] || 'User'}</p>
               <div className={`user-badge ${profile.planType === 'ULTRA' ? 'ultra' : ''}`}>
                 <Zap size={10} className={profile.planType === 'ULTRA' ? 'text-purple-400' : 'text-amber-400'} />
-                <span className="user-badge-text">{profile.planType === 'ULTRA' ? 'ULTRA' : 'EXPLORER'}</span>
+                <span className="user-badge-text">{profile.planType === 'ULTRA' ? 'ULTRA PRO' : 'EXPLORER • UPGRADE'}</span>
               </div>
             </div>
           </div>

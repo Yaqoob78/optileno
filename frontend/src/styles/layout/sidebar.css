@@ -323,18 +323,39 @@
 
 /* ========== USER PROFILE ========== */
 .user-profile-section {
-  padding: 1.25rem;
+  padding: 1.1rem 1.25rem;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   background: linear-gradient(180deg,
       rgba(30, 30, 40, 0.7) 0%,
       rgba(25, 25, 35, 0.9) 100%);
   flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.user-profile-section:hover {
+  background: linear-gradient(180deg,
+      rgba(45, 45, 68, 0.9) 0%,
+      rgba(35, 35, 55, 0.98) 100%);
+  border-top-color: rgba(139, 92, 246, 0.4);
+  box-shadow: 0 -4px 20px rgba(99, 102, 241, 0.15);
+}
+
+.user-profile-section:focus-visible {
+  outline: 2px solid rgba(139, 92, 246, 0.6);
+  outline-offset: -2px;
 }
 
 .user-profile-open {
   display: flex;
   align-items: center;
   gap: 0.875rem;
+  transition: transform 0.2s ease;
+}
+
+.user-profile-section:hover .user-profile-open {
+  transform: translateX(2px);
 }
 
 .user-profile-collapsed {

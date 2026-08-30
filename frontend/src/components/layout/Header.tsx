@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Bell, Menu } from "lucide-react";
+import { Bell, Menu, User, Sparkles } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../../services/api/client";
 import { socket } from "../../services/realtime/socket-client";
+import { useUser } from "../../hooks/useUser";
 import { NotificationCenter } from "../notifications/NotificationCenter";
-import "../../styles/layout/header.css"; // CSS CONNECTION
+import "../../styles/layout/header.css";
 
 interface HeaderProps {
   page: string;
@@ -14,6 +16,8 @@ interface HeaderProps {
 export default function Header({ page, onMenuToggle, isMobile }: HeaderProps) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const navigate = useNavigate();
+  const { isUltra } = useUser();
 
   const pageTitles: Record<string, string> = {
     "Chat": "Chat Leno",
@@ -81,6 +85,10 @@ export default function Header({ page, onMenuToggle, isMobile }: HeaderProps) {
     setNotificationsOpen(false);
   };
 
+  const handleGoToPlan = () => {
+    navigate('/settings/billing', { state: { tab: 'billing' } });
+  };
+
   return (
     <>
       <header className="premium-header">
@@ -106,6 +114,20 @@ export default function Header({ page, onMenuToggle, isMobile }: HeaderProps) {
 
             {/* Right Section - Actions */}
             <div className="header-actions">
+              {/* Upgrade Pill Button (Only shown to Free/Explorer users) */}
+              {!isUltra && (
+                <button
+                  type="button"
+                  className="header-upgrade-btn"
+                  onClick={handleGoToPlan}
+                  aria-label="Upgrade Plan"
+                  title="Upgrade to Ultra Pro"
+                >
+                  <Sparkles size={13} className="header-sparkle-icon" />
+                  <span>Upgrade</span>
+                </button>
+              )}
+
               {/* Notifications */}
               <div className="notification-container">
                 <button
@@ -123,6 +145,17 @@ export default function Header({ page, onMenuToggle, isMobile }: HeaderProps) {
                   )}
                 </button>
               </div>
+
+              {/* User Avatar in Header -> Directly navigates to Plan / Settings */}
+              <button
+                type="button"
+                className="header-profile-btn"
+                onClick={handleGoToPlan}
+                aria-label="Profile Settings and Plan"
+                title="Profile Settings & Upgrade Plan"
+              >
+                <User size={18} />
+              </button>
             </div>
           </div>
         </div>
