@@ -116,6 +116,7 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
         callback: handleCredentialResponse,
         auto_select: false,
         cancel_on_tap_outside: true,
+        use_fedcm_for_prompt: true,
       });
 
       // Render official Google button
@@ -129,12 +130,8 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
         width: 340,
       });
 
-      // Also trigger Google One Tap with silent dismissal handler
-      window.google.accounts.id.prompt((notification: any) => {
-        if (notification?.isNotDisplayed?.() || notification?.isSkippedMoment?.()) {
-          // Normal One-Tap prompt dismissal, handled gracefully without console errors
-        }
-      });
+      // Trigger Google One Tap with standard FedCM prompt
+      window.google.accounts.id.prompt();
     } catch (err) {
       console.warn('Google button init error:', err);
     }

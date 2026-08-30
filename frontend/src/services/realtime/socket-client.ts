@@ -72,17 +72,14 @@ class RealtimeClient {
           upgrade: false,
           autoConnect: true,
           withCredentials: true,
-          reconnection: true,
-          reconnectionDelay: 2000,
-          reconnectionDelayMax: 10000,
-          reconnectionAttempts: 3,
-          timeout: 8000,
+          reconnection: false,
+          timeout: 4000,
         });
 
         authTimeout = window.setTimeout(() => {
           // Cookie-auth sessions may connect without explicit authenticated event.
           finishResolve();
-        }, 5000);
+        }, 3000);
 
         this.socket.on('connect', () => {
           this.connected = true;
@@ -109,10 +106,11 @@ class RealtimeClient {
         });
 
         this.socket.on('connect_error', (_error) => {
-          // Graceful fallback to REST polling without throwing uncaught exceptions
+          // Graceful fallback to REST polling without repeating broken WebSocket handshakes
           if (authTimeout !== null) {
             window.clearTimeout(authTimeout);
           }
+          this.socket?.disconnect();
           finishResolve();
         });
 

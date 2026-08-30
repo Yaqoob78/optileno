@@ -211,11 +211,11 @@ export const setupUnloadHandler = () => {
   };
 
   window.addEventListener('beforeunload', handleBeforeUnload);
-  window.addEventListener('unload', handleBeforeUnload);
+  window.addEventListener('pagehide', handleBeforeUnload);
 
   return () => {
     window.removeEventListener('beforeunload', handleBeforeUnload);
-    window.removeEventListener('unload', handleBeforeUnload);
+    window.removeEventListener('pagehide', handleBeforeUnload);
   };
 };
 
