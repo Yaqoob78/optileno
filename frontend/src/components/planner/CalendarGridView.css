@@ -414,3 +414,203 @@
   text-overflow: ellipsis;
   margin-top: 2px;
 }
+
+/* ═══════════════════════════════════════════════════
+   LOCKABLE EVENTS & CONFLICT DEFENSE
+   ═══════════════════════════════════════════════════ */
+
+.cal-lock-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary, #94a3b8);
+  padding: 1px 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.15s;
+  opacity: 0.6;
+}
+
+.cal-lock-btn:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fbbf24;
+}
+
+.cal-lock-btn.is-locked {
+  opacity: 1;
+  color: #fbbf24;
+}
+
+.lock-icon.locked {
+  color: #fbbf24;
+}
+
+.cal-task-block.is-locked {
+  border-top: 1px solid rgba(251, 191, 36, 0.4);
+  border-right: 1px solid rgba(251, 191, 36, 0.4);
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.12);
+}
+
+.cal-task-block.has-focus-conflict {
+  border: 1px dashed #f59e0b !important;
+  border-left: 3px solid #ef4444 !important;
+  background: rgba(120, 53, 15, 0.4) !important;
+}
+
+.cal-conflict-pill {
+  display: inline-flex;
+  align-items: center;
+  color: #f59e0b;
+  animation: pulseConflict 2s infinite ease-in-out;
+}
+
+@keyframes pulseConflict {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+.cal-reschedule-pill {
+  display: inline-flex;
+  align-items: center;
+  color: #38bdf8;
+  opacity: 0.85;
+}
+
+.shield-icon {
+  color: #818cf8;
+}
+
+.cal-deepwork-block.is-protected {
+  border: 1.5px solid rgba(129, 140, 248, 0.8);
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.45) 0%, rgba(124, 58, 237, 0.4) 100%);
+  box-shadow: 0 0 18px rgba(99, 102, 241, 0.25);
+}
+
+/* ═══════════════════════════════════════════════════
+   7-DAY MOBILE & DAY-MODE STRIP
+   ═══════════════════════════════════════════════════ */
+
+.cal-mobile-days-strip {
+  display: flex;
+  gap: 6px;
+  padding: 0.625rem 1rem;
+  background: rgba(15, 23, 42, 0.5);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.cal-mobile-days-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.cal-strip-day-btn {
+  flex: 1;
+  min-width: 44px;
+  min-height: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(30, 41, 59, 0.4);
+  color: var(--text-secondary, #94a3b8);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+.cal-strip-day-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary, #f1f5f9);
+}
+
+.cal-strip-day-btn.is-selected {
+  background: var(--primary, #6366f1);
+  border-color: #818cf8;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.5);
+}
+
+.cal-strip-dayname {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.cal-strip-daynum {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.cal-strip-task-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #38bdf8;
+  position: absolute;
+  bottom: 4px;
+}
+
+.cal-strip-day-btn.is-selected .cal-strip-task-dot {
+  background: #ffffff;
+}
+
+/* ═══════════════════════════════════════════════════
+   QUICK-RESCHEDULE TOUCH ACTION BAR
+   ═══════════════════════════════════════════════════ */
+
+.cal-quick-reschedule-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  flex-wrap: wrap;
+  animation: fadeInQuickBar 0.18s ease-out;
+}
+
+@keyframes fadeInQuickBar {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.cal-reschedule-chip {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-primary, #f1f5f9);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.cal-reschedule-chip:hover {
+  background: var(--primary, #6366f1);
+  border-color: var(--primary, #6366f1);
+  color: #ffffff;
+}
+
+.cal-edit-chip {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: rgba(56, 189, 248, 0.4);
+  color: #38bdf8;
+  margin-left: auto;
+}
+
+.cal-edit-chip:hover {
+  background: #38bdf8;
+  color: #0f172a;
+}
+

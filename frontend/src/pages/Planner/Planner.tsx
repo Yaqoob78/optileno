@@ -25,8 +25,10 @@ import HabitTracker from '../../components/planner/HabitTracker';
 import TaskCard from '../../components/planner/TaskCard';
 import PlannerDashboard from '../../components/planner/Plannerdashboard';
 import CalendarGridView from '../../components/planner/CalendarGridView';
+import { QuickAddBar } from '../../components/planner/QuickAddBar';
 import { Modal } from '../../components/common/Modal';
 import { normalizeTaskStatus } from '../../services/api/planner.service';
+import type { ParsedQuickAdd } from '../../utils/quickAddParser';
 
 import '../../styles/pages/planner.css';
 
@@ -86,6 +88,7 @@ export default function PlannerPage() {
     updateTask,
     startTask,
     deleteTask,
+    createHabit,
     forceRefresh
   } = usePlanner();
 
@@ -213,6 +216,39 @@ export default function PlannerPage() {
       description: '',
       notes: '',
       dueDate: dateKey,
+      scheduledDay,
+      subtasks: [],
+      recurring: false,
+    });
+    setIsNewTask(true);
+    setIsEditing(true);
+    setSaveError(null);
+  };
+
+  const handleExpandQuickAdd = (parsed: ParsedQuickAdd) => {
+    const now = new Date();
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+
+    setIsEnergyTouched(!!parsed.energy);
+
+    const baseDueDate = parsed.dueDate ? new Date(parsed.dueDate) : now;
+    const scheduledDay = !Number.isNaN(baseDueDate.getTime())
+      ? getWeekdayIndexInTimezone(baseDueDate, timezone)
+      : getWeekdayIndexInTimezone(now, timezone);
+
+    setEditForm({
+      title: parsed.cleanTitle || '',
+      startTime: parsed.dueTime || `${hours}:${minutes}`,
+      duration: parsed.duration || 60,
+      energy: parsed.energy || estimateEnergyLevel(parsed.cleanTitle || '', parsed.category),
+      status: 'planned',
+      category: (parsed.category as any) || undefined,
+      priority: parsed.priority || 'medium',
+      tags: parsed.tags || [],
+      description: '',
+      notes: '',
+      dueDate: parsed.dueDate || getDateKeyInTimezone(now, timezone),
       scheduledDay,
       subtasks: [],
       recurring: false,
@@ -518,9 +554,42 @@ export default function PlannerPage() {
       status: normalizedStatus as 'completed' | 'in-progress' | 'scheduled' | 'planned' | 'overdue' | 'failed' | 'pending' | 'todo',
       tags: Array.isArray(task.tags) ? task.tags : [],
       description: task.description || '',
+      is_locked: Boolean(task.is_locked || task.meta?.is_locked),
+      is_protected: Boolean(task.is_protected || task.meta?.is_protected),
+      reschedule_reason: task.reschedule_reason || task.meta?.reschedule_reason,
       subtasks: Array.isArray(task.subtasks) ? task.subtasks : [],
       notes: task.notes || ''
     };
+  };
+
+  const handleToggleLockTask = async (taskId: string, currentLocked: boolean) => {
+    const newLocked = !currentLocked;
+    try {
+      await updateTask(taskId, { is_locked: newLocked });
+      setPlannerNotice({
+        type: 'info',
+        text: newLocked ? '🔒 Task locked to time slot. Auto-scheduler will preserve this time.' : '🔓 Task unlocked for auto-scheduling.',
+      });
+      await forceRefresh();
+    } catch (err: any) {
+      console.error('Failed to toggle task lock', err);
+    }
+  };
+
+  const handleRescheduleTask = async (taskId: string, newTimeHHMM: string, newDateKey?: string) => {
+    try {
+      const task = tasks.find((t) => String(t.id) === String(taskId) || String(t.originalId) === String(taskId));
+      const targetDateKey = newDateKey || (task?.dueDate ? String(task.dueDate).substring(0, 10) : getDateKeyInTimezone(new Date(), timezone));
+      const dueIso = `${targetDateKey}T${newTimeHHMM}:00`;
+      await updateTask(taskId, { due_date: dueIso, reschedule_reason: `Quick adjusted to ${newTimeHHMM}` });
+      setPlannerNotice({
+        type: 'info',
+        text: `Task rescheduled to ${newTimeHHMM}.`,
+      });
+      await forceRefresh();
+    } catch (err: any) {
+      console.error('Failed to reschedule task', err);
+    }
   };
 
   const handleRefreshPlanner = async () => {
@@ -968,6 +1037,8 @@ export default function PlannerPage() {
             onAddTaskAtTime={handleAddTaskAtTime}
             onEditTask={(t) => handleEditTask(t)}
             onCompleteTask={(id) => handleCompleteTask(id.toString())}
+            onToggleLockTask={handleToggleLockTask}
+            onRescheduleTask={handleRescheduleTask}
           />
         ) : (
           <div className={`planner-main-grid ${maximizedView ? 'maximized' : ''}`}>
@@ -987,6 +1058,27 @@ export default function PlannerPage() {
                 </div>
               </div>
 
+              {/* Quick Add Bar */}
+              <QuickAddBar
+                initialMode="task"
+                timezone={timezone}
+                onTaskCreated={async (payload) => {
+                  const res = await createTask(payload);
+                  if (res.success) {
+                    await forceRefresh();
+                  }
+                  return res;
+                }}
+                onHabitCreated={async (payload) => {
+                  const res = await createHabit(payload);
+                  if (res.success) {
+                    await forceRefresh();
+                  }
+                  return res;
+                }}
+                onExpandToModal={handleExpandQuickAdd}
+              />
+
               {isLoading ? (
                 <div className="loading-state">
                   <Loader2 className="animate-spin" size={32} />
@@ -1001,9 +1093,9 @@ export default function PlannerPage() {
                 <div className="empty-tasks">
                   <List size={48} />
                   <h3>No tasks scheduled yet</h3>
-                  <p>Get started by adding your first task</p>
+                  <p>Get started by typing in quick-add above or use detailed form</p>
                   <button className="add-first-task-btn" onClick={handleAddTask}>
-                    <Plus size={16} /> Add Task
+                    <Plus size={16} /> Detailed Form
                   </button>
                 </div>
               ) : (

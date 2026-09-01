@@ -15,6 +15,7 @@ import { useUserStore } from '../../stores/useUserStore';
 import { paymentService, SubscriptionStatus } from '../../services/api/payment.service';
 import { userService } from '../../services/api/user.service';
 import { openLemonSqueezyCheckout } from '../../utils/lemonsqueezy';
+import { CancellationSurveyModal } from './CancellationSurveyModal';
 
 type PlanId = 'explorer' | 'ultra';
 type BillingCycle = 'monthly' | 'annual';
@@ -123,25 +124,20 @@ export default function BillingSettings() {
         }
     };
 
-    const handleCancelSubscription = async () => {
-        if (!window.confirm('Cancel subscription? Access continues until the end of your current billing period.')) {
-            return;
-        }
+    const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
 
-        setLoading(true);
-        setError(null);
-        try {
-            const response = await paymentService.cancelSubscription();
-            if (!response.success) {
-                throw new Error((response as any).error?.message || 'Failed to cancel subscription.');
-            }
-            setSuccessMsg('Subscription cancelled. Access continues until period end.');
-            await fetchSubscriptionStatus();
-        } catch (err: any) {
-            setError(err?.message || 'Failed to cancel subscription.');
-        } finally {
-            setLoading(false);
-        }
+    const handleCancelClick = () => {
+        setIsCancelModalOpen(true);
+    };
+
+    const handleCancelledSuccess = async (message: string) => {
+        setSuccessMsg(message);
+        await fetchSubscriptionStatus();
+    };
+
+    const handleOfferAppliedSuccess = async (message: string) => {
+        setSuccessMsg(message);
+        await fetchSubscriptionStatus();
     };
 
     const isOwner = subscriptionInfo?.is_owner === true;
@@ -260,7 +256,7 @@ export default function BillingSettings() {
                 {!isOwner && (subscriptionStatus === 'active' || subscriptionStatus === 'trialing') && (
                     <button
                         className="billing-secondary-btn"
-                        onClick={handleCancelSubscription}
+                        onClick={handleCancelClick}
                         disabled={loading}
                         style={{ marginTop: '1rem' }}
                     >
@@ -401,6 +397,13 @@ export default function BillingSettings() {
                     Payments are handled securely via Lemon Squeezy. Card details are encrypted and never stored on our servers.
                 </p>
             </div>
+
+            <CancellationSurveyModal
+                isOpen={isCancelModalOpen}
+                onClose={() => setIsCancelModalOpen(false)}
+                onCancelled={handleCancelledSuccess}
+                onOfferApplied={handleOfferAppliedSuccess}
+            />
         </div>
     );
 }

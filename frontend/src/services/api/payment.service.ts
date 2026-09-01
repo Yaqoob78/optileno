@@ -28,7 +28,21 @@ export interface SubscriptionStatus {
     trial_ends_at?: string;
     subscription_ends_at?: string;
     is_trial?: boolean;
+    created_at?: string;
     checkout_url?: string;
+}
+
+export interface CancellationSurveyPayload {
+    reason: string;
+    followup_answer?: string;
+    offer_presented?: string;
+    offer_accepted?: boolean;
+}
+
+export interface RetentionOfferPayload {
+    offer_type: string;
+    reason?: string;
+    followup_answer?: string;
 }
 
 class PaymentService {
@@ -54,10 +68,18 @@ class PaymentService {
     }
 
     /**
-     * Cancel subscription
+     * Cancel subscription with exit survey data
      */
-    async cancelSubscription(reason?: string): Promise<ApiResponse<{ success: boolean; message: string }>> {
-        return api.post('/payments/cancel', { reason });
+    async cancelSubscription(payload?: string | CancellationSurveyPayload): Promise<ApiResponse<{ success: boolean; message: string }>> {
+        const body = typeof payload === 'string' ? { reason: payload } : (payload || {});
+        return api.post('/payments/cancel', body);
+    }
+
+    /**
+     * Apply a 1-click retention offer
+     */
+    async applyRetentionOffer(payload: RetentionOfferPayload): Promise<ApiResponse<{ success: boolean; message: string; offer_applied: string }>> {
+        return api.post('/payments/retention-offer/apply', payload);
     }
 }
 

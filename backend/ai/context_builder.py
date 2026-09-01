@@ -30,13 +30,13 @@ logger = logging.getLogger(__name__)
 def sanitize_user_content(text: str, max_length: int = 200) -> str:
     """Sanitize user-provided content before injecting into AI prompts.
     
-    Strips instruction-injection patterns and truncates to prevent
-    adversarial content from manipulating the AI's behavior.
+    Strips instruction-injection patterns, role delimiters, and truncates
+    to prevent adversarial content from manipulating the AI's behavior.
     """
     if not text or not isinstance(text, str):
         return ""
     text = text[:max_length]
-    # Strip common prompt-injection patterns
+    # Strip common prompt-injection patterns and role markers
     text = re.sub(
         r'(?i)(ignore|forget|disregard|override|bypass).{0,30}(instructions|prompt|rules|system|previous)',
         '[filtered]', text
@@ -45,6 +45,8 @@ def sanitize_user_content(text: str, max_length: int = 200) -> str:
         r'(?i)(reveal|show|print|output|display).{0,30}(system prompt|instructions|rules|secret)',
         '[filtered]', text
     )
+    # Neutralize markdown heading injection and role tokens
+    text = re.sub(r'(?i)(###?\s*(system|instruction|human|assistant|user)|\[INST\]|\[/INST\]|<\|.*?\|>)', '[role_filtered]', text)
     # Escape template braces to prevent format string injection
     text = text.replace('{', '{{').replace('}', '}}')
     return text.strip()

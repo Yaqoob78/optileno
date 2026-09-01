@@ -6,6 +6,7 @@ module.exports = {
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    '^marked$': '<rootDir>/node_modules/marked/lib/marked.umd.js',
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
   },
   transform: {

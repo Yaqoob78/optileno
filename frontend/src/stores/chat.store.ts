@@ -78,6 +78,8 @@ type ChatState = {
   toggleKeepConversation: (conversationId: string) => void;
   addMessage: (message: Omit<Message, "id" | "timestamp">) => void;
   editMessage: (messageId: string, content: string) => void;
+  updateMessageMetadata: (messageId: string, metadata: Record<string, any>) => void;
+  truncateFromIndex: (index: number) => void;
   deleteMessage: (messageId: string) => void;
   clearMessages: () => void;
   setMode: (mode: ChatMode) => void;
@@ -101,49 +103,49 @@ const defaultModeSettings: ChatState["modeSettings"] = {
     temperature: 0.7,
     maxTokens: 1000,
     systemPrompt:
-      "You are a productivity coach. Help users plan, prioritize, and achieve their goals efficiently.",
+      "You are Leno, Optileno's productivity intelligence agent. Help the user prioritize workload, build consistency, and execute efficiently.",
   },
   strategist: {
     temperature: 0.8,
     maxTokens: 1500,
     systemPrompt:
-      "You are a strategic advisor. Help analyze situations, plan strategies, and make informed decisions.",
+      "You are Leno, Optileno's strategic planning agent. Help analyze project roadmaps, prioritize high-impact milestones, and make decisive plans.",
   },
   analyst: {
     temperature: 0.3,
     maxTokens: 2000,
     systemPrompt:
-      "You are a data analyst. Help interpret data, find patterns, and provide actionable insights.",
+      "You are Leno, Optileno's productivity analytics agent. Interpret focus metrics, habit completion rates, and burnout trends with precision.",
   },
   therapist: {
     temperature: 0.9,
     maxTokens: 800,
     systemPrompt:
-      "You are a wellness assistant. Provide supportive, empathetic guidance for mental wellbeing.",
+      "You are Leno, Optileno's wellness and focus support agent. Provide calm, grounded guidance to mitigate burnout and protect focus.",
   },
   creative: {
     temperature: 1.0,
     maxTokens: 1200,
     systemPrompt:
-      "You are a creative partner. Help brainstorm ideas, solve problems creatively, and inspire innovation.",
+      "You are Leno, Optileno's creative planning partner. Help brainstorm structured solutions, tackle complex blockers, and organize innovative workflows.",
   },
   mentor: {
     temperature: 0.6,
     maxTokens: 1000,
     systemPrompt:
-      "You are a learning mentor. Help users acquire new skills, understand concepts, and grow professionally.",
+      "You are Leno, Optileno's execution mentor. Help the user develop disciplined habits, refine workflows, and master productivity skills.",
   },
   general: {
     temperature: 0.7,
     maxTokens: 1000,
     systemPrompt:
-      "You are Leno, a helpful AI assistant. Provide accurate, useful information and assistance.",
+      "You are Leno, Optileno's dedicated planning and productivity intelligence agent. Provide direct, grounded, and actionable guidance.",
   },
   KEEP: {
     temperature: 0.7,
     maxTokens: 1000,
     systemPrompt:
-      "You are Leno, a helpful AI assistant. Maintain context for long-term storage.",
+      "You are Leno, Optileno's dedicated planning and productivity intelligence agent. Maintain structured context for long-term storage.",
   },
 };
 
@@ -410,6 +412,48 @@ export const useChatStore = create<ChatState>()(
                     }
                   : message,
               ),
+              updatedAt: new Date(),
+            }),
+          );
+        });
+      },
+
+      updateMessageMetadata: (messageId, metadata) => {
+        set((state) => {
+          if (!state.activeConversation) return state;
+
+          return updateConversation(
+            state,
+            state.activeConversation.id,
+            (conversation) => ({
+              ...conversation,
+              messages: conversation.messages.map((message) =>
+                message.id === messageId
+                  ? {
+                      ...message,
+                      metadata: {
+                        ...message.metadata,
+                        ...metadata,
+                      },
+                    }
+                  : message,
+              ),
+              updatedAt: new Date(),
+            }),
+          );
+        });
+      },
+
+      truncateFromIndex: (index) => {
+        set((state) => {
+          if (!state.activeConversation) return state;
+
+          return updateConversation(
+            state,
+            state.activeConversation.id,
+            (conversation) => ({
+              ...conversation,
+              messages: conversation.messages.slice(0, Math.max(0, index)),
               updatedAt: new Date(),
             }),
           );

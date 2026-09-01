@@ -261,7 +261,7 @@ const HERO_STATS = [
   },
 ];
 
-const HERO_TITLE = 'Stop planning. Start finishing.';
+const HERO_TITLE = 'Turn Your Ambitions Into a Finished Daily Plan in 90 Seconds.';
 const HERO_TITLE_WORDS = HERO_TITLE.split(' ');
 
 const WAVE_PATHS = Array.from({ length: 42 }).map((_, i) => {
@@ -652,13 +652,12 @@ export default function Landing() {
             </motion.h1>
 
             <motion.h2 className="hero-subtitle" variants={revealVariants} custom={0.16}>
-              Optileno turns high-level goals into daily tasks with AI planning,
-              habit tracking, and behavioral analytics — built to protect your
-              focus and catch burnout before it catches you.
+              Optileno combines AI goal breakdown, daily time-blocking, and burnout
+              protection so you stay focused on what actually moves the needle.
             </motion.h2>
 
             <motion.p className="hero-social-proof" variants={revealVariants} custom={0.2}>
-              The AI planner for founders, agency owners, developers, and high-output builders.
+              The AI execution partner for founders, creators, agency owners, and high-output builders.
             </motion.p>
 
             <div className="hero-stats">
@@ -678,24 +677,36 @@ export default function Landing() {
             </div>
 
             <motion.div className="cta-wrapper hero-cta-stack" variants={revealVariants} custom={0.44}>
-              <button className="cta-button cta-gold btn-premium" onClick={() => navigate('/register')}>
-                Start Planning Free
-                <ArrowRight size={18} />
-              </button>
-              <button className="cta-button-secondary btn-premium" onClick={() => navigate('/dashboard-preview')}>
-                See Dashboard Preview
-              </button>
-              <button className="cta-button-tertiary btn-premium" onClick={() => navigate('/get-access')}>
-                Have an invite? Get Access
-              </button>
-              
+              <div className="hero-primary-cta-group">
+                <button className="cta-button cta-gold btn-premium" onClick={() => navigate('/register')}>
+                  Start Planning Free
+                  <ArrowRight size={18} />
+                </button>
+                <button className="cta-button-ghost btn-premium" onClick={() => navigate('/dashboard-preview')}>
+                  See Live Preview →
+                </button>
+              </div>
+
               <div className="hero-live-proof">
                 <span className="live-radar-dot" />
-                <span>1,420+ daily focus sprints planned today • 100% Free Forever • Instant 1-Click Access</span>
+                <span>⭐ 4.9/5 from 1,420+ operators • 100% Free Forever • No Credit Card Required</span>
               </div>
             </motion.div>
 
-            <motion.div className="hero-keyword-links" variants={revealVariants} custom={0.52}>
+            {/* Above-the-Fold Real Product Showcase Card */}
+            <motion.div
+              className="hero-product-preview-card"
+              variants={revealVariants}
+              custom={0.5}
+            >
+              <div className="preview-card-header">
+                <span className="screen-badge">Live System Preview</span>
+                <span className="preview-card-title">Optileno AI Planner & Focus Shield</span>
+              </div>
+              <Interactive3DCard fileName="planner-overall.png" title="Optileno AI Daily Planner & Focus Engine" />
+            </motion.div>
+
+            <motion.div className="hero-keyword-links" variants={revealVariants} custom={0.56}>
               <span>Explore:</span>
               <div className="hero-keyword-buttons">
                 <button type="button" className="keyword-chip" onClick={() => navigate('/ai-calendar-planner')}>AI Calendar Planner</button>

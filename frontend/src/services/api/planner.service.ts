@@ -193,6 +193,10 @@ export interface TaskCreate {
   category?: string;
   subtasks?: Array<{ title: string; completed: boolean }>;
   depends_on_task_id?: string | number | null;
+  is_locked?: boolean;
+  is_protected?: boolean;
+  reschedule_reason?: string;
+  meta?: any;
   recurring?: boolean;
   recurrence_config?: {
     type: string;

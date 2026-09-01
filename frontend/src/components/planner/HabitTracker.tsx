@@ -8,6 +8,8 @@ import { getDateKeyInTimezone } from '../../utils/timezone';
 import '../../styles/components/planner/HabitTracker.css';
 import type { Habit } from '../../types/planner.types';
 import { Modal } from '../common/Modal';
+import { QuickAddBar } from './QuickAddBar';
+import type { ParsedQuickAdd } from '../../utils/quickAddParser';
 
 interface UIHabit extends Omit<Habit, 'frequency'> {
   frequency: 'daily' | 'weekly' | 'monthly' | 'custom';
@@ -209,6 +211,16 @@ export default function HabitTracker({ habits: propsHabits }: HabitTrackerProps)
     return d.toLocaleDateString('en-US', { weekday: 'narrow', timeZone: timezone });
   };
 
+  const handleExpandHabitQuickAdd = (parsed: ParsedQuickAdd) => {
+    setNewHabit({
+      name: parsed.cleanTitle || '',
+      description: '',
+      category: parsed.category ? parsed.category.charAt(0).toUpperCase() + parsed.category.slice(1) : 'Wellness',
+      goalId: '',
+    });
+    setShowNewHabitModal(true);
+  };
+
   return (
     <div className="habit-tracker">
       <div className="habit-header">
@@ -239,6 +251,21 @@ export default function HabitTracker({ habits: propsHabits }: HabitTrackerProps)
           </div>
         </div>
       </div>
+
+      {/* Quick Add Habit Bar */}
+      <QuickAddBar
+        initialMode="habit"
+        timezone={timezone}
+        onTaskCreated={async () => ({ success: false, error: 'Please use Habit mode in Habit Tracker' })}
+        onHabitCreated={async (habitData) => {
+          const res = await createHabit(habitData);
+          if (res.success) {
+            await fetchHabits();
+          }
+          return res;
+        }}
+        onExpandToModal={handleExpandHabitQuickAdd}
+      />
 
       {notice && (
         <div className={`habit-tracker-notice is-${notice.type}`} role="status">

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import axios from "axios";
 import { api } from "../../services/api/client";
 import { useNavStatePreservation } from "../../hooks/useNavStatePreservation";
 import "../../styles/pages/chat.css";
@@ -74,6 +75,9 @@ export default function Chat() {
   const activeConversation = useChatStore((state) => state.activeConversation);
   const createConversation = useChatStore((state) => state.createConversation);
   const addMessage = useChatStore((state) => state.addMessage);
+  const editMessage = useChatStore((state) => state.editMessage);
+  const updateMessageMetadata = useChatStore((state) => state.updateMessageMetadata);
+  const truncateFromIndex = useChatStore((state) => state.truncateFromIndex);
   const toggleKeep = useChatStore((state) => state.toggleKeepConversation);
   const deleteMessage = useChatStore((state) => state.deleteMessage);
 
@@ -98,6 +102,9 @@ export default function Chat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const suggestionTimerRef = useRef<number | null>(null);
   const isMountedRef = useRef(true);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const streamingTimerRef = useRef<number | null>(null);
+  const activeStreamingMessageIdRef = useRef<string | null>(null);
 
   const clearSuggestionTimer = useCallback(() => {
     if (suggestionTimerRef.current) {
@@ -106,12 +113,20 @@ export default function Chat() {
     }
   }, []);
 
+  const clearStreamingTimer = useCallback(() => {
+    if (streamingTimerRef.current) {
+      window.clearTimeout(streamingTimerRef.current);
+      streamingTimerRef.current = null;
+    }
+  }, []);
+
   const startFreshConversation = useCallback(() => {
     clearSuggestionTimer();
+    clearStreamingTimer();
     createConversation("New Chat");
     setShowSuggestions(false);
     setUserHasTyped(false);
-  }, [clearSuggestionTimer, createConversation]);
+  }, [clearSuggestionTimer, clearStreamingTimer, createConversation]);
 
   const refreshPlannerState = useCallback(
     async ({ tasks, goals, habits }: PlannerRefreshTargets) => {
@@ -132,8 +147,12 @@ export default function Chat() {
     return () => {
       isMountedRef.current = false;
       clearSuggestionTimer();
+      clearStreamingTimer();
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
     };
-  }, [clearSuggestionTimer]);
+  }, [clearSuggestionTimer, clearStreamingTimer]);
 
   useEffect(() => {
     const prefill = localStorage.getItem("optileno_chat_prefill");
@@ -275,15 +294,21 @@ export default function Chat() {
     currentAiMode: AIMode,
     conversationHistory: Array<{ role: string; content: string }>,
     currentSessionId: string | null,
+    signal?: AbortSignal,
   ) => {
-    const response = await api.post("/chat/send", {
-      message: userMessage,
-      mode: currentAiMode,
-      history: conversationHistory,
-      session_id: currentSessionId,
-    }, {
-      timeout: CHAT_REQUEST_TIMEOUT_MS,
-    });
+    const response = await api.post(
+      "/chat/send",
+      {
+        message: userMessage,
+        mode: currentAiMode,
+        history: conversationHistory,
+        session_id: currentSessionId,
+      },
+      {
+        timeout: CHAT_REQUEST_TIMEOUT_MS,
+        signal,
+      },
+    );
 
     if (!response.success) {
       throw new Error(response.error?.message || "Chat failed");
@@ -295,30 +320,6 @@ export default function Chat() {
       actions?: any[];
       provider?: string;
       model?: string;
-    };
-  };
-
-  const getAIResponse = async (userMessage: string, currentAiMode: AIMode) => {
-    const conversationHistory = (activeConversation?.messages || [])
-      .filter((message) => !message.metadata?.error && !message.metadata?.welcome)
-      .slice(-10)
-      .map((message) => ({
-        role: message.role,
-        content: message.content,
-      }));
-
-    const data = await sendMessage(
-      userMessage,
-      currentAiMode,
-      conversationHistory,
-      activeConversation?.id ?? null,
-    );
-
-    return {
-      content: data.message || "I received your message.",
-      actions: Array.isArray(data.actions) ? data.actions : [],
-      provider: data.provider,
-      model: data.model,
     };
   };
 
@@ -390,8 +391,7 @@ export default function Chat() {
                           action.result?.title ||
                           "Planner updated"
                         }`,
-                type:
-                  action.type === "DELETE_HABIT" ? "info" : "success",
+                type: action.type === "DELETE_HABIT" ? "info" : "success",
                 category: "habit",
               };
             break;
@@ -445,12 +445,82 @@ export default function Chat() {
     [refreshPlannerState],
   );
 
-  const submitMessage = async (message: string, requestedMode: AIMode) => {
+  /**
+   * Streams progressive text tokens smoothly into the UI
+   */
+  const playStreamingResponse = (
+    fullText: string,
+    messageId: string,
+    onComplete: () => void,
+  ) => {
+    clearStreamingTimer();
+    activeStreamingMessageIdRef.current = messageId;
+
+    let currentIndex = 0;
+    const totalLength = fullText.length;
+    // Dynamic chunk step based on total length for steady reading speed
+    const stepSize = Math.max(1, Math.ceil(totalLength / 65));
+    const intervalMs = 20;
+
+    const streamNextChunk = () => {
+      if (!isMountedRef.current || activeStreamingMessageIdRef.current !== messageId) {
+        return;
+      }
+
+      currentIndex = Math.min(currentIndex + stepSize, totalLength);
+      const partialText = fullText.slice(0, currentIndex);
+      editMessage(messageId, partialText);
+
+      if (currentIndex < totalLength) {
+        streamingTimerRef.current = window.setTimeout(streamNextChunk, intervalMs);
+      } else {
+        activeStreamingMessageIdRef.current = null;
+        updateMessageMetadata(messageId, { isStreaming: false });
+        onComplete();
+      }
+    };
+
+    streamNextChunk();
+  };
+
+  /**
+   * Immediately halts active generation or streaming
+   */
+  const handleStopGenerating = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
+    clearStreamingTimer();
+
+    if (activeStreamingMessageIdRef.current) {
+      updateMessageMetadata(activeStreamingMessageIdRef.current, {
+        isStreaming: false,
+        stopped: true,
+      });
+      activeStreamingMessageIdRef.current = null;
+    }
+
+    setIsTyping(false);
+    setIsSending(false);
+    setToast({
+      message: "Generation stopped.",
+      type: "info",
+    });
+  }, [clearStreamingTimer, updateMessageMetadata]);
+
+  const submitMessage = async (
+    message: string,
+    requestedMode: AIMode,
+    overrideHistory?: Array<{ role: string; content: string }>,
+  ) => {
     const trimmedMessage = message.trim();
     if (!trimmedMessage || isSending) return;
     if (!checkDailyLimits()) return;
 
     clearSuggestionTimer();
+    clearStreamingTimer();
     setShowSuggestions(false);
     setUserHasTyped(true);
     setAiMode(requestedMode);
@@ -464,23 +534,64 @@ export default function Chat() {
     setIsTyping(true);
     setIsSending(true);
 
-    try {
-      const response = await getAIResponse(trimmedMessage, requestedMode);
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
 
-      // Only successful sends count against the daily quota
+    try {
+      const historyToUse =
+        overrideHistory ||
+        (useChatStore.getState().activeConversation?.messages || [])
+          .filter((msg) => !msg.metadata?.error && !msg.metadata?.welcome)
+          .slice(-10)
+          .map((msg) => ({
+            role: msg.role,
+            content: msg.content,
+          }));
+
+      const response = await sendMessage(
+        trimmedMessage,
+        requestedMode,
+        historyToUse,
+        activeConversation?.id ?? null,
+        abortController.signal,
+      );
+
+      // Successful network response
+      setIsTyping(false);
       updateDailyUsage(trimmedMessage.length);
 
+      const assistantMsgContent = response.message || "I received your message.";
+      const assistantId = crypto.randomUUID();
+
+      // Insert assistant message shell with streaming flag
       addMessage({
+        id: assistantId,
         role: "assistant",
-        content: response.content,
+        content: "",
         metadata: {
           provider: response.provider,
           model: response.model,
+          isStreaming: true,
         },
-      });
+      } as any);
 
-      await handleAIActions(response.actions);
+      // Play smooth streaming playback
+      playStreamingResponse(assistantMsgContent, assistantId, async () => {
+        if (isMountedRef.current) {
+          setIsSending(false);
+          await handleAIActions(response.actions || []);
+        }
+      });
     } catch (error: any) {
+      if (
+        axios.isCancel(error) ||
+        error.name === "AbortError" ||
+        error.name === "CanceledError"
+      ) {
+        // Request was deliberately cancelled by user
+        return;
+      }
+
       console.error("Chat request failed:", error);
 
       addMessage({
@@ -493,13 +604,99 @@ export default function Chat() {
         message: "Message failed to send cleanly.",
         type: "info",
       });
+      setIsTyping(false);
+      setIsSending(false);
     } finally {
-      if (isMountedRef.current) {
-        setIsTyping(false);
-        setIsSending(false);
-      }
+      abortControllerRef.current = null;
     }
   };
+
+  /**
+   * Retry handler: regenerate response from last user turn
+   */
+  const handleRetry = useCallback(
+    async (messageId: string | number) => {
+      if (isSending || isTyping) return;
+      const conversation = useChatStore.getState().activeConversation;
+      if (!conversation) return;
+
+      const msgs = conversation.messages;
+      const msgIndex = msgs.findIndex((m) => String(m.id) === String(messageId));
+      if (msgIndex === -1) return;
+
+      // Find the user message preceding this assistant message
+      let userPrompt = "";
+      let truncateTargetIndex = msgIndex;
+
+      for (let i = msgIndex - 1; i >= 0; i--) {
+        if (msgs[i].role === "user") {
+          userPrompt = msgs[i].content;
+          // Truncate from the assistant message forward
+          truncateTargetIndex = msgIndex;
+          break;
+        }
+      }
+
+      if (!userPrompt) return;
+
+      // Truncate thread from the assistant response index onwards
+      truncateFromIndex(truncateTargetIndex);
+
+      // Resubmit prompt
+      const updatedHistory = msgs
+        .slice(0, truncateTargetIndex)
+        .filter((m) => !m.metadata?.error && !m.metadata?.welcome)
+        .map((m) => ({ role: m.role, content: m.content }));
+
+      await submitMessage(userPrompt, aiMode, updatedHistory);
+    },
+    [aiMode, isSending, isTyping, truncateFromIndex],
+  );
+
+  /**
+   * Edit and resubmit user message: forks conversation from that point
+   */
+  const handleEditSubmit = useCallback(
+    async (
+      _messageId: string | number,
+      newContent: string,
+      messageIndex?: number,
+    ) => {
+      if (isSending || isTyping) return;
+      const conversation = useChatStore.getState().activeConversation;
+      if (!conversation) return;
+
+      const targetIndex =
+        typeof messageIndex === "number"
+          ? messageIndex
+          : conversation.messages.findIndex((m) => String(m.id) === String(_messageId));
+
+      if (targetIndex === -1) return;
+
+      // Truncate conversation from the edited user message onwards
+      truncateFromIndex(targetIndex);
+
+      // Resubmit with new content
+      await submitMessage(newContent, aiMode);
+    },
+    [aiMode, isSending, isTyping, truncateFromIndex],
+  );
+
+  /**
+   * Feedback rating handler
+   */
+  const handleFeedback = useCallback(
+    (messageId: string | number, rating: 1 | -1 | 0) => {
+      updateMessageMetadata(String(messageId), { rating });
+      if (rating !== 0) {
+        setToast({
+          message: "Thank you for the feedback!",
+          type: "success",
+        });
+      }
+    },
+    [updateMessageMetadata],
+  );
 
   const handleSuggestionClick = async (suggestion: Suggestion) => {
     await submitMessage(suggestion.text, suggestion.aiMode);
@@ -557,10 +754,20 @@ export default function Chat() {
   const handleFocusMode = () => setIsFocusMode((active) => !active);
 
   const messages = activeConversation?.messages || [];
+  const isGenerating = isSending || isTyping;
+
+  // Find index of the latest assistant message for retry button
+  let latestAssistantIndex = -1;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === "assistant") {
+      latestAssistantIndex = i;
+      break;
+    }
+  }
 
   return (
     <ErrorBoundary componentName="Chat">
-      <div className={`chat-container ${isFocusMode ? 'chat-focus-mode' : ''}`}>
+      <div className={`chat-container ${isFocusMode ? "chat-focus-mode" : ""}`}>
         <ChatHeader
           activeTab={uiActiveTab}
           onTabChange={(tab) => {
@@ -584,7 +791,7 @@ export default function Chat() {
 
         <div className="chat-messages-area">
           <div className="chat-thread-shell">
-            {messages.map((message: Message) => (
+            {messages.map((message: Message, index: number) => (
               <ChatBubble
                 key={message.id}
                 message={{
@@ -592,8 +799,16 @@ export default function Chat() {
                   provider: message.metadata?.provider ?? message.provider,
                   model: message.metadata?.model ?? message.model,
                   isError: Boolean(message.metadata?.error),
+                  isStreaming: Boolean(message.metadata?.isStreaming),
+                  rating: message.metadata?.rating,
                   timestamp: formatTimestamp(message.timestamp),
                 }}
+                messageIndex={index}
+                isLatestAssistant={index === latestAssistantIndex}
+                isGenerating={isGenerating}
+                onRetry={handleRetry}
+                onEditSubmit={handleEditSubmit}
+                onFeedback={handleFeedback}
               />
             ))}
 
@@ -640,8 +855,10 @@ export default function Chat() {
           onInputChange={handleInputChange}
           onSend={(message) => void handleSend(message)}
           onFocusMode={handleFocusMode}
+          onStopGenerating={handleStopGenerating}
+          isGenerating={isGenerating}
           focusModeActive={isFocusMode}
-          disabled={isSending}
+          disabled={isGenerating}
         />
       </div>
     </ErrorBoundary>

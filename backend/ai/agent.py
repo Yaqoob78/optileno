@@ -184,7 +184,25 @@ class AgentOrchestrator:
         recent_context = self.conversation_context.get_recent_context()
         
         try:
-            # Route to appropriate handler
+            # If the AI client supports full context message handling, use it directly
+            if hasattr(self.ai_client, "handle_message"):
+                result = await self.ai_client.handle_message(
+                    message=user_message,
+                    mode=mode,
+                    history=recent_context,
+                )
+                self.state = AgentState.COMPLETED
+                response_text = result.get("message", "")
+                self.conversation_context.add_message("assistant", response_text)
+                return {
+                    "response": response_text,
+                    "actions": result.get("actions", []),
+                    "pending_confirmations": result.get("pending_confirmations", []),
+                    "mode": mode,
+                    "intent": result.get("intent", mode),
+                }
+
+            # Route to appropriate handler for standalone mode
             if mode == "PLAN":
                 return await self._handle_planning_mode(user_message, recent_context)
             elif mode == "ANALYZE":

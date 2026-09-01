@@ -1,3 +1,4 @@
+// frontend/src/pages/Analytics/Analytics.tsx
 import React, { useState, useMemo } from 'react';
 import BehaviorTimeline from '../../components/analytics/BehaviorTimeline';
 import FocusHeatmap from '../../components/analytics/FocusHeatmap';
@@ -20,7 +21,15 @@ import {
   AlertTriangle,
   Gauge,
   Smile,
-  Fingerprint
+  Fingerprint,
+  HelpCircle,
+  ChevronDown,
+  ChevronUp,
+  Layers,
+  Clock,
+  Zap,
+  Activity,
+  CheckCircle2,
 } from 'lucide-react';
 import '../../styles/pages/analytics.css';
 import '../../styles/components/analytics/customScrollbar.css';
@@ -32,11 +41,19 @@ import { useFocusScore } from '../../hooks/useFocusScore';
 import { useBurnoutRisk } from '../../hooks/useBurnoutRisk';
 import { useTheme } from '../../hooks/useTheme';
 
+type AnalyticsTab = 'goals' | 'focus' | 'wellbeing' | 'personality';
 
 export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [activeTab, setActiveTab] = useState<AnalyticsTab>('goals');
   const [loading, setLoading] = useState<boolean>(false);
   const [refreshMessage, setRefreshMessage] = useState<{ type: 'info' | 'error'; text: string } | null>(null);
+  
+  // Drill-down expansion toggles
+  const [showGoalDetails, setShowGoalDetails] = useState(false);
+  const [showHeatmapDetails, setShowHeatmapDetails] = useState(false);
+  const [showBehaviorDetails, setShowBehaviorDetails] = useState(false);
+
   const { setTheme, resolvedTheme } = useTheme();
   const isDarkMode = resolvedTheme === 'dark';
 
@@ -84,7 +101,7 @@ export default function AnalyticsPage() {
     refresh: refreshBurnout,
   } = useBurnoutRisk(timeRange, isUltra);
 
-  // Get real productivity score (not hardcoded)
+  // Get real productivity score
   const getRealProductivityScore = (): number | null => {
     if (timeRange === 'monthly' && monthlyProductivityAvg !== null) {
       return Math.round(monthlyProductivityAvg);
@@ -95,41 +112,37 @@ export default function AnalyticsPage() {
     if (productivityData && productivityData.score !== null) {
       return Math.round(productivityData.score);
     }
-
     return null;
   };
 
   const currentProductivityScore = getRealProductivityScore();
 
-  // Get display score based on time range
   const getDisplayScore = (): number | null => {
     if (productivityLoading && currentProductivityScore === null) return null;
     return currentProductivityScore;
   };
 
-  const getScoreLabel = () => {
-    if (timeRange === 'monthly') return 'Monthly Average';
-    if (timeRange === 'weekly') return 'Weekly Average';
-    return 'Today\'s Score';
+  const getProductivityHeadline = (score: number | null): string => {
+    if (score === null) return 'Awaiting Activity';
+    if (score >= 85) return 'Exceptional Output';
+    if (score >= 70) return 'Solid Momentum';
+    if (score >= 50) return 'Steady Progress';
+    if (score >= 30) return 'Building Rhythm';
+    return 'Action Needed';
   };
 
-  // Dynamic color based on score
   const getProductivityColor = (score: number | null) => {
     if (score === null) return { bg: 'transparent', text: 'var(--text-muted)', glow: 'none' };
-    if (score === 0) return { bg: '#1a0000', text: '#ff0000', glow: '0 0 20px rgba(255, 0, 0, 0.6)' }; // Extreme red with glow
-    if (score <= 5) return { bg: '#2a0000', text: '#ff1a1a', glow: '0 0 15px rgba(255, 26, 26, 0.5)' }; // Very strong red
-    if (score <= 15) return { bg: '#3a0a0a', text: '#ff3333', glow: '0 0 10px rgba(255, 51, 51, 0.4)' }; // Strong red
-    if (score <= 30) return { bg: '#4a1a1a', text: '#ff6666', glow: 'none' }; // Medium red
-    if (score <= 50) return { bg: 'transparent', text: 'var(--text-primary)', glow: 'none' }; // White/normal
-    if (score <= 70) return { bg: 'rgba(16, 185, 129, 0.05)', text: '#10b981', glow: 'none' }; // Light green
-    if (score <= 85) return { bg: 'rgba(16, 185, 129, 0.1)', text: '#059669', glow: '0 0 5px rgba(16, 185, 129, 0.2)' }; // Green
-    if (score <= 95) return { bg: 'rgba(124, 58, 237, 0.1)', text: '#7c3aed', glow: '0 0 10px rgba(124, 58, 237, 0.3)' }; // Purple
-    return { bg: 'rgba(251, 191, 36, 0.15)', text: '#f59e0b', glow: '0 0 15px rgba(245, 158, 11, 0.5)' }; // Gold with glow
+    if (score <= 30) return { bg: 'rgba(239, 68, 68, 0.08)', text: '#f87171', glow: 'none' };
+    if (score <= 50) return { bg: 'rgba(245, 158, 11, 0.08)', text: '#fbbf24', glow: 'none' };
+    if (score <= 70) return { bg: 'rgba(59, 130, 246, 0.08)', text: '#60a5fa', glow: 'none' };
+    if (score <= 85) return { bg: 'rgba(16, 185, 129, 0.08)', text: '#34d399', glow: 'none' };
+    return { bg: 'rgba(124, 58, 237, 0.1)', text: '#a78bfa', glow: '0 0 15px rgba(124, 58, 237, 0.25)' };
   };
 
   const productivityColors = getProductivityColor(getDisplayScore());
 
-  // Get real focus score (not hardcoded)
+  // Get real focus score & minutes
   const getRealFocusScore = (): number | null => {
     if (timeRange === 'monthly' && monthlyFocusAvg !== null) {
       return Math.round(monthlyFocusAvg.average_score);
@@ -160,20 +173,25 @@ export default function AnalyticsPage() {
   const focusMinutes = getFocusMinutes();
   const displayProductivityScore = getDisplayScore();
 
-  // Dynamic color for focus score. No data must render neutral, not "critical red".
+  const getFocusHeadline = (minutes: number | null): string => {
+    if (minutes === null || minutes === 0) return 'No Focus Logged';
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours > 0) return `${hours}h ${mins > 0 ? `${mins}m` : ''} Deep Focus`;
+    return `${mins}m Deep Focus`;
+  };
+
   const getFocusColor = (score: number | null) => {
     if (score === null) return { bg: 'transparent', text: 'var(--text-muted)', glow: 'none' };
-    if (score === 0) return { bg: '#1a0000', text: '#ff0000', glow: '0 0 20px rgba(255, 0, 0, 0.6)' };
-    if (score <= 10) return { bg: '#ef4444', text: '#ffffff', glow: 'none' };
-    if (score <= 20) return { bg: '#f97316', text: '#ffffff', glow: 'none' };
-    if (score <= 35) return { bg: '#eab308', text: '#000000', glow: 'none' };
-    if (score <= 60) return { bg: '#10b981', text: '#ffffff', glow: 'none' };
-    if (score <= 80) return { bg: '#06b6d4', text: '#ffffff', glow: '0 0 5px rgba(6, 182, 212, 0.2)' };
-    return { bg: '#8b5cf6', text: '#ffffff', glow: '0 0 10px rgba(139, 92, 246, 0.4)' };
+    if (score <= 35) return { bg: 'rgba(245, 158, 11, 0.08)', text: '#fbbf24', glow: 'none' };
+    if (score <= 60) return { bg: 'rgba(16, 185, 129, 0.08)', text: '#34d399', glow: 'none' };
+    if (score <= 80) return { bg: 'rgba(6, 182, 212, 0.08)', text: '#22d3ee', glow: 'none' };
+    return { bg: 'rgba(139, 92, 246, 0.1)', text: '#a78bfa', glow: '0 0 10px rgba(139, 92, 246, 0.3)' };
   };
 
   const focusColors = getFocusColor(currentFocusScore);
 
+  // Burnout Risk
   const getBurnoutRiskValue = (): number | null => {
     if (!isUltra) return null;
     if (timeRange === 'monthly' && monthlyBurnoutData) return monthlyBurnoutData.average_risk;
@@ -182,116 +200,27 @@ export default function AnalyticsPage() {
     return null;
   };
 
-  const getBurnoutLevel = (): string | null => {
-    if (!isUltra) return null;
-    if (timeRange === 'monthly' && monthlyBurnoutData?.level) return monthlyBurnoutData.level;
-    if (timeRange === 'weekly' && weeklyBurnoutAvg?.level) return weeklyBurnoutAvg.level;
-    if (burnoutData?.level) return burnoutData.level;
-    return null;
+  const burnoutRiskValue = getBurnoutRiskValue();
+
+  const getBurnoutHeadline = (risk: number | null): string => {
+    if (!isUltra) return 'Ultra Feature';
+    if (risk === null) return 'Calibrating Rhythm';
+    if (risk <= 25) return 'Well Balanced (Low Fatigue)';
+    if (risk <= 50) return 'Moderate Workload';
+    if (risk <= 75) return 'Elevated Workload';
+    return 'High Fatigue Warning';
   };
 
-  const burnoutRiskValue = getBurnoutRiskValue();
-  const burnoutLevel = getBurnoutLevel();
+  const getBurnoutColor = (risk: number | null) => {
+    if (!isUltra) return { bg: 'rgba(148, 163, 184, 0.08)', text: '#94a3b8', glow: 'none' };
+    if (risk === null) return { bg: 'transparent', text: 'var(--text-muted)', glow: 'none' };
+    if (risk <= 25) return { bg: 'rgba(16, 185, 129, 0.08)', text: '#34d399', glow: 'none' };
+    if (risk <= 50) return { bg: 'rgba(59, 130, 246, 0.08)', text: '#60a5fa', glow: 'none' };
+    if (risk <= 75) return { bg: 'rgba(245, 158, 11, 0.08)', text: '#fbbf24', glow: 'none' };
+    return { bg: 'rgba(239, 68, 68, 0.1)', text: '#f87171', glow: '0 0 10px rgba(239, 68, 68, 0.3)' };
+  };
 
-  const stats = [
-    {
-      label: 'Productivity Score',
-      value:
-        productivityLoading && displayProductivityScore === null
-          ? '...'
-          : displayProductivityScore === null
-            ? '--'
-            : displayProductivityScore.toString(),
-      change: displayProductivityScore === null ? 'No Data Yet' : (productivityData?.grade || getScoreLabel()),
-      trend:
-        displayProductivityScore === null
-          ? 'neutral'
-          : displayProductivityScore > 60
-            ? 'up'
-            : displayProductivityScore > 40
-              ? 'neutral'
-              : 'down',
-      icon: TrendingUp,
-      progress: displayProductivityScore ?? 0,
-      subtitle:
-        displayProductivityScore === null
-          ? 'Complete a task, habit, chat, or deep work to generate a score.'
-          : productivityData?.next_update
-            ? `Updates at ${productivityData.next_update}`
-            : undefined,
-      customColors: productivityColors
-    },
-    {
-      label: 'Focus Score',
-      value:
-        focusLoading && currentFocusScore === null
-          ? '...'
-          : currentFocusScore === null
-            ? '--'
-            : currentFocusScore.toString(),
-      change: focusData?.status || (focusMinutes !== null ? `${focusMinutes}m total` : 'No Data Yet'),
-      trend:
-        currentFocusScore === null
-          ? 'neutral'
-          : currentFocusScore > 60
-            ? 'up'
-            : currentFocusScore > 40
-              ? 'neutral'
-              : 'down',
-      icon: Crosshair,
-      progress: currentFocusScore ?? 0,
-      subtitle:
-        currentFocusScore === null
-          ? 'Complete a task, habit, or deep work session to generate a focus score.'
-          : focusData?.grade
-            ? `Grade: ${focusData.grade}`
-            : undefined,
-      customColors: focusColors
-    },
-    {
-      label: 'Burnout Risk',
-      value: !isUltra
-        ? 'Locked'
-        : burnoutLoading && burnoutRiskValue === null
-          ? '...'
-          : burnoutRiskValue === null
-            ? '--'
-            : `${burnoutRiskValue.toFixed(0)}%`,
-      change: (() => {
-        if (!isUltra) return 'Ultra only';
-        return burnoutLevel || 'No Data Yet';
-      })(),
-      trend: (() => {
-        if (!isUltra || burnoutRiskValue === null) return 'neutral';
-        return burnoutRiskValue < 40 ? 'down' : burnoutRiskValue < 60 ? 'neutral' : 'up';
-      })(),
-      icon: HeartPulse,
-      progress: (() => {
-        if (!isUltra || burnoutRiskValue === null) return 0;
-        return 100 - burnoutRiskValue; // Invert for progress bar (lower risk = higher progress)
-      })(),
-      subtitle:
-        burnoutRiskValue === null
-          ? 'Complete tasks, habits, or deep work and this will start tracking.'
-          : burnoutData?.ai_insights?.[0] || monthlyBurnoutData?.note,
-      customColors: (() => {
-        if (!isUltra) {
-          return { bg: 'rgba(148, 163, 184, 0.08)', text: '#94a3b8', glow: 'none' };
-        }
-        if (burnoutRiskValue === null) {
-          return { bg: 'transparent', text: 'var(--text-muted)', glow: 'none' };
-        }
-
-        // Inverted colors (low risk = green, high risk = red)
-        if (burnoutRiskValue === 0) return { bg: 'rgba(16, 185, 129, 0.1)', text: '#10b981', glow: '0 0 10px rgba(16, 185, 129, 0.3)' };
-        if (burnoutRiskValue <= 20) return { bg: 'rgba(16, 185, 129, 0.08)', text: '#059669', glow: 'none' };
-        if (burnoutRiskValue <= 40) return { bg: 'transparent', text: 'var(--text-primary)', glow: 'none' };
-        if (burnoutRiskValue <= 60) return { bg: 'rgba(251, 191, 36, 0.08)', text: '#f59e0b', glow: 'none' };
-        if (burnoutRiskValue <= 80) return { bg: 'rgba(239, 68, 68, 0.08)', text: '#ef4444', glow: '0 0 8px rgba(239, 68, 68, 0.3)' };
-        return { bg: '#2a0000', text: '#ff1a1a', glow: '0 0 15px rgba(255, 26, 26, 0.5)' }; // Critical
-      })()
-    },
-  ];
+  const burnoutColors = getBurnoutColor(burnoutRiskValue);
 
   const latestMetricTimestamp = useMemo(() => {
     const timestamps = [
@@ -307,14 +236,13 @@ export default function AnalyticsPage() {
     return new Date(Math.max(...timestamps.map((value) => value.getTime())));
   }, [burnoutData?.date, focusData?.date, productivityData?.date]);
 
-  // Calculate last updated time
   const getLastUpdatedText = () => {
     if (!latestMetricTimestamp) return 'No activity yet';
     const now = new Date();
     const diffMs = now.getTime() - latestMetricTimestamp.getTime();
     const diffMins = Math.floor(diffMs / 60000);
     if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffMins < 60) return `${diffMins}m ago`;
     return `${Math.floor(diffMins / 60)}h ago`;
   };
 
@@ -330,7 +258,6 @@ export default function AnalyticsPage() {
       : 'No data yet';
   const dataIntegrityClass = dataIntegrityLabel === 'Live' ? 'success' : 'warning';
 
-  // Handle refresh
   const handleRefresh = async () => {
     setLoading(true);
     setRefreshMessage(null);
@@ -349,11 +276,6 @@ export default function AnalyticsPage() {
     }
   };
 
-  // Handle time range change
-  const handleTimeRangeChange = (range: 'daily' | 'weekly' | 'monthly') => {
-    setTimeRange(range);
-  };
-
   return (
     <ErrorBoundary componentName="Analytics">
       <div className={`analytics-page theme-${resolvedTheme}`}>
@@ -369,7 +291,7 @@ export default function AnalyticsPage() {
                 style={{
                   animationDelay: particle.animationDelay,
                   left: particle.left,
-                  top: particle.top
+                  top: particle.top,
                 }}
               />
             ))}
@@ -377,7 +299,7 @@ export default function AnalyticsPage() {
         </div>
 
         <div className="analytics-content-wrapper">
-          {/* Top Navigation / Header */}
+          {/* Top Header */}
           <div className="analytics-navbar">
             <div className="nav-left">
               <div className="analytics-brand">
@@ -386,28 +308,38 @@ export default function AnalyticsPage() {
                   <div className="brand-pulse" />
                 </div>
                 <div className="brand-text">
-                  <h1 className="brand-title">Performance Analytics</h1>
-                  <p className="brand-subtitle">Live scores, behavior patterns, and AI insights</p>
+                  <h1 className="brand-title">Performance & Insights</h1>
+                  <p className="brand-subtitle">Actionable productivity intelligence and decision guidance</p>
                 </div>
               </div>
             </div>
 
             <div className="nav-right">
               <div className="time-range-selector">
-                {(['daily', 'weekly', 'monthly'] as const).map((range) => (
+                {[
+                  { id: 'daily', label: 'Today' },
+                  { id: 'weekly', label: 'This Week' },
+                  { id: 'monthly', label: 'This Month' },
+                ].map((item) => (
                   <button
-                    key={range}
-                    className={`time-range-btn ${timeRange === range ? 'active' : ''}`}
-                    onClick={() => handleTimeRangeChange(range)}
+                    key={item.id}
+                    className={`time-range-btn ${timeRange === item.id ? 'active' : ''}`}
+                    onClick={() => setTimeRange(item.id as any)}
                   >
-                    {range.charAt(0).toUpperCase() + range.slice(1)}
+                    {item.label}
                   </button>
                 ))}
               </div>
 
               <div className="nav-actions">
-                <button className={`nav-action-btn ${loading ? 'loading' : ''}`} onClick={handleRefresh} title="Refresh Analytics" aria-label="Refresh analytics" disabled={loading}>
-                  <RefreshCw size={18} className={loading ? 'spinning' : ''} />
+                <button
+                  className={`nav-action-btn ${loading ? 'loading' : ''}`}
+                  onClick={handleRefresh}
+                  title="Refresh Analytics"
+                  aria-label="Refresh analytics"
+                  disabled={loading}
+                >
+                  <RefreshCw size={17} className={loading ? 'spinning' : ''} />
                 </button>
                 <button
                   className="nav-action-btn"
@@ -415,7 +347,7 @@ export default function AnalyticsPage() {
                   title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
                   aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
                 >
-                  {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+                  {isDarkMode ? <Sun size={17} /> : <Moon size={17} />}
                 </button>
               </div>
             </div>
@@ -427,189 +359,401 @@ export default function AnalyticsPage() {
             </div>
           )}
 
-          {/* Stats Dashboard - 4 Cards at Top */}
-          <div className="stats-overview-grid">
-            {stats.map((stat, index) => (
+          {/* ========================================================= */}
+          {/* 1. TOP DECISION CENTER (Executive Summary)                */}
+          {/* ========================================================= */}
+          <div className="decision-hero-section">
+            <div className="decision-kpi-grid">
+              {/* Productivity Tile */}
               <div
-                key={index}
-                className="stat-card glass-card"
-                style={(stat as any).customColors ? {
-                  background: (stat as any).customColors.bg,
-                  boxShadow: (stat as any).customColors.glow
-                } : {}}
+                className="decision-kpi-card glass-card"
+                style={{
+                  background: productivityColors.bg,
+                  borderColor: displayProductivityScore ? `${productivityColors.text}33` : undefined,
+                }}
               >
-                <div className="stat-header">
-                  <div className="stat-icon-wrapper">
-                    <stat.icon className="stat-icon" size={20} />
+                <div className="kpi-header">
+                  <div className="kpi-title-group">
+                    <span className="kpi-badge-icon" style={{ color: productivityColors.text }}>
+                      <TrendingUp size={16} />
+                    </span>
+                    <span className="kpi-title">Productivity Score</span>
                   </div>
-                  <div className={`trend-indicator ${stat.trend}`}>
-                    <span>{stat.change}</span>
-                  </div>
-                </div>
-                <div
-                  className="stat-value"
-                  style={(stat as any).customColors ? {
-                    color: (stat as any).customColors.text,
-                    textShadow: (stat as any).customColors.glow
-                  } : {}}
-                >
-                  {stat.value}
-                </div>
-                <div className="stat-label" title={stat.label}>{stat.label}</div>
-                {(stat as any).subtitle && (
-                  <div className="stat-subtitle">
-                    {(stat as any).subtitle}
-                  </div>
-                )}
-                <div className="stat-progress">
-                  <div className="progress-bar">
-                    <div
-                      className="progress-fill"
-                      style={{
-                        width: `${stat.progress}%`,
-                        background: (stat as any).customColors
-                          ? (stat as any).customColors.text
-                          : stat.trend === 'up' || stat.trend === 'neutral'
-                            ? 'linear-gradient(90deg, var(--primary), var(--secondary))'
-                            : 'linear-gradient(90deg, var(--warning), var(--accent))'
-                      }}
-                    />
+                  <div className="tooltip-wrapper" title="Calculated from completed tasks, habit consistency, and deep work sessions relative to your planned targets.">
+                    <HelpCircle size={14} className="help-icon" />
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
 
-          {/* Main Analytics Grid - 6 Components */}
-          <div className="analytics-main-grid">
-            {/* Left Column - 3 Components */}
-            <div className="grid-column left-column">
-              {/* Performance Score */}
-              <div className="component-card glass-card">
-                {isUltra ? (
-                  <>
-                    <div className="component-header">
-                      <div className="component-title">
-                        <Gauge size={18} />
-                        <h3>Performance Score</h3>
-                      </div>
-                    </div>
-                    <div className="component-content">
-                      <AIIntelligenceScore timeRange={timeRange} />
-                    </div>
-                  </>
-                ) : <LockedFeature title="Performance Score" className="h-full" />}
-              </div>
-
-              {/* Mood Tracker */}
-              <div className="component-card glass-card">
-                <>
-                  <div className="component-header">
-                    <div className="component-title">
-                      <Smile size={18} />
-                      <h3>Mood Tracker</h3>
-                    </div>
+                <div className="kpi-value-row">
+                  <span className="kpi-number" style={{ color: productivityColors.text }}>
+                    {productivityLoading && displayProductivityScore === null
+                      ? '...'
+                      : displayProductivityScore === null
+                        ? '--'
+                        : displayProductivityScore}
+                  </span>
+                  <span className="kpi-unit">/100</span>
+                  <div className="kpi-headline" style={{ color: productivityColors.text }}>
+                    {getProductivityHeadline(displayProductivityScore)}
                   </div>
-                  <div className="component-content">
-                    <MoodTracker />
-                  </div>
-                </>
+                </div>
+
+                <div className="kpi-progress-bar">
+                  <div
+                    className="kpi-progress-fill"
+                    style={{
+                      width: `${displayProductivityScore ?? 0}%`,
+                      backgroundColor: productivityColors.text,
+                    }}
+                  />
+                </div>
+
+                <div className="kpi-explainer">
+                  {displayProductivityScore === null
+                    ? 'Complete a task or deep work block to calculate score.'
+                    : productivityData?.next_update
+                      ? `Recalibrates at ${productivityData.next_update}`
+                      : 'Updated live from your planner activity.'}
+                </div>
               </div>
 
-              {/* Goal Progress */}
-              <div className="component-card glass-card">
-                {isUltra ? (
-                  <>
-                    <div className="component-header">
-                      <div className="component-title">
-                        <Target size={18} />
-                        <h3>Goal Analytics</h3>
-                      </div>
-                    </div>
-                    <div className="component-content">
-                      <GoalProgress timeRange={timeRange} />
-                    </div>
-                  </>
-                ) : <LockedFeature title="Goal Analytics" className="h-full" />}
+              {/* Focus Time & Quality Tile */}
+              <div
+                className="decision-kpi-card glass-card"
+                style={{
+                  background: focusColors.bg,
+                  borderColor: currentFocusScore ? `${focusColors.text}33` : undefined,
+                }}
+              >
+                <div className="kpi-header">
+                  <div className="kpi-title-group">
+                    <span className="kpi-badge-icon" style={{ color: focusColors.text }}>
+                      <Crosshair size={16} />
+                    </span>
+                    <span className="kpi-title">Focus Time & Quality</span>
+                  </div>
+                  <div className="tooltip-wrapper" title="Measures uninterrupted deep work duration and quality during scheduled focus sessions.">
+                    <HelpCircle size={14} className="help-icon" />
+                  </div>
+                </div>
+
+                <div className="kpi-value-row">
+                  <span className="kpi-number" style={{ color: focusColors.text }}>
+                    {focusLoading && currentFocusScore === null
+                      ? '...'
+                      : currentFocusScore === null
+                        ? '--'
+                        : currentFocusScore}
+                  </span>
+                  <span className="kpi-unit">/100</span>
+                  <div className="kpi-headline" style={{ color: focusColors.text }}>
+                    {getFocusHeadline(focusMinutes)}
+                  </div>
+                </div>
+
+                <div className="kpi-progress-bar">
+                  <div
+                    className="kpi-progress-fill"
+                    style={{
+                      width: `${currentFocusScore ?? 0}%`,
+                      backgroundColor: focusColors.text,
+                    }}
+                  />
+                </div>
+
+                <div className="kpi-explainer">
+                  {currentFocusScore === null
+                    ? 'Start a Deep Work session to record focus minutes.'
+                    : focusData?.grade
+                      ? `Session quality rated Grade ${focusData.grade}`
+                      : 'Logged from active deep work blocks.'}
+                </div>
+              </div>
+
+              {/* Workload & Burnout Balance Tile */}
+              <div
+                className="decision-kpi-card glass-card"
+                style={{
+                  background: burnoutColors.bg,
+                  borderColor: burnoutRiskValue !== null ? `${burnoutColors.text}33` : undefined,
+                }}
+              >
+                <div className="kpi-header">
+                  <div className="kpi-title-group">
+                    <span className="kpi-badge-icon" style={{ color: burnoutColors.text }}>
+                      <HeartPulse size={16} />
+                    </span>
+                    <span className="kpi-title">Workload Balance</span>
+                  </div>
+                  <div className="tooltip-wrapper" title="Estimates fatigue risk using session duration, late-night activity, and recovery intervals between intense tasks.">
+                    <HelpCircle size={14} className="help-icon" />
+                  </div>
+                </div>
+
+                <div className="kpi-value-row">
+                  <span className="kpi-number" style={{ color: burnoutColors.text }}>
+                    {!isUltra
+                      ? 'Pro'
+                      : burnoutLoading && burnoutRiskValue === null
+                        ? '...'
+                        : burnoutRiskValue === null
+                          ? '--'
+                          : `${burnoutRiskValue.toFixed(0)}%`}
+                  </span>
+                  {isUltra && burnoutRiskValue !== null && <span className="kpi-unit">fatigue</span>}
+                  <div className="kpi-headline" style={{ color: burnoutColors.text }}>
+                    {getBurnoutHeadline(burnoutRiskValue)}
+                  </div>
+                </div>
+
+                <div className="kpi-progress-bar">
+                  <div
+                    className="kpi-progress-fill"
+                    style={{
+                      width: `${isUltra && burnoutRiskValue !== null ? 100 - burnoutRiskValue : 0}%`,
+                      backgroundColor: burnoutColors.text,
+                    }}
+                  />
+                </div>
+
+                <div className="kpi-explainer">
+                  {!isUltra
+                    ? 'Upgrade to Ultra for fatigue protection & recovery pacing.'
+                    : burnoutRiskValue === null
+                      ? 'Logs after 3+ days of continuous scheduling.'
+                      : burnoutData?.ai_insights?.[0] || 'Workload pacing is healthy.'}
+                </div>
               </div>
             </div>
 
-            {/* Right Column - 3 Components */}
-            <div className="grid-column right-column">
-              {/* Focus Heatmap */}
-              <div className="component-card glass-card">
-                {isUltra ? (
-                  <>
-                    <div className="component-header">
-                      <div className="component-title">
-                        <Flame size={18} />
-                        <h3>Focus Heatmap</h3>
-                      </div>
-                    </div>
-                    <div className="component-content">
-                      <FocusHeatmap timeRange={timeRange} />
-                    </div>
-                  </>
-                ) : <LockedFeature title="Focus Heatmap" className="h-full" />}
+            {/* Strategic Action Priority Banner (What to do next) */}
+            {isUltra && (
+              <div className="strategic-priority-banner glass-card">
+                <div className="priority-banner-header">
+                  <div className="banner-title">
+                    <Sparkles size={16} className="sparkle-accent" />
+                    <span>Leno's Recommended Moves</span>
+                  </div>
+                  <span className="banner-subtitle">High-leverage adjustments based on your rhythm</span>
+                </div>
+                <div className="priority-banner-content">
+                  <StrategicInsight />
+                </div>
               </div>
-
-              {/* AI Strategic Insight */}
-              <div className="component-card glass-card">
-                {isUltra ? (
-                  <>
-                    <div className="component-header">
-                      <div className="component-title">
-                        <Sparkles size={18} />
-                        <h3>What to focus on</h3>
-                      </div>
-                    </div>
-                    <div className="component-content">
-                      <StrategicInsight />
-                    </div>
-                  </>
-                ) : <LockedFeature title="What to focus on" className="h-full" />}
-              </div>
-
-              {/* Behavior Timeline */}
-              <div className="component-card glass-card" style={{ padding: 0, overflow: 'hidden' }}>
-                {isUltra ? (
-                  <BehaviorTimeline />
-                ) : <LockedFeature title="Behavior Timeline" className="h-full" />}
-              </div>
-            </div>
+            )}
           </div>
 
-          {/* Bottom Section - Big Five Behavioral Profile (Full Width) */}
-          <div className="analytics-bottom-section">
-            <div className="component-card glass-card full-width-card" style={{ height: 'auto', minHeight: '400px' }}>
-              <>
-                <div className="component-header">
-                  <div className="component-title">
-                    <Fingerprint size={18} className="text-primary" />
-                    <h3>Your Work Personality</h3>
-                  </div>
-                  <div className="component-meta">
-                    <span>Updates every {bigFiveIntervalDays} days</span>
+          {/* ========================================================= */}
+          {/* 2. SECTIONAL TABS FOR DEEP-DIVE ANALYTICS                 */}
+          {/* ========================================================= */}
+          <div className="analytics-tabs-container">
+            <div className="analytics-tabs-nav">
+              <button
+                className={`analytics-tab-btn ${activeTab === 'goals' ? 'is-active' : ''}`}
+                onClick={() => setActiveTab('goals')}
+              >
+                <Target size={16} />
+                <span>Goals & Deadlines</span>
+              </button>
+
+              <button
+                className={`analytics-tab-btn ${activeTab === 'focus' ? 'is-active' : ''}`}
+                onClick={() => setActiveTab('focus')}
+              >
+                <Zap size={16} />
+                <span>Focus & Cognitive Flow</span>
+              </button>
+
+              <button
+                className={`analytics-tab-btn ${activeTab === 'wellbeing' ? 'is-active' : ''}`}
+                onClick={() => setActiveTab('wellbeing')}
+              >
+                <Activity size={16} />
+                <span>Habits & Wellbeing</span>
+              </button>
+
+              <button
+                className={`analytics-tab-btn ${activeTab === 'personality' ? 'is-active' : ''}`}
+                onClick={() => setActiveTab('personality')}
+              >
+                <Fingerprint size={16} />
+                <span>Work Personality</span>
+              </button>
+            </div>
+
+            {/* Tab Contents */}
+            <div className="analytics-tab-panel">
+              {/* TAB 1: Goals & Deadlines */}
+              {activeTab === 'goals' && (
+                <div className="tab-pane">
+                  {isUltra ? (
+                    <div className="panel-card glass-card">
+                      <div className="panel-header">
+                        <div className="panel-title-group">
+                          <Target size={18} className="text-primary" />
+                          <div>
+                            <h3>Goal Velocity & Milestone Probability</h3>
+                            <p className="panel-subtitle">
+                              Predictive completion rates based on current daily hours vs deadline requirements.
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          className="drilldown-toggle-btn"
+                          onClick={() => setShowGoalDetails((prev) => !prev)}
+                        >
+                          <span>{showGoalDetails ? 'Collapse Math Breakdown' : 'See Detailed Pace Breakdown'}</span>
+                          {showGoalDetails ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                        </button>
+                      </div>
+
+                      <div className="panel-body">
+                        <GoalProgress timeRange={timeRange} />
+                      </div>
+                    </div>
+                  ) : (
+                    <LockedFeature title="Goal Analytics & Pace Tracking" className="h-96" />
+                  )}
+                </div>
+              )}
+
+              {/* TAB 2: Focus & Cognitive Flow */}
+              {activeTab === 'focus' && (
+                <div className="tab-pane">
+                  <div className="grid-split-2">
+                    {/* Performance Pillars */}
+                    <div className="panel-card glass-card">
+                      <div className="panel-header">
+                        <div className="panel-title-group">
+                          <Gauge size={18} className="text-primary" />
+                          <div>
+                            <h3>Cognitive & Execution Pillars</h3>
+                            <p className="panel-subtitle">
+                              Performance balance across planning, execution, adaptability, and consistency.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="panel-body">
+                        {isUltra ? (
+                          <AIIntelligenceScore timeRange={timeRange} />
+                        ) : (
+                          <LockedFeature title="Cognitive Score" className="h-64" />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Focus Matrix / Heatmap */}
+                    <div className="panel-card glass-card">
+                      <div className="panel-header">
+                        <div className="panel-title-group">
+                          <Flame size={18} className="text-accent" />
+                          <div>
+                            <h3>Focus Consistency Matrix</h3>
+                            <p className="panel-subtitle">
+                              Day-by-day session intensity across your selected timeframe.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="panel-body">
+                        {isUltra ? (
+                          <FocusHeatmap timeRange={timeRange} />
+                        ) : (
+                          <LockedFeature title="Focus Heatmap" className="h-64" />
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="component-content">
-                  <BigFiveProfile />
+              )}
+
+              {/* TAB 3: Habits & Wellbeing */}
+              {activeTab === 'wellbeing' && (
+                <div className="tab-pane">
+                  <div className="grid-split-2">
+                    {/* Mood & Energy */}
+                    <div className="panel-card glass-card">
+                      <div className="panel-header">
+                        <div className="panel-title-group">
+                          <Smile size={18} className="text-secondary" />
+                          <div>
+                            <h3>Daily Mood & Energy Check-in</h3>
+                            <p className="panel-subtitle">
+                              Log daily mental state to discover how mood correlates with deep work output.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="panel-body">
+                        <MoodTracker />
+                      </div>
+                    </div>
+
+                    {/* Behavioral Rhythm Timeline */}
+                    <div className="panel-card glass-card">
+                      <div className="panel-header">
+                        <div className="panel-title-group">
+                          <Activity size={18} className="text-success" />
+                          <div>
+                            <h3>Habit Rhythm & Retention Safety</h3>
+                            <p className="panel-subtitle">
+                              Anti-dropoff telemetry monitoring daily streak health.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="panel-body" style={{ padding: 0 }}>
+                        {isUltra ? (
+                          <BehaviorTimeline />
+                        ) : (
+                          <LockedFeature title="Behavioral Retention" className="h-64" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </>
+              )}
+
+              {/* TAB 4: Work Personality */}
+              {activeTab === 'personality' && (
+                <div className="tab-pane">
+                  <div className="panel-card glass-card full-width-card">
+                    <div className="panel-header">
+                      <div className="panel-title-group">
+                        <Fingerprint size={18} className="text-primary" />
+                        <div>
+                          <h3>Your Work Personality (Big Five)</h3>
+                          <p className="panel-subtitle">
+                            Scientifically backed behavioral traits that inform how Leno organizes your schedule.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="component-meta">
+                        <span>Recalibrates every {bigFiveIntervalDays} days</span>
+                      </div>
+                    </div>
+                    <div className="panel-body">
+                      <BigFiveProfile />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
           {/* AI Disclaimer Banner */}
           <div className="analytics-disclaimer">
             <AlertTriangle size={14} />
-            <span>Note: These analytics are based on complex mathematical logic and artificial intelligence. They can sometimes be inaccurate.</span>
+            <span>Optileno analytics compute mathematical projections and behavioral trends to support your decisions.</span>
           </div>
 
           {/* Data Status Footer */}
           <div className="data-status-footer">
             <div className="status-item">
               <div className={`status-dot ${dataIntegrityClass}`} />
-              <span>Data: {dataIntegrityLabel}</span>
+              <span>Engine Status: {dataIntegrityLabel}</span>
             </div>
             <div className="status-item">
               <div className="status-dot success" />

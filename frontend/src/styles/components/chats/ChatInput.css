@@ -97,6 +97,11 @@
   box-shadow: 0 14px 36px rgba(2, 6, 23, 0.14);
 }
 
+.chat-input-wrapper.is-generating-glow::before {
+  opacity: 0.85;
+  animation: composer-sheen 3.5s linear infinite;
+}
+
 @keyframes composer-sheen {
   from {
     background-position: 0% 50%;
@@ -117,7 +122,7 @@
 .chat-input-field {
   width: 100%;
   min-height: 2.6rem;
-  max-height: 10rem;
+  max-height: 11.25rem;
   padding: 0.5rem 0.25rem 0.25rem 0;
   border: none;
   background: transparent;
@@ -208,6 +213,7 @@
   );
   color: rgb(255 255 255);
   box-shadow: 0 6px 16px rgba(var(--color-primary), 0.3);
+  cursor: pointer;
 }
 
 .send-button:hover:not(:disabled) {
@@ -217,6 +223,40 @@
 
 .send-button:active:not(:disabled) {
   transform: translateY(0) scale(0.96);
+}
+
+.stop-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  height: 2.35rem;
+  padding: 0 0.85rem;
+  border-radius: var(--radius-full);
+  border: 1.5px solid rgba(239, 68, 68, 0.55);
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  font-size: 0.78rem;
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.2);
+  transition: all 0.18s ease;
+}
+
+.stop-button:hover {
+  background: rgba(239, 68, 68, 0.22);
+  border-color: rgba(239, 68, 68, 0.8);
+  color: #fca5a5;
+  transform: scale(1.02);
+  box-shadow: 0 6px 18px rgba(239, 68, 68, 0.28);
+}
+
+.stop-button:active {
+  transform: scale(0.96);
+}
+
+.stop-button-text {
+  letter-spacing: 0.02em;
 }
 
 .focus-button:disabled,
@@ -248,7 +288,12 @@
 
   .focus-button,
   .send-button {
-    width: 2.5rem;
-    height: 2.5rem;
+    width: 2.2rem;
+    height: 2.2rem;
+  }
+
+  .stop-button {
+    height: 2.2rem;
+    padding: 0 0.75rem;
   }
 }

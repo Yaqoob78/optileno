@@ -915,6 +915,24 @@ class AgentMemorySnapshot(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
+# ==================================================
+# CANCELLATION SURVEY
+# ==================================================
+class CancellationSurvey(Base):
+    """User exit survey responses captured prior to subscription cancellation."""
+
+    __tablename__ = "cancellation_surveys"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    tier = Column(String, nullable=True)
+    reason = Column(String, nullable=False)
+    followup_answer = Column(Text, nullable=True)
+    offer_presented = Column(String, nullable=True)
+    offer_accepted = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
 # Update your __all__ list to include new models:
 __all__ = [
     "User",
@@ -951,4 +969,5 @@ __all__ = [
     "AgentConversation",
     "ApiKey",
     "AgentMemorySnapshot",
+    "CancellationSurvey",
 ]

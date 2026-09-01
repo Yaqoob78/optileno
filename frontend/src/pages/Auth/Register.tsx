@@ -20,12 +20,10 @@ export default function Register() {
         full_name: '',
         email: '',
         password: '',
-        confirmPassword: '',
         plan_type: 'EXPLORER', // Default to Free Forever
         agreedToTerms: false,
     });
     const [showPassword, setShowPassword] = useState(false);
-    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -57,11 +55,6 @@ export default function Register() {
 
         if (!isPasswordValid(formData.password)) {
             setError(PASSWORD_POLICY_MESSAGE);
-            return;
-        }
-
-        if (formData.password !== formData.confirmPassword) {
-            setError('Passwords do not match.');
             return;
         }
 
@@ -278,37 +271,6 @@ export default function Register() {
                             {formData.password && !isPasswordValid(formData.password) && (
                                 <p style={{ marginTop: '0.45rem', fontSize: '0.78rem', color: '#f87171' }}>
                                     {PASSWORD_POLICY_MESSAGE}
-                                </p>
-                            )}
-                        </div>
-
-                        <div className="form-group">
-                            <label className="form-label" htmlFor="register-confirm-password">Confirm Password</label>
-                            <div className={`input-wrapper ${formData.confirmPassword ? 'has-value' : ''}`}>
-                                <input
-                                    id="register-confirm-password"
-                                    type={showConfirmPassword ? 'text' : 'password'}
-                                    name="confirmPassword"
-                                    className="auth-input has-toggle"
-                                    placeholder="Confirm your password"
-                                    value={formData.confirmPassword}
-                                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                                    autoComplete="new-password"
-                                    required
-                                />
-                                <Lock className="input-icon" size={18} />
-                                <button
-                                    type="button"
-                                    className="password-toggle"
-                                    onClick={() => setShowConfirmPassword((prev) => !prev)}
-                                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-                                >
-                                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                                </button>
-                            </div>
-                            {formData.confirmPassword && formData.password !== formData.confirmPassword && (
-                                <p style={{ marginTop: '0.45rem', fontSize: '0.78rem', color: '#f87171' }}>
-                                    Passwords do not match.
                                 </p>
                             )}
                         </div>

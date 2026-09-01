@@ -21,6 +21,7 @@ import inspect
 import json
 import time
 import re
+import asyncio
 
 from backend.services.planner_service import planner_service
 from backend.services.analytics_service import analytics_service
@@ -269,9 +270,15 @@ class AIAgentActions:
         success = False
         error_type: Optional[str] = None
         try:
-            result = await self._invoke_tool_callable(tool_callable, user_id, validated_payload)
+            result = await asyncio.wait_for(
+                self._invoke_tool_callable(tool_callable, user_id, validated_payload),
+                timeout=12.0,
+            )
             success = True
             return result
+        except asyncio.TimeoutError as te:
+            error_type = "TimeoutError"
+            raise ToolExecutionError(f"Tool '{tool_name}' execution timed out after 12 seconds.") from te
         except Exception as exc:
             error_type = type(exc).__name__
             raise
@@ -302,14 +309,23 @@ class AIAgentActions:
         user_id: str,
         task_id: str,
         new_time: str,
+        reason: Optional[str] = None,
         **_: Any,
     ) -> Dict[str, Any]:
-        from pydantic import BaseModel
-        class TaskTimeUpdate(BaseModel):
-            due_date: str
-            
-        updates = TaskTimeUpdate(due_date=new_time)
-        return await planner_service.update_task(user_id, task_id, updates)
+        task = await planner_service.get_task_by_id(user_id, task_id)
+        if task and (task.get("is_locked") or task.get("meta", {}).get("is_locked")):
+            return {
+                "error": f"Task '{task.get('title', task_id)}' is locked to its time slot and cannot be automatically rescheduled.",
+                "is_locked": True,
+                "task_id": task_id
+            }
+
+        updates = {
+            "due_date": new_time,
+            "reschedule_reason": reason or "Optimized to protect focus time and avoid conflicts"
+        }
+        res = await planner_service.update_task(user_id, task_id, updates)
+        return res or {"success": True, "task_id": task_id}
 
     @staticmethod
     async def _create_multiple_tasks(

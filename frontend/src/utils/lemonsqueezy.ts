@@ -9,6 +9,7 @@ export const LEMONSQUEEZY_ANNUAL_CHECKOUT_URL =
   'https://optileno.lemonsqueezy.com/checkout/buy/602908e3-0459-4b70-b8af-2018f06424ce';
 
 export const LEMONSQUEEZY_CHECKOUT_URL = LEMONSQUEEZY_MONTHLY_CHECKOUT_URL;
+export const LEMONSQUEEZY_50_OFF_COUPON = 'M3MDQWMQ';
 
 export interface CheckoutUserContext {
   id?: string | number;
@@ -18,11 +19,12 @@ export interface CheckoutUserContext {
 }
 
 /**
- * Builds the direct Lemon Squeezy checkout URL prefilling the user's details and custom user_id for webhook attribution.
+ * Builds the direct Lemon Squeezy checkout URL prefilling the user's details, custom user_id, and optional discount coupon code.
  */
 export function getLemonSqueezyCheckoutUrl(
   user?: CheckoutUserContext | null,
-  cycle: 'monthly' | 'annual' = 'monthly'
+  cycle: 'monthly' | 'annual' = 'monthly',
+  discountCode?: string
 ): string {
   try {
     const selectedCycle = user?.billingCycle || cycle;
@@ -40,6 +42,10 @@ export function getLemonSqueezyCheckoutUrl(
     }
     url.searchParams.set('checkout[custom][billing_cycle]', selectedCycle);
 
+    if (discountCode) {
+      url.searchParams.set('checkout[discount_code]', discountCode.trim());
+    }
+
     return url.toString();
   } catch {
     return LEMONSQUEEZY_CHECKOUT_URL;
@@ -47,12 +53,13 @@ export function getLemonSqueezyCheckoutUrl(
 }
 
 /**
- * Directly redirects the browser to the Lemon Squeezy Ultra Pro checkout page.
+ * Directly redirects the browser to the Lemon Squeezy Ultra Pro checkout page with optional discount code.
  */
 export function openLemonSqueezyCheckout(
   user?: CheckoutUserContext | null,
-  cycle: 'monthly' | 'annual' = 'monthly'
+  cycle: 'monthly' | 'annual' = 'monthly',
+  discountCode?: string
 ): void {
-  const checkoutUrl = getLemonSqueezyCheckoutUrl(user, cycle);
+  const checkoutUrl = getLemonSqueezyCheckoutUrl(user, cycle, discountCode);
   window.location.href = checkoutUrl;
 }

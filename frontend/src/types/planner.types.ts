@@ -34,6 +34,9 @@ export interface Task {
   goalId?: string;
   goalTitle?: string;
   meta?: any;
+  is_locked?: boolean;
+  is_protected?: boolean;
+  reschedule_reason?: string;
   subtasks?: Array<{ title: string; completed: boolean }>;
   depends_on_task_id?: string | number | null;
   is_recurring?: boolean;

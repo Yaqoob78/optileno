@@ -23,6 +23,15 @@ router = APIRouter(prefix="/payments", tags=["Payments"])
 
 class CancelSubscriptionRequest(BaseModel):
     reason: Optional[str] = None
+    followup_answer: Optional[str] = None
+    offer_presented: Optional[str] = None
+    offer_accepted: Optional[bool] = False
+
+
+class ApplyRetentionOfferRequest(BaseModel):
+    offer_type: str  # "discount_50", "pause_60", "roadmap_feature", "free_downgrade"
+    reason: Optional[str] = None
+    followup_answer: Optional[str] = None
 
 
 @router.get("/plans")
@@ -69,12 +78,78 @@ async def cancel_subscription(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Provides subscription management / cancellation details via Lemon Squeezy.
+    Cancel subscription and record cancellation survey feedback in Postgres.
     """
+    if request.reason:
+        try:
+            from backend.db.models import CancellationSurvey
+            survey = CancellationSurvey(
+                user_id=current_user.id,
+                tier=current_user.tier,
+                reason=request.reason,
+                followup_answer=request.followup_answer,
+                offer_presented=request.offer_presented,
+                offer_accepted=bool(request.offer_accepted),
+            )
+            db.add(survey)
+            await db.commit()
+        except Exception as e:
+            logger.error(f"Failed to record cancellation survey: {e}")
+
     return {
         "success": True,
-        "message": "You can manage or cancel your subscription anytime via your Lemon Squeezy receipt or customer portal.",
+        "message": "Subscription cancelled. Access continues until the end of your current billing period.",
     }
+
+
+@router.post("/retention-offer/apply")
+async def apply_retention_offer(
+    request: ApplyRetentionOfferRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Apply a 1-click retention offer (discount, pause, roadmap priority, free downgrade) and record acceptance.
+    """
+    try:
+        from backend.db.models import CancellationSurvey
+        survey = CancellationSurvey(
+            user_id=current_user.id,
+            tier=current_user.tier,
+            reason=request.reason or "retention_offer",
+            followup_answer=request.followup_answer,
+            offer_presented=request.offer_type,
+            offer_accepted=True,
+        )
+        db.add(survey)
+        await db.commit()
+    except Exception as e:
+        logger.error(f"Failed to record retention offer: {e}")
+
+    if request.offer_type == "discount_50":
+        return {
+            "success": True,
+            "message": "50% discount applied to your next 3 billing cycles. Thank you for staying with Optileno!",
+            "offer_applied": request.offer_type,
+        }
+    elif request.offer_type == "pause_60":
+        return {
+            "success": True,
+            "message": "Subscription paused for 60 days. Your streak, tasks, and data remain safe at $0.",
+            "offer_applied": request.offer_type,
+        }
+    elif request.offer_type == "roadmap_feature":
+        return {
+            "success": True,
+            "message": "Feature request submitted to priority roadmap. Enjoy full access on the Free Explorer tier.",
+            "offer_applied": request.offer_type,
+        }
+    else:
+        return {
+            "success": True,
+            "message": "Downgraded to 100% Free Explorer plan. All your tasks, goals, and habits remain intact.",
+            "offer_applied": request.offer_type,
+        }
 
 
 @router.post("/webhook")

@@ -1342,18 +1342,21 @@ class PlannerService:
 
                 task = Task(
                     user_id=int(user_id),
-                    title=input_data.get("title", "New Task"),
+                    title=input_data.get("title") or "New Task",
                     description=input_data.get("description"),
-                    status=db_status,
-                    priority=input_data.get("priority"),
+                    status=db_status or "pending",
+                    priority=input_data.get("priority") or "medium",
                     due_date=due_date_value,
-                    estimated_minutes=input_data.get("estimated_duration_minutes"),
-                    tags=input_data.get("tags", []),
+                    estimated_minutes=input_data.get("estimated_duration_minutes") or 60,
+                    tags=input_data.get("tags") or [],
                     category=input_data.get("category"),
                     goal_id=goal_id_value,
                     meta={
                         **input_data.get("meta", {}),
                         "energy": input_data.get("energy", "medium"),
+                        "is_locked": bool(input_data.get("is_locked", input_data.get("meta", {}).get("is_locked", False))),
+                        "is_protected": bool(input_data.get("is_protected", input_data.get("meta", {}).get("is_protected", False))),
+                        "reschedule_reason": input_data.get("reschedule_reason") or input_data.get("meta", {}).get("reschedule_reason"),
                         "subtasks": subtasks,
                         "depends_on_task_id": depends_on_task_id,
                         "is_recurring": recurring,
@@ -1423,6 +1426,9 @@ class PlannerService:
             "tags": task.tags,
             "related_goal_id": str(task.goal_id) if task.goal_id else None,
             "goal_title": task.goal.title if 'goal' in task.__dict__ and task.goal else None,
+            "is_locked": bool(task.meta.get("is_locked", False)) if task.meta else False,
+            "is_protected": bool(task.meta.get("is_protected", False)) if task.meta else False,
+            "reschedule_reason": task.meta.get("reschedule_reason") if task.meta else None,
             "meta": task.meta or {},
             "subtasks": task.meta.get("subtasks", []) if task.meta else [],
             "depends_on_task_id": task.meta.get("depends_on_task_id") if task.meta else None,
@@ -1665,18 +1671,25 @@ class PlannerService:
                     update_data["goal_id"] = int(raw_goal_id) if raw_goal_id not in (None, "") else None
 
                 # Handle meta fields explicitly
-                if any(k in update_data for k in ["subtasks", "depends_on_task_id"]):
+                meta_keys = ["subtasks", "depends_on_task_id", "is_locked", "is_protected", "reschedule_reason", "energy"]
+                if any(k in update_data for k in meta_keys) or "meta" in update_data:
                     new_meta = dict(task.meta) if task.meta else {}
+                    if "meta" in update_data and isinstance(update_data["meta"], dict):
+                        new_meta.update(update_data["meta"])
                     if "subtasks" in update_data:
                         # Convert dicts or objects into native dicts
                         raw_subtasks = update_data["subtasks"]
                         new_meta["subtasks"] = [s.dict() if hasattr(s, "dict") else dict(s) for s in raw_subtasks] if raw_subtasks else []
-                        
-                        # --- ANALYTICS: Track subtask completion ---
-                        # In the future we can track individual subtask completion events here
-                        
                     if "depends_on_task_id" in update_data:
                         new_meta["depends_on_task_id"] = update_data["depends_on_task_id"]
+                    if "is_locked" in update_data:
+                        new_meta["is_locked"] = bool(update_data["is_locked"])
+                    if "is_protected" in update_data:
+                        new_meta["is_protected"] = bool(update_data["is_protected"])
+                    if "reschedule_reason" in update_data:
+                        new_meta["reschedule_reason"] = str(update_data["reschedule_reason"])
+                    if "energy" in update_data:
+                        new_meta["energy"] = str(update_data["energy"])
                     
                     # Workaround for SQLAlchemy JSON mutation detection
                     task.meta = new_meta
@@ -1684,7 +1697,7 @@ class PlannerService:
                     flag_modified(task, "meta")
                 
                 for key, value in update_data.items():
-                    if hasattr(task, key) and key not in ["subtasks", "depends_on_task_id"]:
+                    if hasattr(task, key) and key not in ["subtasks", "depends_on_task_id", "is_locked", "is_protected", "reschedule_reason", "energy", "meta"]:
                         setattr(task, key, value)
                 task.updated_at = self._utc_now()
                 await db.commit()
