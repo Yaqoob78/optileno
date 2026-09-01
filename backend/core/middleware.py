@@ -69,53 +69,6 @@ class MiddlewareMetrics:
             "validation_failures": self.validation_failures,
             "slow_requests": self.slow_requests,
             "avg_response_time_ms": round(self.avg_response_time_ms, 2),
-
-from backend.app.config import settings
-from backend.auth.auth_utils import decode_token
-from backend.core.redis_rate_limiter import redis_rate_limiter
-
-logger = logging.getLogger(__name__)
-
-
-# ==================================================
-# Middleware Metrics
-# ==================================================
-class MiddlewareMetrics:
-    """Track middleware performance metrics."""
-    
-    def __init__(self):
-        self.total_requests = 0
-        self.blocked_requests = 0
-        self.rate_limited_requests = 0
-        self.csrf_failures = 0
-        self.validation_failures = 0
-        self.slow_requests = 0
-        self.avg_response_time_ms = 0.0
-        self._response_times: List[float] = []
-    
-    def record_request(self, response_time_ms: float, status_code: int):
-        self.total_requests += 1
-        self._response_times.append(response_time_ms)
-        
-        # Keep only last 10000 samples
-        if len(self._response_times) > 10000:
-            self._response_times = self._response_times[-10000:]
-        
-        self.avg_response_time_ms = sum(self._response_times) / len(self._response_times)
-        
-        # Track slow requests (>200ms threshold from config)
-        if response_time_ms > settings.PERF_RESPONSE_TIME_THRESHOLD_MS:
-            self.slow_requests += 1
-    
-    def to_dict(self) -> Dict:
-        return {
-            "total_requests": self.total_requests,
-            "blocked_requests": self.blocked_requests,
-            "rate_limited_requests": self.rate_limited_requests,
-            "csrf_failures": self.csrf_failures,
-            "validation_failures": self.validation_failures,
-            "slow_requests": self.slow_requests,
-            "avg_response_time_ms": round(self.avg_response_time_ms, 2),
             "p95_threshold_ms": settings.PERF_RESPONSE_TIME_THRESHOLD_MS,
         }
 
