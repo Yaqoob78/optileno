@@ -69,6 +69,53 @@ class MiddlewareMetrics:
             "validation_failures": self.validation_failures,
             "slow_requests": self.slow_requests,
             "avg_response_time_ms": round(self.avg_response_time_ms, 2),
+
+from backend.app.config import settings
+from backend.auth.auth_utils import decode_token
+from backend.core.redis_rate_limiter import redis_rate_limiter
+
+logger = logging.getLogger(__name__)
+
+
+# ==================================================
+# Middleware Metrics
+# ==================================================
+class MiddlewareMetrics:
+    """Track middleware performance metrics."""
+    
+    def __init__(self):
+        self.total_requests = 0
+        self.blocked_requests = 0
+        self.rate_limited_requests = 0
+        self.csrf_failures = 0
+        self.validation_failures = 0
+        self.slow_requests = 0
+        self.avg_response_time_ms = 0.0
+        self._response_times: List[float] = []
+    
+    def record_request(self, response_time_ms: float, status_code: int):
+        self.total_requests += 1
+        self._response_times.append(response_time_ms)
+        
+        # Keep only last 10000 samples
+        if len(self._response_times) > 10000:
+            self._response_times = self._response_times[-10000:]
+        
+        self.avg_response_time_ms = sum(self._response_times) / len(self._response_times)
+        
+        # Track slow requests (>200ms threshold from config)
+        if response_time_ms > settings.PERF_RESPONSE_TIME_THRESHOLD_MS:
+            self.slow_requests += 1
+    
+    def to_dict(self) -> Dict:
+        return {
+            "total_requests": self.total_requests,
+            "blocked_requests": self.blocked_requests,
+            "rate_limited_requests": self.rate_limited_requests,
+            "csrf_failures": self.csrf_failures,
+            "validation_failures": self.validation_failures,
+            "slow_requests": self.slow_requests,
+            "avg_response_time_ms": round(self.avg_response_time_ms, 2),
             "p95_threshold_ms": settings.PERF_RESPONSE_TIME_THRESHOLD_MS,
         }
 
@@ -114,10 +161,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
     @staticmethod
     def _extract_user_id(request: Request) -> Optional[str]:
-        """
-        Best-effort user identification from JWT.
-        Used only for rate-limit bucketing; auth itself is still enforced elsewhere.
-        """
         token: Optional[str] = None
         auth_header = request.headers.get("authorization", "")
         if auth_header.lower().startswith("bearer "):
@@ -138,10 +181,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return None
         except Exception:
             return None
-    
+
     def _cleanup_old_requests(self, now: float):
-        """Periodic cleanup of old request records."""
-        # Cleanup every 60 seconds
         if now - self.last_cleanup < 60:
             return
         
@@ -149,7 +190,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         keys_to_delete = []
         
         for key, timestamps in self.request_counts.items():
-            # Remove old timestamps
             self.request_counts[key] = [t for t in timestamps if now - t < window]
             if not self.request_counts[key]:
                 keys_to_delete.append(key)
@@ -161,11 +201,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.last_cleanup = now
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        """Apply adaptive rate limiting."""
-
-        # Avoid rate limiting health/metrics/docs noise.
+        # Avoid rate limiting health/metrics/docs/root noise
         if (
-            request.url.path in {"/health", "/metrics", "/docs", "/redoc", "/openapi.json"}
+            request.url.path in {"/", "/health", "/health/full", "/health/ready", "/health/live", "/metrics", "/docs", "/redoc", "/openapi.json", "/robots.txt", "/favicon.ico"}
             or request.url.path.startswith("/api/v1/health")
             or request.url.path.startswith("/api/v1/system/")
         ):
@@ -180,17 +218,14 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             else settings.RATE_LIMIT_REQUESTS_PER_MINUTE
         )
 
-        # Apply burst allowance
         burst_allowance = settings.RATE_LIMIT_BURST_ALLOWANCE
         effective_limit = max_requests + burst_allowance
 
         now = time.time()
         window = settings.RATE_LIMIT_WINDOW_SECONDS
 
-        # First try distributed Redis limiter so limits are consistent across workers/instances.
-        try:
-            await redis_rate_limiter.initialize()
-            if redis_rate_limiter.redis_client:
+        if redis_rate_limiter._initialized and redis_rate_limiter.redis_client:
+            try:
                 is_allowed = await redis_rate_limiter.check_rate_limit(
                     user_id=identifier,
                     max_requests=effective_limit,
@@ -201,10 +236,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 if not is_allowed:
                     middleware_metrics.rate_limited_requests += 1
                     middleware_metrics.blocked_requests += 1
-                    logger.warning(
-                        f"Rate limit exceeded for {identifier} (distributed): "
-                        f"{effective_limit}/{window}s"
-                    )
+                    logger.warning(f"Rate limit exceeded for {identifier} (distributed): {effective_limit}/{window}s")
                     return Response(
                         content='{"error": "Too many requests", "retry_after": ' + str(window) + '}',
                         status_code=429,
@@ -219,20 +251,16 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
                 response = await call_next(request)
                 response.headers["X-RateLimit-Limit"] = str(max_requests)
-                # Distributed limiter doesn't expose exact remaining cheaply in this path.
                 response.headers["X-RateLimit-Remaining"] = "-1"
                 response.headers["X-RateLimit-Reset"] = str(int(now + window))
                 return response
-        except Exception as e:
-            if now - self._last_distributed_limiter_warning > self._warning_interval_seconds:
-                logger.warning(f"Distributed rate limiter unavailable, falling back to local limiter: {e}")
-                self._last_distributed_limiter_warning = now
+            except Exception as e:
+                if now - self._last_distributed_limiter_warning > self._warning_interval_seconds:
+                    logger.warning(f"Distributed rate limiter unavailable, falling back to local limiter: {e}")
+                    self._last_distributed_limiter_warning = now
 
-        # Fallback: local in-memory limiter (single process scope).
-        # Cleanup old requests periodically
         self._cleanup_old_requests(now)
 
-        # Clean old requests for this identifier
         self.request_counts[identifier] = [
             req_time for req_time in self.request_counts[identifier]
             if now - req_time < window
@@ -240,13 +268,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         current_count = len(self.request_counts[identifier])
 
-        # Check rate limit
         if current_count >= effective_limit:
             middleware_metrics.rate_limited_requests += 1
             middleware_metrics.blocked_requests += 1
             logger.warning(f"Rate limit exceeded for {identifier}: {current_count}/{effective_limit}")
 
-            # Calculate retry-after
             oldest_request = min(self.request_counts[identifier]) if self.request_counts[identifier] else now
             retry_after = int(window - (now - oldest_request)) + 1
 
@@ -262,17 +288,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 }
             )
 
-        # Record this request
         self.request_counts[identifier].append(now)
 
-        # Track burst usage
         if current_count > max_requests:
             self.burst_counts[identifier] = current_count - max_requests
 
-        # Process request
         response = await call_next(request)
 
-        # Add rate limit headers
         remaining = max(0, max_requests - current_count - 1)
         response.headers["X-RateLimit-Limit"] = str(max_requests)
         response.headers["X-RateLimit-Remaining"] = str(remaining)
@@ -458,19 +480,25 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 class CanonicalRedirectMiddleware(BaseHTTPMiddleware):
     """
     Enforces global 301 Permanent Redirects:
-    1. http:// -> https:// (when behind TLS terminating proxies)
-    2. optileno.com -> https://www.optileno.com
+    1. optileno.com -> https://www.optileno.com (apex to www)
+    Never redirects API or load balancer health checks.
     """
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         host = request.headers.get("host", "").split(":")[0].lower()
-        proto = request.headers.get("x-forwarded-proto", "").lower() or request.url.scheme
 
-        # Ignore local development and test runners
-        if host in {"localhost", "127.0.0.1", "testserver"} or host.endswith(".local") or host.startswith("192.168."):
+        # Ignore local development, test runners, private IPs, and health checks
+        if (
+            host in {"localhost", "127.0.0.1", "testserver"}
+            or host.endswith(".local")
+            or host.startswith("192.168.")
+            or host.startswith("10.")
+            or host.startswith("172.")
+            or request.url.path in {"/", "/health", "/health/full", "/health/ready", "/health/live", "/metrics"}
+        ):
             return await call_next(request)
 
-        # Enforce canonical www and https on production domains
-        if host == "optileno.com" or (proto == "http" and "optileno.com" in host):
+        # Enforce canonical www only on apex domain optileno.com (never api.optileno.com)
+        if host == "optileno.com":
             path = request.url.path
             query = f"?{request.url.query}" if request.url.query else ""
             target_url = f"https://www.optileno.com{path}{query}"

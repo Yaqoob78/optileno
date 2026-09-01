@@ -24,7 +24,7 @@ class RedisRateLimiter:
         self._initialized = False
         self._init_lock = asyncio.Lock()
         self._last_init_attempt: float = 0.0
-        self._retry_interval_seconds: int = 30
+        self._retry_interval_seconds: int = 60
     
     async def initialize(self):
         """Initialize Redis connection"""
@@ -41,24 +41,27 @@ class RedisRateLimiter:
             self._last_init_attempt = now_ts
             
             try:
+                # Use 1.0s fast timeout so unavailable Redis never blocks the event loop
+                connect_timeout = min(float(settings.REDIS_SOCKET_CONNECT_TIMEOUT or 1.0), 1.5)
+                op_timeout = min(float(settings.REDIS_SOCKET_TIMEOUT or 1.0), 1.5)
                 self.redis_client = redis.from_url(
                     settings.REDIS_URL,
                     encoding="utf-8",
                     decode_responses=True,
-                    socket_connect_timeout=settings.REDIS_SOCKET_CONNECT_TIMEOUT,
-                    socket_timeout=settings.REDIS_SOCKET_TIMEOUT,
-                    retry_on_timeout=settings.REDIS_RETRY_ON_TIMEOUT,
+                    socket_connect_timeout=connect_timeout,
+                    socket_timeout=op_timeout,
+                    retry_on_timeout=False,
                     health_check_interval=settings.REDIS_HEALTH_CHECK_INTERVAL,
                     max_connections=settings.REDIS_MAX_CONNECTIONS,
                 )
                 
-                # Test connection
-                await self.redis_client.ping()
+                # Test connection with fast timeout
+                await asyncio.wait_for(self.redis_client.ping(), timeout=1.5)
                 self._initialized = True
                 logger.info("Redis rate limiter initialized successfully")
                 
             except Exception as e:
-                logger.error(f"Failed to initialize Redis rate limiter: {e}")
+                logger.warning(f"Redis rate limiter unavailable (using local in-memory fallback): {e}")
                 # Fallback to in-memory if Redis is not available
                 self.redis_client = None
                 self._initialized = False
