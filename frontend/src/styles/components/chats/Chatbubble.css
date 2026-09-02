@@ -526,8 +526,91 @@
 }
 
 /* ==========================================================================
-   Streaming Cursor & Action Pills Bar
+   Streaming Cursor, Thinking Indicator & Action Pills Bar
    ========================================================================== */
+
+/* Gemini-style Thinking Indicator */
+.assistant-thinking-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(var(--color-bg-tertiary), 0.6);
+  border: 1px solid rgba(var(--color-border-light), 0.25);
+  color: rgb(var(--color-text-secondary));
+  font-size: 0.84rem;
+  font-weight: var(--font-medium);
+  margin: 0.2rem 0;
+  animation: fadeInThinking 0.25s ease forwards;
+}
+
+@keyframes fadeInThinking {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.thinking-dot {
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+  display: inline-block;
+  animation: thinking-bounce 1.3s infinite ease-in-out;
+}
+
+.thinking-dot:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.thinking-dot:nth-child(2) {
+  animation-delay: 0.18s;
+}
+
+.thinking-dot:nth-child(3) {
+  animation-delay: 0.36s;
+}
+
+@keyframes thinking-bounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-0.22rem);
+    opacity: 1;
+  }
+}
+
+.thinking-text {
+  letter-spacing: 0.01em;
+}
+
+.inline-streaming-cursor {
+  display: inline-block;
+  color: #38bdf8;
+  font-size: 0.72rem;
+  margin-left: 0.35rem;
+  vertical-align: baseline;
+  animation: inline-cursor-pulse 0.8s infinite ease-in-out;
+}
+
+@keyframes inline-cursor-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+  50% {
+    opacity: 0.25;
+    transform: scale(0.85);
+  }
+}
 
 .streaming-cursor-container {
   display: inline-block;

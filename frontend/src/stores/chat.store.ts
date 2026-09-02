@@ -352,10 +352,11 @@ export const useChatStore = create<ChatState>()(
       },
 
       addMessage: (message) => {
+        const messageId = String((message as any).id || generateId());
         const newMessage = normalizeMessage({
           ...message,
-          id: generateId(),
-          timestamp: new Date(),
+          id: messageId,
+          timestamp: (message as any).timestamp || new Date(),
         });
 
         set((state) => {
@@ -395,6 +396,7 @@ export const useChatStore = create<ChatState>()(
       },
 
       editMessage: (messageId, content) => {
+        const idStr = String(messageId);
         set((state) => {
           if (!state.activeConversation) return state;
 
@@ -404,11 +406,10 @@ export const useChatStore = create<ChatState>()(
             (conversation) => ({
               ...conversation,
               messages: conversation.messages.map((message) =>
-                message.id === messageId
+                String(message.id) === idStr
                   ? {
                       ...message,
                       content,
-                      timestamp: new Date(),
                     }
                   : message,
               ),
@@ -419,6 +420,7 @@ export const useChatStore = create<ChatState>()(
       },
 
       updateMessageMetadata: (messageId, metadata) => {
+        const idStr = String(messageId);
         set((state) => {
           if (!state.activeConversation) return state;
 
@@ -428,7 +430,7 @@ export const useChatStore = create<ChatState>()(
             (conversation) => ({
               ...conversation,
               messages: conversation.messages.map((message) =>
-                message.id === messageId
+                String(message.id) === idStr
                   ? {
                       ...message,
                       metadata: {

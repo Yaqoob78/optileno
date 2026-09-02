@@ -206,7 +206,12 @@ export default function ChatBubble({
   }
 
   // ================= ASSISTANT MESSAGE =================
-  const htmlContent = renderSafeMarkdown(message.content, message.isStreaming);
+  const displayContent =
+    message.content.trim() ||
+    (message.isStreaming
+      ? ""
+      : "Hello! How can I assist you with your tasks, habits, or schedule today?");
+  const htmlContent = renderSafeMarkdown(displayContent, message.isStreaming);
 
   return (
     <div className="chat-turn chat-turn-assistant">
@@ -229,17 +234,27 @@ export default function ChatBubble({
           )}
         </div>
 
-        <div
-          ref={contentRef}
-          onClick={handleContainerClick}
-          className="message-text markdown-content"
-          dangerouslySetInnerHTML={{ __html: htmlContent }}
-        />
-
-        {message.isStreaming && (
-          <div className="streaming-cursor-container" aria-hidden="true">
-            <span className="streaming-cursor" />
+        {!message.content.trim() && message.isStreaming ? (
+          <div className="assistant-thinking-indicator" aria-label="Leno is thinking">
+            <span className="thinking-dot" />
+            <span className="thinking-dot" />
+            <span className="thinking-dot" />
+            <span className="thinking-text">Thinking…</span>
           </div>
+        ) : (
+          <>
+            <div
+              ref={contentRef}
+              onClick={handleContainerClick}
+              className="message-text markdown-content"
+              dangerouslySetInnerHTML={{ __html: htmlContent }}
+            />
+            {message.isStreaming && (
+              <span className="inline-streaming-cursor" aria-hidden="true">
+                ●
+              </span>
+            )}
+          </>
         )}
 
         {/* Message Actions Bar (Copy, Feedback, Retry) */}

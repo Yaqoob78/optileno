@@ -68,14 +68,12 @@ class RealtimeClient {
 
         this.socket = io(SOCKET_URL, {
           path: '/socket.io',
-          transports: ['polling', 'websocket'],
-          upgrade: true,
+          transports: ['websocket'],
+          upgrade: false,
           autoConnect: true,
           withCredentials: true,
-          reconnection: true,
-          reconnectionAttempts: 3,
-          reconnectionDelay: 1000,
-          timeout: 5000,
+          reconnection: false,
+          timeout: 4000,
         });
 
         authTimeout = window.setTimeout(() => {
@@ -108,11 +106,15 @@ class RealtimeClient {
         });
 
         this.socket.on('connect_error', (_error) => {
-          // Graceful fallback to REST polling without repeating broken WebSocket handshakes
+          // Graceful fallback to REST API without repeating broken polling handshakes
           if (authTimeout !== null) {
             window.clearTimeout(authTimeout);
           }
-          this.socket?.disconnect();
+          try {
+            this.socket?.disconnect();
+          } catch {
+            // Ignore disconnect errors
+          }
           finishResolve();
         });
 
