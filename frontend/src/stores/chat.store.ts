@@ -624,47 +624,26 @@ export const useChatStore = create<ChatState>()(
     {
       name: "chat-storage",
       partialize: (state) => ({
-        conversations: state.conversations,
-        activeConversation: state.activeConversation,
+        // Only persist explicitly kept conversations
+        conversations: state.conversations.filter((conversation) => conversation.isKept),
         currentMode: state.currentMode,
         modeSettings: state.modeSettings,
       }),
       merge: (persistedState, currentState) => {
         const typedState = (persistedState || {}) as Partial<ChatState>;
-        const normalizedConversations = Array.isArray(typedState.conversations)
+        const keptConversations = Array.isArray(typedState.conversations)
           ? sortByUpdatedAt(
-              typedState.conversations.map((conversation) =>
-                normalizeConversation(conversation),
-              ),
+              typedState.conversations
+                .filter((conversation) => conversation.isKept)
+                .map((conversation) => normalizeConversation(conversation)),
             )
-          : currentState.conversations;
-
-        let normalizedActiveConversation = typedState.activeConversation
-          ? normalizeConversation(typedState.activeConversation)
-          : resolveActiveConversation(
-              normalizedConversations,
-              currentState.activeConversation?.id,
-            );
-
-        if (
-          normalizedActiveConversation &&
-          !normalizedConversations.some(
-            (conversation) => conversation.id === normalizedActiveConversation?.id,
-          )
-        ) {
-          normalizedConversations.unshift(normalizedActiveConversation);
-        }
-
-        normalizedActiveConversation = resolveActiveConversation(
-          normalizedConversations,
-          normalizedActiveConversation?.id,
-        );
+          : [];
 
         return {
           ...currentState,
           ...typedState,
-          conversations: sortByUpdatedAt(normalizedConversations),
-          activeConversation: normalizedActiveConversation,
+          conversations: keptConversations,
+          activeConversation: null, // Always initialize with a fresh session
           currentMode: isChatMode(typedState.currentMode)
             ? typedState.currentMode
             : currentState.currentMode,

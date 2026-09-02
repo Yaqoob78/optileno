@@ -120,7 +120,7 @@ export default function Chat() {
     }
   }, []);
 
-  const startFreshConversation = useCallback(() => {
+  const startFreshConversation = useCallback((notify = false) => {
     clearSuggestionTimer();
     clearStreamingTimer();
     if (abortControllerRef.current) {
@@ -133,10 +133,12 @@ export default function Chat() {
     setIsSending(false);
     setShowSuggestions(false);
     setUserHasTyped(false);
-    setToast({
-      message: "Started a fresh new chat session.",
-      type: "info",
-    });
+    if (notify) {
+      setToast({
+        message: "Started a fresh new chat session.",
+        type: "info",
+      });
+    }
   }, [clearSuggestionTimer, clearStreamingTimer, createConversation]);
 
   const refreshPlannerState = useCallback(
@@ -185,10 +187,11 @@ export default function Chat() {
   }, []);
 
   useEffect(() => {
-    if (!activeConversation) {
-      createConversation("New Chat");
+    const currentActive = useChatStore.getState().activeConversation;
+    if (!currentActive || !currentActive.isKept) {
+      startFreshConversation();
     }
-  }, [activeConversation, createConversation]);
+  }, [startFreshConversation]);
 
   useEffect(() => {
     if (!activeConversation) return;
@@ -772,7 +775,7 @@ export default function Chat() {
             if (tab === "keep") handleKeepClick();
             if (tab === "clear") handleClearFlowClick();
           }}
-          onNewChat={startFreshConversation}
+          onNewChat={() => startFreshConversation(true)}
         />
 
         {toast && (
