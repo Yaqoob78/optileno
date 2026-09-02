@@ -6,7 +6,6 @@ import {
   ThumbsDown,
   RotateCcw,
   Edit3,
-  Sparkles,
 } from "lucide-react";
 import { renderSafeMarkdown } from "../../utils/markdownUtils";
 import "../../styles/components/chats/Chatbubble.css";
@@ -222,13 +221,7 @@ export default function ChatBubble({
         aria-label="Leno's reply"
       >
         <div className="assistant-header-row">
-          <div className="assistant-avatar-badge" aria-hidden="true">
-            <Sparkles size={13} className="assistant-avatar-icon" />
-          </div>
           <span className="assistant-name">Leno</span>
-          {message.provider && (
-            <span className="assistant-provider-tag">{message.provider}</span>
-          )}
           {message.timestamp && (
             <span className="assistant-timestamp">{message.timestamp}</span>
           )}
