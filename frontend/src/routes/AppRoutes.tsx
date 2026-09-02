@@ -46,10 +46,15 @@ export default function AppRoutes() {
         <Route path="/workflow-automation-agency-owners" element={<FeaturePage featureKey="workflow-automation-agency-owners" />} />
         <Route path="/agency-workflow-automation" element={<FeaturePage featureKey="workflow-automation-agency-owners" />} />
         <Route path="/vs/motion" element={<ComparisonPage competitorKey="motion" />} />
+        <Route path="/optileno-vs-motion" element={<ComparisonPage competitorKey="motion" />} />
         <Route path="/vs/sunsama" element={<ComparisonPage competitorKey="sunsama" />} />
+        <Route path="/optileno-vs-sunsama" element={<ComparisonPage competitorKey="sunsama" />} />
         <Route path="/vs/reclaim" element={<ComparisonPage competitorKey="reclaim" />} />
+        <Route path="/optileno-vs-reclaim" element={<ComparisonPage competitorKey="reclaim" />} />
         <Route path="/vs/todoist" element={<ComparisonPage competitorKey="todoist" />} />
+        <Route path="/optileno-vs-todoist" element={<ComparisonPage competitorKey="todoist" />} />
         <Route path="/vs/notion" element={<ComparisonPage competitorKey="notion" />} />
+        <Route path="/optileno-vs-notion" element={<ComparisonPage competitorKey="notion" />} />
         <Route path="/vs/:competitor" element={<ComparisonPage />} />
         <Route path="/ai-task-manager" element={<FeaturePage featureKey="ai-task-manager" />} />
         <Route path="/ai-task" element={<FeaturePage featureKey="ai-task" />} />

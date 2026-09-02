@@ -3,6 +3,7 @@ Allow: /
 Allow: /tools
 Allow: /tools/*
 Allow: /vs/*
+Allow: /optileno-vs-*
 Allow: /ai-calendar-planner
 Allow: /workflow-automation-agency-owners
 Allow: /chat-leno
