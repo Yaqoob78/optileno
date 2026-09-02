@@ -12,6 +12,8 @@ import {
   X,
   Sparkles,
   Layers,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 import { parseQuickAdd, ParsedQuickAdd, ParsedToken } from '../../utils/quickAddParser';
 import '../../styles/components/planner/QuickAddBar.css';
@@ -66,7 +68,7 @@ export const QuickAddBar: React.FC<QuickAddBarProps> = ({
   // Clear notice after delay
   useEffect(() => {
     if (!feedbackNotice) return;
-    const t = window.setTimeout(() => setFeedbackNotice(null), 3000);
+    const t = window.setTimeout(() => setFeedbackNotice(null), 3500);
     return () => window.clearTimeout(t);
   }, [feedbackNotice]);
 
@@ -92,7 +94,7 @@ export const QuickAddBar: React.FC<QuickAddBarProps> = ({
         const result = await onHabitCreated(habitPayload);
         if (result.success) {
           setInputValue('');
-          setFeedbackNotice({ type: 'success', text: `Habit "${title}" created!` });
+          setFeedbackNotice({ type: 'success', text: `Habit "${title}" created successfully!` });
         } else {
           setFeedbackNotice({ type: 'error', text: result.error || 'Failed to create habit.' });
         }
@@ -115,7 +117,7 @@ export const QuickAddBar: React.FC<QuickAddBarProps> = ({
         const result = await onTaskCreated(taskPayload);
         if (result.success) {
           setInputValue('');
-          setFeedbackNotice({ type: 'success', text: `Task "${title}" created!` });
+          setFeedbackNotice({ type: 'success', text: `Task "${title}" scheduled!` });
         } else {
           setFeedbackNotice({ type: 'error', text: result.error || 'Failed to create task.' });
         }
@@ -155,11 +157,26 @@ export const QuickAddBar: React.FC<QuickAddBarProps> = ({
     setInputValue((prev) => prev.replace(token.rawText, '').replace(/\s+/g, ' ').trim());
   };
 
+  const handleInsertSyntax = (snippet: string) => {
+    setInputValue((prev) => {
+      const trimmed = prev.trim();
+      return trimmed ? `${trimmed} ${snippet}` : snippet;
+    });
+    inputRef.current?.focus();
+  };
+
   return (
     <div className={`quick-add-container ${isFocused ? 'is-focused' : ''} ${className}`}>
       {feedbackNotice && (
         <div className={`quick-add-toast is-${feedbackNotice.type}`}>
-          <span>{feedbackNotice.text}</span>
+          <div className="quick-add-toast-content">
+            {feedbackNotice.type === 'success' ? (
+              <CheckCircle2 size={15} className="toast-icon" />
+            ) : (
+              <AlertCircle size={15} className="toast-icon" />
+            )}
+            <span>{feedbackNotice.text}</span>
+          </div>
           <button onClick={() => setFeedbackNotice(null)} aria-label="Dismiss">
             <X size={13} />
           </button>
@@ -173,7 +190,7 @@ export const QuickAddBar: React.FC<QuickAddBarProps> = ({
             type="button"
             className={`quick-add-mode-pill ${mode === 'habit' ? 'is-habit' : 'is-task'}`}
             onClick={() => setMode((prev) => (prev === 'task' ? 'habit' : 'task'))}
-            title={`Switch to ${mode === 'task' ? 'Habit' : 'Task'} creation (or press Tab)`}
+            title={`Switch to ${mode === 'task' ? 'Habit' : 'Task'} mode (or press Tab)`}
           >
             {mode === 'habit' ? (
               <>
@@ -201,8 +218,8 @@ export const QuickAddBar: React.FC<QuickAddBarProps> = ({
               onKeyDown={handleKeyDown}
               placeholder={
                 mode === 'habit'
-                  ? "Track new habit... e.g. 'Read 20m daily #learning' (Press Tab to switch)"
-                  : "Quick add task... e.g. 'Review pull request tomorrow 4pm !high #work 30m'"
+                  ? "Track habit... e.g. 'Read 20m daily #learning' (Press Tab to switch)"
+                  : "Quick add task... e.g. 'Review quarterly roadmap tomorrow 3pm !high #work 45m'"
               }
               disabled={isSubmitting}
             />
@@ -215,10 +232,10 @@ export const QuickAddBar: React.FC<QuickAddBarProps> = ({
                 type="button"
                 className="quick-add-action-btn expand-btn"
                 onClick={handleExpandClick}
-                title="Expand to detailed form (Shift+Enter)"
+                title="Expand detailed form (Shift+Enter)"
                 disabled={isSubmitting}
               >
-                <Maximize2 size={15} />
+                <Maximize2 size={14} />
               </button>
             )}
 
@@ -226,12 +243,12 @@ export const QuickAddBar: React.FC<QuickAddBarProps> = ({
               type="submit"
               className={`quick-add-action-btn submit-btn ${parsed.cleanTitle ? 'is-ready' : ''}`}
               disabled={!parsed.cleanTitle || isSubmitting}
-              title="Add (Enter)"
+              title="Add task or habit (Enter)"
             >
               {isSubmitting ? (
                 <span className="quick-add-spinner" />
               ) : (
-                <CornerDownLeft size={15} />
+                <CornerDownLeft size={14} />
               )}
             </button>
           </div>
@@ -242,7 +259,7 @@ export const QuickAddBar: React.FC<QuickAddBarProps> = ({
           <div className="quick-add-chips-row">
             <div className="chips-label">
               <Sparkles size={12} className="sparkle-icon" />
-              <span>Parsed:</span>
+              <span>Smart Preview:</span>
             </div>
 
             <div className="chips-list">
@@ -288,12 +305,49 @@ export const QuickAddBar: React.FC<QuickAddBarProps> = ({
 
         {/* Quick syntax helper hint */}
         <div className={`quick-add-hint-row ${isFocused ? 'is-visible' : ''}`}>
-          <span className="syntax-pill"><code>!high</code> Priority</span>
-          <span className="syntax-pill"><code>#work</code> Category</span>
-          <span className="syntax-pill"><code>tomorrow 3pm</code> Date</span>
-          <span className="syntax-pill"><code>45m</code> Duration</span>
-          <span className="syntax-pill"><code>@tag</code> Label</span>
-          <span className="syntax-key-hint"><kbd>Enter</kbd> Add • <kbd>Shift+Enter</kbd> Details • <kbd>Q</kbd> Focus</span>
+          <button
+            type="button"
+            className="syntax-pill-btn"
+            onClick={() => handleInsertSyntax('!high')}
+            title="Click to add !high priority"
+          >
+            <code>!high</code> Priority
+          </button>
+          <button
+            type="button"
+            className="syntax-pill-btn"
+            onClick={() => handleInsertSyntax('#work')}
+            title="Click to add #work category"
+          >
+            <code>#work</code> Category
+          </button>
+          <button
+            type="button"
+            className="syntax-pill-btn"
+            onClick={() => handleInsertSyntax('tomorrow 3pm')}
+            title="Click to add date/time"
+          >
+            <code>tomorrow 3pm</code> Date
+          </button>
+          <button
+            type="button"
+            className="syntax-pill-btn"
+            onClick={() => handleInsertSyntax('45m')}
+            title="Click to add duration"
+          >
+            <code>45m</code> Duration
+          </button>
+          <button
+            type="button"
+            className="syntax-pill-btn"
+            onClick={() => handleInsertSyntax('@deepwork')}
+            title="Click to add @tag"
+          >
+            <code>@deepwork</code> Tag
+          </button>
+          <span className="syntax-key-hint">
+            <kbd>Enter</kbd> Add • <kbd>Shift+Enter</kbd> Details • <kbd>Tab</kbd> Mode
+          </span>
         </div>
       </form>
     </div>
