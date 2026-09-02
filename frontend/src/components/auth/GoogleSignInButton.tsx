@@ -116,7 +116,8 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
         callback: handleCredentialResponse,
         auto_select: false,
         cancel_on_tap_outside: true,
-        use_fedcm_for_prompt: true,
+        use_fedcm_for_prompt: false,
+        ux_mode: 'popup',
       });
 
       // Render official Google button
@@ -130,8 +131,12 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
         width: 340,
       });
 
-      // Trigger Google One Tap with standard FedCM prompt
-      window.google.accounts.id.prompt();
+      // Trigger Google One Tap safely
+      window.google.accounts.id.prompt((notification: any) => {
+        if (notification.isNotDisplayed?.() || notification.isSkippedMoment?.() || notification.isDismissedMoment?.()) {
+          // Normal dismissal or prompt suppressed; no action needed
+        }
+      });
     } catch (err) {
       console.warn('Google button init error:', err);
     }
@@ -139,7 +144,11 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
 
   const handleManualClick = () => {
     if (clientId && window.google?.accounts?.id) {
-      window.google.accounts.id.prompt();
+      window.google.accounts.id.prompt((notification: any) => {
+        if (notification.isNotDisplayed?.()) {
+          // If One Tap is suppressed, falling back to standard user interaction
+        }
+      });
     } else {
       onError?.(
         'Google 1-Click is ready. Configure VITE_GOOGLE_CLIENT_ID in your environment to enable native popup.'

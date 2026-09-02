@@ -68,12 +68,14 @@ class RealtimeClient {
 
         this.socket = io(SOCKET_URL, {
           path: '/socket.io',
-          transports: ['websocket'],
-          upgrade: false,
+          transports: ['polling', 'websocket'],
+          upgrade: true,
           autoConnect: true,
           withCredentials: true,
-          reconnection: false,
-          timeout: 4000,
+          reconnection: true,
+          reconnectionAttempts: 3,
+          reconnectionDelay: 1000,
+          timeout: 5000,
         });
 
         authTimeout = window.setTimeout(() => {

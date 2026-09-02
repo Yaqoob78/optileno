@@ -19,65 +19,72 @@ class AIResponseFormatter:
         result: Dict[str, Any],
         is_confirmation: bool = False
     ) -> str:
-        """Format task/habit/goal creation responses"""
+        """Format task/habit/goal creation responses with professional clarity."""
         
         if not result or result.get("error"):
-            return f"❌ I couldn't create the {action_type.lower()}. Please try again."
+            return f"⚠️ Could not create the {action_type.lower()}: {result.get('error', 'Unknown error') if result else 'Please try again.'}"
         
         # Extract meaningful information
         title = result.get("title") or result.get("name") or "Untitled"
         message = result.get("message", "")
         
-        # Build user-friendly response
+        # Build clean, user-friendly response
         if is_confirmation:
-            response = f"✅ **{action_type} Created Successfully!**\n\n"
-            response += f"📝 **{title}**\n"
+            response = f"**{action_type.capitalize()} Added**: **{title}**\n"
             
             # Add relevant details based on type
+            details = []
             if action_type == "TASK":
                 priority = result.get("priority", "medium")
                 due_date = result.get("due_date")
-                category = result.get("category", "work")
+                duration = result.get("duration_minutes")
                 
-                response += f"🎯 **Priority:** {priority.capitalize()}\n"
-                response += f"📂 **Category:** {category.capitalize()}\n"
+                details.append(f"Priority: {priority.capitalize()}")
+                if duration:
+                    details.append(f"Est: {duration}m")
                 if due_date:
-                    response += f"⏰ **Due:** {due_date}\n"
+                    details.append(f"Due: {due_date}")
                     
             elif action_type == "HABIT":
                 frequency = result.get("frequency", "daily")
                 category = result.get("category", "Wellness")
                 
-                response += f"🔄 **Frequency:** {frequency.capitalize()}\n"
-                response += f"📂 **Category:** {category}\n"
+                details.append(f"Frequency: {frequency.capitalize()}")
+                if category:
+                    details.append(f"Category: {category}")
                 
             elif action_type == "GOAL":
                 category = result.get("category", "Personal")
                 target_date = result.get("target_date")
                 
-                response += f"📂 **Category:** {category}\n"
+                if category:
+                    details.append(f"Category: {category}")
                 if target_date:
-                    response += f"🎯 **Target Date:** {target_date}\n"
+                    details.append(f"Target: {target_date}")
             
-            # Add success message if available
+            if details:
+                response += f"• *{', '.join(details)}*\n"
+            
+            # Add custom message if available
             if message and message != f"{action_type} '{title}' created successfully":
-                response += f"\n💬 {message}"
+                response += f"\n{message}"
                 
         else:
             # Suggestion format (requires confirmation)
-            response = f"🤔 **I suggest creating this {action_type.lower()}:**\n\n"
-            response += f"📝 **{title}**\n"
+            response = f"**Suggested {action_type.capitalize()}**: **{title}**\n"
             
-            # Add key details
+            details = []
             if action_type == "TASK":
                 priority = result.get("priority", "medium")
-                response += f"🎯 **Priority:** {priority.capitalize()}\n"
-                
+                details.append(f"Priority: {priority.capitalize()}")
             elif action_type == "HABIT":
                 frequency = result.get("frequency", "daily")
-                response += f"🔄 **Frequency:** {frequency.capitalize()}\n"
+                details.append(f"Frequency: {frequency.capitalize()}")
             
-            response += f"\nWould you like me to create this {action_type.lower()}? Just say 'yes' or 'confirm'!"
+            if details:
+                response += f"• *{', '.join(details)}*\n"
+            
+            response += f"\nWould you like me to schedule this {action_type.lower()}?"
         
         return response
     
