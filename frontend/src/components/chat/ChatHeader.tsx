@@ -1,17 +1,30 @@
 import React from "react";
-
+import { Plus } from "lucide-react";
 import "../../styles/components/chats/ChatHeader.css";
+
 interface ChatHeaderProps {
   activeTab: 'keep' | 'clear' | null;
   onTabChange: (tab: 'keep' | 'clear') => void;
+  onNewChat: () => void;
 }
 
 export default function ChatHeader({ 
   activeTab, 
-  onTabChange
+  onTabChange,
+  onNewChat,
 }: ChatHeaderProps) {
   return (
     <div className="chat-tabs-container">
+      <button
+        type="button"
+        onClick={onNewChat}
+        className="chat-tab new-chat-btn"
+        title="Start a fresh new chat session"
+      >
+        <Plus size={15} />
+        <span>New Chat</span>
+      </button>
+
       <button
         onClick={() => onTabChange('keep')}
         className={`chat-tab ${activeTab === 'keep' ? 'active keep-active' : ''}`}

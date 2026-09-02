@@ -123,9 +123,20 @@ export default function Chat() {
   const startFreshConversation = useCallback(() => {
     clearSuggestionTimer();
     clearStreamingTimer();
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
     createConversation("New Chat");
+    setInputValue("");
+    setIsTyping(false);
+    setIsSending(false);
     setShowSuggestions(false);
     setUserHasTyped(false);
+    setToast({
+      message: "Started a fresh new chat session.",
+      type: "info",
+    });
   }, [clearSuggestionTimer, clearStreamingTimer, createConversation]);
 
   const refreshPlannerState = useCallback(
@@ -196,19 +207,6 @@ export default function Chat() {
     setUiActiveTab((current) => (current === "keep" ? null : current));
     setChatMode((current) => (current === "KEEP" ? "NORMAL" : current));
   }, [activeConversation?.id, activeConversation?.isKept, activeConversation?.messages]);
-
-  useEffect(() => {
-    if (
-      activeConversation &&
-      activeConversation.messages.length === 0
-    ) {
-      addMessage({
-        role: "assistant",
-        content: "Hello! I'm Leno, your AI assistant. How can I help you today?",
-        metadata: { welcome: true },
-      });
-    }
-  }, [activeConversation, addMessage]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -774,6 +772,7 @@ export default function Chat() {
             if (tab === "keep") handleKeepClick();
             if (tab === "clear") handleClearFlowClick();
           }}
+          onNewChat={startFreshConversation}
         />
 
         {toast && (
@@ -791,44 +790,82 @@ export default function Chat() {
 
         <div className="chat-messages-area">
           <div className="chat-thread-shell">
-            {messages.map((message: Message, index: number) => (
-              <ChatBubble
-                key={message.id}
-                message={{
-                  ...message,
-                  provider: message.metadata?.provider ?? message.provider,
-                  model: message.metadata?.model ?? message.model,
-                  isError: Boolean(message.metadata?.error),
-                  isStreaming: Boolean(message.metadata?.isStreaming),
-                  rating: message.metadata?.rating,
-                  timestamp: formatTimestamp(message.timestamp),
-                }}
-                messageIndex={index}
-                isLatestAssistant={index === latestAssistantIndex}
-                isGenerating={isGenerating}
-                onRetry={handleRetry}
-                onEditSubmit={handleEditSubmit}
-                onFeedback={handleFeedback}
-              />
-            ))}
+            {messages.length === 0 ? (
+              <div className="chat-hero-empty-state">
+                <div className="chat-hero-header">
+                  <h1 className="chat-hero-title">
+                    {userProfile?.display_name || userProfile?.username
+                      ? `Hello, ${userProfile?.display_name || userProfile?.username}`
+                      : "Hello"}
+                  </h1>
+                  <p className="chat-hero-subtitle">
+                    How can I help you be more productive today?
+                  </p>
+                </div>
 
-            {showSuggestions && messages.length <= 1 && !userHasTyped && (
-              <div className="suggestions-container">
-                <p className="suggestions-title">How would you like to start?</p>
-                <div className="suggestions-grid">
-                  {SUGGESTIONS.map((suggestion) => (
-                    <button
-                      key={suggestion.id}
-                      onClick={() => void handleSuggestionClick(suggestion)}
-                      className="suggestion-button"
-                      title={suggestion.description}
-                    >
-                      <span className="suggestion-text">{suggestion.text}</span>
-                      <span className="suggestion-desc">{suggestion.description}</span>
-                    </button>
-                  ))}
+                <div className="chat-hero-cards-grid">
+                  <button
+                    type="button"
+                    className="chat-hero-card"
+                    onClick={() => void handleSend("Help me plan my day and prioritize my top goals")}
+                  >
+                    <span className="hero-card-tag">Plan</span>
+                    <span className="hero-card-title">Plan Today's Schedule</span>
+                    <span className="hero-card-desc">Structure high-priority tasks and deep work slots</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="chat-hero-card"
+                    onClick={() => void handleSend("Break down my major milestone into actionable subtasks")}
+                  >
+                    <span className="hero-card-tag">Tasks</span>
+                    <span className="hero-card-title">Break Down Goals</span>
+                    <span className="hero-card-desc">Deconstruct big milestones into step-by-step actions</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="chat-hero-card"
+                    onClick={() => void handleSend("Analyze my weekly habit consistency and burnout risks")}
+                  >
+                    <span className="hero-card-tag">Analyze</span>
+                    <span className="hero-card-title">Review Consistency</span>
+                    <span className="hero-card-desc">Evaluate habit streaks, progress rates, and fatigue</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="chat-hero-card"
+                    onClick={() => void handleSend("Let's start a 45-minute deep work focus block")}
+                  >
+                    <span className="hero-card-tag">Focus</span>
+                    <span className="hero-card-title">Deep Work Session</span>
+                    <span className="hero-card-desc">Lock in a distraction-free execution block</span>
+                  </button>
                 </div>
               </div>
+            ) : (
+              messages.map((message: Message, index: number) => (
+                <ChatBubble
+                  key={message.id}
+                  message={{
+                    ...message,
+                    provider: message.metadata?.provider ?? message.provider,
+                    model: message.metadata?.model ?? message.model,
+                    isError: Boolean(message.metadata?.error),
+                    isStreaming: Boolean(message.metadata?.isStreaming),
+                    rating: message.metadata?.rating,
+                    timestamp: formatTimestamp(message.timestamp),
+                  }}
+                  messageIndex={index}
+                  isLatestAssistant={index === latestAssistantIndex}
+                  isGenerating={isGenerating}
+                  onRetry={handleRetry}
+                  onEditSubmit={handleEditSubmit}
+                  onFeedback={handleFeedback}
+                />
+              ))
             )}
 
             {isTyping && (

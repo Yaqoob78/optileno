@@ -180,19 +180,26 @@ const toDate = (value: unknown, fallback = new Date()): Date => {
 
 const normalizeMessage = (
   message: Partial<Message> & Pick<Message, "role" | "content">,
-): Message => ({
-  id: String(message.id ?? generateId()),
-  role: message.role,
-  content: String(message.content ?? ""),
-  timestamp: toDate(message.timestamp),
-  metadata: message.metadata ? { ...message.metadata } : undefined,
-});
+): Message => {
+  const meta = message.metadata ? { ...message.metadata } : undefined;
+  if (meta && meta.isStreaming) {
+    meta.isStreaming = false;
+  }
+  return {
+    id: String(message.id ?? generateId()),
+    role: message.role,
+    content: String(message.content ?? ""),
+    timestamp: toDate(message.timestamp),
+    metadata: meta,
+  };
+};
 
 const normalizeConversation = (conversation: Partial<Conversation>): Conversation => {
   const createdAt = toDate(conversation.createdAt);
-  const messages = Array.isArray(conversation.messages)
-    ? conversation.messages.map((message) => normalizeMessage(message))
-    : [];
+  const rawMessages = Array.isArray(conversation.messages) ? conversation.messages : [];
+  const messages = rawMessages
+    .filter((msg) => msg && (String(msg.content ?? "").trim().length > 0 || msg.role === "user"))
+    .map((message) => normalizeMessage(message));
 
   return {
     id: String(conversation.id ?? generateId()),

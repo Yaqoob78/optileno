@@ -47,6 +47,20 @@
   box-shadow: 0 14px 26px rgba(2, 6, 23, 0.08);
 }
 
+.new-chat-btn {
+  background: rgba(99, 102, 241, 0.12);
+  color: #a5b4fc;
+  border-color: rgba(99, 102, 241, 0.35);
+  cursor: pointer;
+}
+
+.new-chat-btn:hover {
+  background: rgba(99, 102, 241, 0.22);
+  color: #c7d2fe;
+  border-color: rgba(99, 102, 241, 0.6);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.25);
+}
+
 /* Active states blend their tint over an opaque base so nothing reads through */
 .chat-tab.keep-active {
   color: rgb(var(--color-text-primary));
