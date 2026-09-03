@@ -1,8 +1,10 @@
 .chat-container {
-  min-height: calc(100dvh - 6rem);
+  height: calc(100dvh - 4.5rem);
+  max-height: calc(100dvh - 4.5rem);
   display: flex;
   flex-direction: column;
   position: relative;
+  overflow: hidden;
   background:
     radial-gradient(circle at top, rgba(var(--color-primary), 0.08), transparent 28rem),
     radial-gradient(circle at bottom right, rgba(var(--color-secondary), 0.08), transparent 24rem),
@@ -14,7 +16,8 @@
 }
 
 .chat-container.chat-focus-mode {
-  min-height: calc(100dvh - 4.5rem);
+  height: 100dvh;
+  max-height: 100dvh;
 }
 
 .chat-focus-mode .chat-tabs-container {
@@ -31,9 +34,11 @@
 }
 
 .chat-messages-area {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
-  padding: 1.5rem 0 1.25rem;
+  -webkit-overflow-scrolling: touch;
+  padding: 1.25rem 0 0;
   scrollbar-width: thin;
   scrollbar-color: rgba(var(--color-border-medium), 0.8) transparent;
 }
@@ -45,7 +50,14 @@
   flex-direction: column;
   /* Generous rhythm between turns — replies read as sections, not texts */
   gap: 1.5rem;
-  padding: 0 1rem;
+  padding: 0 1rem 7.5rem; /* Generous bottom clearance ensures responses are 100% visible above composer */
+}
+
+.chat-bottom-spacer {
+  height: 2rem;
+  width: 100%;
+  pointer-events: none;
+  flex-shrink: 0;
 }
 
 .chat-toast-shell {
@@ -245,28 +257,73 @@
 }
 
 @media (max-width: 640px) {
+  .chat-hero-empty-state {
+    padding: 1.25rem 0.5rem 0.75rem;
+  }
+
+  .chat-hero-header {
+    margin-bottom: 1.15rem;
+  }
+
+  .chat-hero-title {
+    font-size: 1.4rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .chat-hero-subtitle {
+    font-size: 0.85rem;
+  }
+
   .chat-hero-cards-grid {
     grid-template-columns: 1fr;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .chat-hero-card {
+    padding: 0.65rem 0.85rem;
+    border-radius: 10px;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.6rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  .hero-card-tag {
+    margin-bottom: 0;
+    flex-shrink: 0;
+    font-size: 0.65rem;
+    padding: 2px 6px;
+  }
+
+  .hero-card-title {
+    font-size: 0.86rem;
+    margin-bottom: 0;
+    font-weight: 500;
+  }
+
+  .hero-card-desc {
+    display: none; /* Hide verbose secondary text on mobile to avoid screen bloat */
   }
 }
 
 @media (max-width: 768px) {
-  /* Bleed the chat to the screen edges — cancel the app shell's
-     content padding so the thread and composer use the full width,
-     like a native chat app */
   .chat-container,
   .chat-container.chat-focus-mode {
-    margin: -0.75rem;
-    min-height: calc(100dvh - 3.5rem);
+    margin: 0;
+    height: calc(100dvh - 3.75rem);
+    max-height: calc(100dvh - 3.75rem);
+    min-height: calc(100dvh - 3.75rem);
   }
 
   .chat-messages-area {
-    padding: 1rem 0 0.9rem;
+    padding: 0.75rem 0 0;
   }
 
   .chat-thread-shell {
     gap: 1.25rem;
-    padding: 0 0.9rem;
+    padding: 0 0.85rem 8.5rem; /* Generous 8.5rem bottom clearance so responses are NEVER hidden behind composer on phones! */
+    width: 100%;
   }
 
   .suggestions-grid {
@@ -289,7 +346,13 @@
 @media (max-width: 480px) {
   .chat-container,
   .chat-container.chat-focus-mode {
-    margin: -0.5rem;
-    min-height: calc(100dvh - 3.25rem);
+    margin: 0;
+    height: calc(100dvh - 3.5rem);
+    max-height: calc(100dvh - 3.5rem);
+    min-height: calc(100dvh - 3.5rem);
+  }
+
+  .chat-thread-shell {
+    padding: 0 0.75rem 9rem; /* 9rem clearance for smaller phones */
   }
 }

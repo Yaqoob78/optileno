@@ -1744,9 +1744,9 @@
 /* Responsive Design */
 @media (max-width: 768px) {
   .habit-tracker {
-    height: 600px;
-    min-height: 600px;
-    padding: var(--space-4);
+    height: auto;
+    min-height: 380px;
+    padding: var(--space-3);
   }
 
   .habit-header {

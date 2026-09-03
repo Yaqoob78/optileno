@@ -182,8 +182,8 @@ export default function Layout() {
           <Header page={currentPage} onMenuToggle={toggleSidebar} isMobile={isMobile} />
 
           {/* Main Content */}
-          <main className="main-content-area">
-            <div className="content-max-width">
+          <main className={`main-content-area ${location.pathname.startsWith('/chat') ? 'chat-route-main' : ''}`}>
+            <div className={`content-max-width ${location.pathname.startsWith('/chat') ? 'chat-route-content' : ''}`}>
               <Outlet />
             </div>
           </main>

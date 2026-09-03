@@ -535,6 +535,20 @@ export default function Chat() {
     setIsTyping(true);
     setIsSending(true);
 
+    const assistantId = crypto.randomUUID();
+    activeStreamingMessageIdRef.current = assistantId;
+
+    // Immediately insert assistant message shell with Gemini shimmer wait state
+    addMessage({
+      id: assistantId,
+      role: "assistant",
+      content: "",
+      metadata: {
+        isStreaming: true,
+        isWaiting: true,
+      },
+    } as any);
+
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
 
@@ -542,7 +556,7 @@ export default function Chat() {
       const historyToUse =
         overrideHistory ||
         (useChatStore.getState().activeConversation?.messages || [])
-          .filter((msg) => !msg.metadata?.error && !msg.metadata?.welcome)
+          .filter((msg) => !msg.metadata?.error && !msg.metadata?.welcome && msg.id !== assistantId)
           .slice(-10)
           .map((msg) => ({
             role: msg.role,
@@ -562,19 +576,14 @@ export default function Chat() {
       updateDailyUsage(trimmedMessage.length);
 
       const assistantMsgContent = response.message || "I received your message.";
-      const assistantId = crypto.randomUUID();
 
-      // Insert assistant message shell with streaming flag
-      addMessage({
-        id: assistantId,
-        role: "assistant",
-        content: "",
-        metadata: {
-          provider: response.provider,
-          model: response.model,
-          isStreaming: true,
-        },
-      } as any);
+      // Transition from Gemini wait state to streaming text
+      updateMessageMetadata(assistantId, {
+        provider: response.provider,
+        model: response.model,
+        isStreaming: true,
+        isWaiting: false,
+      });
 
       // Play smooth streaming playback
       playStreamingResponse(assistantMsgContent, assistantId, async () => {
@@ -589,16 +598,18 @@ export default function Chat() {
         error.name === "AbortError" ||
         error.name === "CanceledError"
       ) {
-        // Request was deliberately cancelled by user
+        // Request was deliberately cancelled by user - remove the pending turn
+        deleteMessage(assistantId);
         return;
       }
 
       console.error("Chat request failed:", error);
 
-      addMessage({
-        role: "assistant",
-        content: "Something went wrong. Please try again in a moment.",
-        metadata: { error: true },
+      editMessage(assistantId, "Something went wrong. Please try again in a moment.");
+      updateMessageMetadata(assistantId, {
+        error: true,
+        isStreaming: false,
+        isWaiting: false,
       });
 
       setToast({
@@ -871,22 +882,7 @@ export default function Chat() {
               ))
             )}
 
-            {isTyping && (
-              <div className="flex justify-start">
-                <div className="typing-indicator">
-                  <div className="flex items-center gap-2">
-                    <div className="flex space-x-1">
-                      <div className="typing-dot" style={{ animationDelay: "0ms" }} />
-                      <div className="typing-dot" style={{ animationDelay: "150ms" }} />
-                      <div className="typing-dot" style={{ animationDelay: "300ms" }} />
-                    </div>
-                    <span className="text-sm text-tertiary">Leno is thinking…</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div ref={messagesEndRef} />
+            <div ref={messagesEndRef} className="chat-bottom-spacer" />
           </div>
         </div>
 

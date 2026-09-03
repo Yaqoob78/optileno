@@ -228,11 +228,16 @@ export default function ChatBubble({
         </div>
 
         {!message.content.trim() && message.isStreaming ? (
-          <div className="assistant-thinking-indicator" aria-label="Leno is thinking">
-            <span className="thinking-dot" />
-            <span className="thinking-dot" />
-            <span className="thinking-dot" />
-            <span className="thinking-text">Thinking…</span>
+          <div className="gemini-wait-container" aria-label="Leno is thinking">
+            <div className="gemini-wait-header">
+              <span className="gemini-sparkle-dot" />
+              <span className="gemini-wait-label">Thinking…</span>
+            </div>
+            <div className="gemini-shimmer-lines">
+              <div className="gemini-shimmer-bar bar-long" />
+              <div className="gemini-shimmer-bar bar-mid" />
+              <div className="gemini-shimmer-bar bar-short" />
+            </div>
           </div>
         ) : (
           <>

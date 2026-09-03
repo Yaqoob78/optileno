@@ -529,26 +529,21 @@
    Streaming Cursor, Thinking Indicator & Action Pills Bar
    ========================================================================== */
 
-/* Gemini-style Thinking Indicator */
-.assistant-thinking-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.35rem 0.75rem;
-  border-radius: 999px;
-  background: rgba(var(--color-bg-tertiary), 0.6);
-  border: 1px solid rgba(var(--color-border-light), 0.25);
-  color: rgb(var(--color-text-secondary));
-  font-size: 0.84rem;
-  font-weight: var(--font-medium);
-  margin: 0.2rem 0;
-  animation: fadeInThinking 0.25s ease forwards;
+/* Gemini-style Shimmer Wave Waiting State */
+.gemini-wait-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  width: 100%;
+  max-width: 32rem;
+  padding: 0.35rem 0 0.5rem;
+  animation: fadeInGemini 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-@keyframes fadeInThinking {
+@keyframes fadeInGemini {
   from {
     opacity: 0;
-    transform: translateY(2px);
+    transform: translateY(3px);
   }
   to {
     opacity: 1;
@@ -556,40 +551,130 @@
   }
 }
 
-.thinking-dot {
-  width: 0.42rem;
-  height: 0.42rem;
-  border-radius: var(--radius-full);
-  background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
-  display: inline-block;
-  animation: thinking-bounce 1.3s infinite ease-in-out;
+.gemini-wait-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.thinking-dot:nth-child(1) {
-  animation-delay: 0s;
+.gemini-sparkle-dot {
+  position: relative;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #c084fc 100%);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.65);
+  animation: geminiSparklePulse 1.6s ease-in-out infinite;
 }
 
-.thinking-dot:nth-child(2) {
-  animation-delay: 0.18s;
+.gemini-sparkle-dot::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 999px;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  animation: geminiRingExpand 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
 }
 
-.thinking-dot:nth-child(3) {
-  animation-delay: 0.36s;
-}
-
-@keyframes thinking-bounce {
-  0%, 60%, 100% {
-    transform: translateY(0);
-    opacity: 0.4;
+@keyframes geminiSparklePulse {
+  0%, 100% {
+    transform: scale(0.9);
+    opacity: 0.75;
   }
-  30% {
-    transform: translateY(-0.22rem);
+  50% {
+    transform: scale(1.15);
     opacity: 1;
   }
 }
 
-.thinking-text {
-  letter-spacing: 0.01em;
+@keyframes geminiRingExpand {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+.gemini-wait-label {
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  background: linear-gradient(90deg, #38bdf8 0%, #a78bfa 50%, #f472b6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: geminiLabelPulse 2s ease-in-out infinite;
+}
+
+@keyframes geminiLabelPulse {
+  0%, 100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Gemini animated gradient shimmer wave bars */
+.gemini-shimmer-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: 100%;
+}
+
+.gemini-shimmer-bar {
+  height: 0.8rem;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(56, 189, 248, 0.08) 0%,
+    rgba(129, 140, 248, 0.28) 30%,
+    rgba(244, 114, 182, 0.26) 50%,
+    rgba(56, 189, 248, 0.28) 70%,
+    rgba(56, 189, 248, 0.08) 100%
+  );
+  background-size: 250% 100%;
+  animation: geminiShimmerWave 1.8s ease-in-out infinite;
+}
+
+.gemini-shimmer-bar.bar-long {
+  width: 92%;
+  animation-delay: 0s;
+}
+
+.gemini-shimmer-bar.bar-mid {
+  width: 74%;
+  animation-delay: 0.18s;
+}
+
+.gemini-shimmer-bar.bar-short {
+  width: 48%;
+  animation-delay: 0.36s;
+}
+
+@keyframes geminiShimmerWave {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+[data-theme="light"] .gemini-shimmer-bar {
+  background: linear-gradient(
+    90deg,
+    rgba(14, 165, 233, 0.1) 0%,
+    rgba(99, 102, 241, 0.26) 30%,
+    rgba(236, 72, 153, 0.2) 50%,
+    rgba(14, 165, 233, 0.26) 70%,
+    rgba(14, 165, 233, 0.1) 100%
+  );
+  background-size: 250% 100%;
 }
 
 .inline-streaming-cursor {
@@ -739,21 +824,44 @@
 
 @media (max-width: 768px) {
   .user-message-container {
-    max-width: 90%;
+    max-width: 92%;
   }
 
   .user-message {
-    padding: 0.7rem 0.95rem;
+    padding: 0.65rem 0.9rem;
+    font-size: 0.94rem;
   }
 
   .message-text {
-    font-size: 0.95rem;
-    line-height: 1.66;
+    font-size: 0.96rem;
+    line-height: 1.68;
+  }
+
+  .markdown-content table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
   }
 
   .user-turn-actions {
     opacity: 1;
     transform: none;
+  }
+
+  .assistant-actions-bar {
+    opacity: 1;
+    transform: none;
+    margin-top: 0.65rem;
+    flex-wrap: wrap;
+  }
+
+  .action-pill-btn {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.76rem;
+    background: rgba(var(--color-bg-tertiary), 0.7);
+    border-color: rgba(var(--color-border-light), 0.25);
   }
 }
 
