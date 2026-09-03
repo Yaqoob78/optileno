@@ -116,7 +116,7 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
         callback: handleCredentialResponse,
         auto_select: false,
         cancel_on_tap_outside: true,
-        use_fedcm_for_prompt: false,
+        use_fedcm_for_prompt: true,
         ux_mode: 'popup',
       });
 
@@ -129,13 +129,6 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
         shape: 'rectangular',
         logo_alignment: 'left',
         width: 340,
-      });
-
-      // Trigger Google One Tap safely
-      window.google.accounts.id.prompt((notification: any) => {
-        if (notification.isNotDisplayed?.() || notification.isSkippedMoment?.() || notification.isDismissedMoment?.()) {
-          // Normal dismissal or prompt suppressed; no action needed
-        }
       });
     } catch (err) {
       console.warn('Google button init error:', err);
