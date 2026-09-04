@@ -53,6 +53,10 @@
   --text-on-primary: #ffffff;
   --primary: rgb(var(--color-primary));
   --primary-hover: rgb(var(--color-primary-dark, var(--color-primary)));
+  --bg-card: rgb(var(--color-bg-secondary, var(--color-gray-900)));
+  --bg-card-focused: rgb(var(--color-bg-secondary, var(--color-gray-900)));
+  --input-bg: rgba(255, 255, 255, 0.05);
+  --input-border: var(--border-primary);
 
   /* ===== SPACING SYSTEM ===== */
   --space-unit: 0.25rem;

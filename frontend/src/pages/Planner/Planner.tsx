@@ -1,6 +1,6 @@
 // frontend/src/pages/Planner/Planner.tsx
 import React, { useState, useEffect, useRef } from 'react';
-import { Calendar as CalendarIcon, Maximize2, Minimize2, Plus, Timer, CheckCircle2, List, Loader2, Repeat } from 'lucide-react';
+import { Calendar as CalendarIcon, Maximize2, Minimize2, Plus, Timer, CheckCircle2, List, Loader2, Repeat, ChevronDown, ChevronUp, Sparkles, X } from 'lucide-react';
 
 import { useTheme } from '../../hooks/useTheme';
 import { usePlanner } from '../../hooks/usePlanner';
@@ -95,6 +95,7 @@ export default function PlannerPage() {
   // ── Edit modal state ──────────────────────────────────────────────
   const [isEditing, setIsEditing] = useState(false);
   const [isNewTask, setIsNewTask] = useState(false);
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
   const editModalRef = useRef<HTMLDivElement>(null);
 
@@ -195,6 +196,7 @@ export default function PlannerPage() {
       recurring: false,
     });
     setIsNewTask(true);
+    setShowMoreOptions(false);
     setIsEditing(true);
     setSaveError(null);
   };
@@ -221,6 +223,7 @@ export default function PlannerPage() {
       recurring: false,
     });
     setIsNewTask(true);
+    setShowMoreOptions(false);
     setIsEditing(true);
     setSaveError(null);
   };
@@ -254,6 +257,7 @@ export default function PlannerPage() {
       recurring: false,
     });
     setIsNewTask(true);
+    setShowMoreOptions(false);
     setIsEditing(true);
     setSaveError(null);
   };
@@ -321,6 +325,8 @@ export default function PlannerPage() {
       recurrence_config: task.recurrence_config,
     });
     setIsNewTask(false);
+    const hasAdvanced = Boolean(task.description || (task.subtasks && task.subtasks.length > 0) || task.depends_on_task_id || task.related_goal_id || (task.tags && task.tags.length > 0));
+    setShowMoreOptions(hasAdvanced);
     setIsEditing(true);
     setSaveError(null);
   };
@@ -706,12 +712,12 @@ export default function PlannerPage() {
           }
         >
           {editForm && (
-            <div className="planner-task-modal flex flex-col gap-5 pt-2">
+            <div className="planner-task-modal flex flex-col gap-4 pt-1">
               {saveError && <div className="planner-form-error">{saveError}</div>}
 
+              {/* ── Task Title (Hero) ── */}
               <div className="planner-task-form-group">
-                <label htmlFor="task-title">
-                  <span className="planner-task-label-icon">📝</span>
+                <label htmlFor="task-title" className="planner-field-label">
                   Task Title *
                 </label>
                 <input
@@ -729,35 +735,29 @@ export default function PlannerPage() {
                       return { ...prev, ...updates };
                     });
                   }}
-                  placeholder="e.g., Morning Deep Work"
-                  className="px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm w-full"
+                  placeholder="What needs to be done?"
+                  className="planner-modal-title-input"
                   autoFocus
                   disabled={isSaving}
                 />
               </div>
 
+              {/* ── Schedule Day Picker ── */}
               <div className="planner-task-form-group">
-                <label htmlFor="task-description">
-                  <span className="planner-task-label-icon">📄</span>
-                  Description
-                </label>
-                <textarea
-                  id="task-description"
-                  value={editForm.description || ''}
-                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                  placeholder="What needs to be done?"
-                  rows={2}
-                  className="px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm w-full min-h-[80px] resize-none"
-                  disabled={isSaving}
-                />
-              </div>
-
-              {/* ── Day Picker ── */}
-              <div className="planner-task-form-group">
-                <label>
-                  <span className="planner-task-label-icon">📅</span>
-                  Schedule Day
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="planner-field-label">Schedule Day</label>
+                  <span className="planner-task-day-label-active">
+                    {(() => {
+                      const dayYmd = getNextLocalDateForWeekday(timezone, editForm.scheduledDay ?? getWeekdayIndexInTimezone(new Date(), timezone));
+                      const todayYmd = getDateKeyInTimezone(new Date(), timezone);
+                      if (dayYmd === todayYmd) return 'Today';
+                      const tomorrow = new Date();
+                      tomorrow.setDate(tomorrow.getDate() + 1);
+                      if (dayYmd === getDateKeyInTimezone(tomorrow, timezone)) return 'Tomorrow';
+                      return formatLocalDateLabel(dayYmd, timezone);
+                    })()}
+                  </span>
+                </div>
                 <div className="planner-task-day-picker-row">
                   {DAY_LABELS.map((label, idx) => {
                     const isSelected = editForm.scheduledDay === idx;
@@ -781,27 +781,12 @@ export default function PlannerPage() {
                     );
                   })}
                 </div>
-                {editForm.scheduledDay != null && (
-                  <span className="planner-task-day-picker-hint">
-                    {(() => {
-                      const dayYmd = getNextLocalDateForWeekday(timezone, editForm.scheduledDay);
-                      const todayYmd = getDateKeyInTimezone(new Date(), timezone);
-                      if (dayYmd === todayYmd) return 'Today';
-                      const tomorrow = new Date();
-                      tomorrow.setDate(tomorrow.getDate() + 1);
-                      if (dayYmd === getDateKeyInTimezone(tomorrow, timezone)) return 'Tomorrow';
-                      return formatLocalDateLabel(dayYmd, timezone);
-                    })()}
-                  </span>
-                )}
               </div>
 
+              {/* ── Time & Duration Row ── */}
               <div className="planner-task-form-row">
-                <div className="planner-task-form-group">
-                  <label htmlFor="task-time">
-                    <span className="planner-task-label-icon">⏰</span>
-                    Start Time
-                  </label>
+                <div className="planner-task-form-group flex-1">
+                  <label htmlFor="task-time" className="planner-field-label">Start Time</label>
                   <input
                     id="task-time"
                     type="time"
@@ -817,213 +802,270 @@ export default function PlannerPage() {
                         return { ...prev, startTime: newTime, dueDate: updatedDueDate };
                       });
                     }}
-                    className="planner-modal-time-input px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm w-full"
+                    className="planner-modal-time-input"
                     disabled={isSaving}
                   />
                 </div>
-                <div className="planner-task-form-group">
-                  <label htmlFor="task-duration">
-                    <span className="planner-task-label-icon">⏱️</span>
-                    Duration (min)
-                  </label>
-                  <input
-                    id="task-duration"
-                    type="number"
-                    value={editForm.duration ?? 60}
-                    onChange={(e) => setEditForm(prev => prev ? { ...prev, duration: Number(e.target.value) || 60 } : null)}
-                    min={5}
-                    step={5}
-                    className="planner-modal-duration-input px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm w-full"
-                    disabled={isSaving}
-                  />
-                </div>
-              </div>
 
-              <div className="planner-task-form-row">
-                <div className="planner-task-form-group">
-                  <label htmlFor="task-category">
-                    <span className="planner-task-label-icon">🏷️</span>
-                    Category
-                  </label>
-                  <select
-                    id="task-category"
-                    value={editForm.category || ''}
-                    onChange={(e) => {
-                      const val = e.target.value as any;
-                      setEditForm((prev) => {
-                        if (!prev) return null;
-                        const updates: any = { category: val };
-                        if (!isEnergyTouched) {
-                          updates.energy = estimateEnergyLevel(prev.title, val);
-                        }
-                        return { ...prev, ...updates };
-                      });
-                    }}
-                    className="planner-modal-select planner-modal-select-category px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm w-full"
-                    disabled={isSaving}
-                  >
-                    <option value="" disabled>-- Select Category --</option>
-                    {isUltra && <option value="goal">Goal</option>}
-                    <option value="work">Work</option>
-                    <option value="meeting">Meeting</option>
-                    <option value="health">Health</option>
-                    <option value="learning">Learning</option>
-                    <option value="routine">Routine</option>
-                    <option value="personal">Personal</option>
-                  </select>
-                </div>
-
-                {isUltra && editForm.category === 'goal' && (
-                  <div className="planner-task-form-group" style={{ marginTop: '0.5rem' }}>
-                    <label htmlFor="task-goal-select">
-                      <span className="planner-task-label-icon">🎯</span>
-                      Select Goal
-                    </label>
-                    <select
-                      id="task-goal-select"
-                      value={editForm.goalId || ''}
-                      onChange={(e) => setEditForm({ ...editForm, goalId: e.target.value })}
-                      className="planner-modal-select planner-modal-select-goal px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm w-full"
-                      disabled={isSaving}
-                    >
-                      <option value="">-- Choose a Goal --</option>
-                      {goals.filter(g => g.status !== 'completed').map(goal => (
-                        <option key={goal.id} value={goal.id}>
-                          {goal.title}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                <div className="planner-task-form-row">
-                  <div className="planner-task-form-group">
-                    <label htmlFor="task-priority">
-                      <span className="planner-task-label-icon">⚡</span>
-                      Priority
-                    </label>
-                    <select
-                      id="task-priority"
-                      value={editForm.priority || 'medium'}
-                      onChange={(e) => setEditForm(prev => prev ? { ...prev, priority: e.target.value as any } : null)}
-                      className="planner-modal-select planner-modal-select-priority px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm w-full"
-                      disabled={isSaving}
-                    >
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
-                      <option value="high">High</option>
-                      <option value="urgent">Urgent</option>
-                    </select>
-                  </div>
-
-                  <div className="planner-task-form-group">
-                    <label htmlFor="task-energy">
-                      <span className="planner-task-label-icon">🔋</span>
-                      Energy
-                    </label>
-                    <select
-                      id="task-energy"
-                      value={editForm.energy || 'medium'}
-                      onChange={(e) => {
-                        setIsEnergyTouched(true);
-                        setEditForm(prev => prev ? { ...prev, energy: e.target.value as any } : null);
-                      }}
-                      className="planner-modal-select planner-modal-select-energy px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm w-full"
-                      disabled={isSaving}
-                    >
-                      <option value="high">High</option>
-                      <option value="medium">Medium</option>
-                      <option value="low">Low</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div className="planner-task-form-group">
-                <label htmlFor="task-tags">
-                  <span className="planner-task-label-icon">#</span>
-                  Tags (comma separated)
-                </label>
-                <input
-                  id="task-tags"
-                  type="text"
-                  value={editForm.tags?.join(', ') || ''}
-                  onChange={(e) =>
-                    setEditForm({
-                      ...editForm,
-                      tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean),
-                    })
-                  }
-                  placeholder="work, urgent, internal"
-                  className="px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm w-full"
-                  disabled={isSaving}
-                />
-              </div>
-
-              <div className="planner-task-form-group">
-                <label>
-                  <span className="planner-task-label-icon">🔗</span>
-                  Depends On (Blocker)
-                </label>
-                <select
-                  value={editForm.depends_on_task_id || ''}
-                  onChange={(e) => setEditForm({ ...editForm, depends_on_task_id: e.target.value || undefined })}
-                  className="px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm w-full"
-                  disabled={isSaving}
-                >
-                  <option value="">-- No Blockers --</option>
-                  {tasks.filter(t => t.id !== editForm.id && String(t.status) !== 'done' && String(t.status) !== 'completed').map(t => (
-                    <option key={t.id} value={t.id}>{t.title}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="planner-task-form-group">
-                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>
-                    <span className="planner-task-label-icon">☑️</span>
-                    Subtasks
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setEditForm({ ...editForm, subtasks: [...(editForm.subtasks || []), { title: '', completed: false }] })}
-                    style={{ fontSize: '12px', background: 'transparent', color: 'var(--primary)', border: '1px solid var(--primary)', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer' }}
-                    disabled={isSaving}
-                  >
-                    + Add
-                  </button>
-                </label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {(editForm.subtasks || []).map((subtask, idx) => (
-                    <div key={idx} style={{ display: 'flex', gap: '8px' }}>
-                      <input
-                        type="text"
-                        value={subtask.title}
-                        placeholder="Subtask title"
-                        disabled={isSaving}
-                        onChange={(e) => {
-                          const newSub = [...(editForm.subtasks || [])];
-                          newSub[idx].title = e.target.value;
-                          setEditForm({ ...editForm, subtasks: newSub });
-                        }}
-                        className="px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm w-full"
-                      />
+                <div className="planner-task-form-group flex-1">
+                  <label htmlFor="task-duration" className="planner-field-label">Duration</label>
+                  <div className="duration-quick-row">
+                    {[15, 30, 45, 60, 90].map((mins) => (
                       <button
+                        key={mins}
                         type="button"
-                        onClick={() => {
-                          const newSub = [...(editForm.subtasks || [])];
-                          newSub.splice(idx, 1);
-                          setEditForm({ ...editForm, subtasks: newSub });
-                        }}
-                        style={{ padding: '0 8px', background: 'transparent', color: '#ff4444', border: 'none', cursor: 'pointer', fontSize: '20px' }}
-                        title="Remove subtask"
+                        className={`duration-quick-chip ${(editForm.duration || 60) === mins ? 'is-selected' : ''}`}
+                        onClick={() => setEditForm(prev => prev ? { ...prev, duration: mins } : null)}
                         disabled={isSaving}
                       >
-                        ×
+                        {mins}m
                       </button>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
+              </div>
+
+              {/* ── Priority Segmented Control (Zero Decision Fatigue) ── */}
+              <div className="planner-task-form-group">
+                <label className="planner-field-label">Priority</label>
+                <div className="planner-segmented-group">
+                  {[
+                    { id: 'low', label: '🟢 Low', color: 'prio-low' },
+                    { id: 'medium', label: '🔵 Medium', color: 'prio-medium' },
+                    { id: 'high', label: '🟠 High', color: 'prio-high' },
+                    { id: 'urgent', label: '🔴 Urgent', color: 'prio-urgent' },
+                  ].map((p) => {
+                    const isSelected = (editForm.priority || 'medium') === p.id;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className={`planner-seg-btn ${p.color} ${isSelected ? 'is-selected' : ''}`}
+                        onClick={() => setEditForm(prev => prev ? { ...prev, priority: p.id as any } : null)}
+                        disabled={isSaving}
+                      >
+                        {p.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* ── Category Chips (1-Click Selection) ── */}
+              <div className="planner-task-form-group">
+                <label className="planner-field-label">Category</label>
+                <div className="planner-category-chips-row">
+                  {[
+                    { id: 'work', label: '💼 Work' },
+                    { id: 'meeting', label: '🤝 Meeting' },
+                    { id: 'health', label: '🏃 Health' },
+                    { id: 'learning', label: '📚 Learning' },
+                    { id: 'routine', label: '🔄 Routine' },
+                    { id: 'personal', label: '👤 Personal' },
+                    ...(isUltra ? [{ id: 'goal', label: '🎯 Goal' }] : []),
+                  ].map((cat) => {
+                    const isSelected = editForm.category === cat.id;
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        className={`planner-category-pill ${isSelected ? 'is-selected' : ''}`}
+                        onClick={() => {
+                          setEditForm(prev => {
+                            if (!prev) return null;
+                            const updates: any = { category: cat.id };
+                            if (!isEnergyTouched) {
+                              updates.energy = estimateEnergyLevel(prev.title, cat.id);
+                            }
+                            return { ...prev, ...updates };
+                          });
+                        }}
+                        disabled={isSaving}
+                      >
+                        {cat.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* ── Energy Level Segmented Control ── */}
+              <div className="planner-task-form-group">
+                <label className="planner-field-label">Energy Level</label>
+                <div className="planner-segmented-group">
+                  {[
+                    { id: 'low', label: '🌙 Low Energy' },
+                    { id: 'medium', label: '🔋 Medium Energy' },
+                    { id: 'high', label: '⚡ High Energy' },
+                  ].map((en) => {
+                    const isSelected = (editForm.energy || 'medium') === en.id;
+                    return (
+                      <button
+                        key={en.id}
+                        type="button"
+                        className={`planner-seg-btn energy-${en.id} ${isSelected ? 'is-selected' : ''}`}
+                        onClick={() => {
+                          setIsEnergyTouched(true);
+                          setEditForm(prev => prev ? { ...prev, energy: en.id as any } : null);
+                        }}
+                        disabled={isSaving}
+                      >
+                        {en.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* ── Collapsible "More Options" Section (Zero Decision Fatigue) ── */}
+              <div className="planner-more-options-wrapper">
+                <button
+                  type="button"
+                  className="planner-more-options-toggle"
+                  onClick={() => setShowMoreOptions(prev => !prev)}
+                >
+                  <Sparkles size={14} className="text-amber-500" />
+                  <span>{showMoreOptions ? 'Hide Advanced Options' : 'More Options (Notes, Subtasks, Blockers)'}</span>
+                  {showMoreOptions ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                </button>
+
+                {showMoreOptions && (
+                  <div className="planner-more-options-content flex flex-col gap-4 pt-3">
+                    {/* Description */}
+                    <div className="planner-task-form-group">
+                      <label htmlFor="task-description" className="planner-field-label">
+                        Notes / Description
+                      </label>
+                      <textarea
+                        id="task-description"
+                        value={editForm.description || ''}
+                        onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                        placeholder="Key context, links, or notes..."
+                        rows={2}
+                        className="planner-modal-textarea"
+                        disabled={isSaving}
+                      />
+                    </div>
+
+                    {/* Goal Link if category === 'goal' or isUltra */}
+                    {isUltra && (
+                      <div className="planner-task-form-group">
+                        <label htmlFor="task-goal-select" className="planner-field-label">
+                          Link to Goal (Optional)
+                        </label>
+                        <select
+                          id="task-goal-select"
+                          value={editForm.goalId || ''}
+                          onChange={(e) => setEditForm({ ...editForm, goalId: e.target.value })}
+                          className="planner-modal-select"
+                          disabled={isSaving}
+                        >
+                          <option value="">-- Choose a Goal --</option>
+                          {goals.filter(g => g.status !== 'completed').map(goal => (
+                            <option key={goal.id} value={goal.id}>
+                              {goal.title}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Blockers */}
+                    <div className="planner-task-form-group">
+                      <label className="planner-field-label">Depends On (Blocker)</label>
+                      <select
+                        value={editForm.depends_on_task_id || ''}
+                        onChange={(e) => setEditForm({ ...editForm, depends_on_task_id: e.target.value || undefined })}
+                        className="planner-modal-select"
+                        disabled={isSaving}
+                      >
+                        <option value="">-- No Blockers --</option>
+                        {tasks.filter(t => t.id !== editForm.id && String(t.status) !== 'done' && String(t.status) !== 'completed').map(t => (
+                          <option key={t.id} value={t.id}>{t.title}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Tags */}
+                    <div className="planner-task-form-group">
+                      <label htmlFor="task-tags" className="planner-field-label">
+                        Tags (comma separated)
+                      </label>
+                      <input
+                        id="task-tags"
+                        type="text"
+                        value={editForm.tags?.join(', ') || ''}
+                        onChange={(e) =>
+                          setEditForm({
+                            ...editForm,
+                            tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean),
+                          })
+                        }
+                        placeholder="e.g. client, urgent, v2"
+                        className="planner-modal-input"
+                        disabled={isSaving}
+                      />
+                    </div>
+
+                    {/* Subtasks */}
+                    <div className="planner-task-form-group">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="planner-field-label">Subtasks</label>
+                        <button
+                          type="button"
+                          onClick={() => setEditForm({ ...editForm, subtasks: [...(editForm.subtasks || []), { title: '', completed: false }] })}
+                          className="planner-add-subtask-btn"
+                          disabled={isSaving}
+                        >
+                          <Plus size={12} />
+                          <span>Add Subtask</span>
+                        </button>
+                      </div>
+                      <div className="planner-subtasks-list">
+                        {(editForm.subtasks || []).map((subtask, idx) => (
+                          <div key={idx} className="planner-subtask-row">
+                            <input
+                              type="checkbox"
+                              checked={subtask.completed}
+                              onChange={(e) => {
+                                const newSub = [...(editForm.subtasks || [])];
+                                newSub[idx].completed = e.target.checked;
+                                setEditForm({ ...editForm, subtasks: newSub });
+                              }}
+                              className="planner-subtask-checkbox"
+                              disabled={isSaving}
+                            />
+                            <input
+                              type="text"
+                              value={subtask.title}
+                              placeholder="Subtask title"
+                              disabled={isSaving}
+                              onChange={(e) => {
+                                const newSub = [...(editForm.subtasks || [])];
+                                newSub[idx].title = e.target.value;
+                                setEditForm({ ...editForm, subtasks: newSub });
+                              }}
+                              className="planner-subtask-input"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newSub = [...(editForm.subtasks || [])];
+                                newSub.splice(idx, 1);
+                                setEditForm({ ...editForm, subtasks: newSub });
+                              }}
+                              className="planner-subtask-delete-btn"
+                              title="Remove subtask"
+                              disabled={isSaving}
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

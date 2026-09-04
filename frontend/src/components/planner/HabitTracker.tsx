@@ -8,7 +8,7 @@ import { getDateKeyInTimezone } from '../../utils/timezone';
 import '../../styles/components/planner/HabitTracker.css';
 import type { Habit } from '../../types/planner.types';
 import { Modal } from '../common/Modal';
-import { QuickAddBar } from './QuickAddBar';
+import { QuickAddBar, PREBUILT_HABITS } from './QuickAddBar';
 import type { ParsedQuickAdd } from '../../utils/quickAddParser';
 
 interface UIHabit extends Omit<Habit, 'frequency'> {
@@ -279,8 +279,38 @@ export default function HabitTracker({ habits: propsHabits }: HabitTrackerProps)
       <div className="habits-container">
         {trackingHabits.length === 0 ? (
           <div className="empty-habits">
-            <Award size={48} className="text-secondary opacity-20 mb-3" />
-            <p>No habits yet. Start your streak today!</p>
+            <Award size={40} className="text-secondary opacity-30 mb-2" />
+            <h3 className="text-base font-semibold text-[var(--text-primary)] mb-1">No habits tracked yet</h3>
+            <p className="text-xs text-[var(--text-secondary)] mb-4">Start your streak today in 1 click:</p>
+            <div className="empty-prebuilts-grid">
+              {PREBUILT_HABITS.slice(0, 6).map((ph) => (
+                <button
+                  key={ph.id}
+                  type="button"
+                  className="empty-prebuilt-card"
+                  onClick={async () => {
+                    const res = await createHabit({
+                      name: ph.name,
+                      title: ph.name,
+                      description: ph.description || '',
+                      category: ph.category,
+                      frequency: ph.frequency,
+                    });
+                    if (res.success) {
+                      await fetchHabits();
+                      setNotice({ type: 'success', text: `${ph.emoji} "${ph.name}" started! 🚀` });
+                    }
+                  }}
+                >
+                  <span className="empty-prebuilt-emoji">{ph.emoji}</span>
+                  <div className="empty-prebuilt-info">
+                    <span className="empty-prebuilt-name">{ph.name}</span>
+                    <span className="empty-prebuilt-cat">{ph.category}</span>
+                  </div>
+                  <Plus size={13} className="empty-prebuilt-add" />
+                </button>
+              ))}
+            </div>
           </div>
         ) : (
           <div className="habits-grid">
@@ -393,23 +423,51 @@ export default function HabitTracker({ habits: propsHabits }: HabitTrackerProps)
               <span>{formError}</span>
             </div>
           )}
+
+          {/* Quick Preset Selector */}
+          <div className="habit-modal-presets-wrapper">
+            <label className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+              Quick Pick a Good Habit:
+            </label>
+            <div className="habit-modal-presets-chips">
+              {PREBUILT_HABITS.slice(0, 8).map((ph) => (
+                <button
+                  key={ph.id}
+                  type="button"
+                  className="habit-modal-preset-chip"
+                  onClick={() => {
+                    setNewHabit({
+                      name: ph.name,
+                      description: ph.description || '',
+                      category: ph.category,
+                      goalId: '',
+                    });
+                  }}
+                >
+                  <span>{ph.emoji}</span>
+                  <span>{ph.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-[var(--text-secondary)]">Habit Name</label>
+            <label className="text-sm font-medium text-[var(--text-secondary)]">Habit Name *</label>
             <input
               value={newHabit.name}
               onChange={e => setNewHabit({ ...newHabit, name: e.target.value })}
               placeholder="e.g., Meditation, Reading..."
               autoFocus
-              className="habit-modal-input px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm"
+              className="habit-modal-input px-4 py-2.5 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)]"
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-[var(--text-secondary)]">Motivation / Description</label>
+            <label className="text-sm font-medium text-[var(--text-secondary)]">Motivation / Goal (Optional)</label>
             <textarea
               value={newHabit.description}
               onChange={e => setNewHabit({ ...newHabit, description: e.target.value })}
               placeholder="Why do you want to build this habit?"
-              className="habit-modal-textarea px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm min-h-[100px] resize-none"
+              className="habit-modal-textarea px-4 py-2.5 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] min-h-[70px] resize-none"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -433,7 +491,7 @@ export default function HabitTracker({ habits: propsHabits }: HabitTrackerProps)
               <select
                 value={newHabit.goalId || ''}
                 onChange={e => setNewHabit({ ...newHabit, goalId: e.target.value })}
-                className="habit-modal-goal-select px-4 py-2.5 bg-black/10 dark:bg-black/20 border border-[var(--border-primary)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)] backdrop-blur-sm"
+                className="habit-modal-goal-select px-4 py-2.5 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)]"
               >
                 <option value="">No Link</option>
                 {goals.map(g => (

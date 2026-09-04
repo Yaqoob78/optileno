@@ -1,94 +1,116 @@
 import React from 'react';
-import { Bell, Mail, Clock, Sparkles } from 'lucide-react';
+import { Mail, Sparkles, Zap, Flame, BarChart3, Lock } from 'lucide-react';
 import { useUserStore } from '../../stores/useUserStore';
-
-const notificationRowStyle: React.CSSProperties = {
-  border: '1px solid var(--s-border, rgba(255, 255, 255, 0.08))',
-  background: 'var(--s-bg-item, rgba(15, 23, 42, 0.6))',
-};
+import '../../styles/pages/settings.css';
 
 const NotificationSettings: React.FC = () => {
   const isUltra = useUserStore((state) => state.isUltra);
 
   return (
-    <div className="space-y-5">
+    <div className="notifications-settings-container">
       {/* Early Access / Roadmap Banner */}
-      <div 
-        className="p-4 rounded-xl border border-indigo-500/20 bg-indigo-500/10 flex flex-col gap-2"
-      >
-        <div className="flex items-center gap-2">
-          <Sparkles size={16} className="text-indigo-400" />
-          <h4 className="text-sm font-semibold text-white">
-            Smart Notifications — Available Soon
-          </h4>
-          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 ml-auto">
-            Ultra First Access
+      <div className="notifications-roadmap-banner">
+        <div className="roadmap-banner-header">
+          <div className="roadmap-badge-group">
+            <span className="roadmap-icon-wrap">
+              <Sparkles size={15} />
+            </span>
+            <h4 className="roadmap-title">Smart Notifications — Coming Soon</h4>
+          </div>
+          <span className="roadmap-access-tag">
+            {isUltra ? 'Ultra Priority' : 'Available Soon'}
           </span>
         </div>
-        <p className="text-xs text-slate-300 leading-relaxed">
-          Automated daily digests, local desktop alerts, and habit streak reminders are currently in final development. 
+        <p className="roadmap-description">
+          Automated daily execution digests, focus reminders, and habit streak alerts are currently in final development.
           {isUltra ? (
-            <span className="text-indigo-200 font-medium"> Because you are an Ultra subscriber, you will receive priority early access as soon as the rollout goes live.</span>
+            <span className="roadmap-highlight"> As an Ultra member, you will receive priority access as soon as the rollout goes live.</span>
           ) : (
-            <span> This feature will be available soon, with priority access rolling out to Ultra users first.</span>
+            <span className="roadmap-highlight"> Priority access will roll out to Ultra users first.</span>
           )}
         </p>
       </div>
 
       {/* Email Notifications Section */}
-      <div className="setting-section">
-        <h3 className="section-title mb-3 flex items-center gap-2 text-sm font-semibold text-white">
-          <Mail size={15} style={{ color: 'var(--s-text-secondary, #94a3b8)' }} />
-          Email Notifications
-        </h3>
-        <div className="space-y-2.5">
-          <div className="flex items-center justify-between p-3.5 rounded-lg" style={notificationRowStyle}>
-            <div>
-              <p className="text-sm font-medium text-slate-200">Daily Execution Digest</p>
-              <p className="text-xs text-slate-400 mt-0.5">Morning summary of scheduled tasks and active habits</p>
+      <div className="notifications-group">
+        <div className="notifications-group-header">
+          <Mail size={15} className="group-header-icon" />
+          <h3 className="group-header-title">Email Notifications</h3>
+        </div>
+
+        <div className="notifications-items-list">
+          <div className="notification-item-card">
+            <div className="notification-item-main">
+              <div className="item-icon-box mail-digest-icon">
+                <Mail size={16} />
+              </div>
+              <div className="item-text-group">
+                <p className="item-title">Daily Execution Digest</p>
+                <p className="item-subtitle">Morning summary of your scheduled tasks and active daily habits</p>
+              </div>
             </div>
-            <span className="text-[11px] font-medium text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2.5 py-1 rounded-md">
-              Available soon (Ultra first)
-            </span>
+            <div className="item-status-badge">
+              <Lock size={12} />
+              <span>In Development</span>
+            </div>
           </div>
 
-          <div className="flex items-center justify-between p-3.5 rounded-lg" style={notificationRowStyle}>
-            <div>
-              <p className="text-sm font-medium text-slate-200">Weekly Performance Report</p>
-              <p className="text-xs text-slate-400 mt-0.5">Weekly consistency score, completed goals, and burnout insights</p>
+          <div className="notification-item-card">
+            <div className="notification-item-main">
+              <div className="item-icon-box report-icon">
+                <BarChart3 size={16} />
+              </div>
+              <div className="item-text-group">
+                <p className="item-title">Weekly Performance Report</p>
+                <p className="item-subtitle">Weekly consistency score, completed goals, and burnout insights</p>
+              </div>
             </div>
-            <span className="text-[11px] font-medium text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2.5 py-1 rounded-md">
-              Available soon (Ultra first)
-            </span>
+            <div className="item-status-badge">
+              <Lock size={12} />
+              <span>In Development</span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Desktop & Push Notifications Section */}
-      <div className="setting-section">
-        <h3 className="section-title mb-3 flex items-center gap-2 text-sm font-semibold text-white">
-          <Bell size={15} style={{ color: 'var(--s-text-secondary, #94a3b8)' }} />
-          System & Push Alerts
-        </h3>
-        <div className="space-y-2.5">
-          <div className="flex items-center justify-between p-3.5 rounded-lg" style={notificationRowStyle}>
-            <div>
-              <p className="text-sm font-medium text-slate-200">Deep Work & Focus Reminders</p>
-              <p className="text-xs text-slate-400 mt-0.5">Live prompt to lock in deep work blocks before high-focus hours</p>
+      <div className="notifications-group">
+        <div className="notifications-group-header">
+          <Zap size={15} className="group-header-icon" />
+          <h3 className="group-header-title">Focus & Habit Alerts</h3>
+        </div>
+
+        <div className="notifications-items-list">
+          <div className="notification-item-card">
+            <div className="notification-item-main">
+              <div className="item-icon-box deepwork-icon">
+                <Zap size={16} />
+              </div>
+              <div className="item-text-group">
+                <p className="item-title">Deep Work & Focus Reminders</p>
+                <p className="item-subtitle">Live prompt to lock in deep work blocks before peak focus hours</p>
+              </div>
             </div>
-            <span className="text-[11px] font-medium text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2.5 py-1 rounded-md">
-              Available soon (Ultra first)
-            </span>
+            <div className="item-status-badge">
+              <Lock size={12} />
+              <span>In Development</span>
+            </div>
           </div>
 
-          <div className="flex items-center justify-between p-3.5 rounded-lg" style={notificationRowStyle}>
-            <div>
-              <p className="text-sm font-medium text-slate-200">Habit Streak Warning</p>
-              <p className="text-xs text-slate-400 mt-0.5">Gentle evening nudge when a critical habit streak is about to break</p>
+          <div className="notification-item-card">
+            <div className="notification-item-main">
+              <div className="item-icon-box streak-icon">
+                <Flame size={16} />
+              </div>
+              <div className="item-text-group">
+                <p className="item-title">Habit Streak Warning</p>
+                <p className="item-subtitle">Gentle evening nudge when a critical habit streak is about to break</p>
+              </div>
             </div>
-            <span className="text-[11px] font-medium text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2.5 py-1 rounded-md">
-              Available soon (Ultra first)
-            </span>
+            <div className="item-status-badge">
+              <Lock size={12} />
+              <span>In Development</span>
+            </div>
           </div>
         </div>
       </div>

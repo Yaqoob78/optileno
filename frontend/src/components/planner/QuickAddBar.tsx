@@ -14,9 +14,32 @@ import {
   Layers,
   CheckCircle2,
   AlertCircle,
+  ChevronRight,
 } from 'lucide-react';
 import { parseQuickAdd, ParsedQuickAdd, ParsedToken } from '../../utils/quickAddParser';
 import '../../styles/components/planner/QuickAddBar.css';
+
+export interface PrebuiltHabit {
+  id: string;
+  name: string;
+  emoji: string;
+  category: string;
+  frequency: 'daily' | 'weekly';
+  description?: string;
+}
+
+export const PREBUILT_HABITS: PrebuiltHabit[] = [
+  { id: 'water', name: 'Drink 2L Water', emoji: '💧', category: 'Health', frequency: 'daily', description: 'Hydrate for sustained physical and cognitive energy' },
+  { id: 'meditation', name: '10m Meditation', emoji: '🧘', category: 'Wellness', frequency: 'daily', description: 'Mindful breathing and stress relief' },
+  { id: 'reading', name: 'Read 20 Pages', emoji: '📖', category: 'Learning', frequency: 'daily', description: 'Consistent daily reading and mental growth' },
+  { id: 'workout', name: '30m Workout', emoji: '🏃', category: 'Health', frequency: 'daily', description: 'Cardio, strength, or bodyweight exercise' },
+  { id: 'deepwork', name: 'Deep Work Sprint', emoji: '⚡', category: 'Productivity', frequency: 'daily', description: '45-min distraction-free focus sprint' },
+  { id: 'sleep', name: 'Sleep by 11 PM', emoji: '🌙', category: 'Wellness', frequency: 'daily', description: 'Consistent sleep schedule for full recovery' },
+  { id: 'steps', name: '8,000 Steps', emoji: '🚶', category: 'Health', frequency: 'daily', description: 'Daily active walking streak' },
+  { id: 'detox', name: 'Screen-Free Morning', emoji: '📵', category: 'Wellness', frequency: 'daily', description: 'Zero phone or social media for the first 30 mins' },
+  { id: 'gratitude', name: 'Daily Gratitude', emoji: '📝', category: 'Wellness', frequency: 'daily', description: 'Reflect on 3 things you are grateful for' },
+  { id: 'stretch', name: '10m Full-Body Stretch', emoji: '🤸', category: 'Health', frequency: 'daily', description: 'Relieve muscle tension and boost flexibility' },
+];
 
 interface QuickAddBarProps {
   initialMode?: 'task' | 'habit';
@@ -52,7 +75,10 @@ export const QuickAddBar: React.FC<QuickAddBarProps> = ({
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       const activeTag = document.activeElement?.tagName.toLowerCase();
-      const isInputActive = activeTag === 'input' || activeTag === 'textarea' || (document.activeElement as HTMLElement)?.isContentEditable;
+      const isInputActive =
+        activeTag === 'input' ||
+        activeTag === 'textarea' ||
+        (document.activeElement as HTMLElement)?.isContentEditable;
 
       if (!isInputActive && (e.key === 'q' || e.key === 'Q')) {
         e.preventDefault();
@@ -94,7 +120,7 @@ export const QuickAddBar: React.FC<QuickAddBarProps> = ({
         const result = await onHabitCreated(habitPayload);
         if (result.success) {
           setInputValue('');
-          setFeedbackNotice({ type: 'success', text: `Habit "${title}" created successfully!` });
+          setFeedbackNotice({ type: 'success', text: `Habit "${title}" created!` });
         } else {
           setFeedbackNotice({ type: 'error', text: result.error || 'Failed to create habit.' });
         }
@@ -129,6 +155,47 @@ export const QuickAddBar: React.FC<QuickAddBarProps> = ({
     }
   };
 
+  const handleQuickAddHabit = async (prebuilt: PrebuiltHabit) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    setFeedbackNotice(null);
+
+    try {
+      const habitPayload = {
+        name: prebuilt.name,
+        title: prebuilt.name,
+        description: prebuilt.description || '',
+        category: prebuilt.category,
+        frequency: prebuilt.frequency,
+      };
+
+      const result = await onHabitCreated(habitPayload);
+      if (result.success) {
+        setFeedbackNotice({
+          type: 'success',
+          text: `${prebuilt.emoji} "${prebuilt.name}" added to daily habits!`,
+        });
+      } else {
+        setFeedbackNotice({
+          type: 'error',
+          text: result.error || `Failed to add ${prebuilt.name}.`,
+        });
+      }
+    } catch (err: any) {
+      setFeedbackNotice({ type: 'error', text: err.message || 'Creation failed.' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleInsertShortcut = (textToAppend: string) => {
+    setInputValue((prev) => {
+      const trimmed = prev.trim();
+      return trimmed ? `${trimmed} ${textToAppend}` : textToAppend;
+    });
+    inputRef.current?.focus();
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       if (e.shiftKey && onExpandToModal) {
@@ -157,18 +224,10 @@ export const QuickAddBar: React.FC<QuickAddBarProps> = ({
     setInputValue((prev) => prev.replace(token.rawText, '').replace(/\s+/g, ' ').trim());
   };
 
-  const handleInsertSyntax = (snippet: string) => {
-    setInputValue((prev) => {
-      const trimmed = prev.trim();
-      return trimmed ? `${trimmed} ${snippet}` : snippet;
-    });
-    inputRef.current?.focus();
-  };
-
   return (
     <div className={`quick-add-container ${isFocused ? 'is-focused' : ''} ${className}`}>
       {feedbackNotice && (
-        <div className={`quick-add-toast is-${feedbackNotice.type}`}>
+        <div className={`quick-add-toast is-${feedbackNotice.type}`} role="status">
           <div className="quick-add-toast-content">
             {feedbackNotice.type === 'success' ? (
               <CheckCircle2 size={15} className="toast-icon" />
@@ -177,7 +236,7 @@ export const QuickAddBar: React.FC<QuickAddBarProps> = ({
             )}
             <span>{feedbackNotice.text}</span>
           </div>
-          <button onClick={() => setFeedbackNotice(null)} aria-label="Dismiss">
+          <button onClick={() => setFeedbackNotice(null)} aria-label="Dismiss notification">
             <X size={13} />
           </button>
         </div>
@@ -186,24 +245,26 @@ export const QuickAddBar: React.FC<QuickAddBarProps> = ({
       <form className="quick-add-form" onSubmit={handleSubmit}>
         <div className="quick-add-input-row">
           {/* Mode Selector Pill */}
-          <button
-            type="button"
-            className={`quick-add-mode-pill ${mode === 'habit' ? 'is-habit' : 'is-task'}`}
-            onClick={() => setMode((prev) => (prev === 'task' ? 'habit' : 'task'))}
-            title={`Switch to ${mode === 'task' ? 'Habit' : 'Task'} mode (or press Tab)`}
-          >
-            {mode === 'habit' ? (
-              <>
-                <Flame size={14} className="mode-icon flame-active" />
-                <span>Habit</span>
-              </>
-            ) : (
-              <>
-                <Plus size={14} className="mode-icon" />
-                <span>Task</span>
-              </>
-            )}
-          </button>
+          <div className="quick-add-mode-toggle">
+            <button
+              type="button"
+              className={`quick-add-mode-tab ${mode === 'task' ? 'is-active is-task' : ''}`}
+              onClick={() => setMode('task')}
+              title="Switch to Task mode"
+            >
+              <Plus size={13} className="mode-icon" />
+              <span>Task</span>
+            </button>
+            <button
+              type="button"
+              className={`quick-add-mode-tab ${mode === 'habit' ? 'is-active is-habit' : ''}`}
+              onClick={() => setMode('habit')}
+              title="Switch to Habit mode (1-click tracking)"
+            >
+              <Flame size={13} className="mode-icon" />
+              <span>Habit</span>
+            </button>
+          </div>
 
           {/* Natural Language Input */}
           <div className="quick-add-input-wrapper">
@@ -218,8 +279,8 @@ export const QuickAddBar: React.FC<QuickAddBarProps> = ({
               onKeyDown={handleKeyDown}
               placeholder={
                 mode === 'habit'
-                  ? "Track habit... e.g. 'Read 20m daily #learning' (Press Tab to switch)"
-                  : "Quick add task... e.g. 'Review quarterly roadmap tomorrow 3pm !high #work 45m'"
+                  ? "Track a habit... (e.g. Read 20 pages daily)"
+                  : "What needs to be done? (e.g. Team sync tomorrow 3pm)"
               }
               disabled={isSubmitting}
             />
@@ -243,7 +304,7 @@ export const QuickAddBar: React.FC<QuickAddBarProps> = ({
               type="submit"
               className={`quick-add-action-btn submit-btn ${parsed.cleanTitle ? 'is-ready' : ''}`}
               disabled={!parsed.cleanTitle || isSubmitting}
-              title="Add task or habit (Enter)"
+              title={`Add ${mode === 'habit' ? 'habit' : 'task'} (Enter)`}
             >
               {isSubmitting ? (
                 <span className="quick-add-spinner" />
@@ -254,7 +315,7 @@ export const QuickAddBar: React.FC<QuickAddBarProps> = ({
           </div>
         </div>
 
-        {/* Real-time Visual Confirmation Chips */}
+        {/* Real-time Visual Confirmation Chips (Only shown when parsed tokens exist) */}
         {parsed.tokens.length > 0 && (
           <div className="quick-add-chips-row">
             <div className="chips-label">
@@ -292,7 +353,7 @@ export const QuickAddBar: React.FC<QuickAddBarProps> = ({
                       type="button"
                       className="chip-remove-btn"
                       onClick={() => removeToken(token)}
-                      title="Remove token"
+                      title="Remove filter"
                     >
                       <X size={10} />
                     </button>
@@ -303,52 +364,75 @@ export const QuickAddBar: React.FC<QuickAddBarProps> = ({
           </div>
         )}
 
-        {/* Quick syntax helper hint */}
-        <div className={`quick-add-hint-row ${isFocused ? 'is-visible' : ''}`}>
-          <button
-            type="button"
-            className="syntax-pill-btn"
-            onClick={() => handleInsertSyntax('!high')}
-            title="Click to add !high priority"
-          >
-            <code>!high</code> Priority
-          </button>
-          <button
-            type="button"
-            className="syntax-pill-btn"
-            onClick={() => handleInsertSyntax('#work')}
-            title="Click to add #work category"
-          >
-            <code>#work</code> Category
-          </button>
-          <button
-            type="button"
-            className="syntax-pill-btn"
-            onClick={() => handleInsertSyntax('tomorrow 3pm')}
-            title="Click to add date/time"
-          >
-            <code>tomorrow 3pm</code> Date
-          </button>
-          <button
-            type="button"
-            className="syntax-pill-btn"
-            onClick={() => handleInsertSyntax('45m')}
-            title="Click to add duration"
-          >
-            <code>45m</code> Duration
-          </button>
-          <button
-            type="button"
-            className="syntax-pill-btn"
-            onClick={() => handleInsertSyntax('@deepwork')}
-            title="Click to add @tag"
-          >
-            <code>@deepwork</code> Tag
-          </button>
-          <span className="syntax-key-hint">
-            <kbd>Enter</kbd> Add • <kbd>Shift+Enter</kbd> Details • <kbd>Tab</kbd> Mode
-          </span>
-        </div>
+        {/* 1-Click Prebuilt Good Habits (Visible in Habit mode) */}
+        {mode === 'habit' && (
+          <div className="quick-add-prebuilt-tray">
+            <div className="prebuilt-header">
+              <Sparkles size={13} className="sparkle-icon" />
+              <span>1-Click Good Habits:</span>
+            </div>
+            <div className="prebuilt-chips-scroll">
+              {PREBUILT_HABITS.map((habit) => (
+                <button
+                  key={habit.id}
+                  type="button"
+                  className="prebuilt-habit-btn"
+                  onClick={() => void handleQuickAddHabit(habit)}
+                  disabled={isSubmitting}
+                  title={`Add "${habit.name}" - ${habit.description}`}
+                >
+                  <span className="prebuilt-emoji">{habit.emoji}</span>
+                  <span className="prebuilt-text">{habit.name}</span>
+                  <Plus size={11} className="prebuilt-plus" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Quick Task Helpers (Only in Task mode when focused or typing) */}
+        {mode === 'task' && (isFocused || inputValue.length > 0) && (
+          <div className="quick-add-task-helpers">
+            <span className="helper-label">Quick actions:</span>
+            <button
+              type="button"
+              className="quick-helper-pill"
+              onClick={() => handleInsertShortcut('today')}
+            >
+              📅 Today
+            </button>
+            <button
+              type="button"
+              className="quick-helper-pill"
+              onClick={() => handleInsertShortcut('tomorrow 9am')}
+            >
+              ⏰ Tomorrow 9am
+            </button>
+            <button
+              type="button"
+              className="quick-helper-pill"
+              onClick={() => handleInsertShortcut('!high')}
+            >
+              ⚡ High Priority
+            </button>
+            <button
+              type="button"
+              className="quick-helper-pill"
+              onClick={() => handleInsertShortcut('30m')}
+            >
+              ⏱️ 30m
+            </button>
+            <button
+              type="button"
+              className="quick-helper-pill highlight-pill"
+              onClick={() => setMode('habit')}
+            >
+              <Flame size={11} />
+              <span>1-Click Habits</span>
+              <ChevronRight size={11} />
+            </button>
+          </div>
+        )}
       </form>
     </div>
   );

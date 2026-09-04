@@ -317,13 +317,54 @@
 
 /* Mobile */
 @media (max-width: 768px) {
+  .settings-container {
+    padding: 0 16px;
+  }
+
+  .settings-header {
+    padding: 20px 0 16px;
+    margin-bottom: 16px;
+  }
+
   .settings-page .settings-container:last-child {
     flex-direction: column;
+    gap: 20px;
   }
 
   .settings-sidebar {
     width: 100%;
     position: static;
+    border-bottom: 1px solid var(--s-border);
+    padding-bottom: 10px;
+  }
+
+  .settings-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 6px;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .settings-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-item {
+    width: auto;
+    white-space: nowrap;
+    padding: 8px 14px;
+    flex-shrink: 0;
+    font-size: 13.5px;
+  }
+
+  .nav-arrow {
+    display: none;
+  }
+
+  .sidebar-footer {
+    display: none;
   }
 }
 
@@ -1563,4 +1604,246 @@
 .billing-cycle-toggle button.is-active .billing-cycle-save {
   background: rgba(255, 255, 255, 0.22);
   color: #ffffff;
+}
+
+/* ===== NOTIFICATION SETTINGS ===== */
+.notifications-settings-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.notifications-roadmap-banner {
+  padding: 18px 20px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(139, 92, 246, 0.06) 100%);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.06);
+}
+
+[data-theme='light'] .notifications-roadmap-banner {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.04) 100%);
+  border-color: rgba(99, 102, 241, 0.22);
+}
+
+.roadmap-banner-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.roadmap-badge-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.roadmap-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(99, 102, 241, 0.2);
+  color: #818cf8;
+}
+
+[data-theme='light'] .roadmap-icon-wrap {
+  background: rgba(99, 102, 241, 0.14);
+  color: #6366f1;
+}
+
+.roadmap-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--s-text-primary);
+  letter-spacing: -0.01em;
+}
+
+.roadmap-access-tag {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.18);
+  color: #818cf8;
+  border: 1px solid rgba(99, 102, 241, 0.35);
+}
+
+[data-theme='light'] .roadmap-access-tag {
+  background: rgba(99, 102, 241, 0.12);
+  color: #4f46e5;
+  border-color: rgba(99, 102, 241, 0.28);
+}
+
+.roadmap-description {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--s-text-secondary);
+}
+
+.roadmap-highlight {
+  color: var(--s-text-primary);
+  font-weight: 500;
+}
+
+.notifications-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.notifications-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--s-text-primary);
+}
+
+.group-header-icon {
+  color: var(--s-text-secondary);
+}
+
+.group-header-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--s-text-primary);
+}
+
+.notifications-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.notification-item-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: var(--s-bg-surface);
+  border: 1px solid var(--s-border);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.notification-item-card:hover {
+  border-color: rgba(99, 102, 241, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme='light'] .notification-item-card {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+[data-theme='light'] .notification-item-card:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.08);
+}
+
+.notification-item-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.item-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.mail-digest-icon {
+  background: rgba(59, 130, 246, 0.12);
+  color: #3b82f6;
+}
+
+.report-icon {
+  background: rgba(139, 92, 246, 0.12);
+  color: #8b5cf6;
+}
+
+.deepwork-icon {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+}
+
+.streak-icon {
+  background: rgba(249, 115, 22, 0.12);
+  color: #f97316;
+}
+
+.item-text-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.item-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--s-text-primary);
+}
+
+.item-subtitle {
+  margin: 0;
+  font-size: 12px;
+  color: var(--s-text-secondary);
+  line-height: 1.4;
+}
+
+.item-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 500;
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+[data-theme='dark'] .item-status-badge {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+@media (max-width: 640px) {
+  .notification-item-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+  }
+
+  .item-status-badge {
+    align-self: flex-start;
+  }
 }
