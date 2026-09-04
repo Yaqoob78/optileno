@@ -190,11 +190,11 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
               <p>No notifications</p>
             </div>
           ) : (
-            <div className="divide-y divide-white/10">
+            <div className="divide-y divide-slate-200/80 dark:divide-white/10">
               {filtered.map((notif) => (
                 <div
                   key={notif.id}
-                  className={`p-4 transition ${!notif.read ? 'bg-blue-500/10 hover:bg-blue-500/15' : 'hover:bg-white/5'
+                  className={`p-4 transition ${!notif.read ? 'bg-blue-500/10 hover:bg-blue-500/15' : 'hover:bg-slate-100/70 dark:hover:bg-white/5'
                     }`}
                 >
                   <div className="flex gap-3">
@@ -222,7 +222,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                         {!notif.read && (
                           <button
                             onClick={() => markAsRead(notif.id)}
-                            className="text-xs text-blue-300 hover:text-blue-200 font-medium"
+                            className="text-xs text-blue-600 dark:text-blue-300 hover:text-blue-700 dark:hover:text-blue-200 font-medium"
                           >
                             Mark read
                           </button>
@@ -230,14 +230,14 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                         {notif.action_url && (
                           <a
                             href={notif.action_url}
-                            className="text-xs text-blue-300 hover:text-blue-200 font-medium"
+                            className="text-xs text-blue-600 dark:text-blue-300 hover:text-blue-700 dark:hover:text-blue-200 font-medium"
                           >
                             View
                           </a>
                         )}
                         <button
                           onClick={() => deleteNotification(notif.id)}
-                          className="ml-auto p-1 rounded transition hover:bg-white/10"
+                          className="ml-auto p-1 rounded transition hover:bg-slate-200/60 dark:hover:bg-white/10"
                           aria-label="Delete notification"
                         >
                           <Trash2 className="w-4 h-4 text-[rgb(var(--color-text-tertiary))] hover:text-[rgb(var(--color-text-primary))]" />
@@ -255,7 +255,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
         <div className="p-4 border-t border-[rgba(var(--color-border-light),0.4)] bg-[rgba(var(--color-bg-primary),0.97)]">
           <button
             onClick={markAllAsRead}
-            className="w-full py-2 text-sm font-medium text-blue-300 hover:text-blue-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-2 text-sm font-medium text-blue-600 dark:text-blue-300 hover:text-blue-700 dark:hover:text-blue-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={unreadCount === 0}
           >
             Mark all as read

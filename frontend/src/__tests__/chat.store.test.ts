@@ -88,4 +88,45 @@ describe('useChatStore', () => {
     expect(state.activeConversation?.messages[0]?.content).toBe('Message 1');
     expect(state.activeConversation?.messages[1]?.content).toBe('Reply 1');
   });
+
+  it('preserves empty assistant message shell with waiting/streaming metadata and updates content', () => {
+    const store = useChatStore.getState();
+    store.createConversation('Streaming Shell Test');
+
+    store.addMessage({ role: 'user', content: 'Help me plan today' });
+
+    const assistantId = 'assistant-shell-123';
+    store.addMessage({
+      id: assistantId,
+      role: 'assistant',
+      content: '',
+      metadata: { isStreaming: true, isWaiting: true },
+    } as any);
+
+    let state = useChatStore.getState();
+    expect(state.activeConversation?.messages).toHaveLength(2);
+    const assistantMsg = state.activeConversation?.messages[1];
+    expect(assistantMsg?.id).toBe(assistantId);
+    expect(assistantMsg?.role).toBe('assistant');
+    expect(assistantMsg?.content).toBe('');
+    expect(assistantMsg?.metadata?.isStreaming).toBe(true);
+    expect(assistantMsg?.metadata?.isWaiting).toBe(true);
+
+    // Update metadata on API response
+    state.updateMessageMetadata(assistantId, { isWaiting: false, provider: 'gemini' });
+    state = useChatStore.getState();
+    expect(state.activeConversation?.messages[1]?.metadata?.isWaiting).toBe(false);
+    expect(state.activeConversation?.messages[1]?.metadata?.isStreaming).toBe(true);
+
+    // Stream chunks
+    state.editMessage(assistantId, 'Here is');
+    state = useChatStore.getState();
+    expect(state.activeConversation?.messages[1]?.content).toBe('Here is');
+
+    state.editMessage(assistantId, 'Here is your plan for today.');
+    state.updateMessageMetadata(assistantId, { isStreaming: false });
+    state = useChatStore.getState();
+    expect(state.activeConversation?.messages[1]?.content).toBe('Here is your plan for today.');
+    expect(state.activeConversation?.messages[1]?.metadata?.isStreaming).toBe(false);
+  });
 });

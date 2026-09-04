@@ -256,6 +256,43 @@
   line-height: 1.45;
 }
 
+/* Light Theme Support for Hero Empty State */
+[data-theme="light"] .chat-hero-title {
+  background: linear-gradient(135deg, #0f172a 0%, #334155 60%, #475569 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: #0f172a;
+}
+
+[data-theme="light"] .chat-hero-subtitle {
+  color: #475569;
+}
+
+[data-theme="light"] .chat-hero-card {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+}
+
+[data-theme="light"] .chat-hero-card:hover {
+  background: #ffffff;
+  border-color: rgba(99, 102, 241, 0.45);
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.12);
+}
+
+[data-theme="light"] .hero-card-title {
+  color: #0f172a;
+}
+
+[data-theme="light"] .hero-card-desc {
+  color: #64748b;
+}
+
+[data-theme="light"] .hero-card-tag {
+  background: rgba(99, 102, 241, 0.1);
+  color: #4f46e5;
+}
+
 @media (max-width: 640px) {
   .chat-hero-empty-state {
     padding: 1.25rem 0.5rem 0.75rem;

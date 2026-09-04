@@ -375,6 +375,12 @@
   color: #38bdf8;
 }
 
+[data-theme="light"] .markdown-content :not(pre) > code {
+  color: #0369a1;
+  background: rgba(var(--color-bg-tertiary), 0.95);
+  border-color: rgba(var(--color-border-light), 0.6);
+}
+
 /* ==========================================================================
    Syntax-Highlighted Code Blocks
    ========================================================================== */

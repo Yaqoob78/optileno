@@ -180,25 +180,19 @@ const toDate = (value: unknown, fallback = new Date()): Date => {
 
 const normalizeMessage = (
   message: Partial<Message> & Pick<Message, "role" | "content">,
-): Message => {
-  const meta = message.metadata ? { ...message.metadata } : undefined;
-  if (meta && meta.isStreaming) {
-    meta.isStreaming = false;
-  }
-  return {
-    id: String(message.id ?? generateId()),
-    role: message.role,
-    content: String(message.content ?? ""),
-    timestamp: toDate(message.timestamp),
-    metadata: meta,
-  };
-};
+): Message => ({
+  id: String(message.id ?? generateId()),
+  role: message.role,
+  content: String(message.content ?? ""),
+  timestamp: toDate(message.timestamp),
+  metadata: message.metadata ? { ...message.metadata } : undefined,
+});
 
 const normalizeConversation = (conversation: Partial<Conversation>): Conversation => {
   const createdAt = toDate(conversation.createdAt);
   const rawMessages = Array.isArray(conversation.messages) ? conversation.messages : [];
   const messages = rawMessages
-    .filter((msg) => msg && (String(msg.content ?? "").trim().length > 0 || msg.role === "user"))
+    .filter((msg) => Boolean(msg && (msg.role === "user" || msg.role === "assistant" || msg.role === "system")))
     .map((message) => normalizeMessage(message));
 
   return {
@@ -635,7 +629,23 @@ export const useChatStore = create<ChatState>()(
           ? sortByUpdatedAt(
               typedState.conversations
                 .filter((conversation) => conversation.isKept)
-                .map((conversation) => normalizeConversation(conversation)),
+                .map((conversation) => {
+                  const normalized = normalizeConversation(conversation);
+                  return {
+                    ...normalized,
+                    messages: normalized.messages
+                      .filter(
+                        (msg) =>
+                          String(msg.content ?? "").trim().length > 0 || msg.role === "user",
+                      )
+                      .map((msg) => ({
+                        ...msg,
+                        metadata: msg.metadata
+                          ? { ...msg.metadata, isStreaming: false, isWaiting: false }
+                          : undefined,
+                      })),
+                  };
+                }),
             )
           : [];
 
