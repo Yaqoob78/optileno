@@ -1,28 +1,12 @@
-// main.tsx - UPDATED VERSION
-import React from "react";
-import ReactDOM from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
-import App from "./App";
-import { installApiFetchProxy } from "./services/api/installApiFetchProxy";
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import App from './App';
+import './styles/base.css';
+import './styles/app.css';
+import './styles/landing.css';
 
-import { HelmetProvider } from 'react-helmet-async';
-
-import "./styles/tailwind.css";
-import "./styles/global.css";
-import "./styles/themes.css";
-import "./styles/components.css";
-import "./styles/animations.css";
-import "./styles/components/common/Modal.css";
-
-installApiFetchProxy();
-
-// ===== REACT RENDER =====
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <HelmetProvider>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </HelmetProvider>
-  </React.StrictMode>
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
 );

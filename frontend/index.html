@@ -1,366 +1,42 @@
-<!DOCTYPE html>
-<html lang="en-US">
-
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Optileno | Free AI Daily Planner, Smart Calendar & Task Manager</title>
-  <meta name="description"
-    content="The smart AI daily planner and calendar assistant. Auto-schedule deep work, organize tasks, track habits, and prevent burnout with Leno AI. Free forever." />
-  <meta name="keywords"
-    content="Optileno, AI daily planner, smart calendar, AI calendar planner, Motion alternative, Sunsama alternative, Reclaim alternative, task manager, deep work planner, burnout analytics, focus score, workflow automation" />
-  <meta name="author" content="Optileno" />
-  <meta name="application-name" content="Optileno" />
-  <meta name="theme-color" content="#0b1220" />
-  <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1" />
-  <meta name="format-detection" content="telephone=no" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-title" content="Optileno" />
-  <link rel="canonical" href="https://www.optileno.com/" />
-
-  <script>
-    (function() {
-      try {
-        var host = window.location.hostname;
-        var proto = window.location.protocol;
-        var isLocal = host === 'localhost' || host === '127.0.0.1' || host.indexOf('.local') !== -1;
-        if (!isLocal && (host === 'optileno.com' || proto === 'http:')) {
-          var target = 'https://www.optileno.com' + window.location.pathname + window.location.search + window.location.hash;
-          window.location.replace(target);
-        }
-      } catch (e) {}
-    })();
-  </script>
-
-  <link rel="manifest" href="/site.webmanifest" />
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-  <link rel="icon" href="/favicon.ico" sizes="48x48" />
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
-  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
-  <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png" />
-  <link rel="apple-touch-icon" sizes="256x256" href="/favicon-256.png" />
-
-  <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="Optileno" />
-  <meta property="og:title" content="Optileno | Free AI Daily Planner, Smart Calendar & Task Manager" />
-  <meta property="og:description"
-    content="The smart AI daily planner and calendar assistant. Auto-schedule deep work, organize tasks, track habits, and prevent burnout with Leno AI. Free forever." />
-  <meta property="og:url" content="https://www.optileno.com/" />
-  <meta property="og:image" content="https://www.optileno.com/social-preview.png" />
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Optileno AI Daily Planner and Smart Calendar Preview" />
-  <meta property="og:locale" content="en_US" />
-
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Optileno | Free AI Daily Planner, Smart Calendar & Task Manager" />
-  <meta name="twitter:description"
-    content="The smart AI daily planner and calendar assistant. Auto-schedule deep work, organize tasks, track habits, and prevent burnout with Leno AI. Free forever." />
-  <meta name="twitter:image" content="https://www.optileno.com/social-preview.png" />
-  <meta name="twitter:site" content="@optilenoai" />
-
-  <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@graph": [
-        {
-          "@type": "Organization",
-          "name": "Optileno",
-          "url": "https://www.optileno.com/",
-          "logo": "https://www.optileno.com/favicon-512.png",
-          "image": "https://www.optileno.com/social-preview.png",
-          "sameAs": [
-            "https://www.instagram.com/optilenoai",
-            "https://x.com/optilenoai"
-          ]
-        },
-        {
-          "@type": "WebSite",
-          "name": "Optileno",
-          "url": "https://www.optileno.com/",
-          "description": "Optileno is a free AI daily planner, smart calendar assistant, and cognitive productivity operating system."
-        },
-        {
-          "@type": "SoftwareApplication",
-          "name": "Optileno",
-          "operatingSystem": "Web, Windows, macOS, iOS, Android",
-          "applicationCategory": "ProductivityApplication",
-          "browserRequirements": "Requires HTML5 compatible browser.",
-          "offers": {
-            "@type": "Offer",
-            "price": "0.00",
-            "priceCurrency": "USD",
-            "description": "100% Free Explorer Plan Forever"
-          },
-          "description": "The smart AI daily planner and calendar assistant. Auto-schedule deep work, organize tasks, track habits, and prevent burnout with Leno AI. Free forever.",
-          "aggregateRating": {
-            "@type": "AggregateRating",
-            "ratingValue": "4.9",
-            "ratingCount": "195",
-            "bestRating": "5",
-            "worstRating": "1"
-          }
-        },
-        {
-          "@type": "FAQPage",
-          "mainEntity": [
-            {
-              "@type": "Question",
-              "name": "What is Optileno?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Optileno is a free AI daily planner and smart calendar assistant that converts goals into prioritized daily tasks, defends deep work focus blocks, tracks habits, and predicts burnout before it happens."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "Is Optileno free to use?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Yes! Optileno offers a 100% Free Explorer Plan forever with no credit card required. Users who want power-user autonomous agentic planning and advanced heatmaps can upgrade to Ultra Pro."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "How is Optileno different from Motion and Sunsama?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Unlike Motion which costs $34/month with rigid automated rescheduling, Optileno offers human-in-the-loop confirmation, predictive burnout telemetry, and a free forever tier. Unlike Sunsama's 25-minute manual routine, Optileno's AI plans your day in under 90 seconds."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "Can I sync Optileno with Google Calendar?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Yes! Optileno supports 1-click Google Calendar sync as well as exportable standard .ics calendar feeds compatible with Microsoft Outlook and Apple Calendar."
-              }
-            }
-          ]
-        },
-        {
-          "@type": "ItemList",
-          "name": "Optileno Primary Navigation",
-          "itemListElement": [
-            {
-              "@type": "SiteNavigationElement",
-              "position": 1,
-              "name": "AI Daily Planner",
-              "url": "https://www.optileno.com/ai-planner"
-            },
-            {
-              "@type": "SiteNavigationElement",
-              "position": 2,
-              "name": "AI Calendar Planner",
-              "url": "https://www.optileno.com/ai-calendar-planner"
-            },
-            {
-              "@type": "SiteNavigationElement",
-              "position": 3,
-              "name": "Free AI Productivity Tools",
-              "url": "https://www.optileno.com/tools"
-            },
-            {
-              "@type": "SiteNavigationElement",
-              "position": 4,
-              "name": "Optileno vs Motion",
-              "url": "https://www.optileno.com/vs/motion"
-            },
-            {
-              "@type": "SiteNavigationElement",
-              "position": 5,
-              "name": "Optileno vs Sunsama",
-              "url": "https://www.optileno.com/vs/sunsama"
-            },
-            {
-              "@type": "SiteNavigationElement",
-              "position": 6,
-              "name": "Optileno vs Reclaim",
-              "url": "https://www.optileno.com/vs/reclaim"
-            },
-            {
-              "@type": "SiteNavigationElement",
-              "position": 7,
-              "name": "Optileno vs Todoist",
-              "url": "https://www.optileno.com/vs/todoist"
-            },
-            {
-              "@type": "SiteNavigationElement",
-              "position": 8,
-              "name": "Optileno vs Notion",
-              "url": "https://www.optileno.com/vs/notion"
-            }
-          ]
-        }
-      ]
-    }
-  </script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <style>
-    #root:empty {
-      position: fixed;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background-color: #010205;
-      z-index: 99999;
-    }
-
-    .startup-logo {
-      width: 80px;
-      height: 80px;
-      position: relative;
-    }
-
-    .s-ring {
-      stroke-dasharray: 830;
-      stroke-dashoffset: 830;
-      animation: s-drawRing 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards infinite alternate;
-    }
-
-    .s-glow {
-      animation: s-pulseGlow 2s ease-in-out infinite alternate;
-    }
-
-    .s-node {
-      transform-origin: center;
-      transform-box: fill-box;
-      transform: scale(0);
-      animation: s-popNode 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards infinite alternate;
-    }
-
-    .s-line {
-      stroke-dasharray: 120;
-      stroke-dashoffset: 120;
-      animation: s-drawLine 0.8s ease forwards infinite alternate;
-    }
-
-    .s-n1 {
-      animation-delay: 0.1s;
-    }
-
-    .s-n2,
-    .s-n3 {
-      animation-delay: 0.2s;
-    }
-
-    .s-n4,
-    .s-n5 {
-      animation-delay: 0.3s;
-    }
-
-    .s-n6 {
-      animation-delay: 0.4s;
-    }
-
-    .s-l1,
-    .s-l2 {
-      animation-delay: 0.4s;
-    }
-
-    .s-l3,
-    .s-l4 {
-      animation-delay: 0.6s;
-    }
-
-    .s-l5,
-    .s-l6 {
-      animation-delay: 0.8s;
-    }
-
-    @keyframes s-drawRing {
-      0% {
-        stroke-dashoffset: 830;
-      }
-
-      100% {
-        stroke-dashoffset: 0;
-      }
-    }
-
-    @keyframes s-popNode {
-      0% {
-        transform: scale(0);
-        opacity: 0;
-      }
-
-      100% {
-        transform: scale(1);
-        opacity: 1;
-      }
-    }
-
-    @keyframes s-drawLine {
-      0% {
-        stroke-dashoffset: 120;
-      }
-
-      100% {
-        stroke-dashoffset: 0;
-      }
-    }
-
-    @keyframes s-pulseGlow {
-      0% {
-        opacity: 0.2;
-      }
-
-      100% {
-        opacity: 0.6;
-      }
-    }
-  </style>
-</head>
-
-<body>
-  <div id="root">
-    <div class="startup-logo">
-      <svg width="100%" height="100%" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="optilenoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#60a5fa" />
-            <stop offset="50%" stopColor="#3b82f6" />
-            <stop offset="100%" stopColor="#d97706" />
-          </linearGradient>
-          <linearGradient id="optilenoGradientGlow" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#60a5fa" />
-            <stop offset="55%" stopColor="#0ea5e9" />
-            <stop offset="100%" stopColor="#fbbf24" />
-          </linearGradient>
-          <filter id="optilenoDropGlow" x="-60%" y="-60%" width="220%" height="220%">
-            <feGaussianBlur stdDeviation="8" />
-            <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.5 0" />
-          </filter>
-        </defs>
-        <g>
-          <circle cx="256" cy="256" r="132" stroke="url(#optilenoGradientGlow)" stroke-width="18" fill="none"
-            filter="url(#optilenoDropGlow)" class="s-glow" />
-          <circle cx="256" cy="256" r="132" stroke="url(#optilenoGradient)" stroke-width="12" fill="none"
-            class="s-ring" />
-          <g stroke="url(#optilenoGradient)" stroke-linecap="round" stroke-width="8">
-            <line x1="256" y1="170" x2="190" y2="236" class="s-line s-l1" />
-            <line x1="256" y1="170" x2="322" y2="236" class="s-line s-l2" />
-            <line x1="190" y1="236" x2="172" y2="310" class="s-line s-l3" />
-            <line x1="322" y1="236" x2="340" y2="310" class="s-line s-l4" />
-            <line x1="172" y1="310" x2="256" y2="350" class="s-line s-l5" />
-            <line x1="340" y1="310" x2="256" y2="350" class="s-line s-l6" />
-          </g>
-          <g>
-            <circle cx="256" cy="170" r="15" fill="url(#optilenoGradient)" class="s-node s-n1" />
-            <circle cx="190" cy="236" r="13" fill="url(#optilenoGradient)" class="s-node s-n2" />
-            <circle cx="322" cy="236" r="13" fill="url(#optilenoGradient)" class="s-node s-n3" />
-            <circle cx="172" cy="310" r="11" fill="url(#optilenoGradient)" class="s-node s-n4" />
-            <circle cx="340" cy="310" r="11" fill="url(#optilenoGradient)" class="s-node s-n5" />
-            <circle cx="256" cy="350" r="15" fill="url(#optilenoGradient)" class="s-node s-n6" />
-          </g>
-        </g>
-      </svg>
-    </div>
-  </div>
-  <script type="module" src="/src/main.tsx"></script>
-</body>
-
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Optileno — Know if you can say yes</title>
+    <meta name="description" content="The honest planner for freelancers. Check any new project against your real week and see if it fits, what would slip, and the date you can safely promise." />
+    <meta name="theme-color" content="#f6f5f0" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0f1311" media="(prefers-color-scheme: dark)" />
+    <link rel="canonical" href="https://www.optileno.com/" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="apple-touch-icon" href="/favicon-256.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Optileno" />
+    <meta property="og:title" content="Optileno — Know if you can say yes" />
+    <meta property="og:description" content="The honest planner for freelancers. See if a new project fits your real week before you answer the client." />
+    <meta property="og:url" content="https://www.optileno.com/" />
+    <meta property="og:image" content="https://www.optileno.com/og-image.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap"
+    />
+    <script>
+      (function () {
+        try {
+          var t = JSON.parse(localStorage.getItem('optileno.v2') || '{}');
+          var pref = t && t.settings && t.settings.theme;
+          if (pref === 'light' || pref === 'dark') document.documentElement.setAttribute('data-theme', pref);
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>

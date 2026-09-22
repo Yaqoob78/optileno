@@ -1,9 +1,9 @@
 {
   "id": "/",
-  "name": "Optileno - AI Planner and Task Manager",
+  "name": "Optileno \u2014 Know if you can say yes",
   "short_name": "Optileno",
-  "description": "Optileno turns goals, daily planning, focus sessions, and task management into measurable AI-powered progress.",
-  "start_url": "/",
+  "description": "The honest planner for freelancers: check new client requests against your real week before you answer.",
+  "start_url": "/app",
   "scope": "/",
   "display": "standalone",
   "display_override": [
@@ -12,12 +12,11 @@
     "browser"
   ],
   "orientation": "portrait",
-  "background_color": "#0b1220",
-  "theme_color": "#0b1220",
+  "background_color": "#f6f5f0",
+  "theme_color": "#f6f5f0",
   "categories": [
     "productivity",
-    "business",
-    "education"
+    "business"
   ],
   "icons": [
     {
@@ -37,33 +36,6 @@
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "Chat Leno",
-      "short_name": "Chat",
-      "url": "/chat-leno"
-    },
-    {
-      "name": "Plan Tasks",
-      "short_name": "Planner",
-      "url": "/plan-task"
-    },
-    {
-      "name": "Free AI Tools",
-      "short_name": "Tools",
-      "url": "/tools"
-    },
-    {
-      "name": "Show Analytics",
-      "short_name": "Analytics",
-      "url": "/show-analytics"
-    },
-    {
-      "name": "Goal Progress",
-      "short_name": "Goals",
-      "url": "/goal-progress"
     }
   ]
 }
