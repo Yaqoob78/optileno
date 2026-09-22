@@ -1,215 +1,38 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, useReducedMotion, type Variants } from 'framer-motion';
+import { Helmet } from 'react-helmet-async';
+import {
+  MotionConfig,
+  motion,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+  type MotionValue,
+} from 'framer-motion';
+import Lenis from 'lenis';
 import {
   ArrowRight,
-  Bot,
-  Building2,
-  Briefcase,
-  Calendar,
-  BarChart2,
-  CheckCircle,
-  Clock,
-  TrendingUp,
-  Zap,
-  Target,
-  Timer,
-  ChevronDown,
-  Plus,
+  CalendarCheck,
+  ChartColumn,
+  Check,
+  Feather,
+  GraduationCap,
+  MessageCircle,
   Minus,
-  Wrench,
+  Mouse,
+  Palette,
+  Plus,
+  Rocket,
 } from 'lucide-react';
 import { Logo } from '../../components/common/Logo';
-import { Interactive3DCard } from '../../components/landing/Interactive3DCard';
 import SEO from '../../components/common/SEO';
+import { AnalyticsMockup, ChatMockup, DashboardMockup, PlannerMockup } from './LandingMockups';
+import type { ForestScene } from './scene/ForestScene';
 import './landing.css';
 
-/* ─── Types ─── */
-type Feature = {
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-};
+/* ─── Content ─── */
 
-type ScreenCard = {
-  title: string;
-  subtitle: string;
-  fileName: string;
-  badge: string;
-};
-
-type CapabilityItem = {
-  title: string;
-  description: string;
-};
-
-type CapabilityGroup = {
-  title: string;
-  summary: string;
-  items: CapabilityItem[];
-};
-
-type UseCaseGroup = {
-  title: string;
-  icon: React.ReactNode;
-  entries: string[];
-};
-
-type Testimonial = {
-  author: string;
-  initials: string;
-  title: string;
-  quote: string;
-  gradientFrom: string;
-  gradientTo: string;
-};
-
-type FAQItem = {
-  question: string;
-  answer: string;
-};
-
-/* ─── Data ─── */
-
-const FEATURES: Feature[] = [
-  {
-    title: 'Goal → Tasks in seconds',
-    description: 'Tell Leno your goal. Get a prioritized task list instantly.',
-    icon: <Bot size={20} />,
-  },
-  {
-    title: 'One view. Zero chaos.',
-    description: 'Tasks, habits, and focus blocks in a single daily view.',
-    icon: <Calendar size={20} />,
-  },
-  {
-    title: 'Know when you\'re about to crash.',
-    description: 'Track your focus score, burnout risk, and peak productive hours.',
-    icon: <BarChart2 size={20} />,
-  },
-  {
-    title: 'Ship more. Miss less.',
-    description: 'Real-time sync and feedback loops to keep every task on track.',
-    icon: <CheckCircle size={20} />,
-  },
-  {
-    title: 'Protected deep work time.',
-    description: 'Built-in focus timers that shield your attention when it matters most.',
-    icon: <Clock size={20} />,
-  },
-];
-
-const SCREEN_CARDS: ScreenCard[] = [
-  {
-    title: 'Dashboard Overview',
-    subtitle: 'Your command center for goals, tasks, and intelligence.',
-    fileName: 'dashboard-mockup.png',
-    badge: 'Executive View',
-  },
-  {
-    title: 'Execution Planner',
-    subtitle: 'The daily stack tracking tasks, habits, and focus.',
-    fileName: 'planner-overall.png',
-    badge: 'Planner Grid',
-  },
-  {
-    title: 'Performance Analytics',
-    subtitle: 'Transparent insights into your behavior and productivity.',
-    fileName: 'analytics-overall.png',
-    badge: 'Insights Layer',
-  },
-];
-
-const CAPABILITY_GROUPS: CapabilityGroup[] = [
-  {
-    title: 'Goal Execution',
-    summary: 'Plan and execute without losing control of your overarching priorities.',
-    items: [
-      {
-        title: 'Leno Assistant',
-        description: 'Ask Leno to draft tasks from complex objectives in seconds.',
-      },
-      {
-        title: 'Adaptive Planning',
-        description: 'Stay on course even when priorities inevitably shift.',
-      },
-    ],
-  },
-  {
-    title: 'Time & Focus Mastery',
-    summary: 'Turn scattered inputs into structured, high-output sessions.',
-    items: [
-      {
-        title: 'Smart Task Manager',
-        description: 'Prioritize by urgency, impact, and your actual capacity.',
-      },
-      {
-        title: 'Deep Work Modes',
-        description: 'Eliminate distractions with focused time-boxing.',
-      },
-    ],
-  },
-  {
-    title: 'Actionable Intelligence',
-    summary: 'Convert raw productivity data into behavioral insights.',
-    items: [
-      {
-        title: 'Burnout Tracking',
-        description: 'Monitor fatigue to prevent crashes before they happen.',
-      },
-      {
-        title: 'Focus Hotspots',
-        description: 'Learn when you work best across the week.',
-      },
-    ],
-  },
-];
-
-const USE_CASE_GROUPS: UseCaseGroup[] = [
-  {
-    title: 'Ambitious Professionals',
-    icon: <Building2 size={18} />,
-    entries: [
-      'Founders & Builders',
-      'Creators',
-      'Executives',
-      'Freelancers',
-      'Consultants',
-    ],
-  },
-  {
-    title: 'High-Output Teams',
-    icon: <Briefcase size={18} />,
-    entries: ['Startups', 'Small Agencies', 'Remote Teams'],
-  },
-];
-
-const TESTIMONIALS: Testimonial[] = [
-  {
-    author: 'For SaaS Founders',
-    initials: 'SF',
-    title: 'Kill context-switching',
-    quote: 'Leno breaks your roadmap into prioritized daily tasks, so execution never stalls between five different tools.',
-    gradientFrom: '#60a5fa',
-    gradientTo: '#3b82f6',
-  },
-  {
-    author: 'For Agency Owners',
-    initials: 'AO',
-    title: 'Protect your peak weeks',
-    quote: 'Burnout-risk tracking watches your workload patterns and flags overload before a launch week crashes you.',
-    gradientFrom: '#fbbf24',
-    gradientTo: '#d97706',
-  },
-  {
-    author: 'For Senior Executives',
-    initials: 'SE',
-    title: 'Execute what matters',
-    quote: 'Goals synchronize with daily focus sprints, so the work that actually moves the needle gets scheduled first.',
-    gradientFrom: '#34d399',
-    gradientTo: '#059669',
-  },
-];
+type FAQItem = { question: string; answer: string };
 
 const FAQ_ITEMS: FAQItem[] = [
   {
@@ -222,7 +45,7 @@ const FAQ_ITEMS: FAQItem[] = [
   },
   {
     question: 'Is Optileno really 100% Free?',
-    answer: 'Yes! The core planner, daily time-blocking, focus score tracking, and Leno AI assistant are 100% free forever without requiring a credit card. If you want power-user features like 150 AI requests/day, focus heatmaps, and advanced AI automation, you can upgrade to Ultra Pro anytime for $6.99/month.',
+    answer: 'Yes! The core planner, daily time-blocking, focus score tracking, and Leno AI assistant are 100% free forever without requiring a credit card. If you want power-user features like 150 AI requests/day, focus heatmaps, and advanced AI automation, you can upgrade to Ultra Pro anytime.',
   },
   {
     question: 'Can I use Optileno on mobile?',
@@ -242,266 +65,374 @@ const FAQ_ITEMS: FAQItem[] = [
   },
 ];
 
-const HERO_STATS = [
+const FEATURES = [
+  { icon: MessageCircle, title: 'AI Chat Assistant', text: 'Think. Plan. Get things done.' },
+  { icon: CalendarCheck, title: 'Smart Planner', text: 'Turn goals into daily action.' },
+  { icon: ChartColumn, title: 'Deep Analytics', text: 'Understand your focus & progress.' },
+  { icon: Feather, title: 'Beautiful, Distraction-Free UI', text: 'Designed for a calmer mind.' },
+];
+
+const PEOPLE = [
   {
-    icon: <TrendingUp size={18} />,
-    label: 'Goals → Daily Tasks, Automatically',
+    icon: GraduationCap,
+    who: 'Students',
+    text: 'Turn a semester of deadlines into calm, doable daily steps — with Leno there whenever you get stuck.',
   },
   {
-    icon: <Zap size={18} />,
-    label: 'Tasks, Focus & Analytics in One',
+    icon: Palette,
+    who: 'Designers & creators',
+    text: 'Protect long, quiet blocks for deep creative work and let the planner arrange everything else around them.',
   },
   {
-    icon: <Timer size={18} />,
-    label: '90-sec First Planned Day',
-  },
-  {
-    icon: <Target size={18} />,
-    label: 'Live Focus Score Tracking',
+    icon: Rocket,
+    who: 'Founders',
+    text: 'Break a roadmap into prioritized daily tasks, and see burnout coming before launch week does.',
   },
 ];
 
-const HERO_TITLE = 'Turn Your Ambitions Into a Finished Daily Plan in 90 Seconds.';
-const HERO_TITLE_WORDS = HERO_TITLE.split(' ');
+const PLANS = {
+  free: {
+    name: 'Free',
+    tagline: 'Get started',
+    features: ['Leno AI chat — 15 requests/day', 'Full planner: tasks, habits, goals', 'Mood tracker & productivity score', 'Basic analytics dashboard'],
+  },
+  pro: {
+    name: 'Ultra Pro',
+    tagline: 'For focused individuals',
+    monthly: '₹1,499',
+    yearly: '₹12,999',
+    features: ['Leno AI chat — 150 requests/day', 'Agentic planner automation', 'Focus heatmap & burnout risk', 'Advanced analytics & AI insights', 'Priority support'],
+  },
+};
 
-const WAVE_PATHS = Array.from({ length: 42 }).map((_, i) => {
-  const y = 40 + i * 26;
-  const phaseRow = i * 0.3;
-  const cy1 = y - 130 + Math.sin(phaseRow) * 80;
-  const cy2 = y + 130 + Math.sin(phaseRow - 1.2) * 80;
-  const cy3 = y + Math.sin(phaseRow - 2.4) * 60;
-  return `M -100 ${y} C 480 ${cy1}, 1020 ${cy2}, 1600 ${cy3}`;
-});
+const CHAPTER_LABELS = ['Begin', 'Clarity', 'Everything', 'Leno', 'Planner', 'Progress', 'People', 'Pricing', 'Questions', 'Tomorrow'];
 
-/* ─── FAQ Accordion Item ─── */
-function FAQAccordion({ item, index }: { item: FAQItem; index: number }) {
-  const [isOpen, setIsOpen] = useState(false);
+/** How much the world is dimmed behind each chapter so the UI stays legible. */
+const SCRIM = [0, 0.04, 0.5, 0.46, 0.4, 0.46, 0.22, 0.58, 0.64, 0.08];
+/** Depth-of-field blur (px) behind the product chapters, desktop only. */
+const BLUR = [0, 0, 5, 6, 2.5, 5, 1.5, 6, 7, 0];
+
+const EASE = [0.22, 1, 0.36, 1] as const;
+
+/* ─── Motion helpers ─── */
+
+function Lines({ lines, as = 'h2', className, delay = 0 }: { lines: string[]; as?: 'h1' | 'h2'; className?: string; delay?: number }) {
+  const Tag = as === 'h1' ? motion.h1 : motion.h2;
   return (
-    <div className={`faq-item ${isOpen ? 'faq-open' : ''}`}>
+    <Tag className={className} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.5 }}>
+      {lines.map((line, i) => (
+        <React.Fragment key={line}>
+          <span className="line-mask">
+            <motion.span
+              className="line"
+              variants={{
+                hidden: { y: '105%', opacity: 0 },
+                show: { y: '0%', opacity: 1, transition: { duration: 1.25, ease: EASE, delay: delay + i * 0.1 } },
+              }}
+            >
+              {line}
+            </motion.span>
+          </span>
+          {i < lines.length - 1 && ' '}
+        </React.Fragment>
+      ))}
+    </Tag>
+  );
+}
+
+function Reveal({ children, delay = 0, className, y = 26 }: { children: React.ReactNode; delay?: number; className?: string; y?: number }) {
+  return (
+    <motion.div
+      className={className}
+      initial={{ opacity: 0, y, filter: 'blur(8px)' }}
+      whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+      viewport={{ once: true, amount: 0.3 }}
+      transition={{ duration: 1.2, ease: EASE, delay }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+/** A story chapter: content dissolves in as it arrives and out as it leaves,
+    so each scene hands over to the world behind it. */
+function Chapter({
+  id,
+  index,
+  className = '',
+  label,
+  children,
+}: {
+  id: string;
+  index: number;
+  className?: string;
+  label: string;
+  children: React.ReactNode;
+}) {
+  const ref = useRef<HTMLElement>(null);
+  const { scrollYProgress: enter } = useScroll({ target: ref, offset: ['start end', 'start 40%'] });
+  const { scrollYProgress: exit } = useScroll({ target: ref, offset: ['end 70%', 'end start'] });
+  const opacity = useTransform<number, number>([enter, exit] as MotionValue<number>[], ([a, b]) =>
+    Math.min(Math.min(1, a * 1.3), 1 - b * 1.15),
+  );
+  const y = useTransform(exit, [0, 1], [0, -60]);
+  return (
+    <section ref={ref} id={id} data-chapter={index} className={`chapter ${className}`} aria-label={label}>
+      <motion.div className="chapter-inner" style={{ opacity, y }}>
+        {children}
+      </motion.div>
+    </section>
+  );
+}
+
+function TiltStage({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] });
+  const rotateY = useTransform(scrollYProgress, [0, 0.5, 1], [-30, -14, -6]);
+  const rotateX = useTransform(scrollYProgress, [0, 0.5, 1], [16, 7, 2]);
+  const rotateZ = useTransform(scrollYProgress, [0, 1], [3, -1]);
+  const y = useTransform(scrollYProgress, [0, 1], [90, -70]);
+  return (
+    <div ref={ref} className="tilt-stage">
+      <motion.div className="tilt-inner" style={{ rotateX, rotateY, rotateZ, y }}>
+        {children}
+      </motion.div>
+    </div>
+  );
+}
+
+function Drift({ children, amount = 60, className }: { children: React.ReactNode; amount?: number; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] });
+  const y = useTransform(scrollYProgress, [0, 1], [amount, -amount]);
+  return (
+    <motion.div ref={ref} className={className} style={{ y }}>
+      {children}
+    </motion.div>
+  );
+}
+
+function FAQAccordion({ item, index }: { item: FAQItem; index: number }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className={`faq-row ${open ? 'is-open' : ''}`}>
       <button
-        className="faq-question"
-        onClick={() => setIsOpen(!isOpen)}
-        aria-expanded={isOpen}
+        type="button"
+        className="faq-q"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-controls={`faq-a-${index}`}
         id={`faq-q-${index}`}
       >
         <span>{item.question}</span>
-        {isOpen ? <Minus size={18} /> : <Plus size={18} />}
+        {open ? <Minus size={16} /> : <Plus size={16} />}
       </button>
-      <div className="faq-answer" role="region" aria-labelledby={`faq-q-${index}`}>
-        {isOpen && <p>{item.answer}</p>}
+      <div className="faq-a" id={`faq-a-${index}`} role="region" aria-labelledby={`faq-q-${index}`}>
+        <div>
+          <p>{item.answer}</p>
+        </div>
       </div>
     </div>
   );
 }
 
-/* ─── Component ─── */
+function pickQuality(): 'high' | 'low' {
+  const narrow = window.matchMedia('(max-width: 820px)').matches;
+  const coarse = window.matchMedia('(pointer: coarse)').matches;
+  const cores = navigator.hardwareConcurrency || 4;
+  const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8;
+  return narrow || coarse || cores <= 4 || memory <= 4 ? 'low' : 'high';
+}
+
+/* ─── Page ─── */
 
 export default function Landing() {
   const navigate = useNavigate();
-  const shouldReduceMotion = useReducedMotion();
-  const sceneRef = useRef<HTMLDivElement>(null);
-  const [showStickyBar, setShowStickyBar] = useState(false);
+  const reduceMotion = !!useReducedMotion();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const scrimRef = useRef<HTMLDivElement>(null);
+  const navRef = useRef<HTMLElement>(null);
+  const railFillRef = useRef<HTMLSpanElement>(null);
+  const heroRef = useRef<HTMLElement>(null);
+  const lenisRef = useRef<Lenis | null>(null);
+  const [worldReady, setWorldReady] = useState(false);
+  const [activeChapter, setActiveChapter] = useState(0);
+  const [yearly, setYearly] = useState(false);
+
+  const { scrollYProgress: heroExit } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
+  const heroOpacity = useTransform(heroExit, [0, 0.55], [1, 0]);
+  const heroY = useTransform(heroExit, [0, 1], [0, -140]);
+
+  const goTo = useCallback((id: string) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (lenisRef.current) {
+      lenisRef.current.scrollTo(el, { duration: 2.2 });
+    } else {
+      el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' });
+    }
+  }, [reduceMotion]);
 
   useEffect(() => {
-    let animationFrameId: number;
-    let time = 0;
-    let heroVisible = true;
-    let prevMouseY = 0;
-    let prevMouseTime = performance.now();
-    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-    const lineCount = isMobile ? 22 : 36;
+    const root = rootRef.current;
+    const canvas = canvasRef.current;
+    if (!root || !canvas) return undefined;
 
-    // Harmonic elastic spring state (strictly silent, visual-only physics)
-    const stringPhysics = Array.from({ length: lineCount }, () => ({
-      displacement: 0,
-      velocity: 0,
-    }));
+    const lenis = reduceMotion
+      ? null
+      : new Lenis({ lerp: 0.085, smoothWheel: true, wheelMultiplier: 0.9, touchMultiplier: 1.3 });
+    lenisRef.current = lenis;
 
-    let basePaths: NodeListOf<SVGPathElement> | null = null;
-    let activePaths: NodeListOf<SVGPathElement> | null = null;
-
-    const renderWaves = () => {
-      if (!heroVisible) return;
-      time += 0.003;
-      if (!sceneRef.current) return;
-
-      if (!basePaths || !activePaths) {
-        basePaths = sceneRef.current.querySelectorAll<SVGPathElement>('.waves-base path');
-        activePaths = sceneRef.current.querySelectorAll<SVGPathElement>('.waves-active path');
-      }
-
-      for (let i = 0; i < lineCount; i++) {
-        const y = 40 + i * (isMobile ? 38 : 26);
-        const phaseRow = i * 0.3;
-        const waveSpeed = time * 2;
-
-        // Update harmonic spring physics: F = -k*x - c*v
-        const str = stringPhysics[i];
-        str.velocity += -0.075 * str.displacement;
-        str.velocity *= 0.942;
-        str.displacement += str.velocity;
-
-        const cy1 = y - 130 + Math.sin(phaseRow + waveSpeed) * 80 + str.displacement * 0.85;
-        const cy2 = y + 130 + Math.sin(phaseRow + waveSpeed - 1.2) * 80 - str.displacement * 0.65;
-        const cy3 = y + Math.sin(phaseRow + waveSpeed - 2.4) * 60 + str.displacement * 0.45;
-
-        const d = `M -100 ${y} C 480 ${cy1}, 1020 ${cy2}, 1600 ${cy3}`;
-
-        if (basePaths && basePaths[i]) basePaths[i].setAttribute('d', d);
-        if (activePaths && activePaths[i]) activePaths[i].setAttribute('d', d);
-      }
-
-      animationFrameId = requestAnimationFrame(renderWaves);
+    /* Scroll position → fractional chapter, anchored on each section's centre */
+    const sections = Array.from(root.querySelectorAll<HTMLElement>('[data-chapter]'));
+    let anchors: number[] = [];
+    const measure = () => {
+      const vh = window.innerHeight;
+      const max = Math.max(document.documentElement.scrollHeight - vh, 1);
+      let prev = -1;
+      anchors = sections.map((el, i) => {
+        const top = el.getBoundingClientRect().top + window.scrollY;
+        let a = i === 0 ? 0 : top + el.offsetHeight / 2 - vh / 2;
+        a = Math.min(Math.max(a, prev + 1), max);
+        prev = a;
+        return a;
+      });
     };
-
-    // Stop animation loop when hero is out of view
-    let waveObserver: IntersectionObserver | undefined;
-    if (!shouldReduceMotion) {
-      renderWaves();
-
-      if (sceneRef.current && typeof IntersectionObserver !== 'undefined') {
-        waveObserver = new IntersectionObserver(([entry]) => {
-          const wasVisible = heroVisible;
-          heroVisible = entry.isIntersecting;
-          if (heroVisible && !wasVisible) renderWaves();
-          if (!heroVisible) cancelAnimationFrame(animationFrameId);
-        });
-        waveObserver.observe(sceneRef.current);
-      }
-    }
-
-    let pendingPointerX = 0;
-    let pendingPointerY = 0;
-    let pointerFramePending = false;
-
-    const processPointerInteraction = () => {
-      pointerFramePending = false;
-      if (!heroVisible || !sceneRef.current) return;
-      const rect = sceneRef.current.getBoundingClientRect();
-      const x = pendingPointerX - rect.left;
-      const y = pendingPointerY - rect.top;
-      sceneRef.current.style.setProperty('--mouse-x', `${x}px`);
-      sceneRef.current.style.setProperty('--mouse-y', `${y}px`);
-
-      const now = performance.now();
-      const dt = Math.max((now - prevMouseTime) / 1000, 0.001);
-      const vy = (y - prevMouseY) / dt;
-
-      const svgNormY = (y / Math.max(rect.height, 1)) * 1000;
-      const prevSvgNormY = (prevMouseY / Math.max(rect.height, 1)) * 1000;
-
-      for (let i = 0; i < lineCount; i++) {
-        const lineY = 40 + i * (isMobile ? 38 : 26);
-        const crossed = (prevSvgNormY <= lineY && svgNormY >= lineY) || (prevSvgNormY >= lineY && svgNormY <= lineY);
-        const dist = Math.abs(svgNormY - lineY);
-
-        if (crossed || (dist < 14 && Math.abs(vy) > 80)) {
-          const pluckForce = Math.min(Math.max(vy * 0.05, -30), 30);
-          stringPhysics[i].velocity += pluckForce;
+    const chapterAt = (y: number) => {
+      if (!anchors.length || y <= anchors[0]) return 0;
+      for (let i = 0; i < anchors.length - 1; i++) {
+        if (y < anchors[i + 1]) {
+          const span = anchors[i + 1] - anchors[i];
+          return i + (span > 0 ? (y - anchors[i]) / span : 1);
         }
       }
-
-      prevMouseY = y;
-      prevMouseTime = now;
+      return anchors.length - 1;
     };
+    measure();
 
-    const handleMouseMove = (e: MouseEvent) => {
-      pendingPointerX = e.clientX;
-      pendingPointerY = e.clientY;
-      if (!pointerFramePending) {
-        pointerFramePending = true;
-        requestAnimationFrame(processPointerInteraction);
+    let scene: ForestScene | null = null;
+    let cancelled = false;
+    let canvasW = 0;
+    let canvasH = 0;
+    const syncSize = () => {
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      if (scene && (w !== canvasW || h !== canvasH)) {
+        canvasW = w;
+        canvasH = h;
+        scene.resize(w, h);
       }
     };
 
-    const handleTouchMove = (e: TouchEvent) => {
-      if (e.touches.length > 0) {
-        pendingPointerX = e.touches[0].clientX;
-        pendingPointerY = e.touches[0].clientY;
-        if (!pointerFramePending) {
-          pointerFramePending = true;
-          requestAnimationFrame(processPointerInteraction);
+    const buildWorld = () => {
+      import('./scene/ForestScene')
+        .then(({ ForestScene }) => {
+          if (cancelled) return;
+          try {
+            scene = new ForestScene({ canvas, quality: pickQuality(), reducedMotion: reduceMotion });
+          } catch (err) {
+            console.warn('[landing] WebGL unavailable — keeping the painted backdrop', err);
+            return;
+          }
+          syncSize();
+          scene.setChapter(chapterAt(window.scrollY));
+          scene.snap();
+          scene.render(performance.now() / 1000);
+          setWorldReady(true);
+        })
+        .catch((err) => console.warn('[landing] failed to load 3D scene', err));
+    };
+    // Let the hero paint first, then build the world
+    const hasIdle = typeof window.requestIdleCallback === 'function';
+    const idleId = hasIdle ? window.requestIdleCallback(buildWorld, { timeout: 400 }) : window.setTimeout(buildWorld, 60);
+
+    const onContextLost = (e: Event) => {
+      e.preventDefault();
+      scene = null;
+      setWorldReady(false);
+    };
+    canvas.addEventListener('webglcontextlost', onContextLost);
+
+    const finePointer = window.matchMedia('(pointer: fine)').matches;
+    const allowBlur = finePointer && window.innerWidth > 900;
+    let lastBlur = -1;
+    const onPointer = (e: PointerEvent) => {
+      scene?.setPointer((e.clientX / window.innerWidth) * 2 - 1, -((e.clientY / window.innerHeight) * 2 - 1));
+    };
+    if (finePointer && !reduceMotion) window.addEventListener('pointermove', onPointer, { passive: true });
+
+    const ro = new ResizeObserver(() => {
+      measure();
+      syncSize();
+    });
+    ro.observe(root);
+    const onResize = () => {
+      measure();
+      syncSize();
+    };
+    window.addEventListener('resize', onResize);
+
+    /* One loop drives smooth scroll, the world and the chrome */
+    let raf = 0;
+    let lastRounded = -1;
+    let lastScrolled = false;
+    const loop = (t: number) => {
+      lenis?.raf(t);
+      const y = lenis ? lenis.animatedScroll : window.scrollY;
+      const c = chapterAt(y);
+
+      if (scene && !document.hidden) {
+        scene.setChapter(c);
+        scene.render(t / 1000);
+      }
+
+      const i = Math.min(Math.floor(c), SCRIM.length - 2);
+      const f = c - i;
+      if (scrimRef.current) scrimRef.current.style.opacity = String(SCRIM[i] + (SCRIM[i + 1] - SCRIM[i]) * f);
+      if (allowBlur) {
+        const blur = BLUR[i] + (BLUR[i + 1] - BLUR[i]) * f;
+        if (Math.abs(blur - lastBlur) > 0.08) {
+          lastBlur = blur;
+          // Slight overscan hides the soft, darkened edge a blur filter leaves
+          canvas.style.filter = blur > 0.1 ? `blur(${blur.toFixed(2)}px)` : 'none';
+          canvas.style.transform = blur > 0.1 ? `scale(${(1 + blur * 0.006).toFixed(4)})` : 'none';
         }
       }
-    };
+      if (railFillRef.current) railFillRef.current.style.transform = `scaleY(${c / (SCRIM.length - 1)})`;
 
-    /* Sticky CTA bar: appears after 15% scroll */
-    const handleScroll = () => {
-      const scrollPct = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
-      setShowStickyBar(scrollPct > 0.15 && scrollPct < 0.9);
+      const rounded = Math.round(c);
+      if (rounded !== lastRounded) {
+        lastRounded = rounded;
+        setActiveChapter(rounded);
+      }
+      const scrolled = y > 24;
+      if (scrolled !== lastScrolled && navRef.current) {
+        lastScrolled = scrolled;
+        navRef.current.classList.toggle('is-scrolled', scrolled);
+      }
+      raf = requestAnimationFrame(loop);
     };
-
-    window.addEventListener('mousemove', handleMouseMove, { passive: true });
-    window.addEventListener('touchmove', handleTouchMove, { passive: true });
-    window.addEventListener('scroll', handleScroll, { passive: true });
+    raf = requestAnimationFrame(loop);
 
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('scroll', handleScroll);
-      cancelAnimationFrame(animationFrameId);
-      waveObserver?.disconnect();
+      cancelled = true;
+      cancelAnimationFrame(raf);
+      if (hasIdle) window.cancelIdleCallback(idleId);
+      else window.clearTimeout(idleId);
+      canvas.removeEventListener('webglcontextlost', onContextLost);
+      window.removeEventListener('pointermove', onPointer);
+      window.removeEventListener('resize', onResize);
+      ro.disconnect();
+      lenis?.destroy();
+      lenisRef.current = null;
+      scene?.dispose();
+      scene = null;
     };
-  }, [shouldReduceMotion]);
-
-  const revealVariants = React.useMemo<Variants>(
-    () => ({
-      hidden: {
-        opacity: 0,
-        y: shouldReduceMotion ? 0 : 24,
-        scale: shouldReduceMotion ? 1 : 0.985,
-        filter: shouldReduceMotion ? 'none' : 'blur(8px)',
-      },
-      visible: (delay: number = 0) => ({
-        opacity: 1,
-        y: 0,
-        scale: 1,
-        filter: 'blur(0px)',
-        transition: {
-          duration: shouldReduceMotion ? 0.18 : 0.62,
-          delay,
-          ease: [0.22, 1, 0.36, 1],
-        },
-      }),
-    }),
-    [shouldReduceMotion],
-  );
-
-  const titleContainerVariants = React.useMemo<Variants>(
-    () => ({
-      hidden: {},
-      visible: {
-        transition: {
-          delayChildren: shouldReduceMotion ? 0 : 0.08,
-          staggerChildren: shouldReduceMotion ? 0 : 0.065,
-        },
-      },
-    }),
-    [shouldReduceMotion],
-  );
-
-  const titleWordVariants = React.useMemo<Variants>(
-    () => ({
-      hidden: {
-        opacity: 0,
-        y: shouldReduceMotion ? 0 : 20,
-        filter: shouldReduceMotion ? 'none' : 'blur(10px)',
-      },
-      visible: {
-        opacity: 1,
-        y: 0,
-        filter: 'blur(0px)',
-        transition: {
-          duration: shouldReduceMotion ? 0.1 : 0.55,
-          ease: [0.22, 1, 0.36, 1],
-        },
-      },
-    }),
-    [shouldReduceMotion],
-  );
+  }, [reduceMotion]);
 
   return (
-    <>
+    <MotionConfig reducedMotion="user">
       <SEO
         title="Optileno | Free AI Daily Planner, Smart Calendar & Task Manager"
         description="The smart AI daily planner and calendar assistant. Auto-schedule deep work, organize tasks, track habits, and prevent burnout with Leno AI. Free forever."
@@ -553,457 +484,335 @@ export default function Landing() {
           ]
         }}
       />
-      <div className="landing-page">
-        <div className="scene-bg" aria-hidden="true" ref={sceneRef}>
-          <div className="orb orb-a" />
-          <div className="orb orb-b" />
+      <Helmet>
+        <meta name="theme-color" content="#07100c" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..500;1,6..72,300..400&display=swap"
+        />
+      </Helmet>
 
-          <div className="waves-container">
-            <svg className="waves-base" viewBox="0 0 1440 1000" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="waveGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#60a5fa" />
-                  <stop offset="50%" stopColor="#3b82f6" />
-                  <stop offset="100%" stopColor="#d97706" />
-                </linearGradient>
-              </defs>
-              {WAVE_PATHS.map((path, index) => (
-                <path key={`base-${index}`} d={path} stroke="rgba(255, 255, 255, 0.04)" strokeWidth="1" fill="none" />
-              ))}
-            </svg>
-          </div>
-
-          <div className="waves-container waves-glow">
-            <svg className="waves-active" viewBox="0 0 1440 1000" preserveAspectRatio="none">
-              {WAVE_PATHS.map((path, index) => (
-                <path key={`glow-${index}`} d={path} stroke="url(#waveGradient)" strokeWidth="2.5" fill="none" />
-              ))}
-            </svg>
-          </div>
+      <div className="cine" ref={rootRef}>
+        {/* ─── The world ─── */}
+        <div className="cine-world" aria-hidden="true">
+          <div className="cine-backdrop" />
+          <canvas ref={canvasRef} className={`cine-canvas ${worldReady ? 'is-ready' : ''}`} />
         </div>
+        <div className="cine-scrim" ref={scrimRef} aria-hidden="true" />
+        <div className="cine-vignette" aria-hidden="true" />
 
-        {/* ─── Nav ─── */}
-        <nav className="landing-nav">
-          <div className="nav-container">
-            <div className="nav-logo">
-              <Logo size={56} animated={true} glow={true} />
-              <span className="logo-text">Optileno</span>
-            </div>
-            <div className="nav-actions">
-              <button className="nav-link nav-link-tools btn-premium" onClick={() => navigate('/tools')}>
-                <Wrench size={15} />
-                Free AI Tools
-              </button>
-              <button
-                className="nav-btn-access btn-premium"
-                onClick={() => navigate('/get-access')}
-              >
-                Get Access
-              </button>
-              <button className="nav-link btn-premium" onClick={() => navigate('/login')}>Login</button>
-              <button className="nav-btn-primary nav-cta-gold btn-premium" onClick={() => navigate('/register')}>
-                Start Free Forever
-                <ArrowRight size={16} />
-              </button>
-            </div>
-          </div>
-        </nav>
-
-        {/* ─── Sticky Mid-Page CTA Bar ─── */}
-        <div className={`sticky-cta-bar ${showStickyBar ? 'sticky-visible' : ''}`}>
-          <div className="sticky-cta-inner">
-            <span className="sticky-cta-text">Ready to start executing?</span>
-            <button className="sticky-cta-btn-secondary btn-premium" onClick={() => navigate('/get-access')}>
-              Get Access
-            </button>
-            <button className="sticky-cta-btn btn-premium" onClick={() => navigate('/register')}>
-              Start Free Forever
-              <ArrowRight size={15} />
-            </button>
-          </div>
-        </div>
-
-        <main className="hero-section">
-          {/* ─── Hero Content ─── */}
-          <motion.section
-            className="hero-content"
-            initial="hidden"
-            animate="visible"
-            variants={revealVariants}
-            custom={0.02}
+        {/* ─── Navigation ─── */}
+        <header className="cine-nav" ref={navRef}>
+          <a
+            href="/"
+            className="cine-brand"
+            onClick={(e) => {
+              e.preventDefault();
+              goTo('top');
+            }}
           >
-            <motion.span className="kicker kicker-luxury" variants={revealVariants} custom={0.08}>
-              <span className="kicker-pulse-dot" />
-              100% Free Forever · No Credit Card Required
-            </motion.span>
+            <Logo size={34} animated={false} glow={false} />
+            <span>Optileno</span>
+          </a>
+          <nav className="cine-links" aria-label="Primary">
+            <button type="button" onClick={() => goTo('product')}>Product</button>
+            <button type="button" onClick={() => goTo('pricing')}>Pricing</button>
+            <button type="button" onClick={() => navigate('/tools')}>Free AI Tools</button>
+            <button type="button" className="cine-login" onClick={() => navigate('/login')}>Log in</button>
+          </nav>
+          <button type="button" className="btn-outline" onClick={() => navigate('/register')}>
+            Get Started
+          </button>
+        </header>
 
-            <motion.h1
-              className="hero-title"
-              variants={titleContainerVariants}
-              initial="hidden"
-              animate="visible"
-              aria-label={HERO_TITLE}
-            >
-              {HERO_TITLE_WORDS.map((word, index) => (
-                <motion.span key={`${word}-${index}`} className="hero-title-word" variants={titleWordVariants}>
-                  {word}
-                </motion.span>
-              ))}
-            </motion.h1>
+        {/* ─── Chapter rail ─── */}
+        <div className="cine-rail" aria-hidden="true">
+          <span className="rail-num">{String(activeChapter + 1).padStart(2, '0')}</span>
+          <span className="rail-track">
+            <span className="rail-fill" ref={railFillRef} />
+          </span>
+          <span className="rail-label">{CHAPTER_LABELS[activeChapter]}</span>
+        </div>
 
-            <motion.h2 className="hero-subtitle" variants={revealVariants} custom={0.16}>
-              Optileno combines AI goal breakdown, daily time-blocking, and burnout
-              protection so you stay focused on what actually moves the needle.
-            </motion.h2>
-
-            <motion.p className="hero-social-proof" variants={revealVariants} custom={0.2}>
-              The AI execution partner for founders, creators, agency owners, and high-output builders.
-            </motion.p>
-
-            <div className="hero-stats">
-              {HERO_STATS.map((metric, index) => (
-                <motion.div
-                  className="stat-card"
-                  key={metric.label}
-                  variants={revealVariants}
-                  initial="hidden"
-                  animate="visible"
-                  custom={0.24 + index * 0.05}
-                >
-                  {metric.icon}
-                  <span>{metric.label}</span>
-                </motion.div>
-              ))}
-            </div>
-
-            <motion.div className="cta-wrapper hero-cta-stack" variants={revealVariants} custom={0.44}>
-              <div className="hero-primary-cta-group">
-                <button className="cta-button cta-gold btn-premium" onClick={() => navigate('/register')}>
-                  Start Planning Free
-                  <ArrowRight size={18} />
+        <main>
+          {/* 01 · Hero */}
+          <section ref={heroRef} id="top" data-chapter={0} className="chapter hero" aria-label="Introduction">
+            <motion.div className="hero-copy" style={{ opacity: heroOpacity, y: heroY }}>
+              <Lines as="h1" className="display display-xl" lines={['A clearer', 'mind', 'builds a brighter', 'tomorrow.']} delay={0.25} />
+              <Reveal delay={0.9}>
+                <p className="lede">Your AI companion for focus, planning and a more intentional life.</p>
+              </Reveal>
+              <Reveal delay={1.1} className="hero-actions">
+                <button type="button" className="btn-mint" onClick={() => navigate('/register')}>
+                  Start for free <ArrowRight size={16} />
                 </button>
-                <button className="cta-button-ghost btn-premium" onClick={() => navigate('/dashboard-preview')}>
-                  See Live Preview →
-                </button>
-              </div>
-
-              <div className="hero-live-proof">
-                <span className="live-radar-dot" />
-                <span>⭐ 4.9/5 from 1,420+ operators • 100% Free Forever • No Credit Card Required</span>
-              </div>
+                <span className="hero-tag">A calmer. Smarter. You.</span>
+              </Reveal>
             </motion.div>
-
-            {/* Above-the-Fold Real Product Showcase Card */}
-            <motion.div
-              className="hero-product-preview-card"
-              variants={revealVariants}
-              custom={0.5}
-            >
-              <div className="preview-card-header">
-                <span className="screen-badge">Live System Preview</span>
-                <span className="preview-card-title">Optileno AI Planner & Focus Shield</span>
-              </div>
-              <Interactive3DCard fileName="planner-overall.png" title="Optileno AI Daily Planner & Focus Engine" />
-            </motion.div>
-
-            <motion.div className="hero-keyword-links" variants={revealVariants} custom={0.56}>
-              <span>Explore:</span>
-              <div className="hero-keyword-buttons">
-                <button type="button" className="keyword-chip" onClick={() => navigate('/ai-calendar-planner')}>AI Calendar Planner</button>
-                <button type="button" className="keyword-chip" onClick={() => navigate('/workflow-automation-agency-owners')}>For Agency Owners</button>
-                <button type="button" className="keyword-chip" onClick={() => navigate('/ai-task-manager')}>AI Task Manager</button>
-                <button type="button" className="keyword-chip" onClick={() => navigate('/tools')}>Free AI Tools</button>
-              </div>
-            </motion.div>
-
-            {/* Scroll indicator */}
-            <motion.div
-              className="scroll-indicator"
+            <motion.button
+              type="button"
+              className="scroll-cue"
+              onClick={() => goTo('story')}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 1.2, duration: 0.6 }}
+              transition={{ delay: 1.8, duration: 1 }}
             >
-              <ChevronDown size={22} />
-            </motion.div>
-          </motion.section>
+              <Mouse size={16} />
+              Scroll to explore
+            </motion.button>
+          </section>
 
-          {/* ─── Screens ─── */}
-          <motion.section
-            className="screens-section"
-            aria-label="Product screenshots"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.2 }}
-            variants={revealVariants}
-            custom={0.03}
-          >
-            {SCREEN_CARDS.map((screen, index) => (
-              <motion.article
-                key={screen.fileName}
-                className="screen-card"
-                variants={revealVariants}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, amount: 0.2 }}
-                custom={0.06 + index * 0.06}
-              >
-                <div className="screen-top">
-                  <span className="screen-badge">{screen.badge}</span>
-                  <h3>{screen.title}</h3>
-                  <p>{screen.subtitle}</p>
-                </div>
-
-                <Interactive3DCard fileName={screen.fileName} title={screen.title} />
-              </motion.article>
-            ))}
-          </motion.section>
-
-          {/* ─── Features ─── */}
-          <motion.section
-            className="features-section"
-            aria-label="Platform features"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.2 }}
-            variants={revealVariants}
-            custom={0.04}
-          >
-            <h2>Everything you need to go from idea → executed</h2>
-            <div className="features-grid">
-              {FEATURES.map((feature, index) => (
-                <motion.article
-                  key={feature.title}
-                  className="feature-card"
-                  variants={revealVariants}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true, amount: 0.2 }}
-                  custom={0.08 + index * 0.04}
-                >
-                  <div className="feature-icon">{feature.icon}</div>
-                  <h3>{feature.title}</h3>
-                  <p>{feature.description}</p>
-                </motion.article>
-              ))}
-            </div>
-          </motion.section>
-
-          {/* ─── Capabilities ─── */}
-          <motion.section
-            className="capabilities-section"
-            aria-label="Platform capability categories"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.2 }}
-            variants={revealVariants}
-            custom={0.04}
-          >
-            <div className="section-heading">
-              <span>Core Modules</span>
-              <h2>From scattered thinking to controlled execution</h2>
-              <p>
-                Structured for serious work. Designed for speed.
-              </p>
-            </div>
-
-            <div className="capabilities-grid">
-              {CAPABILITY_GROUPS.map((group, groupIndex) => (
-                <motion.article
-                  key={group.title}
-                  className="capability-card"
-                  variants={revealVariants}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true, amount: 0.2 }}
-                  custom={0.08 + groupIndex * 0.05}
-                >
-                  <h3>{group.title}</h3>
-                  <p>{group.summary}</p>
-                  <div className="capability-list">
-                    {group.items.map((item) => (
-                      <div key={item.title} className="capability-item">
-                        <h4>{item.title}</h4>
-                        <p>{item.description}</p>
-                      </div>
-                    ))}
-                  </div>
-                </motion.article>
-              ))}
-            </div>
-          </motion.section>
-
-          {/* ─── Use Cases ─── */}
-          <motion.section
-            className="use-cases-section"
-            aria-label="Optileno use cases"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.2 }}
-            variants={revealVariants}
-            custom={0.04}
-          >
-            <div className="section-heading">
-              <span>Use Cases</span>
-              <h2>Made for people who ship, not people who plan</h2>
-              <p>
-                Run your planning, delivery, and analytics from one AI platform.
-              </p>
-            </div>
-
-            <div className="use-case-grid">
-              {USE_CASE_GROUPS.map((group, index) => (
-                <motion.article
-                  key={group.title}
-                  className="use-case-card"
-                  variants={revealVariants}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true, amount: 0.2 }}
-                  custom={0.1 + index * 0.08}
-                >
-                  <div className="use-case-head">
-                    {group.icon}
-                    <h3>{group.title}</h3>
-                  </div>
-                  <div className="use-case-list">
-                    {group.entries.map((entry) => (
-                      <span key={entry}>{entry}</span>
-                    ))}
-                  </div>
-                </motion.article>
-              ))}
-            </div>
-          </motion.section>
-
-          {/* ─── Testimonials ─── */}
-          <motion.section
-            className="testimonials-section capabilities-section"
-            aria-label="Who Optileno is built for"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.2 }}
-            variants={revealVariants}
-            custom={0.04}
-          >
-            <div className="section-heading">
-              <span>Built For Operators</span>
-              <h2>Designed around how operators work</h2>
-              <p>
-                The workflows Optileno is engineered to power — from solo founders to executive teams.
-              </p>
-            </div>
-
-            <div className="testimonials-grid">
-              {TESTIMONIALS.map((testimonial, index) => (
-                <motion.article
-                  key={testimonial.author}
-                  className="testimonial-card"
-                  variants={revealVariants}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true, amount: 0.2 }}
-                  custom={0.08 + index * 0.04}
-                >
-                  <div className="testimonial-head">
-                    <div
-                      className="testimonial-avatar-initials"
-                      style={{
-                        background: `linear-gradient(135deg, ${testimonial.gradientFrom}, ${testimonial.gradientTo})`,
-                      }}
-                    >
-                      {testimonial.initials}
-                    </div>
-                    <div className="testimonial-author-wrapper">
-                      <h3 className="testimonial-author">{testimonial.author}</h3>
-                      <p className="testimonial-title">{testimonial.title}</p>
-                    </div>
-                  </div>
-                  <blockquote className="testimonial-quote">
-                    {testimonial.quote}
-                  </blockquote>
-                </motion.article>
-              ))}
-            </div>
-          </motion.section>
-
-          {/* ─── FAQ ─── */}
-          <motion.section
-            className="faq-section"
-            aria-label="Frequently asked questions"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.2 }}
-            variants={revealVariants}
-            custom={0.04}
-          >
-            <div className="section-heading">
-              <span>FAQ</span>
-              <h2>Questions before you start</h2>
-            </div>
-
-            <div className="faq-list">
-              {FAQ_ITEMS.map((item, index) => (
-                <FAQAccordion key={index} item={item} index={index} />
-              ))}
-            </div>
-          </motion.section>
-
-          {/* ─── Final CTA ─── */}
-          <motion.section
-            className="journey-section"
-            aria-label="Start your Optileno journey"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.2 }}
-            variants={revealVariants}
-            custom={0.04}
-          >
-            <div className="journey-card">
-              <div className="journey-copy">
-                <span className="journey-kicker">Ready?</span>
-                <h2>Your first productive day starts in 90 seconds.</h2>
-                <p>
-                  Set up your goals, get AI-planned tasks, and start executing — 100% Free to use.
+          {/* 02 · The calm transition */}
+          <Chapter id="story" index={1} className="story" label="More than a productivity app">
+            <div className="story-copy">
+              <Lines className="display display-lg" lines={['More than a', 'productivity app.']} />
+              <Reveal delay={0.3}>
+                <p className="lede">
+                  Optileno helps you think clearly, plan intentionally, and grow consistently — with the power of AI.
                 </p>
-              </div>
-              <div className="journey-actions">
-                <button className="cta-button cta-gold btn-premium" onClick={() => navigate('/register')}>
-                  Start Planning Free
-                  <ArrowRight size={18} />
-                </button>
-                <p className="cta-note-alt">No credit card required. Upgrade to Ultra Pro anytime.</p>
-              </div>
+              </Reveal>
             </div>
-          </motion.section>
+            <Reveal delay={0.6} className="story-note">
+              <p>
+                Clarity
+                <br />
+                today,
+                <br />a better
+                <br />
+                tomorrow.
+              </p>
+            </Reveal>
+          </Chapter>
+
+          {/* 03 · Features */}
+          <Chapter id="product" index={2} className="split" label="Features overview">
+            <div className="split-copy">
+              <Lines className="display display-md" lines={['Everything you need', 'to grow, in one place.']} />
+              <ul className="feature-list">
+                {FEATURES.map(({ icon: Icon, title, text }, i) => (
+                  <Reveal key={title} delay={0.15 + i * 0.1}>
+                    <li>
+                      <span className="feature-icon">
+                        <Icon size={18} />
+                      </span>
+                      <span>
+                        <strong>{title}</strong>
+                        <small>{text}</small>
+                      </span>
+                    </li>
+                  </Reveal>
+                ))}
+              </ul>
+            </div>
+            <TiltStage>
+              <DashboardMockup />
+            </TiltStage>
+          </Chapter>
+
+          {/* 04 · Leno chat */}
+          <Chapter id="leno" index={3} className="split" label="AI chat">
+            <div className="split-copy">
+              <Lines className="display display-md" lines={['A conversation', 'that moves you forward.']} />
+              <Reveal delay={0.25}>
+                <p className="lede">
+                  Get personalized guidance, break down complex problems, and stay on track — whenever you need it.
+                </p>
+              </Reveal>
+            </div>
+            <Drift className="split-visual">
+              <ChatMockup />
+            </Drift>
+          </Chapter>
+
+          {/* 05 · Planner */}
+          <Chapter id="planner" index={4} className="stack" label="Planner">
+            <div className="stack-copy">
+              <Lines className="display display-md" lines={['Plan less.', 'Do more.']} />
+              <Reveal delay={0.25}>
+                <p className="lede">Turn your goals into a clear, actionable plan. Let Optileno handle the details.</p>
+              </Reveal>
+            </div>
+            <Drift amount={40}>
+              <Reveal delay={0.35}>
+                <PlannerMockup />
+              </Reveal>
+            </Drift>
+          </Chapter>
+
+          {/* 06 · Analytics */}
+          <Chapter id="progress" index={5} className="split" label="Analytics">
+            <div className="split-copy">
+              <Lines className="display display-md" lines={['Progress', 'that inspires.']} />
+              <Reveal delay={0.25}>
+                <p className="lede">Track your focus, habits and momentum with beautiful insights.</p>
+              </Reveal>
+            </div>
+            <Drift className="split-visual" amount={50}>
+              <AnalyticsMockup />
+            </Drift>
+          </Chapter>
+
+          {/* 07 · People */}
+          <Chapter id="people" index={6} className="people" label="Who Optileno is for">
+            <div className="people-copy">
+              <Lines className="display display-md" lines={['Made for real people.', 'Built for real progress.']} />
+              <Reveal delay={0.25}>
+                <p className="lede">For anyone building a calmer, more focused life — whatever you&apos;re working towards.</p>
+              </Reveal>
+            </div>
+            <div className="people-grid">
+              {PEOPLE.map(({ icon: Icon, who, text }, i) => (
+                <Reveal key={who} delay={0.2 + i * 0.12} className="glass person">
+                  <p>{text}</p>
+                  <div className="person-who">
+                    <span className="person-avatar">
+                      <Icon size={16} />
+                    </span>
+                    <span>
+                      <strong>For {who.toLowerCase()}</strong>
+                    </span>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+          </Chapter>
+
+          {/* 08 · Pricing */}
+          <Chapter id="pricing" index={7} className="pricing" label="Pricing">
+            <div className="pricing-head">
+              <Lines className="display display-md" lines={['Start your journey today.']} />
+              <Reveal delay={0.2}>
+                <p className="lede">A clearer mind is just one step away.</p>
+              </Reveal>
+              <Reveal delay={0.3}>
+                <div className="cycle" role="group" aria-label="Billing cycle">
+                  <button type="button" className={!yearly ? 'is-active' : ''} aria-pressed={!yearly} onClick={() => setYearly(false)}>
+                    Monthly
+                  </button>
+                  <button type="button" className={yearly ? 'is-active' : ''} aria-pressed={yearly} onClick={() => setYearly(true)}>
+                    Yearly <span className="save">Save 28%</span>
+                  </button>
+                </div>
+              </Reveal>
+            </div>
+            <div className="plans">
+              <Reveal delay={0.3} className="glass plan">
+                <h3>{PLANS.free.name}</h3>
+                <p className="plan-tag">{PLANS.free.tagline}</p>
+                <p className="plan-price">
+                  ₹0 <small>forever</small>
+                </p>
+                <ul>
+                  {PLANS.free.features.map((f) => (
+                    <li key={f}>
+                      <Check size={14} /> {f}
+                    </li>
+                  ))}
+                </ul>
+                <button type="button" className="btn-ghost" onClick={() => navigate('/register')}>
+                  Get Started
+                </button>
+              </Reveal>
+              <Reveal delay={0.42} className="glass plan plan-pro">
+                <span className="plan-badge">Most Popular</span>
+                <h3>{PLANS.pro.name}</h3>
+                <p className="plan-tag">{PLANS.pro.tagline}</p>
+                <p className="plan-price">
+                  {yearly ? PLANS.pro.yearly : PLANS.pro.monthly} <small>/ {yearly ? 'year' : 'month'}</small>
+                </p>
+                <ul>
+                  {PLANS.pro.features.map((f) => (
+                    <li key={f}>
+                      <Check size={14} /> {f}
+                    </li>
+                  ))}
+                </ul>
+                <button type="button" className="btn-mint" onClick={() => navigate('/register?plan=ultra')}>
+                  Start Pro
+                </button>
+              </Reveal>
+            </div>
+            <p className="pricing-note">No credit card needed for Free. Cancel Pro anytime from settings.</p>
+          </Chapter>
+
+          {/* 09 · Questions */}
+          <Chapter id="faq" index={8} className="faq" label="Frequently asked questions">
+            <Lines className="display display-md" lines={['Questions, answered.']} />
+            <Reveal delay={0.2} className="glass faq-list">
+              {FAQ_ITEMS.map((item, index) => (
+                <FAQAccordion key={item.question} item={item} index={index} />
+              ))}
+            </Reveal>
+          </Chapter>
+
+          {/* 10 · Final */}
+          <Chapter id="begin" index={9} className="finale" label="Get started">
+            <div className="finale-copy">
+              <Lines className="display display-lg" lines={['A calmer you.', 'A brighter tomorrow.']} />
+              <Reveal delay={0.3}>
+                <p className="lede">Start for free and take the first step towards a more intentional life.</p>
+              </Reveal>
+              <Reveal delay={0.45}>
+                <button type="button" className="btn-mint" onClick={() => navigate('/register')}>
+                  Get Started <ArrowRight size={16} />
+                </button>
+              </Reveal>
+            </div>
+            <Reveal delay={0.6} className="finale-verse">
+              <p>
+                Better
+                <br />
+                People
+                <br />
+                Build
+                <br />A
+                <br />
+                Brighter
+                <br />
+                World.
+              </p>
+            </Reveal>
+            <div className="finale-cycle" aria-hidden="true">
+              <span>Focus</span>
+              <span>Plan</span>
+              <span>Grow</span>
+              <span>Repeat</span>
+            </div>
+          </Chapter>
         </main>
 
         {/* ─── Footer ─── */}
-        <footer className="landing-footer">
-          <div className="footer-grid">
+        <footer className="cine-footer">
+          <div className="footer-top">
             <div className="footer-brand">
-              <Logo size={32} animated={false} glow={false} />
-              <span className="footer-brand-name">Optileno</span>
+              <Logo size={28} animated={false} glow={false} />
+              <span>Optileno</span>
             </div>
-            <div className="footer-links">
-              <button onClick={() => navigate('/ai-calendar-planner')}>AI Calendar Planner</button>
-              <button onClick={() => navigate('/workflow-automation-agency-owners')}>Agency Automation</button>
-              <button onClick={() => navigate('/vs/motion')}>Optileno vs Motion</button>
-              <button onClick={() => navigate('/vs/sunsama')}>Optileno vs Sunsama</button>
-              <button onClick={() => navigate('/vs/reclaim')}>Optileno vs Reclaim</button>
-              <button onClick={() => navigate('/vs/todoist')}>Optileno vs Todoist</button>
-              <button onClick={() => navigate('/vs/notion')}>Optileno vs Notion</button>
-              <button onClick={() => navigate('/tools')}>Free AI Tools</button>
-              <button onClick={() => navigate('/privacy')}>Privacy Policy</button>
-              <button onClick={() => navigate('/terms')}>Terms of Service</button>
-              <button onClick={() => navigate('/refund')}>Refund Policy</button>
-              <button onClick={() => navigate('/cookies')}>Cookies Policy</button>
-              <button onClick={() => navigate('/login')}>Login</button>
-            </div>
+            <nav className="footer-links" aria-label="Footer">
+              <button type="button" onClick={() => navigate('/ai-calendar-planner')}>AI Calendar Planner</button>
+              <button type="button" onClick={() => navigate('/ai-task-manager')}>AI Task Manager</button>
+              <button type="button" onClick={() => navigate('/workflow-automation-agency-owners')}>Agency Automation</button>
+              <button type="button" onClick={() => navigate('/tools')}>Free AI Tools</button>
+              <button type="button" onClick={() => navigate('/dashboard-preview')}>Live Preview</button>
+              <button type="button" onClick={() => navigate('/vs/motion')}>Optileno vs Motion</button>
+              <button type="button" onClick={() => navigate('/vs/sunsama')}>Optileno vs Sunsama</button>
+              <button type="button" onClick={() => navigate('/vs/reclaim')}>Optileno vs Reclaim</button>
+              <button type="button" onClick={() => navigate('/vs/todoist')}>Optileno vs Todoist</button>
+              <button type="button" onClick={() => navigate('/vs/notion')}>Optileno vs Notion</button>
+              <button type="button" onClick={() => navigate('/get-access')}>Get Access</button>
+              <button type="button" onClick={() => navigate('/login')}>Log in</button>
+              <button type="button" onClick={() => navigate('/privacy')}>Privacy Policy</button>
+              <button type="button" onClick={() => navigate('/terms')}>Terms of Service</button>
+              <button type="button" onClick={() => navigate('/refund')}>Refund Policy</button>
+              <button type="button" onClick={() => navigate('/cookies')}>Cookies Policy</button>
+            </nav>
           </div>
-          <p>© 2026 Optileno. Serious productivity, engineered with AI.</p>
-          <p className="footer-note">Built in India. Shipping globally.</p>
+          <div className="footer-bottom">
+            <p>© 2026 Optileno. A calmer mind builds a brighter tomorrow.</p>
+            <p>Built in India. Shipping globally.</p>
+          </div>
         </footer>
       </div>
-    </>
+    </MotionConfig>
   );
 }

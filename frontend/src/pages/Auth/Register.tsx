@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Mail, Lock, User, Eye, EyeOff, Loader2, AlertCircle, ArrowRight, Sparkles, Check } from 'lucide-react';
 import { userService } from '../../services/api/user.service';
 import { useUserStore } from '../../stores/useUserStore';
@@ -15,12 +15,14 @@ export default function Register() {
     const navigate = useNavigate();
     const isAuthenticated = useUserStore((state) => state.isAuthenticated);
     const login = useUserStore((state) => state.login);
+    const [searchParams] = useSearchParams();
 
     const [formData, setFormData] = useState({
         full_name: '',
         email: '',
         password: '',
-        plan_type: 'EXPLORER', // Default to Free Forever
+        // Default to Free Forever; landing pricing links preselect with ?plan=ultra
+        plan_type: searchParams.get('plan') === 'ultra' ? 'ULTRA' : 'EXPLORER',
         agreedToTerms: false,
     });
     const [showPassword, setShowPassword] = useState(false);
