@@ -1,5 +1,6 @@
 // Usage: node prepare.mjs <folder with hero.png, problem.png, …> [--out ../../frontend/public/story]
-// For each image: writes <name>.webp (max 2560 px wide) and <name>.depth.webp (Depth Anything V2, white = near).
+// For each image: writes <name>.webp (2048 px), <name>.sm.webp (1280 px, phones) and
+// <name>.depth.webp (Depth Anything V2, white = near). Source art lives in design/story-source.
 // First run downloads the depth model (~100 MB) into the local cache.
 import { pipeline, RawImage } from '@huggingface/transformers';
 import sharp from 'sharp';
@@ -31,9 +32,10 @@ for (const f of files) {
   const meta = await sharp(src).metadata();
   const ratio = (meta.width ?? 16) / (meta.height ?? 9);
   if (Math.abs(ratio - 16 / 9) > 0.03) console.warn(`  ! ${f} is ${meta.width}×${meta.height}; the stage expects 16:9`);
-  if ((meta.width ?? 0) < 2400) console.warn(`  ! ${f} is only ${meta.width}px wide; 2560+ looks sharp on large screens`);
+  if ((meta.width ?? 0) < 2048) console.warn(`  ! ${f} is only ${meta.width}px wide; it will be upscaled. 2560+ looks sharpest`);
 
-  await sharp(src).resize({ width: 2560, withoutEnlargement: true }).webp({ quality: 84, effort: 6 }).toFile(join(out, `${name}.webp`));
+  await sharp(src).resize({ width: 2048, kernel: 'lanczos3' }).sharpen({ sigma: 0.6, m1: 0.4, m2: 1.2 }).webp({ quality: 86, effort: 6 }).toFile(join(out, `${name}.webp`));
+  await sharp(src).resize({ width: 1280, kernel: 'lanczos3' }).webp({ quality: 82, effort: 6 }).toFile(join(out, `${name}.sm.webp`));
 
   const { depth } = await estimate(await RawImage.read(src));
   await sharp(Buffer.from(depth.data), { raw: { width: depth.width, height: depth.height, channels: depth.channels } })

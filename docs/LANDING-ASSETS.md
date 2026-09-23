@@ -4,11 +4,26 @@
 
 The landing page is a story told in seven scenes. Each scene is one illustration that the page turns into a **living painting**: a depth map makes near things move more than far things as the visitor scrolls and moves the mouse, and chapters change by flying through clouds. All text and product UI is real HTML laid over the art.
 
-The images in `frontend/public/story/` right now are **placeholders**. They work, but they have three problems the final set must fix:
+## Status (September 23)
 
-1. **Garbled text baked into the art** ("PROJECT WORKFLOW", "Acme Studio – Website Pro…", "CHARGE IT" on a door). This is the single biggest "AI-made" tell.
-2. **The hero changes between images** (different face, hair, clothes; one scene has a different person).
-3. **Too small** (1376 px wide). They look soft on large screens.
+**Delivered and live in the page:** the character sheet, all seven scenes, and loops for `hero` and `finale`. Originals are in `design/story-source/`; the processed files are in `frontend/public/story/`.
+
+How they were processed:
+
+- **Stills:** Lanczos upscale to 2048 px plus light sharpening (`<scene>.webp`), a 1280 px version for phones (`<scene>.sm.webp`), and a Depth Anything V2 depth map (`<scene>.depth.webp`).
+- **Loops:** the generated videos drift in camera for their first ~2 s, so each loop uses seconds 2–8, crossfading the end back into the start (5 s, seamless, ~2 MB). The loop's first frame is the scene's still, so there's no pop when the video starts, and the depth map is made from that frame, so the parallax lines up.
+
+  ```bash
+  ffmpeg -ss 2 -t 6 -i hero-loop-raw.mp4 -filter_complex "[0:v]split[x][y];[x]trim=start=1,setpts=PTS-STARTPTS[main];[y]trim=end=1,setpts=PTS-STARTPTS[head];[main][head]xfade=transition=fade:duration=1:offset=4,format=yuv420p[v]" -map "[v]" -an -c:v libx264 -preset slow -crf 22 -movflags +faststart hero.mp4
+  ffmpeg -i hero.mp4 -frames:v 1 hero-first.png   # becomes hero.webp + its depth map
+  ```
+
+**Still worth improving, when you have time:**
+
+1. **Resolution.** The stills came out at 1376 × 768. They're upscaled, but a native 2560 px render (or a proper AI upscale in Magnific/Topaz) will look noticeably sharper on large and retina screens. Drop the new files into `design/story-source/` with the same names and rerun the script.
+2. **The Gemini sparkle.** Several stills carry Gemini's small visible watermark in the bottom-right corner. It's subtle, and the chapter indicator sits near it, but if your plan lets you export without it, re-export.
+
+The original brief follows.
 
 ---
 
