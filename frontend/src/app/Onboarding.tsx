@@ -1,162 +1,97 @@
-import { useState, type FormEvent } from 'react';
-import { ArrowRight, Minus, Plus } from 'lucide-react';
-import { formatDay, type ISODate } from '../lib/dates';
-import { formatHours } from '../lib/engine';
-import { parseLine } from '../lib/parse';
-import { actions, type AppState } from '../lib/store';
-import { Wordmark } from '../components/Wordmark';
-import { WEEKDAY_LABELS, WEEK_ORDER } from './model';
+import { useState } from 'react';
+import { ArrowRight } from 'lucide-react';
+import { Mark } from '../components/Mark';
+import { CURRENCIES, currencySymbol, isCurrency, type Currency } from '../lib/money';
+import { actions, useAppState } from '../lib/store';
 
-interface OnboardingProps {
-  state: AppState;
-  today: ISODate;
-}
+/** One screen, three answers, then straight to work. */
+export function Onboarding({ onStart }: { onStart: (mode: 'new' | 'sample') => void }) {
+  const { profile } = useAppState();
+  const [name, setName] = useState(profile.name);
+  const [rate, setRate] = useState(profile.rate ? String(profile.rate) : '');
+  const [currency, setCurrency] = useState<Currency>(profile.currency);
+  const [email, setEmail] = useState(profile.email);
 
-export function Onboarding({ state, today }: OnboardingProps) {
-  const [step, setStep] = useState<1 | 2>(1);
-  const [days, setDays] = useState<boolean[]>(state.settings.hoursByWeekday.map((h) => h > 0));
-  const [perDay, setPerDay] = useState(() => Math.max(...state.settings.hoursByWeekday, 5));
-  const [line, setLine] = useState('');
-  const [error, setError] = useState('');
-
-  const hoursByWeekday = days.map((on) => (on ? perDay : 0));
-  const weekly = hoursByWeekday.reduce((s, h) => s + h, 0);
-  const parsed = line.trim() ? parseLine(line, today) : null;
-  const added = state.projects.filter((p) => !p.doneAt);
-
-  const addFromLine = (e: FormEvent) => {
-    e.preventDefault();
-    if (!parsed) return;
-    if (!parsed.title) return setError('Add a name for the project.');
-    if (!parsed.hours) return setError('Add the hours, like “12h”.');
-    if (!parsed.deadline) return setError('Add a deadline, like “Friday” or “Oct 14”.');
-    setError('');
-    actions.addProject({ title: parsed.title, clientName: parsed.client, hoursLeft: parsed.hours, deadline: parsed.deadline });
-    setLine('');
+  const finish = (mode: 'new' | 'sample') => {
+    actions.completeOnboarding({
+      name: name.trim(),
+      rate: Math.max(1, Number(rate) || 75),
+      currency,
+      email: email.trim(),
+    });
+    if (mode === 'sample') actions.loadSample();
+    onStart(mode);
   };
 
   return (
-    <div className="onboarding">
-      <header className="onboarding-top">
-        <Wordmark />
-        <span className="muted">Step {step} of 2</span>
-      </header>
+    <main className="onboarding">
+      <div className="onboarding-card">
+        <div className="onboarding-mark">
+          <Mark size={30} />
+        </div>
+        <p className="eyebrow">Set up in 30 seconds · no account</p>
+        <h1 className="serif onboarding-title">
+          Let’s make sure you get paid for <em className="pen">every</em> hour.
+        </h1>
 
-      {step === 1 ? (
-        <section className="onboarding-card">
-          <h1 className="serif onboarding-title">First, your real week.</h1>
-          <p className="onboarding-lead">
-            Count only focused client work — not email, calls or admin. Most freelancers land between 4 and 6 hours a day. Be honest; every answer depends on it.
-          </p>
-
-          <p className="field-label">Which days do you do client work?</p>
-          <div className="day-toggles" role="group" aria-label="Working days">
-            {WEEK_ORDER.map((d) => (
-              <button
-                key={d}
-                type="button"
-                aria-pressed={days[d]}
-                className={`day-toggle${days[d] ? ' is-on' : ''}`}
-                onClick={() => setDays((prev) => prev.map((v, i) => (i === d ? !v : v)))}
-              >
-                {WEEKDAY_LABELS[d]}
-              </button>
-            ))}
+        <form
+          className="onboarding-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            finish('new');
+          }}
+        >
+          <div className="field">
+            <label className="label" htmlFor="o-name">
+              Your name, as clients see it
+            </label>
+            <input id="o-name" className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Sam Rivera" autoComplete="name" autoFocus />
           </div>
 
-          <p className="field-label">Focused hours on a working day</p>
-          <div className="big-stepper">
-            <button type="button" className="icon-btn" onClick={() => setPerDay((h) => Math.max(1, h - 0.5))} aria-label="Fewer hours">
-              <Minus size={18} />
-            </button>
-            <span className="big-stepper-value serif">{formatHours(perDay)}</span>
-            <button type="button" className="icon-btn" onClick={() => setPerDay((h) => Math.min(12, h + 0.5))} aria-label="More hours">
-              <Plus size={18} />
-            </button>
+          <div className="field">
+            <label className="label" htmlFor="o-rate">
+              Your hourly rate
+            </label>
+            <div className="input-affix">
+              <span className="affix">{currencySymbol(currency)}</span>
+              <input
+                id="o-rate"
+                className="input num"
+                inputMode="decimal"
+                value={rate}
+                onChange={(e) => setRate(e.target.value.replace(/[^\d.]/g, ''))}
+                placeholder="75"
+              />
+              <select className="select affix-select" aria-label="Currency" value={currency} onChange={(e) => isCurrency(e.target.value) && setCurrency(e.target.value)}>
+                {CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.code}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <span className="hint">Used to price extras. Even on fixed-price work, you have one. It’s just hidden.</span>
           </div>
-          <p className="muted onboarding-sum">That's {formatHours(weekly)} of client work a week. You can fine-tune each day later.</p>
+
+          <div className="field">
+            <label className="label" htmlFor="o-email">
+              Email for approvals <span className="muted">(optional)</span>
+            </label>
+            <input id="o-email" className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@studio.com" autoComplete="email" />
+            <span className="hint">When a client taps “Approve”, their email app writes to you. We never see it.</span>
+          </div>
 
           <div className="onboarding-actions">
-            <button
-              type="button"
-              className="btn btn-primary btn-lg"
-              disabled={weekly === 0}
-              onClick={() => {
-                actions.setHoursByWeekday(hoursByWeekday);
-                setStep(2);
-              }}
-            >
-              Continue <ArrowRight size={16} />
+            <button type="submit" className="btn btn-primary btn-lg">
+              Set up my first project <ArrowRight size={18} />
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={() => finish('sample')}>
+              Explore a sample first
             </button>
           </div>
-        </section>
-      ) : (
-        <section className="onboarding-card">
-          <h1 className="serif onboarding-title">What's on your plate?</h1>
-          <p className="onboarding-lead">Add the projects you're already committed to, one line each — the way you'd say it out loud.</p>
-
-          <form onSubmit={addFromLine} className="onboarding-add">
-            <input
-              autoFocus
-              className="input input-lg"
-              value={line}
-              onChange={(e) => {
-                setLine(e.target.value);
-                setError('');
-              }}
-              placeholder="Acme — landing page, 12h, Friday"
-              aria-describedby="onboarding-preview"
-            />
-            <button type="submit" className="btn btn-primary btn-lg" disabled={!line.trim()}>
-              Add
-            </button>
-          </form>
-          <p id="onboarding-preview" className={`preview${error ? ' is-error' : ''}`}>
-            {error ||
-              (parsed
-                ? [parsed.client && `Client: ${parsed.client}`, parsed.title && `Project: ${parsed.title}`, parsed.hours && `${formatHours(parsed.hours)}`, parsed.deadline && `Due ${formatDay(parsed.deadline)}`]
-                    .filter(Boolean)
-                    .join('  ·  ')
-                : 'Client, hours and deadline are understood automatically.')}
-          </p>
-
-          {added.length > 0 && (
-            <ul className="onboarding-list">
-              {added.map((p) => (
-                <li key={p.id}>
-                  <span>
-                    {p.title}
-                    {p.clientId && <span className="muted"> · {state.clients.find((c) => c.id === p.clientId)?.name}</span>}
-                  </span>
-                  <span className="muted">
-                    {formatHours(p.hoursLeft)} · due {formatDay(p.deadline)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <div className="onboarding-actions">
-            <button type="button" className="btn btn-ghost" onClick={() => setStep(1)}>
-              Back
-            </button>
-            <span className="spacer" />
-            {added.length === 0 && (
-              <button type="button" className="btn btn-quiet" onClick={() => actions.loadSample(today)}>
-                Explore with sample projects
-              </button>
-            )}
-            <button
-              type="button"
-              className="btn btn-primary btn-lg"
-              disabled={added.length === 0}
-              onClick={() => actions.completeOnboarding(state.settings.hoursByWeekday)}
-            >
-              See my week <ArrowRight size={16} />
-            </button>
-          </div>
-        </section>
-      )}
-    </div>
+        </form>
+        <p className="onboarding-foot hint">Everything stays in this browser. Nothing to sign up for.</p>
+      </div>
+    </main>
   );
 }

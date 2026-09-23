@@ -1,10 +1,9 @@
 # Optileno
 
-> The honest planner for freelancers. Optileno checks a new client request against your real working week and tells you whether it fits, which existing projects would slip, and the earliest date you can safely promise — with a reply ready to send.
+> Optileno helps freelancers on fixed-price projects stop doing free work by accident. You set up a project's scope in about a minute (deliverables, revision rounds, and what is not included), paste each client request as it arrives, and Optileno says whether it is in scope, a revision round, or extra, with its reasoning. Extras are priced from your hourly rate with the delivery impact worked out. You then charge it (the client approves in one tap) or gift it (shown to the client with its value).
 
-- Who it's for: freelancers (designers, developers, video editors, writers, consultants) juggling several client projects at once.
-- How it works: you set your real focused hours per weekday, add projects with remaining hours and deadlines ("Acme — landing page, 12h, Friday"), and Optileno schedules them earliest-deadline-first to show risk, buffer and open capacity.
-- Key feature: "Can I say yes?" — an instant verdict (yes / tight / not by then) on any new request, plus a counter-offer date.
-- Privacy: local-first. No account; data stays in the user's browser.
-- Price: free during early access.
+- Who it's for: freelance web designers and developers, brand and logo designers, video editors, motion designers, writers and developers who quote a fixed price.
+- Client scope page: one link, no login. Shows what's included, revision rounds used, extras waiting for approval, approved additions and gifts. The page's content travels inside the link after the "#", so it never reaches a server.
+- Privacy: local-first. No account; data stays in the user's browser. No AI, no contract uploads.
+- Price: free during early access. A paid Pro plan is planned.
 - App: https://www.optileno.com/app

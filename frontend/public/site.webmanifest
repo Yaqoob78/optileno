@@ -1,41 +1,17 @@
 {
-  "id": "/",
-  "name": "Optileno \u2014 Know if you can say yes",
+  "id": "/app",
+  "name": "Optileno",
   "short_name": "Optileno",
-  "description": "The honest planner for freelancers: check new client requests against your real week before you answer.",
+  "description": "Stop doing free work by accident. Log client requests, charge or gift extras on purpose, and share a clear scope page.",
   "start_url": "/app",
   "scope": "/",
   "display": "standalone",
-  "display_override": [
-    "standalone",
-    "minimal-ui",
-    "browser"
-  ],
-  "orientation": "portrait",
-  "background_color": "#f6f5f0",
-  "theme_color": "#f6f5f0",
-  "categories": [
-    "productivity",
-    "business"
-  ],
+  "background_color": "#f4f1ea",
+  "theme_color": "#f4f1ea",
+  "categories": ["business", "productivity"],
   "icons": [
-    {
-      "src": "/favicon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/favicon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    }
+    { "src": "/favicon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/favicon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ]
 }

@@ -1,0 +1,435 @@
+/* The client's scope page: a document, not an app. Printable, calm, obvious. */
+
+.client-page {
+  min-height: 100vh;
+  padding: 48px 20px 80px;
+  background:
+    radial-gradient(900px 480px at 50% -8%, rgba(214, 64, 42, 0.05), transparent 65%),
+    var(--paper);
+}
+
+.client-loading {
+  opacity: 0;
+}
+
+.client-doc {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 44px 52px 36px;
+  border-radius: var(--r-xl);
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-3);
+  animation: sheet-in 0.6s var(--ease-out) both;
+}
+
+.client-bad {
+  display: grid;
+  gap: 16px;
+  justify-items: start;
+}
+
+.client-bad h1 {
+  font-size: 2.4rem;
+  line-height: 1.05;
+}
+
+.client-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--line);
+}
+
+.client-by {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.95rem;
+}
+
+.client-avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+}
+
+.client-title-block {
+  padding: 34px 0 26px;
+}
+
+.client-title {
+  margin-top: 10px;
+  font-size: clamp(2.6rem, 7vw, 4.2rem);
+  line-height: 0.96;
+  letter-spacing: -0.025em;
+}
+
+.client-sums {
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.client-sums > div {
+  display: grid;
+  gap: 4px;
+}
+
+.client-sums .num,
+.client-sums span:last-child {
+  font-size: 1.15rem;
+  font-weight: 500;
+}
+
+.client-sum-total .num {
+  font-size: 1.35rem;
+}
+
+.client-section {
+  padding: 32px 0 6px;
+}
+
+.client-h2-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.client-h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 1.75rem;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  margin-bottom: 10px;
+}
+
+.client-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.client-lede {
+  font-size: 0.95rem;
+  margin-bottom: 16px;
+  max-width: 58ch;
+}
+
+/* Waiting on you */
+
+.client-waiting {
+  margin: 28px -24px 0;
+  padding: 26px 24px 22px;
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--accent) 5%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line));
+}
+
+.client-approvals {
+  display: grid;
+  gap: 10px;
+}
+
+.approval-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: 'main price' 'actions actions';
+  gap: 12px 16px;
+  padding: 16px 18px;
+  border-radius: var(--r-md);
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-1);
+  transition: border-color 0.25s, background 0.25s;
+}
+
+.approval-card.approved {
+  border-color: color-mix(in srgb, var(--ok) 45%, var(--line));
+  background: color-mix(in srgb, var(--ok) 5%, var(--card));
+}
+
+.approval-main {
+  grid-area: main;
+}
+
+.approval-title {
+  font-size: 1.02rem;
+  font-weight: 500;
+  line-height: 1.35;
+  margin-bottom: 2px;
+}
+
+.approval-price {
+  grid-area: price;
+  font-size: 1.3rem;
+  font-weight: 500;
+}
+
+.approval-actions {
+  grid-area: actions;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.approval-done {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  width: 100%;
+  font-size: 0.88rem;
+  color: var(--ok-ink);
+}
+
+/* Included */
+
+.client-deliverables {
+  display: grid;
+}
+
+.client-deliverables li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.97rem;
+}
+
+.client-deliverables li:first-child {
+  border-top: 1px solid var(--line);
+}
+
+.client-deliverables li.done > span:nth-child(2) {
+  color: var(--ink-2);
+}
+
+.client-check {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ink-4);
+  color: #fff;
+}
+
+.client-deliverables li.done .client-check {
+  background: var(--ok);
+  border-color: var(--ok);
+}
+
+.client-done-label {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ok-ink);
+  padding-top: 3px;
+}
+
+.client-rounds {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: var(--r-md);
+  background: var(--paper);
+}
+
+.client-rounds > div {
+  display: grid;
+  gap: 2px;
+}
+
+.client-rounds-label {
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.client-rounds .pip {
+  width: 12px;
+  height: 12px;
+}
+
+/* Lines */
+
+.client-lines {
+  display: grid;
+}
+
+.client-lines li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.97rem;
+}
+
+.client-lines li:first-child {
+  border-top: 1px solid var(--line);
+}
+
+.client-lines li.declined > span:first-child {
+  color: var(--ink-3);
+  text-decoration: line-through;
+}
+
+.client-gifts .client-h2 svg {
+  color: var(--gift);
+}
+
+.client-gift-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.client-gift-value s {
+  color: var(--ink-3);
+  text-decoration-color: var(--gift);
+  text-decoration-thickness: 1.5px;
+}
+
+.client-gift-value span {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gift-ink);
+  padding: 3px 7px;
+  border-radius: 5px;
+  background: var(--gift-soft);
+}
+
+.client-excluded {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.client-excluded li {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 0.86rem;
+  color: var(--ink-2);
+}
+
+.client-foot {
+  display: grid;
+  gap: 16px;
+  justify-items: start;
+  margin-top: 40px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+
+.client-foot-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.client-made {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--ink-3);
+  text-decoration: none;
+}
+
+.client-made:hover {
+  color: var(--ink);
+}
+
+@media (max-width: 680px) {
+  .client-page {
+    padding: 0 0 40px;
+  }
+
+  .client-doc {
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    box-shadow: none;
+    padding: 28px 18px 28px;
+  }
+
+  .client-sums {
+    grid-template-columns: 1fr 1fr;
+    justify-content: stretch;
+  }
+
+  .client-waiting {
+    margin: 24px -8px 0;
+    padding: 20px 14px 16px;
+  }
+
+  .approval-actions {
+    justify-content: stretch;
+  }
+
+  .approval-actions .btn {
+    flex: 1;
+  }
+}
+
+@media print {
+  .client-page {
+    padding: 0;
+    background: #fff;
+  }
+
+  .client-doc {
+    box-shadow: none;
+    border: 0;
+    padding: 0;
+    max-width: none;
+  }
+
+  .approval-actions,
+  .client-foot-actions {
+    display: none;
+  }
+
+  .client-waiting {
+    margin: 24px 0 0;
+    background: #fff;
+  }
+}

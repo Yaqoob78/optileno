@@ -1,199 +1,222 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { Trash2 } from 'lucide-react';
-import { formatRelative, type ISODate } from '../lib/dates';
-import { parseLine } from '../lib/parse';
-import { actions, clientOf, type AppState } from '../lib/store';
+import { useState } from 'react';
+import { ArrowLeft, Clapperboard, Code2, Feather, LayoutTemplate, Minus, MonitorSmartphone, PenTool, Plus, Sparkles } from 'lucide-react';
 import { Sheet } from '../components/Sheet';
-import { useToast } from '../components/Toast';
+import { addWorkdays, todayISO } from '../lib/dates';
+import { currencySymbol } from '../lib/money';
+import type { Project } from '../lib/model';
+import { actions, useAppState, type ProjectDraft } from '../lib/store';
+import { TEMPLATES, templateById, type TemplateId } from '../lib/templates';
+import { ListEditor } from './ListEditor';
+
+const ICONS: Record<TemplateId, typeof Sparkles> = {
+  website: MonitorSmartphone,
+  landing: LayoutTemplate,
+  brand: PenTool,
+  video: Clapperboard,
+  dev: Code2,
+  writing: Feather,
+  custom: Sparkles,
+};
 
 interface ProjectSheetProps {
-  open: boolean;
+  project?: Project;
   onClose: () => void;
-  state: AppState;
-  today: ISODate;
-  /** Edit this project; omit to add a new one. */
-  projectId?: string | null;
+  onCreated?: (id: string) => void;
 }
 
-export function ProjectSheet({ open, onClose, state, today, projectId }: ProjectSheetProps) {
-  const toast = useToast();
-  const editing = projectId ? state.projects.find((p) => p.id === projectId) : undefined;
-  const [line, setLine] = useState('');
-  const [title, setTitle] = useState('');
-  const [client, setClient] = useState('');
-  const [hours, setHours] = useState('');
-  const [deadline, setDeadline] = useState('');
-  const [startDate, setStartDate] = useState('');
+function draftFrom(template: TemplateId, rateHours = 0): ProjectDraft {
+  const t = templateById(template);
+  return {
+    client: '',
+    contact: '',
+    name: t.id === 'custom' ? '' : t.label,
+    template,
+    fee: rateHours,
+    deadline: addWorkdays(todayISO(), 15),
+    deliverables: t.deliverables.map((title) => ({ title })),
+    excluded: [...t.excluded],
+    revisions: t.revisions,
+  };
+}
+
+/** Draw the lines: a scope in about a minute, starting from what a careful proposal would say. */
+export function ProjectSheet({ project, onClose, onCreated }: ProjectSheetProps) {
+  const { profile } = useAppState();
+  const editing = !!project;
+  const [step, setStep] = useState<'template' | 'details'>(editing ? 'details' : 'template');
+  const [draft, setDraft] = useState<ProjectDraft>(() =>
+    project
+      ? { ...project, deliverables: project.deliverables.map((d) => ({ ...d })), excluded: [...project.excluded] }
+      : draftFrom('website'),
+  );
+  const [deliverables, setDeliverables] = useState<string[]>(() => draft.deliverables.map((d) => d.title));
   const [touched, setTouched] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
-    setLine('');
-    setTouched(false);
-    setTitle(editing?.title ?? '');
-    setClient(editing ? clientOf(state, editing)?.name ?? '' : '');
-    setHours(editing ? String(editing.hoursLeft) : '');
-    setDeadline(editing?.deadline ?? '');
-    setStartDate(editing?.startDate ?? '');
-    // Only reset when the sheet opens or switches project
-  }, [open, projectId]);
+  const set = <K extends keyof ProjectDraft>(key: K, value: ProjectDraft[K]) => setDraft((d) => ({ ...d, [key]: value }));
 
-  const onLine = (text: string) => {
-    setLine(text);
-    const parsed = parseLine(text, today);
-    setTitle(parsed.title);
-    if (parsed.client !== undefined) setClient(parsed.client);
-    if (parsed.hours !== undefined) setHours(String(parsed.hours));
-    if (parsed.deadline) setDeadline(parsed.deadline);
+  const pick = (id: TemplateId) => {
+    const next = draftFrom(id);
+    setDraft(next);
+    setDeliverables(next.deliverables.map((d) => d.title));
+    setStep('details');
   };
 
-  const hoursNum = Number(hours);
-  const errors = {
-    title: !title.trim() ? 'Give it a name' : '',
-    hours: !(hoursNum > 0) ? 'How many hours of work are left?' : '',
-    deadline: !deadline ? 'When is it due?' : '',
-  };
-  const valid = !errors.title && !errors.hours && !errors.deadline;
+  const valid = draft.name.trim().length > 0 && draft.fee > 0;
 
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
+  const save = () => {
     setTouched(true);
     if (!valid) return;
-    const draft = { title, clientName: client, hoursLeft: hoursNum, deadline, startDate: startDate || null };
-    if (editing) {
-      actions.updateProject(editing.id, draft);
-      toast({ message: 'Saved' });
+    const existing = project?.deliverables ?? [];
+    const final: ProjectDraft = {
+      ...draft,
+      deliverables: deliverables.map((title, i) => {
+        const match = existing.find((d) => d.title === title) ?? existing[i];
+        return match && match.title === title ? { id: match.id, title, done: match.done } : { title };
+      }),
+    };
+    if (project) {
+      actions.updateProject(project.id, final);
       onClose();
     } else {
-      actions.addProject(draft);
-      toast({ message: `Added ${title.trim()}` });
-      // Stay open for rapid entry
-      setLine('');
-      setTitle('');
-      setHours('');
-      setDeadline('');
-      setStartDate('');
-      setTouched(false);
-      document.querySelector<HTMLInputElement>('[data-autofocus]')?.focus();
+      onCreated?.(actions.addProject(final));
     }
   };
 
-  const remove = () => {
-    if (!editing) return;
-    const restore = actions.deleteProject(editing.id);
-    toast({ message: `Deleted ${editing.title}`, action: { label: 'Undo', onClick: restore } });
-    onClose();
-  };
-
-  const clientNames = state.clients.map((c) => c.name);
+  if (step === 'template') {
+    return (
+      <Sheet open onClose={onClose} title="What are you working on?" width={640}>
+        <p className="muted sheet-lede">Pick the closest one. Deliverables, revision rounds and what’s not included are filled in from a careful proposal. Change anything.</p>
+        <div className="template-grid">
+          {TEMPLATES.map((t) => {
+            const Icon = ICONS[t.id];
+            return (
+              <button key={t.id} type="button" className="template-card" onClick={() => pick(t.id)}>
+                <Icon size={20} strokeWidth={1.6} />
+                <span className="template-name">{t.label}</span>
+                <span className="template-blurb">{t.blurb}</span>
+              </button>
+            );
+          })}
+        </div>
+      </Sheet>
+    );
+  }
 
   return (
-    <Sheet open={open} onClose={onClose} title={editing ? 'Edit project' : 'Add a project'}>
-      <form onSubmit={submit} noValidate className="form">
-        {!editing && (
-          <label className="field">
-            <span>Describe it in one line</span>
-            <input
-              data-autofocus
-              className="input input-lg"
-              value={line}
-              onChange={(e) => onLine(e.target.value)}
-              placeholder="Acme — landing page, 12h, Friday"
-              autoComplete="off"
-            />
-            <small className="hint">Client, hours and deadline are picked up automatically. Check them below.</small>
-          </label>
-        )}
-
-        <label className="field">
-          <span>Project</span>
-          <input
-            {...(editing ? { 'data-autofocus': true } : {})}
-            className="input"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Landing page redesign"
-            aria-invalid={touched && !!errors.title}
-          />
-          {touched && errors.title && <small className="error">{errors.title}</small>}
-        </label>
-
-        <label className="field">
-          <span>Client</span>
-          <input
-            className="input"
-            value={client}
-            onChange={(e) => setClient(e.target.value)}
-            placeholder="Optional"
-            list="client-names"
-          />
-          <datalist id="client-names">
-            {clientNames.map((n) => (
-              <option key={n} value={n} />
-            ))}
-          </datalist>
-        </label>
-
-        <div className="form-grid">
-          <label className="field">
-            <span>{editing ? 'Hours left' : 'Hours of work'}</span>
-            <input
-              className="input"
-              type="number"
-              min={0.5}
-              step={0.5}
-              inputMode="decimal"
-              value={hours}
-              onChange={(e) => setHours(e.target.value)}
-              placeholder="12"
-              aria-invalid={touched && !!errors.hours}
-            />
-            {touched && errors.hours && <small className="error">{errors.hours}</small>}
-          </label>
-          <label className="field">
-            <span>Due</span>
-            <input
-              className="input"
-              type="date"
-              value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-              aria-invalid={touched && !!errors.deadline}
-            />
-            {touched && errors.deadline ? (
-              <small className="error">{errors.deadline}</small>
-            ) : (
-              deadline && <small className="hint">Due {formatRelative(deadline, today)}</small>
-            )}
-          </label>
-        </div>
-
-        <details className="more" open={!!startDate}>
-          <summary>Can't start yet?</summary>
-          <label className="field">
-            <span>Earliest start</span>
-            <input className="input" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-          </label>
-        </details>
-
-        <p className="hint">
-          Tip: estimate the hours you'll <em>really</em> need, then add a little. Optileno plans around your real week, so honest numbers give honest answers.
-        </p>
-
-        <div className="sheet-actions">
-          {editing && (
-            <button type="button" className="btn btn-danger" onClick={remove}>
-              <Trash2 size={15} /> Delete
+    <Sheet
+      open
+      onClose={onClose}
+      title={editing ? 'Edit scope' : 'Draw the lines'}
+      width={640}
+      footer={
+        <>
+          {!editing && (
+            <button type="button" className="btn btn-ghost" onClick={() => setStep('template')} style={{ marginRight: 'auto' }}>
+              <ArrowLeft size={16} /> Templates
             </button>
           )}
-          <span className="spacer" />
-          <button type="button" className="btn btn-ghost" onClick={onClose}>
-            {editing ? 'Cancel' : 'Done'}
+          <button type="button" className="btn" onClick={onClose}>
+            Cancel
           </button>
-          <button type="submit" className="btn btn-primary">
-            {editing ? 'Save changes' : 'Add project'}
+          <button type="button" className="btn btn-primary" onClick={save}>
+            {editing ? 'Save scope' : 'Create project'}
           </button>
+        </>
+      }
+    >
+      <div className="form-grid">
+        <div className="row">
+          <div className="field">
+            <label className="label" htmlFor="p-client">
+              Client
+            </label>
+            <input id="p-client" className="input" value={draft.client} onChange={(e) => set('client', e.target.value)} placeholder="Northwind Coffee" data-autofocus />
+          </div>
+          <div className="field">
+            <label className="label" htmlFor="p-contact">
+              Their first name <span className="muted">(for replies)</span>
+            </label>
+            <input id="p-contact" className="input" value={draft.contact} onChange={(e) => set('contact', e.target.value)} placeholder="Maya" />
+          </div>
         </div>
-      </form>
+
+        <div className="field">
+          <label className="label" htmlFor="p-name">
+            Project
+          </label>
+          <input
+            id="p-name"
+            className="input"
+            value={draft.name}
+            onChange={(e) => set('name', e.target.value)}
+            placeholder="Website redesign"
+            aria-invalid={touched && !draft.name.trim()}
+          />
+        </div>
+
+        <div className="row">
+          <div className="field">
+            <label className="label" htmlFor="p-fee">
+              Fixed fee
+            </label>
+            <div className="input-affix">
+              <span className="affix">{currencySymbol(profile.currency)}</span>
+              <input
+                id="p-fee"
+                className="input num"
+                inputMode="decimal"
+                value={draft.fee || ''}
+                placeholder="4,800"
+                aria-invalid={touched && draft.fee <= 0}
+                onChange={(e) => set('fee', Math.max(0, Number(e.target.value.replace(/[^\d.]/g, '')) || 0))}
+              />
+            </div>
+            {touched && draft.fee <= 0 && <span className="hint warn-text">What did you quote? It’s how extras are put in context.</span>}
+          </div>
+          <div className="field">
+            <label className="label" htmlFor="p-deadline">
+              Delivery date
+            </label>
+            <input id="p-deadline" className="input" type="date" value={draft.deadline ?? ''} onChange={(e) => set('deadline', e.target.value || null)} />
+          </div>
+        </div>
+
+        <ListEditor
+          label="What’s included"
+          items={deliverables}
+          onChange={setDeliverables}
+          placeholder="e.g. Design for 5 pages"
+          addLabel="Add a deliverable"
+        />
+
+        <div className="field">
+          <span className="label">Revision rounds included</span>
+          <div className="stepper">
+            <button type="button" className="icon-btn" onClick={() => set('revisions', Math.max(0, draft.revisions - 1))} aria-label="Fewer rounds">
+              <Minus size={16} />
+            </button>
+            <span className="stepper-value num" aria-live="polite">
+              {draft.revisions}
+            </span>
+            <button type="button" className="icon-btn" onClick={() => set('revisions', Math.min(10, draft.revisions + 1))} aria-label="More rounds">
+              <Plus size={16} />
+            </button>
+            <span className="hint">A round is one batch of feedback. Feedback that arrives in pieces on the same day counts once.</span>
+          </div>
+        </div>
+
+        <ListEditor
+          label="Not included"
+          items={draft.excluded}
+          onChange={(excluded) => set('excluded', excluded)}
+          placeholder="e.g. Copywriting"
+          addLabel="Add something that’s not included"
+          variant="excluded"
+        />
+        <p className="hint">
+          The “not included” list is what does the heavy lifting. When a request touches something on it, Optileno will say so.
+        </p>
+      </div>
     </Sheet>
   );
 }

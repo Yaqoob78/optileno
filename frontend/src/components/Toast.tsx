@@ -24,7 +24,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     window.clearTimeout(timer.current);
     seq.current += 1;
     setToast({ ...t, id: seq.current });
-    timer.current = window.setTimeout(() => setToast(null), 5000);
+    timer.current = window.setTimeout(() => setToast(null), t.action ? 6000 : 3800);
   }, []);
 
   return (

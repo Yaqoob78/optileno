@@ -1,3 +1,0 @@
-"""
-Concierge backend package.
-"""

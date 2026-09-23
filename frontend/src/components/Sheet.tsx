@@ -15,7 +15,7 @@ interface SheetProps {
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-export function Sheet({ open, onClose, title, hideTitle, width = 520, children, footer }: SheetProps) {
+export function Sheet({ open, onClose, title, hideTitle, width = 560, children, footer }: SheetProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
@@ -24,8 +24,10 @@ export function Sheet({ open, onClose, title, hideTitle, width = 520, children, 
     if (!open) return undefined;
     const previous = document.activeElement as HTMLElement | null;
     const panel = panelRef.current;
-    const first = panel?.querySelector<HTMLElement>('[data-autofocus]') ?? panel?.querySelector<HTMLElement>(FOCUSABLE);
-    first?.focus();
+    // Focus a field that asks for it, otherwise the dialog itself (not the close button)
+    const first = panel?.querySelector<HTMLElement>('[data-autofocus]') ?? panel;
+    first?.focus({ preventScroll: true });
+    const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
     const onKey = (e: KeyboardEvent) => {
@@ -50,8 +52,8 @@ export function Sheet({ open, onClose, title, hideTitle, width = 520, children, 
     document.addEventListener('keydown', onKey, true);
     return () => {
       document.removeEventListener('keydown', onKey, true);
-      document.body.style.overflow = '';
-      previous?.focus?.();
+      document.body.style.overflow = prevOverflow;
+      previous?.focus?.({ preventScroll: true });
     };
   }, [open]);
 
@@ -60,19 +62,12 @@ export function Sheet({ open, onClose, title, hideTitle, width = 520, children, 
   return createPortal(
     <div className="sheet-root">
       <div className="sheet-overlay" onClick={onClose} aria-hidden="true" />
-      <div
-        ref={panelRef}
-        className="sheet"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="sheet-title"
-        style={{ maxWidth: width }}
-      >
+      <div ref={panelRef} className="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" tabIndex={-1} style={{ maxWidth: width }}>
         <header className="sheet-head">
           <h2 id="sheet-title" className={hideTitle ? 'sr-only' : 'sheet-title serif'}>
             {title}
           </h2>
-          <button type="button" className="icon-btn sheet-close" onClick={onClose} aria-label="Close">
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">
             <X size={18} />
           </button>
         </header>
@@ -80,6 +75,6 @@ export function Sheet({ open, onClose, title, hideTitle, width = 520, children, 
         {footer && <footer className="sheet-foot">{footer}</footer>}
       </div>
     </div>,
-    document.body,
+    document.querySelector('.app-root') ?? document.body,
   );
 }
