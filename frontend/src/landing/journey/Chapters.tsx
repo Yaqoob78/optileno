@@ -140,7 +140,7 @@ export function SolutionChapter() {
       </div>
       <div className="jr-visual jr-stairs">
         <svg className="jr-stairs-path" viewBox="0 0 600 420" preserveAspectRatio="none" aria-hidden="true">
-          <path d="M40 390 C 140 380, 150 300, 230 290 S 330 200, 400 190 S 520 90, 570 40" pathLength={1} />
+          <path d="M470 405 C 430 360, 500 330, 470 290 S 440 220, 500 190 S 560 120, 520 30" pathLength={1} />
         </svg>
         {STEPS.map((s, i) => (
           <div key={s.n} className="jr-step" data-step={i + 1} style={{ ['--i' as string]: i }}>
@@ -149,7 +149,7 @@ export function SolutionChapter() {
             <span>{s.body}</span>
           </div>
         ))}
-        <Note arrow="left" className="jr-note-solution" step={4}>
+        <Note arrow="none" className="jr-note-solution" step={4}>
           Less confusion.
           <br />
           More progress.
@@ -286,10 +286,10 @@ export function ClientChapter() {
       </div>
       <div className="jr-visual jr-client" data-step={1}>
         <ClientPageMock />
-        <Note arrow="down-left" className="jr-note-client" step={2}>
-          Happy clients.
+        <Note arrow="down-right" className="jr-note-client" step={2}>
+          Maya sees exactly
           <br />
-          Longer relationships.
+          where things stand.
         </Note>
       </div>
     </div>

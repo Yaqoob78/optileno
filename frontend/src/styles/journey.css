@@ -645,12 +645,12 @@
 
 .jr-step {
   position: absolute;
-  left: calc(var(--i) * 22%);
-  bottom: calc(var(--i) * 23%);
+  right: calc(52px - var(--i) * 18px);
+  bottom: calc(var(--i) * 23% + 1%);
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 2px 12px;
-  width: 250px;
+  width: 240px;
   padding: 14px 16px;
   border-radius: 18px;
   background: var(--glass);
@@ -690,8 +690,8 @@
 }
 
 .jr-note-solution {
-  right: -3%;
-  bottom: 2%;
+  left: 4%;
+  bottom: 4%;
 }
 
 /* ─── 03 · In action ─── */
@@ -722,6 +722,8 @@
   gap: 16px;
   align-items: start;
   width: 100%;
+  max-width: 660px;
+  margin-right: auto;
 }
 
 .jr-request,
@@ -971,15 +973,44 @@
 /* ─── 05 · Client page ─── */
 
 .jr-client {
+  justify-content: flex-start;
   perspective: 1600px;
 }
 
 .jr-client .lm-browser {
   width: 100%;
-  max-width: 600px;
-  transform: rotateY(-9deg) rotateX(5deg) translateY(10px);
+  max-width: 350px;
+  border-radius: 34px;
+  border: 8px solid #1d1b16;
+  transform: rotateY(-8deg) rotateX(4deg) translateY(12px);
   transition: transform 1.2s var(--ease-out);
-  box-shadow: 0 50px 100px -40px rgba(30, 20, 5, 0.6);
+  box-shadow: 0 50px 100px -40px rgba(30, 20, 5, 0.65);
+}
+
+.jr-client .lm-browser-bar {
+  justify-content: center;
+  height: 34px;
+}
+
+.jr-client .lm-lights {
+  display: none;
+}
+
+.jr-client .lm-client {
+  padding: 18px 18px 16px;
+}
+
+.jr-client .lm-client-title {
+  font-size: 1.9rem;
+  margin-bottom: 14px;
+}
+
+.jr-client .lm-client-sums .num {
+  font-size: 0.95rem;
+}
+
+.jr-client .lm-approval-price {
+  font-size: 1rem;
 }
 
 .jr-client.on .lm-browser {
@@ -987,8 +1018,8 @@
 }
 
 .jr-note-client {
-  left: -10%;
-  top: -6%;
+  left: 56%;
+  top: 4%;
 }
 
 /* ─── Finale ─── */
