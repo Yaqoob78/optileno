@@ -32,12 +32,28 @@ function ScrollToTop() {
   return null;
 }
 
+function CanonicalSync() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    let el = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    if (!el) {
+      el = document.createElement('link');
+      el.rel = 'canonical';
+      document.head.appendChild(el);
+    }
+    const cleanPath = pathname === '/' ? '/' : pathname.replace(/\/+$/, '');
+    el.href = `https://www.optileno.com${cleanPath}`;
+  }, [pathname]);
+  return null;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <ToastProvider>
         <ThemeSync />
         <ScrollToTop />
+        <CanonicalSync />
         <Suspense fallback={<div className="route-loading" />}>
           <Routes>
             <Route path="/" element={<Landing />} />

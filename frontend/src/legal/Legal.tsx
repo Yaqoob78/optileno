@@ -9,6 +9,15 @@ const UPDATED = 'September 23, 2026';
 export function Legal({ page }: { page: 'privacy' | 'terms' }) {
   useEffect(() => {
     document.title = page === 'privacy' ? 'Privacy · Optileno' : 'Terms · Optileno';
+    const desc = document.querySelector('meta[name="description"]');
+    if (desc) {
+      desc.setAttribute(
+        'content',
+        page === 'privacy'
+          ? 'Optileno privacy policy. Your projects, scope data, and client communications stay entirely on your device.'
+          : 'Optileno terms of service. Simple, fair terms for our freelance scope tracking tool.',
+      );
+    }
   }, [page]);
 
   return (
