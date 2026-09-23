@@ -33,7 +33,7 @@ const STOP = new Set(
 /** Words that describe quantity or status, not a subject — never used for matching. */
 const WEAK = new Set(
   `additional extra new more beyond agreed other not spec initial final basic two three four five six work
-   version versions each per within up connected launch ready`.split(/\s+/),
+   version versions each per within up connected launch ready design designs build built create make made`.split(/\s+/),
 );
 
 /** Words that mean the same subject, so "write the About copy" matches "Copywriting". */

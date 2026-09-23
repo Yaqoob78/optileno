@@ -1,0 +1,13 @@
+{
+  "name": "optileno-story-assets",
+  "private": true,
+  "type": "module",
+  "description": "Turns generated landing illustrations into web-ready WebP files plus depth maps for the living-painting stage.",
+  "scripts": {
+    "prepare-art": "node prepare.mjs"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^3.7.0",
+    "sharp": "^0.34.0"
+  }
+}

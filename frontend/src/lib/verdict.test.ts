@@ -119,6 +119,12 @@ describe('suggest', () => {
     expect(read('Can we get the logo as a GIF animation?', project('brand')).reason).toContain('Animated logo versions');
   });
 
+  it('does not match on generic verbs like "design"', () => {
+    const v = read('Could you also design a few Instagram posts for launch?');
+    expect(v.kind).toBe('extra');
+    expect(v.reason).not.toContain('5 pages');
+  });
+
   it('reads comparatives and visual tweaks as revisions, without false alarms', () => {
     const headline = read('Could the headline be a bit bigger?');
     expect(headline.kind).toBe('revision');

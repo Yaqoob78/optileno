@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowUp } from 'lucide-react';
 import type { Project } from '../lib/model';
+import { clearCaptured, peekCaptured } from './capture';
 
 const EXAMPLES = [
   'Can we add a pricing page too?',
@@ -22,7 +23,8 @@ interface ComposerProps {
 
 /** "What did they ask?" The one action Optileno is built around. */
 export function Composer({ projects, projectId, onProjectChange, onSubmit, fixedProject, autoFocus }: ComposerProps) {
-  const [text, setText] = useState('');
+  const [text, setText] = useState(peekCaptured);
+  const [captured, setCaptured] = useState(() => !!peekCaptured());
   const [example, setExample] = useState(0);
   const ref = useRef<HTMLTextAreaElement>(null);
   const current = projects.find((p) => p.id === projectId) ?? projects[0];
@@ -58,7 +60,18 @@ export function Composer({ projects, projectId, onProjectChange, onSubmit, fixed
     if (!clean || !current) return;
     onSubmit(current.id, clean);
     setText('');
+    clearCaptured();
+    setCaptured(false);
   };
+
+  // Arrived from the bookmark or share sheet: put the cursor at the end, ready to send
+  useEffect(() => {
+    if (!captured || !ref.current) return;
+    const el = ref.current;
+    el.focus({ preventScroll: true });
+    el.setSelectionRange(el.value.length, el.value.length);
+    // Only on arrival
+  }, []);
 
   return (
     <form
@@ -113,9 +126,13 @@ export function Composer({ projects, projectId, onProjectChange, onSubmit, fixed
           <ArrowUp size={18} strokeWidth={2.2} />
         </button>
       </div>
-      <p className="composer-hint">
-        Optileno reads it against what you agreed. You decide what happens next. <kbd>/</kbd> to jump here
-      </p>
+      {captured ? (
+        <p className="composer-hint composer-hint-captured">Sent here from your bookmark or share menu. Check the project, then press Enter.</p>
+      ) : (
+        <p className="composer-hint">
+          Optileno reads it against what you agreed. You decide what happens next. <kbd>/</kbd> to jump here
+        </p>
+      )}
     </form>
   );
 }

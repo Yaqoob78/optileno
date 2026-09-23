@@ -1,18 +1,17 @@
 import { useEffect, useRef } from 'react';
 import { Calculator } from './Calculator';
-import { Demo } from './Demo';
-import { Hero, Nav } from './Hero';
-import { HowItWorks } from './HowItWorks';
+import { Finale } from './journey/Finale';
+import { Journey } from './journey/Journey';
+import { Nav } from './Nav';
 import { useReveal, useSmoothScroll } from './scroll';
-import { ChargeOrGift, Faq, FinalCta, ForClients, Insight, MobileCta, Personas, Phrases, Pricing, Privacy } from './Sections';
-import { Story } from './Story';
+import { Faq, MobileCta, Personas, Pricing, Privacy } from './Sections';
 import '../styles/landing.css';
+import '../styles/journey.css';
 
 /**
- * The story, in order: recognition (hero, phrases), the wound (the quick
- * tweak that became 13 free hours), the insight, the fix, proof you can
- * touch (live demo), the philosophy, the client's side, the number, trust,
- * fit, price, doubts, and the last push.
+ * A story in six scenes (the freelancer, the creep, the fix, the tool, the
+ * choice, the client), then the numbers, trust, fit, price and doubts, and
+ * one last scene to close on.
  */
 export function Landing() {
   const root = useRef<HTMLDivElement>(null);
@@ -20,7 +19,7 @@ export function Landing() {
   useReveal(root);
 
   useEffect(() => {
-    document.title = 'Optileno — Every small change has a price';
+    document.title = 'Optileno — Clear scope. Happier clients. A freer you.';
   }, []);
 
   return (
@@ -28,21 +27,14 @@ export function Landing() {
       <div className="lp-grain" aria-hidden="true" />
       <Nav />
       <main>
-        <Hero />
-        <Phrases />
-        <Story />
-        <Insight />
-        <HowItWorks />
-        <Demo />
-        <ChargeOrGift />
-        <ForClients />
+        <Journey />
         <Calculator />
         <Privacy />
         <Personas />
         <Pricing />
         <Faq />
       </main>
-      <FinalCta />
+      <Finale />
       <MobileCta />
     </div>
   );

@@ -22,7 +22,16 @@
             ],
             "destination": "https://www.optileno.com/:path*",
             "permanent": true
-        }
+        },
+        { "source": "/(login|register|signup|dashboard|planner|chat|chat-leno|analytics|settings|onboarding)", "destination": "/app", "permanent": true },
+        { "source": "/(dashboard|planner|analytics|settings)/:rest*", "destination": "/app", "permanent": true },
+        { "source": "/(refund|refund-policy)", "destination": "/terms", "permanent": true },
+        { "source": "/(cookies|cookie-policy)", "destination": "/privacy", "permanent": true },
+        { "source": "/(ai-calendar-planner|workflow-automation-agency-owners|ai-planner|ai-task-manager|ai-productivity|plan-task|show-analytics|goal-progress|pricing|features|about)", "destination": "/", "permanent": true },
+        { "source": "/optileno-vs-:competitor", "destination": "/", "permanent": true },
+        { "source": "/vs/:competitor*", "destination": "/", "permanent": true },
+        { "source": "/tools", "destination": "/", "permanent": true },
+        { "source": "/tools/:tool*", "destination": "/", "permanent": true }
     ],
     "rewrites": [
         {

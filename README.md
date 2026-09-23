@@ -7,7 +7,8 @@
 - Client scope page: `/s#…` (the page's content travels inside the link after `#`, so it never reaches a server)
 - Privacy and terms: `/privacy`, `/terms`
 
-Strategy and go-to-market: [docs/STRATEGY.md](docs/STRATEGY.md), [docs/GO-TO-MARKET.md](docs/GO-TO-MARKET.md).
+Strategy and launch: [docs/STRATEGY.md](docs/STRATEGY.md), [docs/LAUNCH-PLAN.md](docs/LAUNCH-PLAN.md) (first 7 days, SEO, infrastructure), [docs/GO-TO-MARKET.md](docs/GO-TO-MARKET.md).
+Landing art: [docs/LANDING-ASSETS.md](docs/LANDING-ASSETS.md) (prompts and specs) and [tools/story-assets](tools/story-assets) (turns images into WebP + depth maps).
 
 ## Develop
 
@@ -29,10 +30,10 @@ frontend/
     lib/        pure logic: verdict engine, ledger, reply drafts, share links, store, templates
     app/        the app (desk, project page, verdict sheet, scope editor, settings)
     client/     the client-facing scope page
-    landing/    the landing page (scroll story, demo, calculator, sections)
+    landing/    the landing page: journey/ is the WebGL "living painting" story (DepthStage.ts, scenes.ts, chapters)
     legal/      privacy and terms
     styles/     design tokens (base.css) plus one stylesheet per area
-  public/       icons, OG image, robots, sitemap, llms.txt
+  public/       icons, OG image, robots, sitemap, llms.txt; story/ holds the scene art and depth maps
 ```
 
 ## Deploy

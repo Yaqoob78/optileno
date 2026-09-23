@@ -21,3 +21,4 @@ Thumbs.db
 *.log
 frontend/test-results/
 frontend/playwright-report/
+tools/**/node_modules/

@@ -1,159 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Check, Clapperboard, Code2, Feather, Laptop, Link2, MonitorSmartphone, PenTool, Plus, ServerOff, Sparkles, Smartphone } from 'lucide-react';
-import { Wordmark } from '../components/Mark';
-import { ClientPageMock } from './mockups';
-import { onScrollFrame, useViewProgress } from './scroll';
-
-/* ─── You've heard these ─── */
-
-const ROW_A = ['Just one small thing…', 'Quick tweak?', 'Shouldn’t take long', 'While you’re in there…', 'It’s basically the same', 'Tiny favour'];
-const ROW_B = ['Last change, promise', 'Can we just try…', 'Won’t take you five minutes', 'Nothing fancy', 'Real quick', 'One more round?'];
-
-export function Phrases() {
-  return (
-    <section className="lp-phrases" aria-labelledby="phrases-title">
-      <h2 id="phrases-title" className="eyebrow lp-phrases-kicker" data-reveal>
-        You’ve heard these
-      </h2>
-      <div className="lp-marquee" aria-hidden="true">
-        <div className="lp-marquee-track">
-          {[...ROW_A, ...ROW_A].map((p, i) => (
-            <span key={i} className="serif">
-              {p}
-              <i>✦</i>
-            </span>
-          ))}
-        </div>
-      </div>
-      <div className="lp-marquee lp-marquee-rev" aria-hidden="true">
-        <div className="lp-marquee-track">
-          {[...ROW_B, ...ROW_B].map((p, i) => (
-            <span key={i} className="serif">
-              {p}
-              <i>✦</i>
-            </span>
-          ))}
-        </div>
-      </div>
-      <ul className="sr-only">
-        {[...ROW_A, ...ROW_B].map((p) => (
-          <li key={p}>{p}</li>
-        ))}
-      </ul>
-      <p className="lp-phrases-line serif" data-reveal>
-        Each one is small. Together, they’re a <em className="pen">second project</em> nobody’s paying for.
-      </p>
-    </section>
-  );
-}
-
-/* ─── The insight ─── */
-
-export function Insight() {
-  return (
-    <section className="lp-section lp-insight" aria-labelledby="insight-title">
-      <div className="lp-container">
-        <h2 id="insight-title" className="serif lp-statement" data-reveal>
-          Scope creep isn’t a <span className="lp-strike">client</span> problem.
-          <br />
-          It’s a <em className="pen">visibility</em> problem.
-        </h2>
-        <div className="lp-truths">
-          {[
-            ['01', 'They forgot what they signed.', 'After kickoff, the scope lives in a PDF nobody reopens. To your client, a pricing page genuinely feels small.'],
-            ['02', 'You remember, but say nothing.', 'Asking for money mid-project feels petty, so you absorb it. Once. Then every time after that.'],
-            ['03', 'So every “small thing” is decided by default.', 'Not by you. Not by them. By silence. That silence is where the money goes.'],
-          ].map(([n, t, b]) => (
-            <article key={n} className="lp-truth" data-reveal>
-              <span className="lp-truth-n num">{n}</span>
-              <h3 className="serif">{t}</h3>
-              <p>{b}</p>
-            </article>
-          ))}
-        </div>
-        <p className="lp-source" data-reveal>
-          Around half of all projects experience scope creep. <span className="muted">Project Management Institute, Pulse of the Profession (2018).</span>
-        </p>
-      </div>
-    </section>
-  );
-}
-
-/* ─── Charge it or gift it ─── */
-
-export function ChargeOrGift() {
-  const ref = useRef<HTMLElement>(null);
-  useViewProgress(ref, (p) => ref.current?.style.setProperty('--p', p.toFixed(4)));
-
-  return (
-    <section ref={ref} className="lp-split" aria-labelledby="split-title">
-      <h2 id="split-title" className="sr-only">
-        Charge it or gift it
-      </h2>
-      <div className="lp-split-half lp-split-charge">
-        <span className="stamp stamp-extra stamp-lg">Extra · $340</span>
-        <h3 className="serif">Charge it.</h3>
-        <p>A clear price and a new date, approved in one tap. No surprise invoice at the end, no quiet resentment in the middle.</p>
-      </div>
-      <div className="lp-split-or serif" aria-hidden="true">
-        or
-      </div>
-      <div className="lp-split-half lp-split-gift">
-        <span className="stamp stamp-gift stamp-lg">Gift · $60</span>
-        <h3 className="serif">Gift it.</h3>
-        <p>Sometimes generosity is the right move. Optileno shows it on your client’s page as a gift, with its value. Gifts people can see get remembered, and returned.</p>
-      </div>
-      <p className="lp-split-foot serif">
-        The only bad option is the <span className="lp-strike">invisible</span> one.
-      </p>
-    </section>
-  );
-}
-
-/* ─── For clients ─── */
-
-export function ForClients() {
-  const ref = useRef<HTMLDivElement>(null);
-  useViewProgress(ref, (p) => ref.current?.style.setProperty('--p', p.toFixed(4)));
-
-  return (
-    <section id="clients" className="lp-section lp-clients" aria-labelledby="clients-title">
-      <div className="lp-container lp-clients-grid">
-        <div className="lp-clients-copy">
-          <p className="eyebrow" data-reveal>
-            The other side of the table
-          </p>
-          <h2 id="clients-title" className="serif lp-h2" data-reveal>
-            A page your clients <em className="pen">actually read.</em>
-          </h2>
-          <p className="lp-lede" data-reveal>
-            Clients don’t creep on purpose. They just can’t see the edges. Send one link and they can: what’s included, what’s done, what’s extra, what was a gift.
-          </p>
-          <ul className="lp-ticks">
-            {[
-              ['One link, nothing to install.', 'No login, no account, no app. It opens in any browser and prints to a tidy PDF.'],
-              ['Revision rounds, visible.', '“1 of 2 used” changes how people give feedback. It gets batched, and it gets focused.'],
-              ['Extras wait for a tap.', 'They approve, their email app writes to you, and one tap marks it approved in Optileno.'],
-              ['Gifts show their value.', 'Complimentary work appears with its price struck through. Goodwill you can point to.'],
-            ].map(([t, b]) => (
-              <li key={t} data-reveal>
-                <Check size={16} strokeWidth={2.4} />
-                <div>
-                  <strong>{t}</strong>
-                  <span>{b}</span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="lp-clients-visual" ref={ref}>
-          <ClientPageMock />
-        </div>
-      </div>
-    </section>
-  );
-}
+import { onScrollFrame } from './scroll';
 
 /* ─── Privacy ─── */
 
@@ -294,6 +142,7 @@ export function Pricing() {
 const FAQS = [
   ['Is it really free?', 'Yes. Everything on this page works today at no cost, with no account and no card. A paid Pro plan is planned for extras like branded client pages. If that changes anything for you, we’ll announce it on this site first, and your data is always yours to export.'],
   ['Does it use AI to read my contract?', 'No. You set up the scope in a minute from a template, and Optileno reads each request against it using plain, transparent rules that run in your browser. It always tells you why it thinks something is in scope or extra, and you always make the final call.'],
+  ['Do I have to copy and paste every request?', 'Pasting works everywhere, but you don’t have to. In Settings, drag the “Check with Optileno” button to your bookmarks bar: select a client’s message in Gmail, Slack or any web page, click it, and the message lands in Optileno ready to check. On Android, install Optileno from your browser menu and it can appear in the Share menu.'],
   ['Do my clients need an account?', 'No. They open a link. The page works in any browser, on any device, and can be saved as a PDF.'],
   ['Where is my data stored?', 'In your browser, on your device. Nothing about your projects is sent to us. Client pages carry their content inside the link itself. Download a backup from Settings now and then, because clearing your browser clears Optileno too.'],
   ['What if my client says no to an extra?', 'Then it doesn’t happen, and nobody’s upset: they saw a clear price and chose. Mark it declined, or turn it into a gift if you’d rather do it anyway. Either way, it’s a decision, not a leak.'],
@@ -334,48 +183,6 @@ export function Faq() {
           ))}
         </div>
       </div>
-    </section>
-  );
-}
-
-/* ─── Final call ─── */
-
-export function FinalCta() {
-  return (
-    <section className="lp-final" aria-labelledby="final-title">
-      <div className="lp-final-drift serif" aria-hidden="true">
-        <span>quick tweak?</span>
-        <span>one more thing</span>
-        <span>nothing fancy</span>
-      </div>
-      <div className="lp-container lp-final-inner">
-        <h2 id="final-title" className="serif" data-reveal>
-          Your next “quick tweak”
-          <br />
-          is already on <em>its way.</em>
-        </h2>
-        <p data-reveal>Be ready for it. Set up your current project in a minute, and decide what every small change is worth.</p>
-        <div data-reveal>
-          <Link to="/app" className="btn btn-accent btn-lg">
-            Open Optileno, it’s free <ArrowRight size={18} />
-          </Link>
-        </div>
-      </div>
-      <footer className="lp-footer">
-        <div className="lp-container lp-footer-inner">
-          <div className="lp-footer-brand">
-            <Wordmark />
-            <p className="serif">Charge it. Gift it. Never lose it.</p>
-          </div>
-          <nav className="lp-footer-links" aria-label="Footer">
-            <Link to="/app">Open the app</Link>
-            <Link to="/privacy">Privacy</Link>
-            <Link to="/terms">Terms</Link>
-            <a href="mailto:optilenoai@gmail.com">Contact</a>
-          </nav>
-          <p className="lp-footer-fine">© {new Date().getFullYear()} Optileno. Made for people who make things.</p>
-        </div>
-      </footer>
     </section>
   );
 }

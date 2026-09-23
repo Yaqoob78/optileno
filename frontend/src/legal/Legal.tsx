@@ -54,7 +54,12 @@ function Privacy() {
 
       <h2>What our host sees</h2>
       <p>
-        The site is served by Vercel, which, like any web host, processes basic request data (such as IP address and browser type) to deliver pages and keep them secure. Fonts load from Google Fonts. We don’t run analytics, ads or tracking pixels, and we don’t set cookies.
+        The site is served by Vercel, which, like any web host, processes basic request data (such as IP address and browser type) to deliver pages and keep them secure. Fonts load from Google Fonts.
+      </p>
+
+      <h2>Page counts</h2>
+      <p>
+        We use Vercel Web Analytics to count visits in aggregate: which pages are viewed, roughly where from, and on what kind of device. It uses no cookies and doesn’t identify you across sites. Before anything is counted, we strip everything after the “#” in the address and any request text you send to the app, so the content of scope pages and client messages is never included. No ads, no tracking pixels, no cookies.
       </p>
 
       <h2>Your control</h2>

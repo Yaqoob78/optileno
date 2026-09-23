@@ -1,10 +1,12 @@
-import { useRef, useState } from 'react';
-import { Download, Upload } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Bookmark, Download, Upload } from 'lucide-react';
 import { Sheet } from '../components/Sheet';
 import { useToast } from '../components/Toast';
 import { CURRENCIES, currencySymbol, isCurrency } from '../lib/money';
 import type { Theme, Tone } from '../lib/model';
+import { siteOrigin } from '../lib/share';
 import { actions, exportData, useAppState } from '../lib/store';
+import { bookmarkletSource } from './capture';
 
 export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const { profile, settings } = useAppState();
@@ -104,6 +106,8 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         </div>
       </section>
 
+      <CaptureSection onDragHint={() => toast({ message: 'Drag this button to your bookmarks bar.' })} />
+
       <section className="settings-section">
         <h3 className="settings-title">Feel</h3>
         <div className="settings-line">
@@ -187,5 +191,36 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         </a>
       </p>
     </Sheet>
+  );
+}
+
+/** A bookmark that sends selected text from Gmail, Slack or any page straight into Optileno. */
+function CaptureSection({ onDragHint }: { onDragHint: () => void }) {
+  const link = useRef<HTMLAnchorElement>(null);
+  useEffect(() => {
+    // React blocks javascript: URLs in props, so the bookmark's address is set directly
+    link.current?.setAttribute('href', bookmarkletSource(siteOrigin()));
+  }, []);
+  return (
+    <section className="settings-section">
+      <h3 className="settings-title">Capture from anywhere</h3>
+      <p className="hint settings-copy">
+        Drag this button to your bookmarks bar. Select a client’s message in Gmail, Slack or anywhere, click the bookmark, and it lands in Optileno, ready to check.
+      </p>
+      <a
+        ref={link}
+        className="btn btn-sm bookmarklet"
+        draggable
+        onClick={(e) => {
+          e.preventDefault();
+          onDragHint();
+        }}
+      >
+        <Bookmark size={15} /> Check with Optileno
+      </a>
+      <p className="hint settings-copy" style={{ marginTop: 12 }}>
+        On Android, add Optileno to your home screen (browser menu → Install app) and it can appear in the Share menu.
+      </p>
+    </section>
   );
 }

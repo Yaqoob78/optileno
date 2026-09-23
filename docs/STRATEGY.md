@@ -58,7 +58,7 @@ None of the dedicated tools shows public evidence of traction. The category is *
 | Objection | Answer | Remaining risk |
 |---|---|---|
 | "ChatGPT can write the email." | True, and the drafts are the least of it. ChatGPT doesn't keep the ledger, count rounds, give the client a page, or remember what was gifted. | Medium. We must win on speed and on the client page. |
-| "People won't open another app when a request lands." (ScopeShield's own lesson) | Capture takes one paste and one keypress, and the `/` shortcut goes straight there. | **High: this is the #1 product risk.** Next: forward-by-email capture, an Android share target, and a browser extension for Gmail and Slack. |
+| "People won't open another app when a request lands." (ScopeShield's own lesson) | Capture is one paste, the `/` shortcut, a one-click "Check with Optileno" bookmark that grabs selected text from Gmail/Slack/any page, and an Android share target. | **Still high: this is the #1 product risk.** Next: forward-by-email capture (needs a small backend). |
 | "Freelancers don't pay for tools." | They pay for tools that pay them back: Bonsai and HoneyBook charge $20–80/mo. Price is anchored to recovered money. | Medium. Test before building Pro. |
 | "Local-first means no sync, no reminders, no real signatures." | Deliberate for v1: zero servers, zero cost, and a strong privacy story. Pro adds sync and reminders. | Low for testing, higher for scale. |
 | "It's a crowded indie niche." | Several MVPs, none with traction, all using the same AI-contract idea. The client-facing, gift-aware angle is unclaimed. | Medium. Move fast; distribution decides it. |
@@ -71,9 +71,9 @@ None of the dedicated tools shows public evidence of traction. The category is *
 - **Cost to serve today:** static hosting only. Margins at scale are close to 100% until sync ships.
 - **Pricing logic:** one caught request (typically $150–400) covers a year of Pro. Say so on the pricing page, and show each user their own "recovered" number.
 
-> ⚠️ **Founder decision needed:** the landing page shows Pro at **$12/mo, "planned"**. Confirm or change it before launch. The old ₹1,499 / $6.99 prices belonged to v1 and no longer apply.
+> **Decided (Sept 23):** Pro stays at **$12/mo, labeled "planned"**, and gets validated in the 30-day test. The old ₹1,499 / $6.99 prices belonged to v1 and no longer apply.
 
-## What to measure (and the gap today)
+## What to measure
 
 | Stage | Signal |
 |---|---|
@@ -83,7 +83,7 @@ None of the dedicated tools shows public evidence of traction. The category is *
 | Value | $ recovered per active user (this becomes the testimonial) |
 | Growth | Client pages shared per user; visits arriving via `?ref=scope-page` |
 
-**Gap:** there's no analytics today (the privacy promise is "we don't track"). Recommendation: add cookie-free, aggregate analytics (e.g. Vercel Web Analytics or Plausible) for page views and a few named events, with no project data. Update the Privacy page the same day. Until then, run the test below with interviews and screenshots.
+**Measurement:** cookie-free Vercel Web Analytics is wired in (page views only; everything after `#` and any request text is stripped before sending, and the Privacy page says so). It needs one click to enable in the Vercel dashboard. Views of `/s` (client pages) are the best early signal of real use. Everything deeper (requests logged, money recovered) comes from talking to users until accounts exist.
 
 ## The 30-day test (kill criteria)
 
@@ -99,7 +99,7 @@ Landing page with a scroll story, live demo and leak calculator · onboarding ·
 
 ## Next, in order
 
-1. Capture where requests happen: email forwarding (needs a small backend), then an Android share target / PWA, then a Gmail and Slack extension.
-2. Cookie-free analytics plus a privacy-page update.
+1. Capture by email forwarding (needs a small backend); a Gmail/Slack extension if the bookmark proves popular.
+2. Prerender the landing and content pages for crawlers.
 3. Pro: sync (accounts), branding, signed PDFs, reminders, and billing (Stripe or Lemon Squeezy).
 4. Studio workspaces (2–5 seats).
