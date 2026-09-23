@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import { ToastProvider } from './components/Toast';
 import { useAppState } from './lib/store';
 
@@ -47,6 +48,14 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
+        <Analytics
+          beforeSend={(event) => {
+            const url = new URL(event.url);
+            url.hash = '';
+            for (const key of ['text', 'title']) url.searchParams.delete(key);
+            return { ...event, url: url.toString() };
+          }}
+        />
       </ToastProvider>
     </BrowserRouter>
   );

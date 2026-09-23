@@ -690,8 +690,8 @@
 }
 
 .jr-note-solution {
-  left: 4%;
-  bottom: 4%;
+  left: 2%;
+  top: 2%;
 }
 
 /* ─── 03 · In action ─── */
@@ -1018,8 +1018,9 @@
 }
 
 .jr-note-client {
-  left: 56%;
-  top: 4%;
+  left: auto;
+  right: 0;
+  top: -9%;
 }
 
 /* ─── Finale ─── */
@@ -1219,11 +1220,25 @@
   }
 
   .jr-hero {
-    padding-top: 40vh;
+    padding-top: 44vh;
+    padding-bottom: 28px;
+  }
+
+  .jr-hero .jr-copy {
+    padding: 18px 18px 20px;
   }
 
   .jr-hero .jr-lede {
-    font-size: 1rem;
+    margin-top: 14px;
+    font-size: 0.97rem;
+  }
+
+  .jr-hero .jr-ctas {
+    margin-top: 20px;
+  }
+
+  .jr-hero .jr-micro {
+    display: none;
   }
 
   .jr-copy {

@@ -286,7 +286,7 @@ export function ClientChapter() {
       </div>
       <div className="jr-visual jr-client" data-step={1}>
         <ClientPageMock />
-        <Note arrow="down-right" className="jr-note-client" step={2}>
+        <Note arrow="down-left" className="jr-note-client" step={2}>
           Maya sees exactly
           <br />
           where things stand.

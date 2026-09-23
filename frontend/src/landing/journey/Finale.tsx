@@ -22,19 +22,31 @@ export function Finale() {
       return undefined;
     }
     stage.current = s;
-    s.show(0, true);
     const onMove = (e: PointerEvent) => {
       if (e.pointerType === 'mouse') s.setPointer((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1);
     };
     const onResize = () => s.resize();
     window.addEventListener('pointermove', onMove, { passive: true });
     window.addEventListener('resize', onResize);
-    const io = new IntersectionObserver(([e]) => (e.isIntersecting ? s.play() : s.pause()), { rootMargin: '100px' });
-    if (root.current) io.observe(root.current);
+    // Don't fetch the last scene (and its video) until the visitor is heading there
+    const near = new IntersectionObserver(
+      ([e]) => {
+        if (!e.isIntersecting) return;
+        s.show(0, true);
+        near.disconnect();
+      },
+      { rootMargin: '150% 0px' },
+    );
+    const visible = new IntersectionObserver(([e]) => (e.isIntersecting ? s.play() : s.pause()), { rootMargin: '100px' });
+    if (root.current) {
+      near.observe(root.current);
+      visible.observe(root.current);
+    }
     return () => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('resize', onResize);
-      io.disconnect();
+      near.disconnect();
+      visible.disconnect();
       s.dispose();
     };
   }, []);

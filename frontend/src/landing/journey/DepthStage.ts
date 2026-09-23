@@ -13,8 +13,10 @@ export interface StageScene {
   depth: string;
   /** Optional seamless loop; replaces the still once it plays (desktop only). */
   video?: string;
-  /** Point of the image that must stay in frame on narrow screens (0..1). */
+  /** Point of the image that must stay in frame when it's cropped (0..1). */
   focus: [number, number];
+  /** Focus for portrait screens, where the crop is much narrower. */
+  mobileFocus?: [number, number];
   /** exposure, warmth (0..1), saturation */
   grade?: [number, number, number];
 }
@@ -381,8 +383,9 @@ export class DepthStage {
     gl.uniform2f(this.u.uRes, this.canvas.width, this.canvas.height);
     gl.uniform2f(this.u.uSizeA, a.w, a.h);
     gl.uniform2f(this.u.uSizeB, b.w, b.h);
-    gl.uniform2f(this.u.uFocusA, ...sa.focus);
-    gl.uniform2f(this.u.uFocusB, ...sb.focus);
+    const portrait = this.canvas.width < this.canvas.height;
+    gl.uniform2f(this.u.uFocusA, ...(portrait && sa.mobileFocus ? sa.mobileFocus : sa.focus));
+    gl.uniform2f(this.u.uFocusB, ...(portrait && sb.mobileFocus ? sb.mobileFocus : sb.focus));
     gl.uniform3f(this.u.uGradeA, ...(sa.grade ?? [1, 0, 1]));
     gl.uniform3f(this.u.uGradeB, ...(sb.grade ?? [1, 0, 1]));
     gl.uniform1f(this.u.uMix, this.from === this.to ? 1 : this.mix);
