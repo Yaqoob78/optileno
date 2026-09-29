@@ -3,6 +3,8 @@
 > Optileno helps freelancers on fixed-price projects stop doing free work by accident. You set up a project's scope in about a minute (deliverables, revision rounds, and what is not included), paste each client request as it arrives, and Optileno says whether it is in scope, a revision round, or extra, with its reasoning. Extras are priced from your hourly rate with the delivery impact worked out. You then charge it (the client approves in one tap) or gift it (shown to the client with its value).
 
 - Who it's for: freelance web designers and developers, brand and logo designers, video editors, motion designers, writers and developers who quote a fixed price.
+- Whole messages: paste an email or chat thread with several requests and Optileno splits it into separate asks (dropping greetings, signatures and quoted history), gives each its own verdict, and drafts one reply for all of them.
+- Change orders: extras are bundled into a numbered change order (CO-001, CO-002…) with each addition's price, the new project total and the new delivery date. The client ticks what they want, types their name to sign, and can save it as a PDF; their reply carries a link that marks the items approved, with their signature, in the freelancer's app. A short reference code changes if any price changes. Like the scope page, the document travels inside the link.
 - Client scope page: one link, no login. Shows what's included, revision rounds used, extras waiting for approval, approved additions and gifts. The page's content travels inside the link after the "#", so it never reaches a server.
 - Privacy: local-first. No account; data stays in the user's browser. No AI, no contract uploads.
 - Price: free during early access. A paid Pro plan is planned.

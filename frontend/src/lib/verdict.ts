@@ -161,6 +161,14 @@ export function quote(s: string): string {
   return `“${short}”`;
 }
 
+/** The revision round still collecting feedback (feedback that arrives in pieces counts once), if any. */
+export function roundInProgress(projectItems: RequestItem[], now = Date.now()): number | null {
+  const last = projectItems
+    .filter((i) => i.kind === 'revision' && i.round)
+    .sort((a, b) => b.createdAt - a.createdAt)[0];
+  return last && now - last.createdAt < ROUND_WINDOW_MS ? last.round : null;
+}
+
 export function suggest(text: string, project: Project, projectItems: RequestItem[], now = Date.now()): Verdict {
   const norm = normalize(text);
   const isStatus = norm.search(STATUS) >= 0;
@@ -219,13 +227,9 @@ export function suggest(text: string, project: Project, projectItems: RequestIte
 
   if (v.kind !== 'revision') return v;
 
+  const current = roundInProgress(projectItems, now);
+  if (current) return { ...v, round: current, sameRound: true };
   const used = roundsUsed(projectItems);
-  const last = projectItems
-    .filter((i) => i.kind === 'revision' && i.round)
-    .sort((a, b) => b.createdAt - a.createdAt)[0];
-  if (last && now - last.createdAt < ROUND_WINDOW_MS) {
-    return { ...v, round: last.round, sameRound: true };
-  }
   if (used < project.revisions) return { ...v, round: used + 1 };
   return {
     ...v,
@@ -238,6 +242,60 @@ export function suggest(text: string, project: Project, projectItems: RequestIte
     overRounds: true,
     hours: estimateHours(text, project, true),
   };
+}
+
+const ASKING = /\?|\b(can|could|would|will|please|pls|need|needs|want|wants|let'?s|i'?d like|we'?d like|i'?d love|we'?d love|any chance|is it possible|how about|what about)\b/;
+
+/** True when a sentence asks for something (or reports something broken), not just small talk. */
+export function looksLikeAsk(sentence: string): boolean {
+  const norm = normalize(sentence);
+  if (norm.replace(/[^a-z]/g, '').length < 4) return false;
+  return (
+    ASKING.test(norm) ||
+    FIX.test(norm) ||
+    STRONG_ADD.test(norm) ||
+    WEAK_ADD.test(norm) ||
+    REVISION.test(norm) ||
+    COMPARATIVE.test(norm) ||
+    /^(swap|change|move|make|add|remove|use|put|replace|drop|turn|bring|send|include|try)\b/.test(norm)
+  );
+}
+
+/** Reads several asks from one message. Changes in the same message share one revision round,
+    and once the included rounds are used, one paid round covers every change in the message. */
+export function suggestAll(asks: string[], project: Project, projectItems: RequestItem[], now = Date.now()): Verdict[] {
+  const seen = [...projectItems];
+  let paidRound = false;
+  return asks.map((text, i) => {
+    let v = suggest(text, project, seen, now);
+    if (v.overRounds) {
+      if (paidRound) {
+        v = { ...v, kind: 'revision', reason: 'Part of the extra round above.', round: project.revisions + 1, sameRound: true, overRounds: false, hours: 0 };
+      }
+      paidRound = true;
+    } else if (v.kind === 'revision' && v.round && v.round > project.revisions) {
+      v = { ...v, reason: paidRound ? 'Part of the extra round above.' : 'Part of the extra round already in progress.' };
+    }
+    if (v.kind === 'revision' && v.round) {
+      seen.push({
+        id: `pending-${i}`,
+        projectId: project.id,
+        text,
+        title: text,
+        kind: 'revision',
+        hours: 0,
+        amount: 0,
+        days: 0,
+        status: null,
+        round: v.round,
+        createdAt: now,
+        decidedAt: now,
+        co: null,
+        approvedBy: null,
+      });
+    }
+    return v;
+  });
 }
 
 const LEADING = [

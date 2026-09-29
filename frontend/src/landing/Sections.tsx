@@ -103,7 +103,7 @@ export function Pricing() {
               <span className="muted">no card, no account</span>
             </p>
             <ul>
-              {['Unlimited projects and requests', 'Scope checks with reasons', 'Reply drafts, warm or brief', 'Client scope pages with one-tap approval', 'Gifts, shown with their value', 'Backup and restore'].map((f) => (
+              {['Unlimited projects and requests', 'Scope checks with reasons', 'Whole emails split into separate requests', 'Reply drafts, warm or brief', 'Client scope pages with one-tap approval', 'Change orders your client signs, saved as PDF', 'Gifts, shown with their value', 'Backup and restore'].map((f) => (
                 <li key={f}>
                   <Check size={15} strokeWidth={2.4} /> {f}
                 </li>
@@ -123,7 +123,7 @@ export function Pricing() {
               <span className="muted">a month, when it launches</span>
             </p>
             <ul>
-              {['Your logo and colors on client pages', 'Change orders as signed PDFs', 'Sync across your devices', 'Reminders for unapproved extras'].map((f) => (
+              {['Your logo and colors on client pages', 'Sync across your devices', 'Reminders for unapproved change orders', 'Forward an email to check it'].map((f) => (
                 <li key={f}>
                   <Plus size={15} strokeWidth={2.4} /> {f}
                 </li>
@@ -143,6 +143,7 @@ const FAQS = [
   ['Is it really free?', 'Yes. Everything on this page works today at no cost, with no account and no card. A paid Pro plan is planned for extras like branded client pages. If that changes anything for you, we’ll announce it on this site first, and your data is always yours to export.'],
   ['Does it use AI to read my contract?', 'No. You set up the scope in a minute from a template, and Optileno reads each request against it using plain, transparent rules that run in your browser. It always tells you why it thinks something is in scope or extra, and you always make the final call.'],
   ['Do I have to copy and paste every request?', 'Pasting works everywhere, but you don’t have to. In Settings, drag the “Check with Optileno” button to your bookmarks bar: select a client’s message in Gmail, Slack or any web page, click it, and the message lands in Optileno ready to check. On Android, install Optileno from your browser menu and it can appear in the Share menu.'],
+  ['What if a client asks for five things in one email?', 'Paste the whole email. Optileno splits it into separate requests, skips the greetings, signatures and quoted history, and reads each one against your scope. Tweaks from one message share a single revision round. Anything extra goes into one numbered change order: your client ticks what they want, types their name to sign, and it comes back to your app marked approved.'],
   ['Do my clients need an account?', 'No. They open a link. The page works in any browser, on any device, and can be saved as a PDF.'],
   ['Where is my data stored?', 'In your browser, on your device. Nothing about your projects is sent to us. Client pages carry their content inside the link itself. Download a backup from Settings now and then, because clearing your browser clears Optileno too.'],
   ['What if my client says no to an extra?', 'Then it doesn’t happen, and nobody’s upset: they saw a clear price and chose. Mark it declined, or turn it into a gift if you’d rather do it anyway. Either way, it’s a decision, not a leak.'],

@@ -378,6 +378,332 @@
   color: var(--ink);
 }
 
+/* ─── Change order ─── */
+
+.co-number {
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1.5px solid var(--accent);
+  color: var(--accent-ink);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.co-lede {
+  margin-top: 14px;
+  font-size: 1rem;
+  max-width: 60ch;
+}
+
+.co-meta {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0;
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.co-meta div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.co-meta dd {
+  margin: 0;
+  font-size: 0.93rem;
+  overflow-wrap: anywhere;
+}
+
+.co-lines {
+  display: grid;
+}
+
+.co-lines li {
+  border-bottom: 1px solid var(--line);
+}
+
+.co-lines li:first-child {
+  border-top: 1px solid var(--line);
+}
+
+.co-line {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+  padding: 16px 4px;
+  cursor: pointer;
+}
+
+.co-box {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.co-tick {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border-radius: 6px;
+  border: 1.5px solid var(--ink-4);
+  color: #fff;
+  transition: background 0.2s, border-color 0.2s, transform 0.2s var(--ease-spring);
+}
+
+.co-lines li.on .co-tick {
+  background: var(--accent);
+  border-color: var(--accent);
+  transform: scale(1.04);
+}
+
+.co-box:focus-visible + .co-tick {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.co-box:disabled ~ * {
+  cursor: default;
+}
+
+.co-line-main {
+  display: grid;
+  gap: 4px;
+}
+
+.co-line-title {
+  font-size: 1.05rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.co-line-n {
+  margin-right: 10px;
+  color: var(--ink-4);
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
+.co-asked {
+  font-family: var(--font-serif);
+  font-size: 1.02rem;
+  line-height: 1.35;
+  color: var(--ink-2);
+}
+
+.co-line-price {
+  font-size: 1.15rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.co-lines li.off .co-line-title,
+.co-lines li.off .co-line-price {
+  color: var(--ink-4);
+}
+
+.co-lines li.off .co-line-price {
+  text-decoration: line-through;
+}
+
+.co-totals {
+  display: grid;
+  gap: 2px;
+  margin: 22px 0 0 auto;
+  max-width: 400px;
+  font-size: 0.95rem;
+}
+
+.co-totals > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 6px 0;
+}
+
+.co-this {
+  color: var(--accent-ink);
+}
+
+.co-grand {
+  margin-top: 4px;
+  padding-top: 12px !important;
+  border-top: 1.5px solid var(--ink);
+  font-weight: 500;
+  font-size: 1.12rem;
+}
+
+.co-delivery .arrow {
+  color: var(--accent);
+}
+
+.co-terms {
+  margin-top: 30px;
+  padding: 16px 18px;
+  border-radius: var(--r-md);
+  background: var(--paper);
+}
+
+.co-terms h2 {
+  margin-bottom: 8px;
+}
+
+.co-terms ul {
+  display: grid;
+  gap: 4px;
+  padding-left: 18px;
+  list-style: disc;
+  font-size: 0.87rem;
+  color: var(--ink-2);
+}
+
+.co-sign {
+  margin: 30px -24px 0;
+  padding: 26px 24px 22px;
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--accent) 5%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line));
+}
+
+.co-sign.is-signed {
+  background: color-mix(in srgb, var(--ok) 5%, var(--card));
+  border-color: color-mix(in srgb, var(--ok) 35%, var(--line));
+}
+
+.co-sign .client-h2 svg {
+  color: var(--accent);
+}
+
+.co-sign-grid {
+  display: grid;
+  gap: 14px;
+  margin-top: 6px;
+}
+
+.co-name {
+  display: grid;
+  gap: 6px;
+  max-width: 420px;
+}
+
+.co-name-input {
+  height: 56px;
+  font-family: 'Caveat', 'Segoe Print', 'Bradley Hand', var(--font-serif);
+  font-size: 1.9rem;
+  font-weight: 600;
+  /* Caveat stays upright; if it can't load, the serif fallback uses its real italic */
+  font-style: italic;
+  font-synthesis: none;
+  background: var(--card);
+}
+
+.co-agree {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.93rem;
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.co-agree input {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--accent);
+}
+
+.co-error {
+  margin-top: 12px;
+  font-size: 0.88rem;
+  color: var(--accent-ink);
+}
+
+.co-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.co-how {
+  margin-top: 10px;
+  text-align: right;
+}
+
+.co-paper-sign {
+  display: none;
+}
+
+.co-signature {
+  display: grid;
+  gap: 4px;
+  max-width: 420px;
+}
+
+.co-signature-name {
+  font-family: 'Caveat', 'Segoe Print', 'Bradley Hand', var(--font-serif);
+  font-size: 3rem;
+  font-weight: 600;
+  /* Caveat stays upright; if it can't load, the serif fallback uses its real italic */
+  font-style: italic;
+  font-synthesis: none;
+  line-height: 1;
+  padding: 0 4px 2px;
+  animation: co-ink 0.9s var(--ease-out) both;
+}
+
+.co-signature-line {
+  display: block;
+  height: 1.5px;
+  background: var(--ink);
+  transform-origin: left;
+  animation: co-line 0.6s var(--ease-out) 0.2s both;
+}
+
+@keyframes co-ink {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes co-line {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.co-done {
+  margin-top: 16px;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+}
+
+.co-done svg {
+  flex: 0 0 auto;
+  margin-top: 3px;
+}
+
+.co-sign.is-signed .co-actions {
+  justify-content: flex-start;
+}
+
 @media (max-width: 680px) {
   .client-page {
     padding: 0 0 40px;
@@ -408,6 +734,32 @@
   .approval-actions .btn {
     flex: 1;
   }
+
+  .co-meta {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .co-line {
+    gap: 12px;
+    padding: 14px 0;
+  }
+
+  .co-totals {
+    max-width: none;
+  }
+
+  .co-sign {
+    margin: 26px -8px 0;
+    padding: 20px 14px 16px;
+  }
+
+  .co-actions .btn {
+    flex: 1;
+  }
+
+  .co-how {
+    text-align: left;
+  }
 }
 
 @media print {
@@ -424,8 +776,47 @@
   }
 
   .approval-actions,
-  .client-foot-actions {
+  .client-foot-actions,
+  .co-actions,
+  .co-how,
+  .co-error,
+  .co-done {
     display: none;
+  }
+
+  .co-sign,
+  .co-sign.is-signed {
+    margin: 28px 0 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .co-lines li.off {
+    display: none;
+  }
+
+  .co-signature-name,
+  .co-signature-line {
+    animation: none;
+  }
+
+  .co-sign:not(.is-signed) .co-sign-grid {
+    display: none;
+  }
+
+  .co-paper-sign {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 32px;
+    margin-top: 48px;
+    font-size: 0.8rem;
+    color: var(--ink-3);
+  }
+
+  .co-paper-sign span {
+    padding-top: 6px;
+    border-top: 1px solid var(--ink);
   }
 
   .client-waiting {

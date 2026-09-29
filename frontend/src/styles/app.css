@@ -1021,6 +1021,322 @@ kbd {
   background: var(--paper);
 }
 
+/* ─── Several requests in one message ─── */
+
+.batch-head {
+  margin: 2px 0 20px;
+}
+
+.batch-headline {
+  margin: 6px 0 6px;
+  font-size: clamp(1.7rem, 4vw, 2.2rem);
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+}
+
+.batch-lede {
+  font-size: 0.93rem;
+  max-width: 56ch;
+}
+
+.batch-original {
+  margin-top: 12px;
+  font-size: 0.86rem;
+}
+
+.batch-original summary {
+  cursor: pointer;
+  color: var(--ink-3);
+  width: fit-content;
+}
+
+.batch-original summary:hover {
+  color: var(--ink);
+}
+
+.batch-original p {
+  margin-top: 8px;
+  padding: 12px 14px;
+  border-radius: var(--r-sm);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  white-space: pre-wrap;
+  max-height: 220px;
+  overflow: auto;
+  color: var(--ink-2);
+}
+
+.batch-list {
+  display: grid;
+  gap: 10px;
+  counter-reset: none;
+}
+
+.batch-row {
+  --edge: var(--line);
+  padding: 14px 16px 16px;
+  border-radius: var(--r-md);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--edge);
+  transition: border-color 0.2s, opacity 0.2s;
+}
+
+.batch-included {
+  --edge: var(--ok);
+}
+
+.batch-revision {
+  --edge: var(--rev);
+}
+
+.batch-extra {
+  --edge: var(--accent);
+}
+
+.batch-gift {
+  --edge: var(--gift);
+}
+
+.batch-skip-btn {
+  flex: 0 0 auto;
+  margin: -6px -8px 0 0;
+}
+
+.batch-row.batch-skip {
+  --edge: var(--line);
+  background: var(--card-2);
+}
+
+.batch-row-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.batch-index {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-top: 3px;
+  border-radius: 50%;
+  background: var(--paper-2);
+  color: var(--ink-2);
+  font-size: 0.72rem;
+}
+
+.batch-ask {
+  flex: 1;
+  min-width: 0;
+  font-size: 1.18rem;
+  line-height: 1.25;
+}
+
+.batch-row.batch-skip .batch-ask {
+  color: var(--ink-4);
+  text-decoration: line-through;
+}
+
+.batch-skipped {
+  margin: 8px 0 0 32px;
+}
+
+.batch-read {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin: 10px 0 12px 32px;
+  font-size: 0.87rem;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+
+.batch-read .confidence {
+  margin-left: auto;
+}
+
+.batch-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: 32px;
+}
+
+.batch-kinds {
+  flex: 0 0 auto;
+}
+
+.batch-title {
+  flex: 1 1 200px;
+  height: 36px;
+  font-size: 0.9rem;
+}
+
+.batch-price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 12px;
+  margin: 12px 0 0 32px;
+}
+
+.batch-mini {
+  display: grid;
+  gap: 4px;
+}
+
+.batch-mini .input {
+  height: 36px;
+  width: 84px;
+}
+
+.batch-mini .input-affix .input {
+  width: 96px;
+}
+
+.batch-price-note {
+  padding-bottom: 8px;
+}
+
+.batch-round {
+  margin: 10px 0 0 32px;
+}
+
+.batch-round.warn {
+  color: var(--accent-ink);
+}
+
+.batch-summary {
+  position: sticky;
+  bottom: -1px;
+  display: grid;
+  gap: 6px;
+  margin: 16px -4px 0;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--paper);
+  border: 1px solid var(--line);
+}
+
+.batch-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 0.88rem;
+  color: var(--ink-2);
+}
+
+.batch-count::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--edge, var(--ink-4));
+}
+
+.batch-count-included {
+  --edge: var(--ok);
+}
+
+.batch-count-revision {
+  --edge: var(--rev);
+}
+
+.batch-count-extra {
+  --edge: var(--accent);
+}
+
+.batch-count-gift {
+  --edge: var(--gift);
+}
+
+.batch-co {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--accent-ink);
+}
+
+.batch-co svg {
+  flex: 0 0 auto;
+}
+
+.batch-stamps {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.batch-stamps .stamp {
+  margin-bottom: 0;
+}
+
+/* ─── Change order (freelancer side) ─── */
+
+.co-pick {
+  display: grid;
+  gap: 6px;
+}
+
+.co-pick-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--card);
+  text-align: left;
+  font-size: 0.93rem;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.co-pick-row:hover {
+  border-color: var(--ink-4);
+}
+
+.co-pick-row.on {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  background: color-mix(in srgb, var(--accent) 4%, var(--card));
+}
+
+.co-pick-row.on .check {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.co-pick-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.co-impact {
+  margin-top: 16px;
+}
+
+.co-issued {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.co-ref {
+  font-size: 1.05rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
 /* ─── Project sheet ─── */
 
 .sheet-lede {
@@ -1448,6 +1764,27 @@ kbd {
 
   .template-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .batch-read,
+  .batch-controls,
+  .batch-price,
+  .batch-round,
+  .batch-skipped {
+    margin-left: 0;
+  }
+
+  .batch-kinds {
+    width: 100%;
+  }
+
+  .batch-kinds button {
+    flex: 1;
+    padding: 0 0.4rem;
+  }
+
+  .batch-read .confidence {
+    margin-left: 0;
   }
 
   .settings-section .row .field + .field {

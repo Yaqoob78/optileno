@@ -2,5 +2,6 @@ User-agent: *
 Allow: /
 Disallow: /app
 Disallow: /s
+Disallow: /co
 
 Sitemap: https://www.optileno.com/sitemap.xml

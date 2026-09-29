@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Archive, ArchiveRestore, ArrowLeft, Check, Gift, Pencil, Send, Trash2, X } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowLeft, Check, FileSignature, Gift, Pencil, Send, Trash2, X } from 'lucide-react';
 import { CountUp } from '../components/CountUp';
 import { Menu } from '../components/Menu';
 import { ItemStamp, Pips } from '../components/Stamp';
 import { useToast } from '../components/Toast';
+import { coLabel } from '../lib/changeOrder';
 import { formatLong, formatWhen } from '../lib/dates';
 import { itemsOf, projectTotals } from '../lib/ledger';
 import { formatMoney } from '../lib/money';
@@ -17,9 +18,10 @@ interface ProjectViewProps {
   onAsk: (projectId: string, text: string) => void;
   onEdit: () => void;
   onShare: () => void;
+  onChangeOrder: () => void;
 }
 
-export function ProjectView({ project, onAsk, onEdit, onShare }: ProjectViewProps) {
+export function ProjectView({ project, onAsk, onEdit, onShare, onChangeOrder }: ProjectViewProps) {
   const state = useAppState();
   const toast = useToast();
   const navigate = useNavigate();
@@ -50,6 +52,11 @@ export function ProjectView({ project, onAsk, onEdit, onShare }: ProjectViewProp
           <button type="button" className="btn" onClick={onEdit}>
             <Pencil size={15} /> Scope
           </button>
+          {t.pendingCount > 0 && (
+            <button type="button" className="btn" onClick={onChangeOrder}>
+              <FileSignature size={15} /> Change order
+            </button>
+          )}
           <button type="button" className="btn btn-primary" onClick={onShare}>
             <Send size={15} /> Share with client
           </button>
@@ -213,7 +220,10 @@ function RequestRow({ item, project }: { item: RequestItem; project: Project }) 
         {item.text && item.text !== item.title && <p className="request-quote">“{item.text}”</p>}
         {item.kind === 'extra' && item.status === 'proposed' && (
           <div className="request-actions">
-            <span className="request-waiting">Waiting on {project.contact || 'client'}</span>
+            <span className="request-waiting">
+              Waiting on {project.contact || 'client'}
+              {item.co !== null && ` · ${coLabel(item.co)}`}
+            </span>
             <button
               type="button"
               className="btn btn-sm"
@@ -234,8 +244,9 @@ function RequestRow({ item, project }: { item: RequestItem; project: Project }) 
         )}
         {item.kind === 'extra' && item.status !== 'proposed' && (
           <p className="request-meta hint">
-            {item.status === 'approved' ? 'Approved' : 'Declined'}
+            {item.status === 'approved' ? (item.approvedBy ? `Signed by ${item.approvedBy}` : 'Approved') : 'Declined'}
             {item.decidedAt ? ` ${formatWhen(item.decidedAt).toLowerCase()}` : ''}
+            {item.co !== null && ` · ${coLabel(item.co)}`}
             {item.status === 'approved' && item.days > 0 ? ` · +${item.days} ${item.days === 1 ? 'day' : 'days'}` : ''}
             {' · '}
             <button type="button" className="link-btn" onClick={() => actions.setStatus(item.id, 'proposed')}>

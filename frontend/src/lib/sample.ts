@@ -56,6 +56,8 @@ export function buildSample(profile: Profile, now = Date.now()): { projects: Pro
       round: null,
       createdAt,
       decidedAt: createdAt,
+      co: null,
+      approvedBy: null,
       ...rest,
     };
   };
@@ -63,7 +65,7 @@ export function buildSample(profile: Profile, now = Date.now()): { projects: Pro
   const items: RequestItem[] = [
     item(web, 120, 'Could the hero headline be a bit bigger? It feels a little timid.', 'Make the hero headline bigger', { kind: 'revision', round: 1, hours: 0.5 }),
     item(web, 96, 'The contact form isn’t sending on my phone 😬', 'Contact form not sending on mobile', { kind: 'included', hours: 1 }),
-    item(web, 70, 'Can we add a pricing page too? Nothing fancy.', 'Add a pricing page', { kind: 'extra', status: 'approved', hours: 4, amount: price(4), days: days(4), decidedAt: now - 60 * HOUR }),
+    item(web, 70, 'Can we add a pricing page too? Nothing fancy.', 'Add a pricing page', { kind: 'extra', status: 'approved', hours: 4, amount: price(4), days: days(4), decidedAt: now - 60 * HOUR, co: 1, approvedBy: 'Maya Chen' }),
     item(web, 26, 'Quick one: swap the footer icons for the outline style?', 'Swap the footer icons for the outline style', { kind: 'gift', hours: 0.75, amount: price(0.75) }),
     item(web, 3, 'Could you write the copy for the About page? We’re a bit stuck on it.', 'Write the copy for the About page', { kind: 'extra', status: 'proposed', hours: 3, amount: price(3), days: days(3), decidedAt: null }),
 

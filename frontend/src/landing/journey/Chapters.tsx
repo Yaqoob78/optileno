@@ -169,7 +169,7 @@ export function ActionChapter() {
         <h2 className="jr-h2 serif">
           From client request to <em>clear next step.</em>
         </h2>
-        <p className="jr-lede">Paste a request from email, Slack, WhatsApp or your call notes. Get an instant verdict, a fair price, and a reply that sounds like you.</p>
+        <p className="jr-lede">Paste a request, or a whole email with five of them, from email, Slack, WhatsApp or your call notes. Get an instant verdict for each, a fair price, and a reply that sounds like you.</p>
         <div className="jr-channels" aria-label="Works with requests from">
           <span>
             <Mail size={15} /> Email

@@ -39,7 +39,7 @@ Later expansion, in order: small studios (2–5 people, shared workspace), then 
 | Player | What they do | Gap we use |
 |---|---|---|
 | ScopeShield (~$20/mo) | AI scans your contract; email gateway returns a verdict and a decline email | Adversarial ("firewall", "shield"). Their own write-up says the UI-only version saw little use. |
-| ScopeAuditor (launched June 2026) | AI verdict, "ghostwriter" reply, PDF change order | Same AI-contract approach; no client-side experience |
+| ScopeAuditor (launched June 2026) | AI verdict, "ghostwriter" reply, PDF change order | Same AI-contract approach; no client-side experience. Their change order is a PDF you send; ours is a page the client ticks and signs, and the signature lands back in the app. |
 | Revision Desk | Revision counter with a client share link | Only revisions, not extras, gifts or money |
 | Bonsai, HoneyBook, Moxie, Plutio ($12–79/mo) | All-in-one CRMs with proposals and contracts | Scope is a document to them, not a live conversation. They're heavy and expensive to switch into. |
 | Notion/Gumroad change-order kits (free–$30) | Templates | Manual; nobody keeps them up |
@@ -67,7 +67,8 @@ None of the dedicated tools shows public evidence of traction. The category is *
 ## Business model
 
 - **Now:** free during early access. No card, no account.
-- **Pro (planned, $12/mo or ~$96/yr, to be validated):** your logo and colors on client pages, signed PDF change orders, sync across devices, reminders for unapproved extras, email-forward capture.
+- **Pro (planned, $12/mo or ~$96/yr, to be validated):** your logo and colors on client pages, sync across devices, reminders for unapproved change orders, email-forward capture.
+- **Signed change orders ship free** (Sept 29). They are the moment the product pays for itself, and every signed page carries "Made with Optileno" to the client. Gating them would slow the loop the business depends on.
 - **Cost to serve today:** static hosting only. Margins at scale are close to 100% until sync ships.
 - **Pricing logic:** one caught request (typically $150–400) covers a year of Pro. Say so on the pricing page, and show each user their own "recovered" number.
 
@@ -95,7 +96,9 @@ Run it with 30 real fixed-price freelancers (communities, DMs, friends of friend
 
 ## Built in v3
 
-Landing page with a scroll story, live demo and leak calculator · onboarding · scope templates (website, landing page, logo & identity, video edit, feature build, writing, custom) · verdict engine with reasons and confidence · revision-round tracking (feedback that arrives in pieces counts once) · extras priced from your rate, with the delivery-date impact · charge / gift / approve / decline · warm or brief reply drafts · client scope page with one-tap approval by email and a link back that marks it approved · money ledger · dark mode · backup and restore · privacy and terms pages. 26 unit tests.
+Landing page with a scroll story, live demo and leak calculator · onboarding · scope templates (website, landing page, logo & identity, video edit, feature build, writing, custom) · verdict engine with reasons and confidence · revision-round tracking (feedback that arrives in pieces counts once) · extras priced from your rate, with the delivery-date impact · charge / gift / approve / decline · warm or brief reply drafts · client scope page with one-tap approval by email and a link back that marks it approved · money ledger · dark mode · backup and restore · privacy and terms pages.
+
+**Added Sept 29: whole messages and signed change orders.** Paste a full email or chat thread and Optileno splits it into separate asks (dropping greetings, sign-offs, signatures, quoted history and "can you take a look?" follow-ups), reads each against the scope, keeps every tweak in the message in one revision round, and charges one extra round (not one per tweak) once the included rounds are used. One reply covers all of it. The extras become a numbered change order (`/co#…`, the document travels inside the link): each addition with the client's own words, price and delivery impact, the new project total, plain terms, and a signature block. The client ticks what they want, types their name, and sends it back; the link in their reply marks the ticked items approved (and the unticked ones declined) in the freelancer's app, with the signer's name. A five-character reference changes when any price changes, so a stale approval is flagged. Printing gives a signed PDF, or a blank signature line for paper. 46 unit tests.
 
 ## Next, in order
 

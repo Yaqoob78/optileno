@@ -2,9 +2,12 @@
 
 **Every small change has a price.** Optileno helps freelancers on fixed-price projects stop doing free work by accident. Set up a project's scope in a minute, paste each client request as it arrives, and Optileno says whether it's in scope, a revision round, or extra, and why. Then charge it (the client approves in one tap) or gift it (shown to the client with its value).
 
+Paste a whole email and Optileno splits it into separate requests, reads each one, and drafts one reply. Extras go into a numbered **change order** the client ticks and signs with their name; the signed approval lands back in the app.
+
 - Landing page: `/`
 - App: `/app` (local-first: everything is stored in the browser, no account)
 - Client scope page: `/s#…` (the page's content travels inside the link after `#`, so it never reaches a server)
+- Client change order: `/co#…` (same idea: a signable document inside the link)
 - Privacy and terms: `/privacy`, `/terms`
 
 Strategy and launch: [docs/STRATEGY.md](docs/STRATEGY.md), [docs/LAUNCH-PLAN.md](docs/LAUNCH-PLAN.md) (first 7 days, SEO, infrastructure), [docs/GO-TO-MARKET.md](docs/GO-TO-MARKET.md).
@@ -16,7 +19,7 @@ Landing art: [docs/LANDING-ASSETS.md](docs/LANDING-ASSETS.md) (prompts and specs
 cd frontend
 npm install
 npm run dev        # http://localhost:3000
-npm test           # vitest: verdict engine, ledger, share links, import sanitising
+npm test           # vitest: verdict engine, message splitting, change orders, ledger, share links, import sanitising
 npm run build      # typecheck + production build
 ```
 
@@ -27,9 +30,9 @@ Requires Node 20.19+ (Vite 8).
 ```
 frontend/
   src/
-    lib/        pure logic: verdict engine, ledger, reply drafts, share links, store, templates
-    app/        the app (desk, project page, verdict sheet, scope editor, settings)
-    client/     the client-facing scope page
+    lib/        pure logic: verdict engine, message splitting, change orders, ledger, reply drafts, share links, store, templates
+    app/        the app (desk, project page, verdict and batch sheets, change orders, scope editor, settings)
+    client/     the client-facing scope page and change order
     landing/    the landing page: journey/ is the WebGL "living painting" story (DepthStage.ts, scenes.ts, chapters)
     legal/      privacy and terms
     styles/     design tokens (base.css) plus one stylesheet per area

@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { changeOrderRef } from './changeOrder';
 import { isValidISO, type ISODate } from './dates';
 import { isCurrency, niceRound } from './money';
 import type { Deliverable, ExtraStatus, ItemKind, Profile, Project, RequestItem, Theme, Tone } from './model';
@@ -88,6 +89,8 @@ export function sanitize(raw: unknown): AppState | null {
         round: kind === 'revision' ? Math.max(1, Math.round(n(x.round, 1, 50))) : null,
         createdAt: n(x.createdAt, Date.now(), 1e14),
         decidedAt: typeof x.decidedAt === 'number' ? x.decidedAt : null,
+        co: kind === 'extra' && typeof x.co === 'number' && x.co >= 1 ? Math.round(Math.min(x.co, 9999)) : null,
+        approvedBy: kind === 'extra' && x.status === 'approved' ? s(x.approvedBy, 80) || null : null,
       };
     });
   return {
@@ -279,9 +282,74 @@ export const actions = {
       round: d.kind === 'revision' ? Math.max(1, d.round ?? 1) : null,
       createdAt: now,
       decidedAt: d.kind === 'extra' ? null : now,
+      co: null,
+      approvedBy: null,
     };
     setState((st) => ({ ...st, items: [...st.items, item], settings: { ...st.settings, lastProjectId: d.projectId } }));
     return id;
+  },
+
+  /** Logs several requests from one message at once. Returns their ids in order. */
+  addItems(drafts: ItemDraft[]): string[] {
+    const now = Date.now();
+    const created: RequestItem[] = drafts.map((d, i) => ({
+      id: uid(),
+      projectId: d.projectId,
+      text: d.text.trim().slice(0, 2000),
+      title: d.title.trim().slice(0, 120) || 'Client request',
+      kind: d.kind,
+      hours: Math.max(0, d.hours),
+      amount: d.kind === 'extra' || d.kind === 'gift' ? Math.max(0, d.amount) : 0,
+      days: d.kind === 'extra' ? Math.max(0, Math.round(d.days)) : 0,
+      status: d.kind === 'extra' ? 'proposed' : null,
+      round: d.kind === 'revision' ? Math.max(1, d.round ?? 1) : null,
+      // A millisecond apart keeps the client's order when sorting by time
+      createdAt: now + i,
+      decidedAt: d.kind === 'extra' ? null : now + i,
+      co: null,
+      approvedBy: null,
+    }));
+    if (!created.length) return [];
+    setState((st) => ({ ...st, items: [...st.items, ...created], settings: { ...st.settings, lastProjectId: created[0].projectId } }));
+    return created.map((i) => i.id);
+  },
+
+  /** Puts extras into a numbered change order. Sending the same set again keeps its number. */
+  issueChangeOrder(projectId: string, itemIds: string[]): number {
+    const inProject = getState().items.filter((i) => i.projectId === projectId && i.kind === 'extra');
+    const chosen = new Set(itemIds);
+    const picked = inProject.filter((i) => chosen.has(i.id));
+    const first = picked[0]?.co ?? null;
+    const sameSet = first !== null && picked.every((i) => i.co === first) && inProject.filter((i) => i.co === first).length === picked.length;
+    const n = sameSet ? first : inProject.reduce((max, i) => Math.max(max, i.co ?? 0), 0) + 1;
+    setState((st) => ({ ...st, items: st.items.map((i) => (chosen.has(i.id) && i.projectId === projectId && i.kind === 'extra' ? { ...i, co: n } : i)) }));
+    return n;
+  },
+
+  /** Handles a signed change order coming back from the client. */
+  approveChangeOrder(
+    projectId: string,
+    n: number,
+    approvedIds: string[],
+    by: string,
+    ref = '',
+  ): { approved: RequestItem[]; declined: RequestItem[]; stale: boolean } | null {
+    const inOrder = getState().items.filter((i) => i.projectId === projectId && i.kind === 'extra' && (i.co === n || approvedIds.includes(i.id)));
+    if (!inOrder.length) return null;
+    // The client signed a reference; if a price or line changed since, it won't match
+    const current = changeOrderRef(n, inOrder.filter((i) => i.co === n).sort((a, b) => a.createdAt - b.createdAt));
+    const stale = !!ref && ref !== current;
+    const yes = new Set(approvedIds);
+    const now = Date.now();
+    const name = by.trim().slice(0, 80) || null;
+    const approved = inOrder.filter((i) => yes.has(i.id) && i.status !== 'approved');
+    const declined = inOrder.filter((i) => !yes.has(i.id) && i.status === 'proposed');
+    const touched = new Map<string, Partial<RequestItem>>([
+      ...approved.map((i) => [i.id, { status: 'approved' as const, decidedAt: now, approvedBy: name }] as const),
+      ...declined.map((i) => [i.id, { status: 'declined' as const, decidedAt: now }] as const),
+    ]);
+    if (touched.size) setState((st) => ({ ...st, items: st.items.map((i) => (touched.has(i.id) ? { ...i, ...touched.get(i.id) } : i)) }));
+    return { approved, declined, stale };
   },
 
   updateItem(id: string, patch: Partial<Pick<RequestItem, 'title' | 'amount' | 'hours' | 'days'>>) {
@@ -291,7 +359,9 @@ export const actions = {
   setStatus(id: string, status: ExtraStatus) {
     setState((st) => ({
       ...st,
-      items: st.items.map((i) => (i.id === id && i.kind === 'extra' ? { ...i, status, decidedAt: status === 'proposed' ? null : Date.now() } : i)),
+      items: st.items.map((i) =>
+        i.id === id && i.kind === 'extra' ? { ...i, status, decidedAt: status === 'proposed' ? null : Date.now(), approvedBy: status === 'approved' ? i.approvedBy : null } : i,
+      ),
     }));
   },
 
@@ -301,7 +371,15 @@ export const actions = {
       ...st,
       items: st.items.map((i) =>
         i.id === id
-          ? { ...i, kind: to, status: to === 'extra' ? 'proposed' : null, amount: i.amount || niceRound(i.hours * st.profile.rate), decidedAt: to === 'gift' ? Date.now() : null }
+          ? {
+              ...i,
+              kind: to,
+              status: to === 'extra' ? 'proposed' : null,
+              amount: i.amount || niceRound(i.hours * st.profile.rate),
+              decidedAt: to === 'gift' ? Date.now() : null,
+              co: null,
+              approvedBy: null,
+            }
           : i,
       ),
     }));

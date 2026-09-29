@@ -93,3 +93,74 @@ export function draftReply(d: DraftInput): string {
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
+
+/* ─── One reply for a message that asked for several things ─── */
+
+export interface BatchLine {
+  title: string;
+  amount: number;
+}
+
+export interface BatchDraftInput {
+  tone: Tone;
+  contact: string;
+  currency: Currency;
+  included: string[];
+  /** Revisions grouped by round; rounds beyond `roundsIncluded` are the paid extra round. */
+  revisions: { round: number; titles: string[] }[];
+  roundsIncluded: number;
+  extras: BatchLine[];
+  gifts: BatchLine[];
+  /** Working days the extras add, and the delivery date before them. */
+  days: number;
+  delivery: ISODate | null;
+  /** "CO-002", when the extras went into a change order. */
+  changeOrder: string | null;
+  link?: string | null;
+  signature: string;
+}
+
+export function draftBatchReply(d: BatchDraftInput): string {
+  const warm = d.tone === 'warm';
+  const money = (n: number) => formatMoney(n, d.currency);
+  const bullets = (xs: string[]) => xs.map((x) => `• ${x}`).join('\n');
+  const parts: string[] = [];
+
+  if (d.included.length) {
+    parts.push(warm ? `Included, so I’m on it:\n${bullets(d.included)}` : `Included:\n${bullets(d.included)}`);
+  }
+  for (const r of d.revisions) {
+    if (r.round > d.roundsIncluded) {
+      parts.push(warm ? `These go into the extra revision round (in the change order below):\n${bullets(r.titles)}` : `Extra round:\n${bullets(r.titles)}`);
+      continue;
+    }
+    const last = r.round >= d.roundsIncluded;
+    const head = `Revision round ${r.round} of ${d.roundsIncluded}`;
+    parts.push(
+      warm
+        ? `${head}${last ? ' (the last one included, so send anything else now and I’ll fold it in)' : ''}:\n${bullets(r.titles)}`
+        : `${head}:\n${bullets(r.titles)}`,
+    );
+  }
+  if (d.gifts.length) {
+    const worth = d.gifts.reduce((s, g) => s + g.amount, 0);
+    parts.push(warm ? `On me, no charge (normally ${money(worth)}):\n${bullets(d.gifts.map((g) => g.title))}` : `No charge:\n${bullets(d.gifts.map((g) => g.title))}`);
+  }
+  if (d.extras.length) {
+    const total = d.extras.reduce((s, e) => s + e.amount, 0);
+    const where = d.changeOrder ? ` in change order ${d.changeOrder}` : '';
+    const list = bullets(d.extras.map((e) => `${e.title} · ${money(e.amount)}`));
+    const sum = d.extras.length > 1 ? `Together ${money(total)}, and it ${moveLine(d.delivery, d.days)}.` : `It ${moveLine(d.delivery, d.days)}.`;
+    const next = d.link
+      ? warm
+        ? `Tick the ones you’d like and approve them here:\n${d.link}`
+        : `Approve here: ${d.link}`
+      : warm
+        ? 'Just reply with the ones you’d like and I’ll get started.'
+        : 'Reply with the ones you want.';
+    parts.push(warm ? `Outside what we scoped, so I’ve priced them${where}:\n${list}\n${sum}\n\n${next}` : `Extra${where}:\n${list}\n${sum} ${next}`);
+  }
+
+  if (!warm) return `${parts.join('\n\n')}${sign(d.signature)}`;
+  return `${greet(d.contact)}\n\nThanks for these. Here’s how each one fits with what we agreed.\n\n${parts.join('\n\n')}${sign(d.signature)}`;
+}

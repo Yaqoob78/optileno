@@ -7,6 +7,7 @@ import { useAppState } from './lib/store';
 const Landing = lazy(() => import('./landing/Landing').then((m) => ({ default: m.Landing })));
 const AppPage = lazy(() => import('./app/AppPage').then((m) => ({ default: m.AppPage })));
 const ClientPage = lazy(() => import('./client/ClientPage').then((m) => ({ default: m.ClientPage })));
+const ChangeOrderPage = lazy(() => import('./client/ChangeOrderPage').then((m) => ({ default: m.ChangeOrderPage })));
 const Legal = lazy(() => import('./legal/Legal').then((m) => ({ default: m.Legal })));
 
 /** The app honours the theme setting; the landing page and client pages are always paper. */
@@ -59,6 +60,7 @@ export default function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/app/*" element={<AppPage />} />
             <Route path="/s" element={<ClientPage />} />
+            <Route path="/co" element={<ChangeOrderPage />} />
             <Route path="/privacy" element={<Legal page="privacy" />} />
             <Route path="/terms" element={<Legal page="terms" />} />
             <Route path="*" element={<Navigate to="/" replace />} />

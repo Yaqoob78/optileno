@@ -38,6 +38,8 @@ function revision(round: number, hoursAgo: number): RequestItem {
     round,
     createdAt: NOW - hoursAgo * HOUR,
     decidedAt: NOW,
+    co: null,
+    approvedBy: null,
   };
 }
 

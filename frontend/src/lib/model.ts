@@ -63,4 +63,8 @@ export interface RequestItem {
   round: number | null;
   createdAt: number;
   decidedAt: number | null;
+  /** Only for extras: the change order it was last sent in (numbered per project). */
+  co: number | null;
+  /** Only for approved extras: the name the client signed with. */
+  approvedBy: string | null;
 }

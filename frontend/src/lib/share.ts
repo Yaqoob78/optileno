@@ -144,8 +144,9 @@ async function pipe(bytes: Uint8Array, stream: CompressionStream | Decompression
 
 const canCompress = () => typeof CompressionStream !== 'undefined' && typeof DecompressionStream !== 'undefined';
 
-export async function encodeSnapshot(s: Snapshot): Promise<string> {
-  const json = new TextEncoder().encode(JSON.stringify(toWire(s)));
+/** Packs any JSON value into a URL-safe string (deflated when the browser can). */
+export async function packJSON(value: unknown): Promise<string> {
+  const json = new TextEncoder().encode(JSON.stringify(value));
   if (canCompress()) {
     try {
       return `z${toBase64Url(await pipe(json, new CompressionStream('deflate-raw')))}`;
@@ -156,23 +157,33 @@ export async function encodeSnapshot(s: Snapshot): Promise<string> {
   return `j${toBase64Url(json)}`;
 }
 
-export async function decodeSnapshot(encoded: string): Promise<Snapshot | null> {
+/** The reverse of `packJSON`. Returns undefined for anything it can't read. */
+export async function unpackJSON(encoded: string): Promise<unknown> {
   try {
     const kind = encoded[0];
     const bytes = fromBase64Url(encoded.slice(1));
     let json: Uint8Array;
     if (kind === 'z') {
-      if (!canCompress()) return null;
+      if (!canCompress()) return undefined;
       json = await pipe(bytes, new DecompressionStream('deflate-raw'));
     } else if (kind === 'j') {
       json = bytes;
     } else {
-      return null;
+      return undefined;
     }
-    return fromWire(JSON.parse(new TextDecoder().decode(json)));
+    return JSON.parse(new TextDecoder().decode(json));
   } catch {
-    return null;
+    return undefined;
   }
+}
+
+export async function encodeSnapshot(s: Snapshot): Promise<string> {
+  return packJSON(toWire(s));
+}
+
+export async function decodeSnapshot(encoded: string): Promise<Snapshot | null> {
+  const wire = await unpackJSON(encoded);
+  return wire === undefined ? null : fromWire(wire);
 }
 
 export function siteOrigin(): string {
